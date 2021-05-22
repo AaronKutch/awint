@@ -1,0 +1,23 @@
+[package]
+name = "awint_macros"
+version = "0.1.0-pre.0"
+edition = "2018"
+authors = ["Aaron Kutch <aaronkutch@att.net>"]
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/AaronKutch/awint"
+documentation = "https://docs.rs/awint"
+description = "Accompanying procedural macros to `awint`"
+keywords = ["macros", "int", "integer", "big", "math"]
+categories = ["data-structures", "mathematics", "algorithms"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+awint_core = { version = "0.1.0-pre.0", path = "../awint_core", default-features = false }
+awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features = false }
+
+[dev-dependencies]
+# for examples
+awint = { version = "0.1.0-pre.0", path = "../awint" }

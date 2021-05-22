@@ -1,0 +1,29 @@
+[package]
+name = "awint_core"
+version = "0.1.0-pre.0"
+edition = "2018"
+authors = ["Aaron Kutch <aaronkutch@att.net>"]
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/AaronKutch/awint"
+documentation = "https://docs.rs/awint"
+description = "Core no-std and no-alloc `awint` functionality"
+keywords = ["int", "integer", "big", "math", "no_std"]
+categories = ["data-structures", "mathematics", "algorithms", "no-std"]
+
+[dependencies]
+awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals" }
+rand_core = { version = "0.6", default-features = false, optional = true }
+serde = { version = "1.0", default-features = false, optional = true }
+
+# for examples
+[dev-dependencies]
+awint = { version = "0.1.0-pre.0", path = "../awint" }
+rand_xoshiro = "0.6"
+ron = "0.6"
+
+[features]
+# Turns on `rand` support
+rand_support = ["rand_core"]
+# Turns on `serde` support
+serde_support = ["serde"]

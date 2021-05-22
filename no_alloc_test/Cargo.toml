@@ -1,0 +1,18 @@
+[workspace]
+# empty workspace array so that this compiles without affecting the main workspace
+
+[package]
+name = "no_alloc_test"
+version = "0.0.0"
+edition = "2018"
+publish = false
+
+# The purpose of this crate is to insure that `awint` without the `alloc` feature has no allocation
+# dependencies. Simply building `awint` with `--target=...` is not good enough, it has to be linked
+# into a no-alloc binary. I have chosen `riscv32i-unknown-none-elf` for its simplicity.
+
+[dependencies]
+awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support"] }
+rand_xoshiro = "0.6"
+riscv-minimal-rt = "0.5"
+panic-halt = "0.2"

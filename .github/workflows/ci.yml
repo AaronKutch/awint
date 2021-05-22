@@ -1,0 +1,68 @@
+name: Awint CI
+
+on: [push, pull_request]
+
+env:
+  RUSTFLAGS: -D warnings
+  RUST_BACKTRACE: 1
+
+jobs:
+  test_suite:
+    name: Test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust components
+        run: |
+          rustup set profile minimal
+          rustup default nightly
+          rustup component add miri
+      - run: |
+        cargo test --all-features
+        cargo test --release --all-features
+        cargo clean
+        cargo miri test
+        cargo clean
+        cargo doc
+
+  no_alloc_build:
+    name: Build for no-std and no-alloc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install nightly-riscv32i-unknown-none-elf
+        run: |
+          rustup set profile minimal
+          rustup default nightly
+          rustup target add riscv32i-unknown-none-elf
+      - run: cd no_alloc_test && cargo build
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Acquire the most recent nightly with a rustfmt component
+      - name: Install nightly `rustfmt`
+        run: |
+          rustup set profile minimal
+          rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/rustfmt)"
+          rustup component add rustfmt
+      - run: |
+        cargo fmt -- --check
+        cd no_alloc_test && cargo fmt -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Acquire the most recent nightly with a clippy component
+      - name: Install nightly `clippy`
+        run: |
+          rustup set profile minimal
+          rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/clippy)"
+          rustup component add clippy
+      - run: |
+        cargo clippy -- -D clippy::all
+        cd no_alloc_test && cargo clippy -- -D clippy::all

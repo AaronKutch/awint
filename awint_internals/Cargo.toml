@@ -1,0 +1,9 @@
+[package]
+name = "awint_internals"
+version = "0.1.0-pre.0"
+edition = "2018"
+authors = ["Aaron Kutch <aaronkutch@att.net>"]
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/AaronKutch/awint"
+description = "Internal utilities for the `awint` system of crates"

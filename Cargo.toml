@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "awint",
+    "awint_core",
+    "awint_ext",
+    "awint_macros",
+    "awint_internals",
+]

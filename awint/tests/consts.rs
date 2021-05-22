@@ -1,0 +1,230 @@
+#![feature(const_mut_refs)]
+#![feature(const_panic)]
+#![feature(const_option)]
+
+use awint::prelude::{bw, inlawi, inlawi_ty, inlawi_umax, inlawi_zero, Bits, InlAwi};
+
+const fn check_invariants(x: &Bits) {
+    if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
+        panic!("unused bits are set");
+    }
+}
+
+/// Checks for equality and that invariants are being kept
+const fn eq(lhs: &Bits, rhs: &Bits) {
+    check_invariants(lhs);
+    check_invariants(rhs);
+    if !lhs.const_eq(rhs).unwrap() {
+        panic!("lhs and rhs are not equal when they should be")
+    }
+}
+
+/// The purpose of this test is to supply some actual test values to some
+/// functions to make sure `fuzz.rs` isn't running into false positives.
+#[test]
+const fn consts() {
+    let mut awi0: inlawi_ty!(256) = inlawi_zero!(256);
+    let mut awi1 = inlawi_zero!(256);
+    //let mut awi2 = InlAwi::<5>::zero();
+    let x: &mut Bits = awi0.const_as_mut();
+    let y: &mut Bits = awi1.const_as_mut();
+    //let z: &mut Bits = awi2.const_as_mut();
+    x.u128_assign(123456789);
+    y.u128_assign(9876543211);
+    x.add_assign(y);
+    y.u128_assign(10000000000);
+    eq(x, y);
+
+    let a1337: inlawi_ty!(12) = inlawi!(1337u12);
+    let mut b1337: inlawi_ty!(12) = inlawi!(010100111001);
+    let c_100: inlawi_ty!(12) = inlawi!(100i12);
+    let d1437: inlawi_ty!(12) = inlawi!(1437u12);
+    eq(a1337.const_as_ref(), b1337.const_as_ref());
+    let sum = b1337.const_as_mut();
+    sum.add_assign(c_100.const_as_ref()).unwrap();
+    eq(sum, d1437.const_as_ref());
+    let e1337: inlawi_ty!(12) = inlawi!(1001, 0011, 0101);
+    eq(a1337.const_as_ref(), e1337.const_as_ref());
+
+    // TODO this could be expanded
+}
+
+#[test]
+#[should_panic]
+const fn bw_panics() {
+    let _ = bw(0);
+}
+
+macro_rules! test_nonequal_bw {
+    (
+        $x0:ident, $x1:ident;
+        $($fn_unary:ident)*;
+        $($fn_unary_shift:ident)*;
+        $($fn_unary_literal:ident)*;
+        $($fn_binary:ident)*
+    ) => {
+        $(
+            $x0.$fn_unary(); // Just checking that the function exists and is constant
+        )*
+        $(
+            assert!($x0.$fn_unary_shift($x0.bw() - 1).is_some());
+            assert!($x0.$fn_unary_shift($x0.bw()).is_none());
+        )*
+        $(
+            $x0.$fn_unary_literal(1);
+        )*
+        $(
+            assert!($x0.$fn_binary($x1).is_none());
+        )*
+    }
+}
+
+/// This test checks that all appropriate functions on `Bits` exist, are const,
+/// and checks `None` return cases.
+#[test]
+const fn bits_functions() {
+    let mut awi0 = inlawi_zero!(128);
+    let mut awi1 = inlawi_zero!(192);
+    let mut awi2 = inlawi_umax!(192);
+    let mut awi3 = inlawi_zero!(192);
+    let mut awi4 = inlawi_zero!(192);
+    let x0 = awi0.const_as_mut();
+    let x1 = awi1.const_as_mut();
+    let x2 = awi2.const_as_mut();
+    let x3 = awi3.const_as_mut();
+    let x4 = awi4.const_as_mut();
+
+    assert!(x1.is_zero());
+    assert!(x2.is_umax());
+
+    // miscellanious functions that won't work with the macro
+
+    assert!(x0.range_and_assign(0..128).is_some());
+    assert!(x0.range_and_assign(127..0).is_some());
+    assert!(x0.range_and_assign(128..128).is_none());
+    assert!(x0.range_and_assign(0..129).is_none());
+
+    x0.short_cin_mul(0, 0);
+
+    x0.bool_assign(true);
+
+    x0.inc_assign(false);
+    x0.dec_assign(true);
+    assert!(x0.cin_sum_triop(false, x1, x2).is_none());
+
+    x0.usize_or_assign(123, 60);
+
+    // division by zero and differing size
+    x1.umax_assign();
+    x2.umax_assign();
+    x3.umax_assign();
+    x4.zero_assign();
+    assert!(Bits::udivide(x1, x2, x3, x4).is_none());
+    x0.umax_assign();
+    x1.umax_assign();
+    x2.umax_assign();
+    x3.umax_assign();
+    assert!(Bits::udivide(x0, x1, x2, x3).is_none());
+    x1.umax_assign();
+    x2.umax_assign();
+    x3.umax_assign();
+    x4.zero_assign();
+    assert!(Bits::idivide(x1, x2, x3, x4).is_none());
+    x0.umax_assign();
+    x1.umax_assign();
+    x2.umax_assign();
+    x3.umax_assign();
+    assert!(Bits::idivide(x0, x1, x2, x3).is_none());
+    x1.umax_assign();
+    assert!(x4.short_udivide_triop(x1, 0).is_none());
+    x0.umax_assign();
+    assert!(x4.short_udivide_triop(x0, 1).is_none());
+    assert!(x4.short_udivide_assign(0).is_none());
+
+    // TODO test all const serialization
+
+    test_nonequal_bw!(
+        x0, x1
+        ;// functions with signature `fn({ , &, &mut} self) -> ...`
+        nzbw
+        bw
+        len
+        unused
+        extra
+        first
+        first_mut
+        last
+        last_mut
+        clear_unused_bits
+        as_slice
+        as_mut_slice
+        zero_assign
+        umax_assign
+        imax_assign
+        imin_assign
+        uone_assign
+        not_assign
+        is_zero
+        is_umax
+        is_imin
+        is_uone
+        lsb
+        msb
+        lz
+        tz
+        count_ones
+        reverse_bits
+        to_usize
+        to_isize
+        to_u8
+        to_i8
+        to_u16
+        to_i16
+        to_u32
+        to_i32
+        to_u64
+        to_i64
+        to_u128
+        to_i128
+        to_bool
+        neg_assign
+        abs_assign
+        ;
+        shl_assign
+        lshr_assign
+        ashr_assign
+        rotl_assign
+        rotr_assign
+        ;// functions with signature `fn({ , &, &mut} self, rhs: integer) -> ...`
+        usize_assign
+        isize_assign
+        u8_assign
+        i8_assign
+        u16_assign
+        i16_assign
+        u32_assign
+        i32_assign
+        u64_assign
+        i64_assign
+        u128_assign
+        i128_assign
+        ;// functions with signature `fn({ , &, &mut} self, rhs: { , &, &mut} Self) -> Option<...>`
+        copy_assign
+        or_assign
+        and_assign
+        xor_assign
+        const_eq
+        const_ne
+        ult
+        ule
+        ugt
+        uge
+        ilt
+        ile
+        igt
+        ige
+        add_assign
+        sub_assign
+        rsb_assign
+    );
+}
