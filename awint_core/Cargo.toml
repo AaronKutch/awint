@@ -18,7 +18,7 @@ serde = { version = "1.0", default-features = false, optional = true }
 
 # for examples
 [dev-dependencies]
-awint = { version = "0.1.0-pre.0", path = "../awint" }
+awint = { path = "../awint" }
 rand_xoshiro = "0.6"
 ron = "0.6"
 

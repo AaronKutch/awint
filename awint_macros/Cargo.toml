@@ -20,4 +20,4 @@ awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features =
 
 [dev-dependencies]
 # for examples
-awint = { version = "0.1.0-pre.0", path = "../awint" }
+awint = { path = "../awint" }
