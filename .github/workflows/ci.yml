@@ -42,8 +42,6 @@ jobs:
   no_alloc_build:
     name: Doc and Build for no-std and no-alloc
     runs-on: ubuntu-latest
-    env:
-      OUT_DIR: /home/runner/work/awint/awint/no_alloc_test/target/
     steps:
       - uses: actions/checkout@v2
       - name: Install nightly-riscv32i-unknown-none-elf
