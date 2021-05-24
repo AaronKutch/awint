@@ -26,13 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust components
+      - name: Install most recent Miri
         run: |
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
           rustup component add miri
         # TODO run Miri from root when miri/issues/1813 and miri/issues/1311 are fixed
-      - name: Run test suite
+      - name: Run test suite with Miri
         run: |
           cd awint
           cargo miri test
@@ -52,21 +52,26 @@ jobs:
   #      run: cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
   rustfmt:
-    name: Rustfmt
+    name: Rustfmt and Docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       # Acquire the most recent nightly with a rustfmt component
-      - name: Install nightly `rustfmt`
+      - name: Install most recent Rustfmt
         run: |
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/rustfmt)"
           rustup component add rustfmt
-      - name: Run `cargo fmt`
+      # `cargo doc` everything separately to avoid needing the target for no_alloc_build
+      - name: Run `cargo fmt` and `cargo doc`
         run: |
           cargo fmt -- --check
           cd no_alloc_test && cargo fmt -- --check
-          cargo doc
+          cargo doc -p awint_internals
+          cargo doc -p awint_core
+          cargo doc -p awint_ext
+          cargo doc -p awint_macros
+          cargo doc -p awint
 
   clippy:
     name: Clippy
@@ -74,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       # Acquire the most recent nightly with a clippy component
-      - name: Install nightly `clippy`
+      - name: Install most recent Clippy
         run: |
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/clippy)"
