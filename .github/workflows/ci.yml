@@ -5,6 +5,7 @@ on: [push, pull_request]
 env:
   RUSTFLAGS: -D warnings
   RUST_BACKTRACE: 1
+  OUT_DIR: no_alloc_test/target/
 
 jobs:
   test_suite:
@@ -37,19 +38,18 @@ jobs:
           cd awint
           cargo miri test
 
-  # TODO figure out what is causing this to fail
-  #no_alloc_build:
-  #  name: Build for no-std and no-alloc
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - uses: actions/checkout@v2
-  #    - name: Install nightly-riscv32i-unknown-none-elf
-  #      run: |
-  #        rustup set profile minimal
-  #        rustup default nightly
-  #        rustup target add riscv32i-unknown-none-elf
-  #    - name: Run `cargo build`
-  #      run: cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
+  no_alloc_build:
+    name: Build for no-std and no-alloc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install nightly-riscv32i-unknown-none-elf
+        run: |
+          rustup set profile minimal
+          rustup default nightly
+          rustup target add riscv32i-unknown-none-elf
+      - name: Run `cargo build`
+        run: cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
   rustfmt:
     name: Rustfmt and Docs
