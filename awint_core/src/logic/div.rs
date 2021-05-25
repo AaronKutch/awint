@@ -199,8 +199,8 @@ impl Bits {
                 // `get_dd_unchecked` will not work, e.x. bw = 192 and duo_lz = 0, it will
                 // attempt to access an imaginary zero bit beyond the bitwidth
                 let duo_sig_dd = unsafe {
-                    let digits = duo_extra.wrapping_shr(BITS.trailing_zeros());
-                    let bits = duo_extra & (BITS - 1);
+                    let digits = digits_u(duo_extra);
+                    let bits = extra_u(duo_extra);
                     if bits == 0 {
                         (rem.get_unchecked(digits), rem.get_unchecked(digits + 1))
                     } else {
@@ -218,8 +218,8 @@ impl Bits {
                 };
                 let quo_part = dd_division(duo_sig_dd, div_sig_d_add1).0 .0;
                 let extra_shl = duo_extra - div_extra;
-                let shl_bits = extra_shl & (BITS - 1);
-                let shl_digits = extra_shl.wrapping_shr(BITS.trailing_zeros());
+                let shl_bits = extra_u(extra_shl);
+                let shl_digits = digits_u(extra_shl);
 
                 // Addition of `quo_part << extra_shl` to the quotient.
                 let (carry, next) = unsafe {

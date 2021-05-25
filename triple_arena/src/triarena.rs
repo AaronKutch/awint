@@ -55,8 +55,8 @@ fn inc_gen(x: NonZeroU64) -> NonZeroU64 {
 /// # Note
 ///
 /// A `TriPtr` is invalid if:
-///  - it points to a different arena than the one it being used as an argument
-///    to
+///  - it points to a different arena than the one it is being used as an
+///    argument to
 ///  - it points to an element that has been `remove`d or has otherwise been the
 ///    target of some pointer invalidation operation
 impl<T> Arena<T> {

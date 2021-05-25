@@ -465,8 +465,8 @@ impl<'a> Bits {
     /// Bits that extend beyond `self.bw()` are zeroed.
     #[doc(hidden)]
     pub const fn get_digit(&self, start: usize) -> usize {
-        let digits = start.wrapping_shr(BITS.trailing_zeros());
-        let bits = start & (BITS - 1);
+        let digits = digits_u(start);
+        let bits = extra_u(start);
         let mut tmp = 0;
         // Safety: The checks avoid indexing beyond `self.len() - 1`
         unsafe {
@@ -485,8 +485,8 @@ impl<'a> Bits {
     /// `self.bw()` are zeroed.
     #[doc(hidden)]
     pub const fn get_double_digit(&self, start: usize) -> (usize, usize) {
-        let digits = start.wrapping_shr(BITS.trailing_zeros());
-        let bits = start & (BITS - 1);
+        let digits = digits_u(start);
+        let bits = extra_u(start);
         let mut first = 0;
         let mut second = 0;
         // Safety: The checks avoid indexing beyond `self.len() - 1`

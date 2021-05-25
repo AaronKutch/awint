@@ -46,15 +46,8 @@ extern crate proc_macro;
 use core::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
+use awint_internals::*;
 use proc_macro::TokenStream;
-
-const BITS: usize = usize::BITS as usize;
-
-fn inlawi_digits(bw: usize) -> usize {
-    bw.wrapping_shr(BITS.trailing_zeros())
-        .wrapping_add(((bw & (BITS - 1)) != 0) as usize)
-        .wrapping_add(1)
-}
 
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
 #[proc_macro]
@@ -66,7 +59,7 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
     if bw == 0 {
         panic!("Tried to make an `InlAwi` type with an invalid bitwidth of 0");
     }
-    format!("InlAwi<{}, {}>", bw, inlawi_digits(bw))
+    format!("InlAwi<{}, {}>", bw, raw_digits(bw))
         .parse()
         .unwrap()
 }
@@ -85,7 +78,7 @@ pub fn inlawi_zero(input: TokenStream) -> TokenStream {
     format!(
         "InlAwi::<{}, {}>::unstable_zero({})",
         bw,
-        inlawi_digits(bw),
+        raw_digits(bw),
         bw
     )
     .parse()
@@ -106,7 +99,7 @@ pub fn inlawi_umax(input: TokenStream) -> TokenStream {
     format!(
         "InlAwi::<{}, {}>::unstable_umax({})",
         bw,
-        inlawi_digits(bw),
+        raw_digits(bw),
         bw
     )
     .parse()

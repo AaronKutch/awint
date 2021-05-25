@@ -201,10 +201,10 @@ impl Bits {
             self.zero_assign();
             return Some(())
         }
-        let start = range.start.wrapping_shr(BITS.trailing_zeros());
-        let end = range.end.wrapping_shr(BITS.trailing_zeros());
-        let start_bits = range.start & (BITS - 1);
-        let end_bits = range.end & (BITS - 1);
+        let start = digits_u(range.start);
+        let end = digits_u(range.end);
+        let start_bits = extra_u(range.start);
+        let end_bits = extra_u(range.end);
         // Safety: the early `None` return above prevents any out of bounds indexing.
         unsafe {
             // zero all digits up to the start of the range
@@ -244,8 +244,8 @@ impl Bits {
         }
         // Safety: `digits < self.len()` because of the above check. The `digits + 1`
         // index is checked.
-        let bits = shl & (BITS - 1);
-        let digits = shl.wrapping_shr(BITS.trailing_zeros());
+        let bits = extra_u(shl);
+        let digits = digits_u(shl);
         unsafe {
             if bits == 0 {
                 *self.get_unchecked_mut(digits) |= rhs;

@@ -1,5 +1,5 @@
 #![feature(const_option)]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 extern crate alloc;
 use core::sync::atomic::AtomicI64;

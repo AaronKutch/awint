@@ -17,6 +17,7 @@ proc-macro = true
 [dependencies]
 awint_core = { version = "0.1.0-pre.0", path = "../awint_core", default-features = false }
 awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features = false }
+awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals" }
 
 [dev-dependencies]
 # for examples

@@ -41,21 +41,45 @@ pub const fn bw(bw: usize) -> NonZeroUsize {
     }
 }
 
+/// Returns the number of extra bits given `bw`
+#[inline]
+pub const fn extra_u(bw: usize) -> usize {
+    bw & (BITS - 1)
+}
+
+/// Returns the number of _whole_ digits (not including a digit with unused
+/// bits) given `bw`
+#[inline]
+pub const fn digits_u(bw: usize) -> usize {
+    bw.wrapping_shr(BITS.trailing_zeros())
+}
+
+/// Returns the number of extra bits given `bw`
 #[inline]
 pub const fn extra(bw: NonZeroUsize) -> usize {
-    bw.get() & (BITS - 1)
+    extra_u(bw.get())
 }
 
+/// Returns the number of _whole_ digits (not including a digit with unused
+/// bits) given `bw`
 #[inline]
 pub const fn digits(bw: NonZeroUsize) -> usize {
-    bw.get().wrapping_shr(BITS.trailing_zeros())
+    digits_u(bw.get())
 }
 
+/// Returns the number of `usize` digits needed to represent `bw`, including any
+/// digit with unused bits
 #[inline]
 pub const fn regular_digits(bw: NonZeroUsize) -> usize {
-    bw.get()
-        .wrapping_shr(BITS.trailing_zeros())
-        .wrapping_add((extra(bw) != 0) as usize)
+    digits(bw).wrapping_add((extra(bw) != 0) as usize)
+}
+
+/// Returns `regular_digits + 1` to account for the bitwidth digit
+#[inline]
+pub fn raw_digits(bw: usize) -> usize {
+    digits_u(bw)
+        .wrapping_add((extra_u(bw) != 0) as usize)
+        .wrapping_add(1)
 }
 
 /// Computes x + y + z and returns the widened result as a tuple.
