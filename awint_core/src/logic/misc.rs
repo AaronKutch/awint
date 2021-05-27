@@ -51,4 +51,202 @@ impl Bits {
         });
         ones
     }
+
+    /// Bitfield-copy-assign. The bitwidths do not have to be equal, but
+    /// `width <= self.bw() && width <= rhs.bw() && to <= (self.bw() - width)
+    /// && from <= (rhs.bw() - width)` must hold true or else `None` is
+    /// returned. `width` can be zero, in which case this is a no-op.
+    ///
+    /// This function works by copying a `bw` sized bitfield from `rhs` at
+    /// bitposition `from` and overwriting `bw` bits at bitposition `to` in
+    /// `self`.
+    ///
+    /// ```
+    /// use awint::{inlawi, InlAwi};
+    /// // As an example, two hexadecimal digits will be overwritten
+    /// // starting with the 12th digit in `y` using a bitfield with
+    /// // value 0x42u8 extracted from `x`.
+    /// let x_awi = inlawi!(0x11142111u50);
+    /// let mut y_awi = inlawi!(0xfd_ec_ba9876543210u100);
+    /// let x = x_awi.const_as_ref();
+    /// let y = y_awi.const_as_mut();
+    ///
+    /// y.field(12 * 4, x, 3 * 4, 8);
+    /// assert_eq!(y_awi, inlawi!(0xfd_42_ba9876543210u100));
+    /// ```
+    pub const fn field(&mut self, to: usize, rhs: &Self, from: usize, width: usize) -> Option<()> {
+        let bw_digits = digits_u(width);
+        let bw_bits = extra_u(width);
+        let from_digits = digits_u(from);
+        let from_bits = extra_u(from);
+        let to_digits = digits_u(to);
+        let to_bits = extra_u(to);
+        // we do the comparisons in this order to make sure that the subtractions do not
+        // overflow
+        if (width > self.bw())
+            || (width > rhs.bw())
+            || (to > (self.bw() - width))
+            || (from > (rhs.bw() - width))
+        {
+            return None
+        }
+        if width == 0 {
+            return Some(())
+        }
+        // since we are dealing with three different sets of digit and subdigit shifts,
+        // the only sane way to do this is to make a digit aligned copy
+        // (`tmp`) of the bitfield from `rhs` and then copy again to its final alignment
+
+        // Safety: we test this vigorously in `awint/tests/fuzz/multi_bw.rs` and
+        // `awint/tests/lut.rs`
+        unsafe {
+            if (bw_digits != 0) && (from_bits == 0) && (to_bits == 0) {
+                const_for!(i in {0..bw_digits} {
+                    *self.get_unchecked_mut(i + to_digits) =
+                        rhs.get_unchecked(i + from_digits);
+                });
+                // handle last digit
+                if bw_bits != 0 {
+                    let to_mask = MAX << bw_bits;
+                    let from_mask = !to_mask;
+                    *self.get_unchecked_mut(bw_digits + to_digits) =
+                        (self.get_unchecked(bw_digits + to_digits) & to_mask)
+                            | (rhs.get_unchecked(bw_digits + from_digits) & from_mask);
+                }
+            } else if (bw_digits != 0) && (to_bits == 0) {
+                const_for!(i in {0..bw_digits} {
+                    *self.get_unchecked_mut(i + to_digits) =
+                        rhs.get_digit(from + (i * BITS));
+                });
+                // handle last digit
+                if bw_bits != 0 {
+                    let to_mask = MAX << bw_bits;
+                    let from_mask = !to_mask;
+                    *self.get_unchecked_mut(bw_digits + to_digits) =
+                        (self.get_unchecked(bw_digits + to_digits) & to_mask)
+                            | (rhs.get_digit(from + (bw_digits * BITS)) & from_mask);
+                }
+            } else {
+                let mut from = from;
+                let mut i = 0;
+                loop {
+                    if i >= bw_digits {
+                        // handle the extra bits from the field
+                        if bw_bits != 0 {
+                            let tmp = rhs.get_digit(from);
+                            // add extra masking for the extra temporary bits
+                            let tmp = tmp & (MAX >> (BITS - bw_bits));
+                            let mut total = to_bits + bw_bits;
+                            if to_bits == 0 {
+                                let mask = MAX << bw_bits;
+                                *self.get_unchecked_mut(to_digits) =
+                                    tmp | (self.get_unchecked(to_digits) & mask);
+                            } else if total >= BITS {
+                                total -= BITS;
+                                let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
+                                let mask = MAX >> (BITS - to_bits);
+                                *self.get_unchecked_mut(i + to_digits) =
+                                    (self.get_unchecked(i + to_digits) & mask) | tmp.0;
+                                if total != 0 {
+                                    // the extra bits cross a digit boundary
+                                    i += 1;
+                                    let mask = MAX << total;
+                                    *self.get_unchecked_mut(i + to_digits) =
+                                        (self.get_unchecked(i + to_digits) & mask) | tmp.1;
+                                }
+                            } else {
+                                // total < BITS
+                                let tmp = tmp << to_bits;
+                                // Because the extra bits are fewer than BITS and they are
+                                // positioned in the middle. The mask has to cover before and after
+                                // the extra bits.
+                                let mask = (MAX << total) | (MAX >> (BITS - to_bits));
+                                *self.get_unchecked_mut(i + to_digits) =
+                                    (self.get_unchecked(i + to_digits) & mask) | tmp;
+                            }
+                        }
+                        break
+                    }
+                    let tmp = rhs.get_digit(from);
+                    // shift up into new field placements
+                    let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
+                    // mask
+                    let mask1 = MAX << to_bits;
+                    // because the partial field is one `usize` long
+                    let mask0 = !mask1;
+                    *self.get_unchecked_mut(i + to_digits) =
+                        (self.get_unchecked(i + to_digits) & mask0) | tmp.0;
+                    i += 1;
+                    from += BITS;
+                    // this incurs more stores to `self` than necessary,
+                    // but the alternative is even more complex
+                    *self.get_unchecked_mut(i + to_digits) =
+                        (self.get_unchecked(i + to_digits) & mask1) | tmp.1;
+                }
+            }
+        }
+        Some(())
+    }
+
+    /// Lookup-table-assign. If `lut.bw() != (self.bw() * (2^inx.bw()))`, `None`
+    /// will be returned. This function works by copying a `self.bw()` sized
+    /// bitfield from `lut` at bit position `inx.to_usize() * self.bw()`.
+    ///
+    /// ```
+    /// use awint::{inlawi, inlawi_be, inlawi_zero, InlAwi};
+    /// let mut out_awi = inlawi_zero!(10);
+    /// // lookup table consisting of 4 10-bit entries
+    /// let lut_awi = inlawi_be!(4u10, 3u10, 2u10, 1u10);
+    /// // the indexer has to have a bitwidth of 2 to index 2^2 = 4 entries
+    /// let mut inx_awi = inlawi_zero!(2);
+    /// let out = out_awi.const_as_mut();
+    /// let lut = lut_awi.const_as_ref();
+    /// let inx = inx_awi.const_as_mut();
+    ///
+    /// // get the third entry (this is using zero indexing)
+    /// inx.usize_assign(2);
+    /// out.lut(lut, inx).unwrap();
+    /// assert_eq!(out_awi, inlawi!(3u10));
+    /// ```
+    pub const fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+        // make sure the left shift does not overflow
+        if inx.bw() < BITS {
+            if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
+                if lut_len == lut.bw() {
+                    let index = inx.to_usize().wrapping_mul(self.bw());
+                    let digits = digits_u(index);
+                    let bits = extra_u(index);
+                    let self_bits = extra_u(self.bw());
+                    // Safety: Because of the strict bitwidths of `self`, `lut`, and `inx`, the
+                    // value of `inx` cannot index beyond the width of `lut`.
+                    unsafe {
+                        if bits == 0 {
+                            const_for!(i in {0..self.len()} {
+                                *self.get_unchecked_mut(i) = lut.get_unchecked(digits + i);
+                            });
+                        } else {
+                            const_for!(i in {0..(self.len() - 1)} {
+                                *self.get_unchecked_mut(i) = (lut.get_unchecked(digits + i) >> bits)
+                                | (lut.get_unchecked(digits + i + 1) << (BITS - bits));
+                            });
+                            if (bits + self_bits) > BITS {
+                                // this is tricky, because the extra bits from `self` and `index`
+                                // can combine to push the end of
+                                // the bitfield over a digit boundary
+                                *self.last_mut() = (lut.get_unchecked(digits + self.len() - 1)
+                                    >> bits)
+                                    | (lut.get_unchecked(digits + self.len()) << (BITS - bits));
+                            } else {
+                                *self.last_mut() =
+                                    lut.get_unchecked(digits + self.len() - 1) >> bits;
+                            }
+                        }
+                    }
+                    self.clear_unused_bits();
+                    return Some(())
+                }
+            }
+        }
+        None
+    }
 }

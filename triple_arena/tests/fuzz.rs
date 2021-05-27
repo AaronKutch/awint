@@ -170,7 +170,6 @@ fn fuzz() {
     // make sure something is not completely broken in some way by checking if the
     // different extremes have been reached many times
     if saturations < 500 {
-        dbg!(saturations);
         panic!();
     }
 }

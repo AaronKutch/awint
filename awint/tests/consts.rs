@@ -101,8 +101,24 @@ const fn bits_functions() {
 
     assert!(x0.range_and_assign(0..128).is_some());
     assert!(x0.range_and_assign(127..0).is_some());
-    assert!(x0.range_and_assign(128..128).is_none());
+    assert!(x0.range_and_assign(128..128).is_some());
+    assert!(x0.range_and_assign(129..129).is_none());
+    assert!(x0.range_and_assign(129..128).is_none());
     assert!(x0.range_and_assign(0..129).is_none());
+
+    assert!(x0.field(0, x1, 0, 128).is_some());
+    assert!(x0.field(0, x1, 64, 128).is_some());
+    assert!(x0.field(0, x1, 0, 129).is_none());
+    assert!(x0.field(1, x1, 0, 128).is_none());
+    assert!(x1.field(0, x0, 0, 128).is_some());
+    assert!(x1.field(64, x0, 0, 128).is_some());
+    assert!(x1.field(0, x0, 0, 129).is_none());
+    assert!(x1.field(0, x0, 1, 128).is_none());
+    assert!(x0.field(128, x1, 192, 0).is_some());
+    assert!(x0.field(129, x1, 192, 0).is_none());
+    assert!(x0.field(128, x1, 193, 0).is_none());
+
+    assert!(x0.lut(x1, x3).is_none());
 
     x0.short_cin_mul(0, 0);
 

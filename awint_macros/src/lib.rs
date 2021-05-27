@@ -108,9 +108,13 @@ pub fn inlawi_umax(input: TokenStream) -> TokenStream {
 
 fn general_inlawi(components: Vec<String>) -> String {
     let mut awis: Vec<ExtAwi> = Vec::new();
+    let mut total_bw = 0;
     for component in components {
         match component.parse::<ExtAwi>() {
-            Ok(awi) => awis.push(awi),
+            Ok(awi) => {
+                total_bw += awi.bw();
+                awis.push(awi)
+            }
             Err(e) => panic!(
                 "could not parse component \"{}\": `<ExtAwi as FromStr>::from_str` returned \
                  SerdeError::{:?}",
@@ -121,19 +125,12 @@ fn general_inlawi(components: Vec<String>) -> String {
     if awis.is_empty() {
         panic!("empty input");
     }
-    let mut total_bw = 0;
-    for awi in awis.iter() {
-        total_bw += awi.bw();
-    }
     let total_bw = NonZeroUsize::new(total_bw).unwrap();
     let mut awi = ExtAwi::zero(total_bw);
-    let mut tmp = ExtAwi::zero(total_bw);
     let mut shl = 0;
     for component in awis {
-        tmp[..].zero_resize_assign(&component[..]);
-        tmp[..].shl_assign(shl).unwrap();
+        awi[..].field(shl, &component[..], 0, component.bw());
         shl += component.bw();
-        awi[..].or_assign(&tmp[..]);
     }
 
     // no safety worries here, because the `unstable_from_slice` has strict checks

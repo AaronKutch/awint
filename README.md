@@ -31,7 +31,9 @@ These are currently unimplemented because of other developments and improvements
 prioritized. Please open an issue or PR if you would like these implemented faster.
 
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
-   such as a dynamic sign and automatically resizing bitwidth.
+   such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track
+   of leading zeros and ones to speed up operations on very large bitwidth integers with small
+   numerical value.
 - Add a `const` Karatsuba algorithm to multiplication if possible, or add a `fast_mul` free function
   to `awint_ext`
 - Add custom allocator parameter to `ExtAwi`

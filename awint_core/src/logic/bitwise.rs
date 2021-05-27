@@ -191,12 +191,18 @@ impl Bits {
     }
 
     /// And-assigns a range of ones to `self`. Useful for masking. An empty or
-    /// reversed range zeroes `self`. `None` is returned if `range.start >=
+    /// reversed range zeroes `self`. `None` is returned if `range.start >
     /// self.bw()` or `range.end > self.bw()`.
     pub const fn range_and_assign(&mut self, range: Range<usize>) -> Option<()> {
-        if range.start >= self.bw() || range.end > self.bw() {
+        if range.start > self.bw() || range.end > self.bw() {
             return None
         }
+        // Originally, I considered returning `None` when `range.start == self.bw()` to
+        // make things more strict, but I quickly found a case where this made things
+        // awkard for the [Bits::field] test in `multi_bw.rs`. If the width of the field
+        // being copied was equal to the bitwidth, a `range_and_assign` would have an
+        // input range of `self.bw()..self.bw()`. This zeros `self` as intended because
+        // of the natural `range.start >= range.end` check.
         if range.start >= range.end {
             self.zero_assign();
             return Some(())

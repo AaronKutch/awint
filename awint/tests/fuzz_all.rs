@@ -96,7 +96,7 @@ test_inlawi!(inl2053, N, 1, 2053;);
 
 #[test]
 fn multi_bw() {
-    for seed in 0..cmp::max(N / 16, 16) {
+    for seed in 0..cmp::max(N / 4, 16) {
         fuzz::multi_bw(seed as u64).unwrap();
     }
 }
