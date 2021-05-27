@@ -189,7 +189,7 @@ const fn bits_functions() {
         lz
         tz
         count_ones
-        reverse_bits
+        rev_assign
         to_usize
         to_isize
         to_u8

@@ -418,7 +418,7 @@ impl Bits {
     /// Reverse-bit-order-assigns `self`. The least significant bit becomes the
     /// most significant bit, the second least significant bit becomes the
     /// second most significant bit, etc.
-    pub const fn reverse_bits(&mut self) {
+    pub const fn rev_assign(&mut self) {
         let len = self.len();
         if len == 1 {
             *self.last_mut() = self.last().reverse_bits() >> self.unused();

@@ -225,10 +225,10 @@ fn identities_inner(
     x2.copy_assign(x0)?;
     let lz = x2.lz();
     let tz = x2.tz();
-    x2.reverse_bits();
+    x2.rev_assign();
     assert_eq!(x2.tz(), lz);
     assert_eq!(x2.lz(), tz);
-    x2.reverse_bits();
+    x2.rev_assign();
     eq(x0, x2);
 
     // comparison
