@@ -102,6 +102,12 @@ impl Bits {
     /// remainder to `rem`. Returns `None` if any bitwidths are not equal or
     /// `div.is_zero()`.
     pub const fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
+        // prevent any potential problems with the assumptions that many subroutines
+        // make
+        quo.assert_cleared_unused_bits();
+        rem.assert_cleared_unused_bits();
+        duo.assert_cleared_unused_bits();
+        div.assert_cleared_unused_bits();
         let bw = quo.bw();
         if div.is_zero() || bw != rem.bw() || bw != duo.bw() || bw != div.bw() {
             return None

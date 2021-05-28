@@ -22,6 +22,9 @@ impl Bits {
 
     /// Returns the number of leading zero bits
     pub const fn lz(&self) -> usize {
+        // If unused bits are set, then the caller is going to get unexpected behavior
+        // somewhere, also prevent overflow
+        self.assert_cleared_unused_bits();
         const_for!(i in {0..self.len()}.rev() {
             let x = unsafe{self.get_unchecked(i)};
             if x != 0 {
@@ -33,6 +36,9 @@ impl Bits {
 
     /// Returns the number of trailing zero bits
     pub const fn tz(&self) -> usize {
+        // If unused bits are set, then the caller is going to get unexpected behavior
+        // somewhere, also prevent overflow
+        self.assert_cleared_unused_bits();
         const_for!(i in {0..self.len()} {
             let x = unsafe{self.get_unchecked(i)};
             if x != 0 {
@@ -44,6 +50,9 @@ impl Bits {
 
     /// Returns the number of set ones
     pub const fn count_ones(&self) -> usize {
+        // If unused bits are set, then the caller is going to get unexpected behavior
+        // somewhere, also prevent overflow
+        self.assert_cleared_unused_bits();
         let mut ones = 0;
         const_for!(i in {0..self.len()} {
             let x = unsafe{self.get_unchecked(i)};
@@ -209,6 +218,9 @@ impl Bits {
     /// assert_eq!(out_awi, inlawi!(3u10));
     /// ```
     pub const fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+        // because we later call `inx.to_usize()` and assume that it fits within
+        // `inx.bw()`
+        inx.assert_cleared_unused_bits();
         // make sure the left shift does not overflow
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {

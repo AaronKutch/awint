@@ -12,9 +12,9 @@
 //!   bits in the remaining bits of the second.
 //! - Unused bits are zeroed. Note that this is not a safety critical invariant.
 //!   Setting unused bits via `Bits::as_mut_slice` or `Bits::last_mut` will not
-//!   cause Rust U.B., but it may result in arithmetically incorrect results
-//!   from the functions on `Bits`. Arbitrary bits can in the last digit can be
-//!   set temporarily, but [Bits::clear_unused_bits] should be run before
+//!   cause Rust U.B., but it may result in arithmetically incorrect results or
+//!   panics from the functions on `Bits`. Arbitrary bits can in the last digit
+//!   can be set temporarily, but [Bits::clear_unused_bits] should be run before
 //!   reaching a function that expects all these invariants to hold.
 
 use core::{
@@ -100,7 +100,7 @@ const _ASSERT_BITS_ASSUMPTIONS: () = {
 /// the zeroeth bit or a given bit position like [Bits::short_cin_mul],
 /// [Bits::short_udivide_assign], or [Bits::usize_or_assign], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
-/// `0..u8::MAX`.
+/// `0..u16::MAX`.
 ///
 /// The `Bits::as_bytes` function and related functions, the serialization impls
 /// enabled by `serde_support`, the strings produced by the `const`
@@ -358,6 +358,22 @@ impl<'a> Bits {
         *self.last_mut() &= MAX >> (BITS - self.extra());
     }
 
+    /// Some functions cannot handle set unused bits, so this acts as a quick
+    /// way to check if unused bits are indeed clear.
+    ///
+    /// # Panics
+    ///
+    /// Panics if unused bits are set.
+    #[doc(hidden)]
+    #[track_caller]
+    pub const fn assert_cleared_unused_bits(&self) {
+        if self.extra() != 0 {
+            if self.last() >= 1usize.wrapping_shl(self.extra() as u32) {
+                panic!("unused bits are set");
+            }
+        }
+    }
+
     /// Returns a reference to all of the underlying bits of `self`, including
     /// unused bits.
     ///
@@ -381,7 +397,7 @@ impl<'a> Bits {
     /// Unused bits can be temporarily set but should be cleared before they
     /// are used by another function that expects the standard `Bits` invariants
     /// to be upheld. Set unused bits will not cause Rust undefined behavior,
-    /// but may cause incorrect arithmetical results.
+    /// but may cause incorrect arithmetical results or panics.
     #[doc(hidden)]
     #[inline]
     pub const fn as_mut_slice(&'a mut self) -> &'a mut [usize] {
@@ -420,7 +436,7 @@ impl<'a> Bits {
     /// Unused bits can be temporarily set but should be cleared before they
     /// are used by another function that expects the standard `Bits` invariants
     /// to be upheld. Set unused bits will not cause Rust undefined behavior,
-    /// but may cause incorrect arithmetical results.
+    /// but may cause incorrect arithmetical results or panics.
     pub const fn as_mut_bytes(&'a mut self) -> &'a mut [u8] {
         let size_in_u8 = if (self.bw() % 8) == 0 {
             self.bw() / 8
