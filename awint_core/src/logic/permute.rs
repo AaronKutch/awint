@@ -500,4 +500,47 @@ impl Bits {
             }
         }
     }
+
+    /// Funnel shift with power-of-two bitwidths. Returns `None` if
+    /// `2*self.bw() != rhs.bw() || 2^s.bw() != self.bw()`. A `self.bw()` sized
+    /// field is assigned to `self` from `rhs` starting from the bit position
+    /// `s`. The shift cannot overflow because of the restriction on the
+    /// bitwidth of `s`.
+    pub const fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
+        // because we later call `s.to_usize()` and assume it fits within `s.bw()`
+        s.assert_cleared_unused_bits();
+        // We avoid overflow by checking in this order and with `BITS - 1` instead of
+        // `BITS`
+        if (s.bw() >= (BITS - 1))
+            || ((1usize << s.bw()) != self.bw())
+            || ((self.bw() << 1) != rhs.bw())
+        {
+            return None
+        }
+        let s = s.to_usize();
+        let digits = digits_u(s);
+        let bits = extra_u(s);
+        if bits == 0 {
+            // Safety: there are two nonoverlapping `Bits`, and no out-of-bounds can occur
+            // because of strict checks
+            unsafe {
+                ptr::copy_nonoverlapping(rhs.as_ptr().add(digits), self.as_mut_ptr(), self.len());
+            }
+        } else {
+            if self.bw() < BITS {
+                *self.first_mut() = rhs.first() >> bits;
+            } else {
+                // Safety: When `self.bw() >= BITS`, `digits + i + 1` can be at most
+                // `self.len() + digits` which cannot reach `rhs.len()`.
+                unsafe {
+                    const_for!(i in {0..self.len()} {
+                        *self.get_unchecked_mut(i) = (rhs.get_unchecked(digits + i) >> bits)
+                            | (rhs.get_unchecked(digits + i + 1) << (BITS - bits));
+                    });
+                }
+            }
+        }
+        self.clear_unused_bits();
+        Some(())
+    }
 }

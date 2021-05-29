@@ -5,7 +5,7 @@ use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 
 /// [Bits::lut] needs its own test because of its special requirements
 #[test]
-fn lut() {
+fn lut_and_field() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     #[cfg(not(miri))]
     let (out_bw_max, pow_max) = (258, 8);
@@ -32,6 +32,36 @@ fn lut() {
                 tmp1.field(0, lut, i * out.bw(), out.bw()).unwrap();
                 assert_eq!(tmp0, tmp1);
             }
+        }
+    }
+}
+
+#[test]
+fn funnel() {
+    let mut rng = Xoshiro128StarStar::seed_from_u64(0);
+    #[cfg(miri)]
+    let max_pow = 7;
+    #[cfg(not(miri))]
+    let max_pow = 10;
+    for pow in 1..max_pow {
+        let mut awi_shift = ExtAwi::zero(bw(pow));
+        let mut awi_lhs = ExtAwi::zero(bw(1 << pow));
+        let mut awi_rhs = ExtAwi::zero(bw(2 * awi_lhs.bw()));
+        let mut awi_alt0 = ExtAwi::zero(bw(awi_rhs.bw()));
+        let mut awi_alt1 = ExtAwi::zero(bw(awi_lhs.bw()));
+        awi_rhs[..].rand_assign_using(&mut rng).unwrap();
+        let shift = awi_shift.const_as_mut();
+        let lhs = awi_lhs.const_as_mut();
+        let rhs = awi_rhs.const_as_mut();
+        let alt0 = awi_alt0.const_as_mut();
+        let alt1 = awi_alt1.const_as_mut();
+        for s in 0..lhs.bw() {
+            alt0.copy_assign(rhs).unwrap();
+            alt0.lshr_assign(s).unwrap();
+            alt1.zero_resize_assign(alt0);
+            shift.usize_assign(s);
+            lhs.funnel(rhs, shift).unwrap();
+            assert_eq!(lhs, alt1);
         }
     }
 }

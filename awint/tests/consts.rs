@@ -119,6 +119,7 @@ const fn bits_functions() {
     assert!(x0.field(128, x1, 193, 0).is_none());
 
     assert!(x0.lut(x1, x3).is_none());
+    assert!(x0.funnel(x1, x3).is_none());
 
     x0.short_cin_mul(0, 0);
 
