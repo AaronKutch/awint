@@ -88,6 +88,11 @@ impl<T> Arena<T> {
         self.len
     }
 
+    /// Returns if the arena is empty
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     /// Returns the capacity of the arena
     pub fn capacity(&self) -> usize {
         self.m.len()
@@ -295,11 +300,17 @@ impl<T> Arena<T> {
     /// capacity.
     pub fn clear(&mut self) {
         // drop all `T`
-        self.m
-            .iter_mut()
-            .for_each(|x| if let Some(_) = x.data.take() {});
+        self.m.iter_mut().for_each(|x| {
+            let _ = x.data.take();
+        });
         self.gen = inc_gen(self.gen);
         self.len = 0;
         self.free_range = (0, 0);
+    }
+}
+
+impl<T> Default for Arena<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }

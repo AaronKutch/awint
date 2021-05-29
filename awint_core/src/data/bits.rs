@@ -367,10 +367,8 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[track_caller]
     pub const fn assert_cleared_unused_bits(&self) {
-        if self.extra() != 0 {
-            if self.last() >= 1usize.wrapping_shl(self.extra() as u32) {
-                panic!("unused bits are set");
-            }
+        if (self.extra() != 0) && (self.last() >= 1usize.wrapping_shl(self.extra() as u32)) {
+            panic!("unused bits are set");
         }
     }
 

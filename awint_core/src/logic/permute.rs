@@ -526,18 +526,16 @@ impl Bits {
             unsafe {
                 ptr::copy_nonoverlapping(rhs.as_ptr().add(digits), self.as_mut_ptr(), self.len());
             }
+        } else if self.bw() < BITS {
+            *self.first_mut() = rhs.first() >> bits;
         } else {
-            if self.bw() < BITS {
-                *self.first_mut() = rhs.first() >> bits;
-            } else {
-                // Safety: When `self.bw() >= BITS`, `digits + i + 1` can be at most
-                // `self.len() + digits` which cannot reach `rhs.len()`.
-                unsafe {
-                    const_for!(i in {0..self.len()} {
-                        *self.get_unchecked_mut(i) = (rhs.get_unchecked(digits + i) >> bits)
-                            | (rhs.get_unchecked(digits + i + 1) << (BITS - bits));
-                    });
-                }
+            // Safety: When `self.bw() >= BITS`, `digits + i + 1` can be at most
+            // `self.len() + digits` which cannot reach `rhs.len()`.
+            unsafe {
+                const_for!(i in {0..self.len()} {
+                    *self.get_unchecked_mut(i) = (rhs.get_unchecked(digits + i) >> bits)
+                        | (rhs.get_unchecked(digits + i + 1) << (BITS - bits));
+                });
             }
         }
         self.clear_unused_bits();
