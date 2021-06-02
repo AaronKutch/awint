@@ -31,10 +31,8 @@ jobs:
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
           rustup component add miri
-        # TODO run Miri from root when miri/issues/1813 and miri/issues/1311 are fixed
       - name: Run test suite with Miri
         run: |
-          cd awint
           cargo miri test
 
   # we run `cargo doc` here, because running `cargo doc` anywhere somehow requires `core` from the
