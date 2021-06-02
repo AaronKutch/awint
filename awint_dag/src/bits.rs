@@ -3,9 +3,8 @@ use core::num::NonZeroUsize;
 use awint_internals::BITS;
 use triple_arena::{Arena, TriPtr};
 use Op::*;
-use crate::{DagBool};
 
-use crate::{primitive as prim, Lineage, Op};
+use crate::{primitive as prim, DagBool, Lineage, Op};
 
 #[derive(Debug)]
 pub struct Bits {
@@ -184,7 +183,10 @@ impl Bits {
         None
     }
 
-    pub fn resize_assign<I>(&mut self, rhs: &Self, extension: I) where I: Into<DagBool> {
+    pub fn resize_assign<I>(&mut self, rhs: &Self, extension: I)
+    where
+        I: Into<DagBool>,
+    {
         self.state = self
             .ops
             .insert(ResizeAssign(self.state(), rhs.state(), extension.into()));

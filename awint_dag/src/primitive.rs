@@ -1,11 +1,10 @@
-use std::num::NonZeroUsize;
+use std::{num::NonZeroUsize, ops::*};
 
 use awint_internals::{bw, BITS};
 use triple_arena::{Arena, TriPtr};
-use std::ops::*;
+use Op::InitCopy;
 
 use crate::{Lineage, Op};
-use Op::InitCopy;
 
 macro_rules! prim {
     ($($name:ident $bw:expr),*,) => {
