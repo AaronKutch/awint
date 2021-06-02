@@ -3,13 +3,16 @@ name: Awint CI
 on: [push, pull_request]
 
 env:
-  RUSTFLAGS: -D warnings
+  # NOTE: do not set RUSTFLAGS here, because it overwrites
+  # what `.cargo/config.toml` sets for `no_alloc_build`
   RUST_BACKTRACE: 1
 
 jobs:
   test_suite:
     name: Test suite
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust components
@@ -24,6 +27,8 @@ jobs:
   miri:
     name: Miri
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v2
       - name: Install most recent Miri
