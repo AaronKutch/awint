@@ -15,7 +15,7 @@ categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 awint_core = { version = "0.1.0-pre.0", path = "../awint_core" }
 awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext" }
 awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals" }
-triple_arena = { version = "0.1.0-pre.0", path = "../triple_arena" }
+triple_arena = { version = "0.1.0" }
 
 [dev-dependencies]
 awint = { path = "../awint" }

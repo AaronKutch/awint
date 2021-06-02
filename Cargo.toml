@@ -6,5 +6,4 @@ members = [
     "awint_ext",
     "awint_macros",
     "awint_internals",
-    "triple_arena",
 ]
