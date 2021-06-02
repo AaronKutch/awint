@@ -3,13 +3,16 @@ name: Awint CI
 on: [push, pull_request]
 
 env:
-  RUSTFLAGS: -D warnings
+  # NOTE: do not set RUSTFLAGS here, because it overwrites
+  # what `.cargo/config.toml` sets for `no_alloc_build`
   RUST_BACKTRACE: 1
 
 jobs:
   test_suite:
     name: Test suite
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust components
@@ -24,32 +27,35 @@ jobs:
   miri:
     name: Miri
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust components
+      - name: Install most recent Miri
         run: |
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)"
           rustup component add miri
-        # TODO run Miri from root when miri/issues/1813 and miri/issues/1311 are fixed
-      - name: Run test suite
+      - name: Run test suite with Miri
         run: |
-          cd awint
           cargo miri test
 
-  # TODO figure out what is causing this to fail
-  #no_alloc_build:
-  #  name: Build for no-std and no-alloc
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - uses: actions/checkout@v2
-  #    - name: Install nightly-riscv32i-unknown-none-elf
-  #      run: |
-  #        rustup set profile minimal
-  #        rustup default nightly
-  #        rustup target add riscv32i-unknown-none-elf
-  #    - name: Run `cargo build`
-  #      run: cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
+  # we run `cargo doc` here, because running `cargo doc` anywhere somehow requires `core` from the
+  # target in no_alloc_test
+  no_alloc_build:
+    name: Doc and Build for no-std and no-alloc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install nightly-riscv32i-unknown-none-elf
+        run: |
+          rustup set profile minimal
+          rustup default nightly
+          rustup target add riscv32i-unknown-none-elf
+      - name: Run `cargo doc` and `cargo build`
+        run: |
+          cargo doc
+          cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
   rustfmt:
     name: Rustfmt
@@ -57,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       # Acquire the most recent nightly with a rustfmt component
-      - name: Install nightly `rustfmt`
+      - name: Install most recent Rustfmt
         run: |
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/rustfmt)"
@@ -66,7 +72,6 @@ jobs:
         run: |
           cargo fmt -- --check
           cd no_alloc_test && cargo fmt -- --check
-          cargo doc
 
   clippy:
     name: Clippy
@@ -74,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       # Acquire the most recent nightly with a clippy component
-      - name: Install nightly `clippy`
+      - name: Install most recent Clippy
         run: |
           rustup set profile minimal
           rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/clippy)"
