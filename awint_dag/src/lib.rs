@@ -1,4 +1,6 @@
-//! # DAG functionality for `awint
+//! # DAG functionality for `awint`
+//!
+//! **NOTE**: this is extremely WIP
 //!
 //! Requires a global allocator and atomics support
 
