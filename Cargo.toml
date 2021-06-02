@@ -2,6 +2,7 @@
 members = [
     "awint",
     "awint_core",
+    "awint_dag",
     "awint_ext",
     "awint_macros",
     "awint_internals",
