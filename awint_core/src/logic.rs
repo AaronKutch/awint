@@ -1,4 +1,5 @@
 mod bitwise;
+mod casting;
 mod cmp;
 mod const_str;
 mod div;
