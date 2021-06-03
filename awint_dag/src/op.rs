@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-use triple_arena::TriPtr as P;
+use crate::primitive as prim;
+
+type P = Rc<Op>;
 
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -12,9 +14,36 @@ pub enum Op {
     IminAssign,
     UoneAssign,
 
-    // special assignments
-    BoolAssign(bool),
-    UsizeAssign(usize),
+    // Literal assignments used by the `From<core::primitive::*> for awint_dag::primitive::*`
+    // impls
+    LitUsizeAssign(usize),
+    LitIsizeAssign(isize),
+    LitU8Assign(u8),
+    LitI8Assign(i8),
+    LitU16Assign(u16),
+    LitI16Assign(i16),
+    LitU32Assign(u32),
+    LitI32Assign(i32),
+    LitU64Assign(u64),
+    LitI64Assign(i64),
+    LitU128Assign(u128),
+    LitI128Assign(i128),
+    LitBoolAssign(bool),
+
+    // regular assignments
+    UsizeAssign(prim::usize),
+    IsizeAssign(prim::isize),
+    U8Assign(prim::u8),
+    I8Assign(prim::i8),
+    U16Assign(prim::u16),
+    I16Assign(prim::i16),
+    U32Assign(prim::u32),
+    I32Assign(prim::i32),
+    U64Assign(prim::u64),
+    I64Assign(prim::i64),
+    U128Assign(prim::u128),
+    I128Assign(prim::i128),
+    BoolAssign(prim::bool),
 
     // (&mut self)
     NotAssign(P),
@@ -30,6 +59,20 @@ pub enum Op {
     IsUone(P),
     Lsb(P),
     Msb(P),
+
+    // (&self) -> other
+    ToUsize(P),
+    ToIsize(P),
+    ToU8(P),
+    ToI8(P),
+    ToU16(P),
+    ToI16(P),
+    ToU32(P),
+    ToI32(P),
+    ToU64(P),
+    ToI64(P),
+    ToU128(P),
+    ToI128(P),
     ToBool(P),
 
     // (&self) -> usize
@@ -64,53 +107,10 @@ pub enum Op {
     Ige(P, P),
 
     Lut(P, P, P),
-    ResizeAssign(P, P, DagBool),
+    ResizeAssign(P, P, prim::bool),
     Funnel(P, P, P),
     UQuoAssign(P, P, P),
     URemAssign(P, P, P),
     IQuoAssign(P, P, P),
     IRemAssign(P, P, P),
-
-    // Used by `crate::primitive::*` for initializing copies.
-    InitCopy(P),
 }
-
-macro_rules! dagprim {
-    ($($name:ident $prim:ident),*,) => {
-        $(
-            #[derive(Debug, Clone)]
-            pub enum $name {
-                Core(core::primitive::$prim),
-                Dag(Rc<crate::primitive::$prim>),
-            }
-
-            impl From<core::primitive::$prim> for $name {
-                fn from(x: core::primitive::$prim) -> Self {
-                    $name::Core(x)
-                }
-            }
-
-            impl From<crate::primitive::$prim> for $name {
-                fn from(x: crate::primitive::$prim) -> Self {
-                    $name::Dag(Rc::new(x))
-                }
-            }
-        )*
-    };
-}
-
-dagprim!(
-    DagBool bool,
-    DagUsize usize,
-    DagIsize isize,
-    DagU8 u8,
-    DagI8 i8,
-    DagU16 u16,
-    DagI16 i16,
-    DagU32 u32,
-    DagI32 i32,
-    DagU64 u64,
-    DagI64 i64,
-    DagU128 u128,
-    DagI128 i128,
-);

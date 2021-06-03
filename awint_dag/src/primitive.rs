@@ -1,76 +1,51 @@
-use std::{num::NonZeroUsize, ops::*};
+use std::{num::NonZeroUsize, ops::*, rc::Rc};
 
 use awint_internals::{bw, BITS};
-use triple_arena::{Arena, TriPtr};
-use Op::InitCopy;
 
-use crate::{Lineage, Op};
+use crate::{primitive as prim, Bits, Lineage, Op};
 
 macro_rules! prim {
-    ($($name:ident $bw:expr),*,) => {
+    ($($name:ident $assign:ident $bw:expr),*,) => {
         $(
             #[allow(non_camel_case_types)]
-            #[derive(Debug)]
-            pub struct $name {
-                state: TriPtr,
-                ops: Arena<Op>,
-            }
+            #[derive(Debug, Clone)]
+            pub struct $name(Bits);
 
             impl $name {
-                pub fn new(init_op: Op) -> Self {
-                    let mut a = Arena::new();
-                    Self {
-                        state: a.insert(init_op),
-                        ops: a,
-                    }
+                pub(crate) fn new(op: Op) -> Self {
+                    Self(Bits::new(bw($bw), op))
                 }
             }
 
             impl Lineage for $name {
-                fn state(&self) -> TriPtr {
-                    self.state
-                }
-
-                fn ops(&self) -> &Arena<Op> {
-                    &self.ops
-                }
-
                 fn nzbw(&self) -> NonZeroUsize {
-                    bw($bw)
+                    self.0.nzbw()
+                }
+
+                fn op(&self) -> Rc<Op> {
+                    self.0.op()
+                }
+
+                fn op_mut(&mut self) -> &mut Rc<Op> {
+                    self.0.op_mut()
                 }
             }
-        )*
-    };
-}
 
-prim!(
-    bool 1,
-    usize BITS,
-    isize BITS,
-    u8 8,
-    i8 8,
-    u16 16,
-    i16 16,
-    u32 32,
-    i32 32,
-    u64 64,
-    i64 64,
-    u128 128,
-    i128 128,
-);
-
-macro_rules! impl_integral_traits {
-    ($($name:ident $dagprim:ident),*,) => {
-        $(
-            /*impl<I> AddAssign<I> for $name {
-                fn add_assign(&mut self, rhs: I) where I: Into<$dagprim> {
-                    self.state = self.ops.insert(Op::AddAssign(self.state, rhs.???));
+            impl From<core::primitive::$name> for $name {
+                fn from(x: core::primitive::$name) -> Self {
+                    Self(Bits::new(bw($bw), Op::$assign(x)))
                 }
-            }*/
+            }
 
-            impl SubAssign for $name {
-                fn sub_assign(&mut self, rhs: Self) {
-                    self.state = self.ops.insert(Op::SubAssign(self.state, rhs.state));
+            impl<I> AddAssign<I> for $name where I: Into<prim::$name> {
+                fn add_assign(&mut self, rhs: I) where I: Into<prim::$name> {
+                    self.update(Op::AddAssign(self.op(), rhs.into().op()));
+                }
+            }
+
+            impl<I> SubAssign<I> for $name where I: Into<prim::$name> {
+                fn sub_assign(&mut self, rhs: I) where I: Into<prim::$name> {
+                    self.update(Op::SubAssign(self.op(), rhs.into().op()));
                 }
             }
 
@@ -78,37 +53,27 @@ macro_rules! impl_integral_traits {
                 type Output = Self;
 
                 fn add(self, rhs: Self) -> Self {
-                    let mut tmp = Self::new(InitCopy(self.state));
-                    tmp.state = tmp.ops.insert(Op::AddAssign(self.state, rhs.state));
+                    let mut tmp = self.clone();
+                    tmp.update(Op::AddAssign(tmp.op(), rhs.op()));
                     tmp
                 }
             }
-
-            impl Sub for $name {
-                type Output = Self;
-
-                fn sub(self, rhs: Self) -> Self {
-                    let mut tmp = Self::new(InitCopy(self.state));
-                    tmp.state = tmp.ops.insert(Op::SubAssign(self.state, rhs.state));
-                    tmp
-                }
-            }
-
         )*
     };
 }
 
-impl_integral_traits!(
-    usize DagUsize,
-    isize DagIsize,
-    u8 DagU8,
-    i8 DagI8,
-    u16 DagU16,
-    i16 DagI16,
-    u32 DagU32,
-    i32 DagI32,
-    u64 DagU64,
-    i64 DagI64,
-    u128 DagU128,
-    i128 DagI128,
+prim!(
+    bool LitBoolAssign 1,
+    usize LitUsizeAssign BITS,
+    isize LitIsizeAssign BITS,
+    u8 LitU8Assign 8,
+    i8 LitI8Assign 8,
+    u16 LitU16Assign 16,
+    i16 LitI16Assign 16,
+    u32 LitU32Assign 32,
+    i32 LitI32Assign 32,
+    u64 LitU64Assign 64,
+    i64 LitI64Assign 64,
+    u128 LitU128Assign 128,
+    i128 LitI128Assign 128,
 );

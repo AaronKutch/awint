@@ -4,16 +4,14 @@
 //!
 //! Requires a global allocator and atomics support
 
-pub mod bits;
-pub(crate) mod op;
-//mod state_machine;
+mod bits;
+mod op;
 pub mod primitive;
 
-use std::num::NonZeroUsize;
+use std::{num::NonZeroUsize, rc::Rc};
 
 pub use bits::Bits;
 pub use op::*;
-use triple_arena::{Arena, TriPtr};
 
 /// A trait for a state lineage in a Directed Acyclic Graph of `Bits`
 /// operations. Every `Bits` operation has mutable and/or immutable references
@@ -23,17 +21,22 @@ use triple_arena::{Arena, TriPtr};
 /// `TriPtr` that the insertion returned. This results in the DAG being
 /// structured with a `Lineage` for every `Bits` or DAG primitive.
 pub trait Lineage {
-    /// Returns the latest state of `self`
-    fn state(&self) -> TriPtr;
-
-    /// Returns a reference to an arena containing all `Op`s performed on `self`
-    fn ops(&self) -> &Arena<Op>;
-
     /// Returns the bitwidth of `self` as a `NonZeroUsize`
     fn nzbw(&self) -> NonZeroUsize;
 
     /// Returns the bitwidth of `self` as a `usize`
     fn bw(&self) -> usize {
         self.nzbw().get()
+    }
+
+    /// Returns a clone of the latest `Op` that calculated `self`
+    fn op(&self) -> Rc<Op>;
+
+    /// Returns a mutable reference to the latest `Op` that calculated `self`
+    fn op_mut(&mut self) -> &mut Rc<Op>;
+
+    /// Update the latest `Op` of `self` with `op`
+    fn update(&mut self, op: Op) {
+        *self.op_mut() = Rc::new(op);
     }
 }
