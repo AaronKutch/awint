@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use alloc::rc::Rc;
 
 use crate::primitive as prim;
 

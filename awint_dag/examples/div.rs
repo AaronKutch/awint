@@ -2,6 +2,27 @@
 use awint::{inlawi, inlawi_ty, inlawi_zero, InlAwi};
 use awint_dag::{Bits, Op};
 
+pub fn main() {
+    use awint::{inlawi, inlawi_be, inlawi_zero, InlAwi};
+    let mut out_awi = inlawi_zero!(10);
+    // lookup table consisting of 4 10-bit entries
+    let lut_awi = inlawi_be!(4u10, 3u10, 2u10, 1u10);
+    // the indexer has to have a bitwidth of 2 to index 2^2 = 4 entries
+    let mut inx_awi = inlawi_zero!(2);
+    let out = out_awi.const_as_mut();
+    let lut = lut_awi.const_as_ref();
+    let inx = inx_awi.const_as_mut();
+
+    // get the third entry (this is using zero indexing)
+    inx.usize_assign(2);
+    out.lut(lut, inx).unwrap();
+    assert_eq!(out_awi, inlawi!(3u10));
+}
+*/
+
+pub fn main() {}
+
+/*
 type InlT = inlawi_ty!(8);
 type InlT_plus1 = inlawi_ty!(9);
 
@@ -80,5 +101,3 @@ impl<'a> QuoRemBits<'a> {
     }
 }
 */
-
-pub fn main() {}

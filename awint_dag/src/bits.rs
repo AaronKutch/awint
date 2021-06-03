@@ -1,4 +1,5 @@
-use std::{num::NonZeroUsize, rc::Rc};
+use alloc::rc::Rc;
+use core::num::NonZeroUsize;
 
 use awint_internals::BITS;
 use Op::*;
@@ -13,11 +14,19 @@ pub struct Bits {
 
 impl Bits {
     /// Initializes a new `Bits` with bitwidth `bw` and initial `Op` `init_op`.
-    pub fn new(bw: NonZeroUsize, op: Op) -> Self {
+    pub(crate) fn new(bw: NonZeroUsize, op: Op) -> Self {
         Self {
             bw,
             op: Rc::new(op),
         }
+    }
+
+    pub fn nzbw(&self) -> NonZeroUsize {
+        self.bw
+    }
+
+    pub fn bw(&self) -> usize {
+        self.bw.get()
     }
 }
 

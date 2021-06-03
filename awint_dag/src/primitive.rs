@@ -1,4 +1,5 @@
-use std::{num::NonZeroUsize, ops::*, rc::Rc};
+use alloc::rc::Rc;
+use core::{num::NonZeroUsize, ops::*};
 
 use awint_internals::{bw, BITS};
 
