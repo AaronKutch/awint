@@ -75,14 +75,9 @@ pub fn inlawi_zero(input: TokenStream) -> TokenStream {
     if bw == 0 {
         panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
     }
-    format!(
-        "InlAwi::<{}, {}>::unstable_zero({})",
-        bw,
-        raw_digits(bw),
-        bw
-    )
-    .parse()
-    .unwrap()
+    format!("InlAwi::<{}, {}>::unstable_zero()", bw, raw_digits(bw))
+        .parse()
+        .unwrap()
 }
 
 /// Unsigned-maximum-value construction of an `InlAwi`. The input should be a
@@ -96,14 +91,9 @@ pub fn inlawi_umax(input: TokenStream) -> TokenStream {
     if bw == 0 {
         panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
     }
-    format!(
-        "InlAwi::<{}, {}>::unstable_umax({})",
-        bw,
-        raw_digits(bw),
-        bw
-    )
-    .parse()
-    .unwrap()
+    format!("InlAwi::<{}, {}>::unstable_umax()", bw, raw_digits(bw))
+        .parse()
+        .unwrap()
 }
 
 fn general_inlawi(components: Vec<String>) -> String {

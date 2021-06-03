@@ -1,4 +1,4 @@
-use alloc::rc::Rc;
+use alloc::{rc::Rc, vec::Vec};
 
 use crate::primitive as prim;
 
@@ -29,6 +29,9 @@ pub enum Op {
     LitU128Assign(u128),
     LitI128Assign(i128),
     LitBoolAssign(bool),
+
+    // used by `unstable_from_slice`
+    LitRawSliceAssign(Vec<usize>),
 
     // regular assignments
     UsizeAssign(prim::usize),

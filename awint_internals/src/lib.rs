@@ -82,6 +82,57 @@ pub fn raw_digits(bw: usize) -> usize {
         .wrapping_add(1)
 }
 
+/// Checks that the `BW` and `LEN` values are valid for an `InlAwi`.
+///
+/// # Panics
+///
+/// If `BW == 0`, `LEN < 2`, or the bitwidth is outside the range
+/// `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
+    if BW == 0 {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
+    }
+    if LEN < 2 {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
+    }
+    if BW <= ((LEN - 2) * BITS) {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW <= BITS*(LEN - 2)`")
+    }
+    if BW > ((LEN - 1) * BITS) {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW > BITS*(LEN - 1)`")
+    }
+}
+
+/// Checks that a raw slice for `InlAwi` construction is correct. Assumes that
+/// `assert_inlawi_invariants` has already been run to check the correctness of
+/// the `BW` and `LEN` values.
+///
+/// # Panics
+///
+/// If `raw.len() != LEN`, the bitwidth digit is zero, or the bitwidth is
+/// outside the range `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
+    if raw.len() != LEN {
+        panic!("`length of raw slice does not equal LEN")
+    }
+    let bw = raw[raw.len() - 1];
+    if bw != BW {
+        panic!("bitwidth digit does not equal BW")
+    }
+}
+
+/// Alternate check for `InlAwi` invariants
+///
+/// # Panics
+///
+/// If the bitwidth is outside the range `(((LEN - 2)*BITS) + 1)..=((LEN -
+/// 1)*BITS)`
+pub const fn assert_inlawi_invariants_2<const BW: usize, const LEN: usize>() {
+    if BW == 0 {
+        panic!("Tried to create an InlAwi with zero bitwidth")
+    }
+}
+
 /// Computes x + y + z and returns the widened result as a tuple.
 #[inline]
 pub const fn widen_add(x: usize, y: usize, z: usize) -> (usize, usize) {

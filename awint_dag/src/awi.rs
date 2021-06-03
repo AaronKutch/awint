@@ -1,13 +1,17 @@
-use alloc::rc::Rc;
+use alloc::{rc::Rc, vec::Vec};
 use core::num::NonZeroUsize;
+
+use awint_internals::*;
 
 use crate::{Bits, Lineage, Op};
 
 #[derive(Debug, Clone)]
-pub struct InlAwi(Bits);
+pub struct InlAwi<const BW: usize, const LEN: usize>(Bits);
 
-impl InlAwi {
+impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn new(bw: NonZeroUsize, op: Op) -> Self {
+        // double check the invariants
+        assert_inlawi_invariants::<BW, LEN>();
         Self(Bits::new(bw, op))
     }
 
@@ -28,17 +32,31 @@ impl InlAwi {
     }
 
     #[doc(hidden)]
-    pub fn unstable_zero(bw: usize) -> Self {
-        Self::new(NonZeroUsize::new(bw).unwrap(), Op::ZeroAssign)
+    pub fn unstable_from_slice(raw: &[usize]) -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
+        // `collect` does not work
+        let mut v = Vec::new();
+        for x in raw.iter() {
+            v.push(*x);
+        }
+        Self::new(NonZeroUsize::new(BW).unwrap(), Op::LitRawSliceAssign(v))
     }
 
     #[doc(hidden)]
-    pub fn unstable_umax(bw: usize) -> Self {
-        Self::new(NonZeroUsize::new(bw).unwrap(), Op::UmaxAssign)
+    pub fn unstable_zero() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self::new(NonZeroUsize::new(BW).unwrap(), Op::ZeroAssign)
+    }
+
+    #[doc(hidden)]
+    pub fn unstable_umax() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self::new(NonZeroUsize::new(BW).unwrap(), Op::UmaxAssign)
     }
 }
 
-impl Lineage for InlAwi {
+impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     fn nzbw(&self) -> NonZeroUsize {
         self.0.nzbw()
     }
