@@ -39,7 +39,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
         let bits = self.const_as_ref();
         // TODO this buffer is ~5 times larger than needed
         let mut buf = [0u8; BW];
-        let mut pad = InlAwi::<BW, LEN>::unstable_zero(BW);
+        let mut pad = Self::zero();
         // do the minimum amount of work necessary
         let upper = chars_upper_bound(bits.bw() - bits.lz(), 16).unwrap();
         bits.to_bytes_radix(false, &mut buf[..upper], 16, false, pad.const_as_mut())
@@ -157,8 +157,8 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::unstable_zero(BW);
-        let mut pad = InlAwi::<BW, LEN>::unstable_zero(BW);
+        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut pad = InlAwi::<BW, LEN>::zero();
         let result = awi.const_as_mut().power_of_two_bytes_assign(
             None,
             bits.as_bytes(),
@@ -191,8 +191,8 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::unstable_zero(BW);
-        let mut pad = InlAwi::<BW, LEN>::unstable_zero(BW);
+        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut pad = InlAwi::<BW, LEN>::zero();
         let result = awi.const_as_mut().power_of_two_bytes_assign(
             None,
             bits.as_bytes(),

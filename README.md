@@ -16,6 +16,7 @@ flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within `awint_
 feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
 (which requires `ExtAwi`), the flag would be activated for the common compilation of `awint_core`.
 The `awint_macros` crate is a proc-macro crate with several utilities to construct `InlAwi`s.
+The `awint_dag` crate is a WIP.
 The `awint` crate compiles these interfaces together and enables or disables different parts of the
 system depending on these feature flags:
 
@@ -39,13 +40,3 @@ prioritized. Please open an issue or PR if you would like these implemented fast
 - Add custom allocator parameter to `ExtAwi`
 - Do something about the `Display` impls. The `Debug` impls are probably final, but the `Display`
   impl needs more functionality. Some of the serialization trait impls also need work.
-
-The eventual plan for this system is to create a new kind of RTL description library that is not a
-DSL but is rather plain Rust code that can be run normally. There will be another crate with another
-struct also named `Bits`, similar to `awint_core::Bits` except that it has purely lazy execution,
-creating a DAG record the order in which different `Bits` operations are applied. A `const`
-function with a signature containing entirely `Bits` references (or perhaps a struct with a trait,
-the details are still being worked out) can have a macro applied to it, which will run the function
-body with the lazy version of `Bits` and calculate a DAG constant equivalent to the function. The
-function can be called like normal and can have the typical compiler optimizations applied, while
-the DAG can be inspected for more complicated things.
