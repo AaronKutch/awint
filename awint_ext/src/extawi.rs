@@ -162,7 +162,7 @@ impl<'a> ExtAwi {
         layout(self.nzbw())
     }
 
-    /// Zero-value construction with bitwidth `bw`. All bits are unset.
+    /// Zero-value construction with bitwidth `bw`
     pub fn zero(bw: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
@@ -173,9 +173,8 @@ impl<'a> ExtAwi {
         }
     }
 
-    /// Unsigned-maximum-value construction with bitwidth `bw`. All bits are
-    /// set.
-    pub fn umax(bw: NonZeroUsize) -> ExtAwi {
+    /// Unsigned-maximum-value construction with bitwidth `bw`
+    pub fn umax(bw: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
             let ptr: *mut usize = alloc(layout(bw)).cast();
@@ -187,6 +186,27 @@ impl<'a> ExtAwi {
         };
         x.const_as_mut().clear_unused_bits();
         x
+    }
+
+    /// Signed-maximum-value construction with bitwidth `bw`
+    pub fn imax(bw: NonZeroUsize) -> Self {
+        let mut awi = Self::umax(bw);
+        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Signed-minimum-value construction with bitwidth `bw`
+    pub fn imin(bw: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(bw);
+        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Unsigned-one-value construction with bitwidth `bw`
+    pub fn uone(bw: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(bw);
+        *awi.const_as_mut().first_mut() = 1;
+        awi
     }
 }
 

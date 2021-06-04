@@ -43,16 +43,29 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         Self::new(NonZeroUsize::new(BW).unwrap(), Op::LitRawSliceAssign(v))
     }
 
-    #[doc(hidden)]
-    pub fn unstable_zero() -> Self {
+    pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self::new(NonZeroUsize::new(BW).unwrap(), Op::ZeroAssign)
     }
 
-    #[doc(hidden)]
-    pub fn unstable_umax() -> Self {
+    pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self::new(NonZeroUsize::new(BW).unwrap(), Op::UmaxAssign)
+    }
+
+    pub fn imax() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self::new(NonZeroUsize::new(BW).unwrap(), Op::ImaxAssign)
+    }
+
+    pub fn imin() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self::new(NonZeroUsize::new(BW).unwrap(), Op::IminAssign)
+    }
+
+    pub fn uone() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self::new(NonZeroUsize::new(BW).unwrap(), Op::UoneAssign)
     }
 }
 

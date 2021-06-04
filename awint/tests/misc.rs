@@ -65,3 +65,35 @@ fn funnel() {
         }
     }
 }
+
+macro_rules! construction {
+    ($($bw:expr)*) => {
+        $(
+            let inlawi = inlawi_zero!($bw);
+            let extawi = ExtAwi::zero(bw($bw));
+            assert!(inlawi.const_as_ref().is_zero());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_umax!($bw);
+            let extawi = ExtAwi::umax(bw($bw));
+            assert!(inlawi.const_as_ref().is_umax());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_imax!($bw);
+            let extawi = ExtAwi::imax(bw($bw));
+            assert!(inlawi.const_as_ref().is_imax());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_imin!($bw);
+            let extawi = ExtAwi::imin(bw($bw));
+            assert!(inlawi.const_as_ref().is_imin());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_uone!($bw);
+            let extawi = ExtAwi::uone(bw($bw));
+            assert!(inlawi.const_as_ref().is_uone());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+        )*
+    };
+}
+
+#[test]
+fn construction() {
+    construction!(1 2 7 8 62 63 64 65 66 127 128 129 130 191 192 256 4096);
+}

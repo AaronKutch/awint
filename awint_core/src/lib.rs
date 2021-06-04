@@ -22,6 +22,8 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(const_option)]
 #![no_std]
+// make extra sure that this is on for the `_ASSERT` constants
+#![deny(const_err)]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]
 // There are many guaranteed nonzero lengths

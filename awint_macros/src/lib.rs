@@ -64,37 +64,36 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
         .unwrap()
 }
 
-/// Zero-value construction of an `InlAwi`. The input should be a `usize`
-/// literal indicating bitwidth.
-#[proc_macro]
-pub fn inlawi_zero(input: TokenStream) -> TokenStream {
-    let bw = input
-        .to_string()
-        .parse::<usize>()
-        .expect("Input should parse as a `usize`");
-    if bw == 0 {
-        panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
-    }
-    format!("InlAwi::<{}, {}>::unstable_zero()", bw, raw_digits(bw))
-        .parse()
-        .unwrap()
+macro_rules! inlawi_construction {
+    ($($fn_name:ident, $inlawi_fn:expr, $doc:expr);*;) => {
+        $(
+            #[doc = $doc]
+            #[doc = "construction of an `InlAwi`."]
+            #[doc = "The input should be a `usize` literal indicating bitwidth."]
+            #[proc_macro]
+            pub fn $fn_name(input: TokenStream) -> TokenStream {
+                let bw = input
+                    .to_string()
+                    .parse::<usize>()
+                    .expect("Input should parse as a `usize`");
+                if bw == 0 {
+                    panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
+                }
+                format!("InlAwi::<{}, {}>::{}()", bw, raw_digits(bw), $inlawi_fn)
+                    .parse()
+                    .unwrap()
+            }
+        )*
+    };
 }
 
-/// Unsigned-maximum-value construction of an `InlAwi`. The input should be a
-/// `usize` literal indicating bitwidth.
-#[proc_macro]
-pub fn inlawi_umax(input: TokenStream) -> TokenStream {
-    let bw = input
-        .to_string()
-        .parse::<usize>()
-        .expect("Input should parse as a `usize`");
-    if bw == 0 {
-        panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
-    }
-    format!("InlAwi::<{}, {}>::unstable_umax()", bw, raw_digits(bw))
-        .parse()
-        .unwrap()
-}
+inlawi_construction!(
+    inlawi_zero, "zero", "Zero-value";
+    inlawi_umax, "umax", "Unsigned-maximum-value";
+    inlawi_imax, "imax", "Signed-maximum-value";
+    inlawi_imin, "imin", "Signed-minimum-value";
+    inlawi_uone, "uone", "Unsigned-one-value";
+);
 
 fn general_inlawi(components: Vec<String>) -> String {
     let mut awis: Vec<ExtAwi> = Vec::new();

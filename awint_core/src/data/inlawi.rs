@@ -14,9 +14,10 @@ const _ASSERT_INLAWI_ASSUMPTIONS: () = {
     // 7 bits works on every platform
     let _ = ["Assertion that `InlAwi` size is what we expect"]
         [(mem::size_of::<InlAwi<7, 2>>() != (mem::size_of::<usize>() * 2)) as usize];
-    let x = InlAwi::<7, 2>::unstable_zero();
+    let x = InlAwi::<7, 2>::imin();
     let _ = ["Assertion that layouts are working"]
         [((x.const_as_ref().raw_len() != 2) || (x.bw() != 7)) as usize];
+    let _ = ["Assertion that values are working"][(x.const_as_ref().to_u8() != (1 << 6)) as usize];
 };
 
 // `InlAwi` has two parameters, because we absolutely have to have a parameter
@@ -32,11 +33,15 @@ const _ASSERT_INLAWI_ASSUMPTIONS: () = {
 /// DST support and const generics limitations makes this currently impossible.
 /// The two const generic parameters of an `InlAwi` are part of a workaround for
 /// this. Typing out a
-/// `let _: InlAwi<BW, LEN> = InlAwi<BW, LEN>::unstable_zero()` should not be
+/// `let _: InlAwi<BW, LEN> = InlAwi<BW, LEN>::zero()` should not be
 /// done directly because it is non-portable and relies on unstable internal
 /// details. Instead, you should use
-/// `let _: inlawi_ty!(100) = inlawi_zero!(100);` using macros from the
-/// `awint_macros` crate.
+///
+/// `let _: inlawi_ty!(100) = inlawi_zero!(100);` or `let _ =
+/// <inlawi_ty!(100)>::zero();` using macros from the `awint_macros` crate.
+///
+/// See the crate level documentation of `awint_macros` for more macros and
+/// information.
 #[derive(Clone, Copy)] // following what arrays do
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     /// # Raw Invariants
@@ -97,7 +102,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         self.const_as_ref().len()
     }
 
-    /// This is not intended for direct use, use `awint_macros::awi`
+    /// This is not intended for direct use, use `awint_macros::inlawi`
     /// or some other constructor instead.
     #[doc(hidden)]
     pub const fn unstable_from_slice(raw: &[usize]) -> Self {
@@ -110,10 +115,8 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         InlAwi { raw: copy }
     }
 
-    /// This is not intended for direct use, use `awint_macros::inlawi_zero`
-    /// instead.
-    #[doc(hidden)]
-    pub const fn unstable_zero() -> Self {
+    /// Zero-value construction with bitwidth `BW`
+    pub const fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         let mut raw = [0; LEN];
         raw[raw.len() - 1] = BW;
@@ -121,16 +124,35 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         InlAwi { raw }
     }
 
-    /// This is not intended for direct use, use `awint_macros::inlawi_zero`
-    /// instead.
-    #[doc(hidden)]
-    pub const fn unstable_umax() -> Self {
+    /// Unsigned-maximum-value construction with bitwidth `BW`
+    pub const fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         let mut raw = [MAX; LEN];
         raw[raw.len() - 1] = BW;
         assert_inlawi_invariants_slice::<BW, LEN>(&raw);
         let mut awi = InlAwi { raw };
         awi.const_as_mut().clear_unused_bits();
+        awi
+    }
+
+    /// Signed-maximum-value construction with bitwidth `BW`
+    pub const fn imax() -> Self {
+        let mut awi = Self::umax();
+        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Signed-minimum-value construction with bitwidth `BW`
+    pub const fn imin() -> Self {
+        let mut awi = Self::zero();
+        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Unsigned-one-value construction with bitwidth `BW`
+    pub const fn uone() -> Self {
+        let mut awi = Self::zero();
+        *awi.const_as_mut().first_mut() = 1;
         awi
     }
 }

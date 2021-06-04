@@ -2,7 +2,10 @@
 #![feature(const_panic)]
 #![feature(const_option)]
 
-use awint::prelude::{bw, inlawi, inlawi_ty, inlawi_umax, inlawi_zero, Bits, InlAwi};
+use awint::prelude::{
+    bw, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero, Bits,
+    InlAwi,
+};
 
 const fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
@@ -23,8 +26,8 @@ const fn eq(lhs: &Bits, rhs: &Bits) {
 /// functions to make sure `fuzz.rs` isn't running into false positives.
 #[test]
 const fn consts() {
-    let mut awi0: inlawi_ty!(256) = inlawi_zero!(256);
-    let mut awi1 = inlawi_zero!(256);
+    let mut awi0: inlawi_ty!(256) = InlAwi::zero();
+    let mut awi1: inlawi_ty!(256) = InlAwi::zero();
     //let mut awi2 = InlAwi::<5>::zero();
     let x: &mut Bits = awi0.const_as_mut();
     let y: &mut Bits = awi1.const_as_mut();
@@ -83,19 +86,24 @@ macro_rules! test_nonequal_bw {
 /// and checks `None` return cases.
 #[test]
 const fn bits_functions() {
+    // these macros also test the corresponding `InlAwi` functions
     let mut awi0 = inlawi_zero!(128);
-    let mut awi1 = inlawi_zero!(192);
-    let mut awi2 = inlawi_umax!(192);
-    let mut awi3 = inlawi_zero!(192);
-    let mut awi4 = inlawi_zero!(192);
+    let mut awi1 = inlawi_umax!(192);
+    let mut awi2 = inlawi_imax!(192);
+    let mut awi3 = inlawi_imin!(192);
+    let mut awi4 = inlawi_uone!(192);
     let x0 = awi0.const_as_mut();
     let x1 = awi1.const_as_mut();
     let x2 = awi2.const_as_mut();
     let x3 = awi3.const_as_mut();
     let x4 = awi4.const_as_mut();
 
-    assert!(x1.is_zero());
-    assert!(x2.is_umax());
+    // test the inlawi macros first
+    assert!(x0.is_zero());
+    assert!(x1.is_umax());
+    assert!(x2.is_imax());
+    assert!(x3.is_imin());
+    assert!(x4.is_uone());
 
     // miscellanious functions that won't work with the macro
 
