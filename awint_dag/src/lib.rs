@@ -31,6 +31,10 @@ pub use awi::{ExtAwi, InlAwi};
 pub use bits::Bits;
 pub use op::*;
 
+pub mod prelude {
+    pub use crate::{Bits, ExtAwi, InlAwi};
+}
+
 /// A trait for a state lineage in a Directed Acyclic Graph of `Bits`
 /// operations. Every `Bits` operation has mutable and/or immutable references
 /// to different `Bits`. The state of the mutable `Bits` are updated by

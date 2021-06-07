@@ -217,9 +217,24 @@ impl Bits {
         None
     }
 
-    pub fn resize_assign<I>(&mut self, rhs: &Self, extension: I)
+    pub fn field<U>(&mut self, to: U, rhs: &Self, from: U, width: U) -> Option<()>
     where
-        I: Into<prim::bool>,
+        U: Into<prim::usize>,
+    {
+        // TODO what to do about not being able to compare
+        self.update(Field(
+            self.op(),
+            to.into(),
+            rhs.op(),
+            from.into(),
+            width.into(),
+        ));
+        Some(())
+    }
+
+    pub fn resize_assign<B>(&mut self, rhs: &Self, extension: B)
+    where
+        B: Into<prim::bool>,
     {
         self.update(ResizeAssign(self.op(), rhs.op(), extension.into()));
     }

@@ -110,6 +110,7 @@ pub enum Op {
     Ige(P, P),
 
     Lut(P, P, P),
+    Field(P, prim::usize, P, prim::usize, prim::usize),
     ResizeAssign(P, P, prim::bool),
     Funnel(P, P, P),
     UQuoAssign(P, P, P),

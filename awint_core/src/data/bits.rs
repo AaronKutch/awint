@@ -387,6 +387,15 @@ impl<'a> Bits {
         unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.len()) }
     }
 
+    /// Same as [Bits::as_slice] except it includes the bitwidth digit
+    #[doc(hidden)]
+    #[inline]
+    pub const fn as_raw_slice(&'a self) -> &'a [usize] {
+        // Safety: `Bits` already follows standard slice initialization invariants. This
+        // acquires a subslice that includes everything except for the metadata digit.
+        unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.raw_len()) }
+    }
+
     /// Returns a mutable reference to all of the underlying bits of `self`,
     /// including unused bits.
     ///

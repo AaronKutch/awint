@@ -61,14 +61,17 @@ impl Bits {
         ones
     }
 
-    /// Bitfield-copy-assign. The bitwidths do not have to be equal, but
+    /// "Fielding" bitfields with targeted copy assigns. The bitwidths of `self`
+    /// and `rhs` do not have to be equal, but the inputs must collectively obey
     /// `width <= self.bw() && width <= rhs.bw() && to <= (self.bw() - width)
-    /// && from <= (rhs.bw() - width)` must hold true or else `None` is
-    /// returned. `width` can be zero, in which case this is a no-op.
+    /// && from <= (rhs.bw() - width)` or else `None` is
+    /// returned. `width` can be zero, in which case this function just checks
+    /// the input correctness and does not mutate `self`.
     ///
     /// This function works by copying a `bw` sized bitfield from `rhs` at
     /// bitposition `from` and overwriting `bw` bits at bitposition `to` in
-    /// `self`.
+    /// `self`. Only the `width` bits in `self` are mutated, any bits before and
+    /// after the bitfield are left unchanged.
     ///
     /// ```
     /// use awint::{inlawi, InlAwi};
@@ -76,11 +79,12 @@ impl Bits {
     /// // starting with the 12th digit in `y` using a bitfield with
     /// // value 0x42u8 extracted from `x`.
     /// let x_awi = inlawi!(0x11142111u50);
+    /// // the underscores are just for emphasis
     /// let mut y_awi = inlawi!(0xfd_ec_ba9876543210u100);
     /// let x = x_awi.const_as_ref();
     /// let y = y_awi.const_as_mut();
-    ///
-    /// y.field(12 * 4, x, 3 * 4, 8);
+    /// // from `x` digit place 3, we copy 2 digits to `y` digit place 12.
+    /// y.field(12 * 4, x, 3 * 4, 2 * 4);
     /// assert_eq!(y_awi, inlawi!(0xfd_42_ba9876543210u100));
     /// ```
     pub const fn field(&mut self, to: usize, rhs: &Self, from: usize, width: usize) -> Option<()> {

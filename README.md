@@ -38,5 +38,7 @@ prioritized. Please open an issue or PR if you would like these implemented fast
 - Add a `const` Karatsuba algorithm to multiplication if possible, or add a `fast_mul` free function
   to `awint_ext`
 - Add custom allocator parameter to `ExtAwi`
+- Rewrite `awint_macros` to use `syn` and allow more flexibility with respect to things like
+  comments.
 - Do something about the `Display` impls. The `Debug` impls are probably final, but the `Display`
   impl needs more functionality. Some of the serialization trait impls also need work.
