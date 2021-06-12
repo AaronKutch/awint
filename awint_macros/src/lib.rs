@@ -10,13 +10,12 @@
 //!
 //! ## Concatenations of Components
 //!
-//! All of the macros in this crate except for `inlawi_ty` accept what we call
-//! "concatenations of components". A component can be a literal, a variable, or
-//! a filler. Components are written in a big endian order (like literals), and
-//! concatenations are written in a little endian order (because large
-//! concatentations will usually be formatted on different lines, and we want
-//! the data flow to be downwards), so the general layout of the input to a
-//! macro is:
+//! Some of the macros accept "concatenations of components". A component can be
+//! a literal, a variable, or a filler. Components are written in a big endian
+//! order (like literals), and concatenations are written in a little endian
+//! order (because large concatentations will usually be formatted on different
+//! lines, and we want the data flow to be downwards), so the general layout of
+//! the input to a macro is:
 //!
 //! ```text
 //! macro!(
@@ -178,16 +177,9 @@
 #![allow(clippy::needless_range_loop)]
 
 extern crate alloc;
-use alloc::{
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{format, string::ToString};
 
 extern crate proc_macro;
-use core::num::NonZeroUsize;
-
-use awint_ext::ExtAwi;
 use awint_internals::*;
 use proc_macro::TokenStream;
 
@@ -211,6 +203,54 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
     format!("InlAwi<{}, {}>", bw, raw_digits(bw))
         .parse()
         .unwrap()
+}
+
+// TODO `0x1234.5678p4i32p16`
+// prefix,integral,point,fractional,exPonent (can't use 'e' because it doesn't
+// work in hexadecimal, maybe allow for decimal),signed,bitwidth,point position
+
+/// Takes concatenations of components as an input, and copies bits of the
+/// source to corresponding bits of the sinks. Returns an `Option<()>`, and
+/// returns `None` if component indexes are out of bounds or if concatenation
+/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+#[proc_macro]
+pub fn con(input: TokenStream) -> TokenStream {
+    match code_gen(&input.to_string(), false, false) {
+        Ok(s) => s.parse().unwrap(),
+        Err(s) => panic!("{}", s),
+    }
+}
+
+/// Takes concatenations of components as an input, and copies bits of the
+/// source to corresponding bits of the sinks. The source is also used to
+/// construct an `InlAwi`. The common width must be statically determinable by
+/// the macro (e.g. at least one concatenation must have only literal ranges),
+/// and the source cannot contain fillers. Returns a plain `InlAwi` if only
+/// literals with literal ranges are used, otherwise returns `Option<InlAwi>`.
+/// Returns `None` if component indexes are out of range or if concatenation
+/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+#[proc_macro]
+pub fn inlawi(input: TokenStream) -> TokenStream {
+    match code_gen(&input.to_string(), true, true) {
+        Ok(s) => s.parse().unwrap(),
+        Err(s) => panic!("{}", s),
+    }
+}
+
+/// Takes concatenations of components as an input, and copies bits of the
+/// source to corresponding bits of the sinks. The source is also used to
+/// construct an `ExtAwi`. The common width must be dynamically determinable by
+/// the macro (e.g. not all concatenations can have unbounded fillers), and the
+/// source cannot contain fillers. Returns a plain `ExtAwi` if only literals
+/// with literal ranges are used, otherwise returns `Option<ExtAwi>`. Returns
+/// `None` if component indexes are out of range or if concatenation
+/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+#[proc_macro]
+pub fn extawi(input: TokenStream) -> TokenStream {
+    match code_gen(&input.to_string(), false, true) {
+        Ok(s) => s.parse().unwrap(),
+        Err(s) => panic!("{}", s),
+    }
 }
 
 macro_rules! inlawi_construction {
@@ -243,137 +283,3 @@ inlawi_construction!(
     inlawi_imin, "imin", "Signed-minimum-value";
     inlawi_uone, "uone", "Unsigned-one-value";
 );
-
-fn general_inlawi(components: Vec<String>) -> String {
-    let mut awis: Vec<ExtAwi> = Vec::new();
-    let mut total_bw = 0;
-    for component in components {
-        match component.parse::<ExtAwi>() {
-            Ok(awi) => {
-                total_bw += awi.bw();
-                awis.push(awi)
-            }
-            Err(e) => panic!(
-                "could not parse component \"{}\": `<ExtAwi as FromStr>::from_str` returned \
-                 SerdeError::{:?}",
-                component, e
-            ),
-        }
-    }
-    if awis.is_empty() {
-        panic!("empty input");
-    }
-    let total_bw = NonZeroUsize::new(total_bw).unwrap();
-    let mut awi = ExtAwi::zero(total_bw);
-    let mut shl = 0;
-    for component in awis {
-        awi[..].field(shl, &component[..], 0, component.bw());
-        shl += component.bw();
-    }
-
-    // no safety worries here, because the `unstable_from_slice` has strict checks
-    let mut raw: Vec<usize> = Vec::new();
-    raw.extend_from_slice(awi[..].as_slice());
-    raw.push(total_bw.get());
-    format!(
-        "InlAwi::<{}, {}>::unstable_from_slice(&{:?})",
-        total_bw,
-        awi.raw_len(),
-        &raw[..],
-    )
-}
-
-// TODO `0x1234.5678p4i32p16`
-// prefix,integral,point,fractional,exPonent (can't use 'e' because it doesn't
-// work in hexadecimal, maybe allow for decimal),signed,bitwidth,point position
-
-// General construction of an `InlAwi`. The input should be a comma-separated
-// list of literals that can be parsed by `<ExtAwi as FromStr>::from_str`. The
-// resulting arbitrary width integers are concatenated together to create one
-// `InlAwi` at compile time. The individual literals are big-endian (processed
-// how `from_str` would normally process them), while the component
-// concatenation order is little-endian.
-/*#[proc_macro]
-pub fn inlawi(input: TokenStream) -> TokenStream {
-    let mut components: Vec<String> = Vec::new();
-    for part in input.to_string().split(',') {
-        // Remove whitespace. Ideally, we would not have to do this and send inputs
-        // directly to the parser, but `TokenStream::to_string` inserts a space
-        // inbetween `-` signs and the integral part.
-        let mut component = String::new();
-        for c in part.chars() {
-            if !c.is_whitespace() {
-                component.push(c);
-            }
-        }
-        components.push(component);
-    }
-
-    general_inlawi(components).parse().unwrap()
-}*/
-
-/// General construction of an `InlAwi`. The input should be a comma-separated
-/// list of literals that can be parsed by `<ExtAwi as FromStr>::from_str`. The
-/// resulting arbitrary width integers are concatenated together to create one
-/// `InlAwi` at compile time. The individual literals and component
-/// concatenation order are both big-endian.
-#[proc_macro]
-pub fn inlawi_be(input: TokenStream) -> TokenStream {
-    let mut components: Vec<String> = Vec::new();
-    for part in input.to_string().split(',').rev() {
-        let mut component = String::new();
-        for c in part.chars() {
-            if !c.is_whitespace() {
-                component.push(c);
-            }
-        }
-        components.push(component);
-    }
-
-    general_inlawi(components).parse().unwrap()
-}
-
-/// General construction of an `InlAwi`. The input should be a comma-separated
-/// list of literals that can be parsed by `<ExtAwi as FromStr>::from_str`. The
-/// resulting arbitrary width integers are concatenated together to create one
-/// `InlAwi` at compile time. The individual literals and component
-/// concatenation order are both little-endian.
-#[proc_macro]
-pub fn inlawi_le(input: TokenStream) -> TokenStream {
-    let mut components: Vec<String> = Vec::new();
-    for part in input.to_string().split(',') {
-        let mut component = String::new();
-        for c in part.chars().rev() {
-            if !c.is_whitespace() {
-                component.push(c);
-            }
-        }
-        components.push(component);
-    }
-
-    general_inlawi(components).parse().unwrap()
-}
-
-#[proc_macro]
-pub fn con(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, false) {
-        Ok(s) => s.parse().unwrap(),
-        Err(s) => panic!("{}", s),
-    }
-}
-
-#[proc_macro]
-pub fn inlawi(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), true, true) {
-        Ok(s) => s.parse().unwrap(),
-        Err(s) => panic!("{}", s),
-    }
-}
-
-#[proc_macro]
-pub fn extawi(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, true) {
-        Ok(s) => s.parse().unwrap(),
-        Err(s) => panic!("{}", s),
-    }
-}

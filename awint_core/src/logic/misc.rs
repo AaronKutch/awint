@@ -206,12 +206,12 @@ impl Bits {
     /// bitfield from `lut` at bit position `inx.to_usize() * self.bw()`.
     ///
     /// ```
-    /// use awint::{inlawi, inlawi_be, inlawi_zero, InlAwi};
-    /// let mut out_awi = inlawi_zero!(10);
+    /// use awint::{inlawi, InlAwi};
+    /// let mut out_awi = inlawi!(0u10);
     /// // lookup table consisting of 4 10-bit entries
-    /// let lut_awi = inlawi_be!(4u10, 3u10, 2u10, 1u10);
+    /// let lut_awi = inlawi!(4u10, 3u10, 2u10, 1u10);
     /// // the indexer has to have a bitwidth of 2 to index 2^2 = 4 entries
-    /// let mut inx_awi = inlawi_zero!(2);
+    /// let mut inx_awi = inlawi!(0u2);
     /// let out = out_awi.const_as_mut();
     /// let lut = lut_awi.const_as_ref();
     /// let inx = inx_awi.const_as_mut();

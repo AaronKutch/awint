@@ -296,9 +296,9 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::{inlawi, inlawi_zero, ExtAwi, InlAwi};
+    /// use awint::{inlawi, ExtAwi, InlAwi};
     /// let mut awi_input = inlawi!(0x4321u16);
-    /// let mut awi_output = inlawi_zero!(16);
+    /// let mut awi_output = inlawi!(0u16);
     /// let input = awi_input.const_as_ref();
     /// let output = awi_output.const_as_mut();
     /// // rotate left by 4 bits or one hexadecimal digit

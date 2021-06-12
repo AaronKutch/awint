@@ -104,7 +104,7 @@ pub(crate) fn code_gen(
     };
 
     // code gen
-    let (constants, constant_ids) = code_gen_constants(&concats[0], total_bw);
+    let (constants, _) = code_gen_constants(&concats[0], total_bw);
     let precheck = String::new();
     let construct = String::new();
     let fielding = String::new();
@@ -114,7 +114,7 @@ pub(crate) fn code_gen(
         String::new()
     };
     if return_source {
-        if let Some((_, _)) = static_width {
+        if let Some((..)) = static_width {
             // statically known bitwidth
         } else if let Some(_) = dynamic_width {
             // dynamically known bitwidth
