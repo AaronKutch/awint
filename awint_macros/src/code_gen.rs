@@ -113,7 +113,7 @@ pub(crate) fn code_gen(
     } else {
         String::new()
     };
-    if return_source {
+    /*if return_source {
         if let Some((..)) = static_width {
             // statically known bitwidth
         } else if let Some(_) = dynamic_width {
@@ -123,7 +123,7 @@ pub(crate) fn code_gen(
             // common alignment unbounded stuff
             todo!()
         }
-    }
+    }*/
 
     // The output is wrapped in brackets
     Ok(format!(
@@ -218,10 +218,8 @@ fn code_gen_constants(
     for i in lsb_i..msb_i {
         let comp = &source.concatenation[i];
         if comp.range.static_range().is_some() {
-            if !consecutive {
-                if matches!(comp.component_type, Literal(_)) {
-                    consecutive = true;
-                }
+            if !consecutive && matches!(comp.component_type, Literal(_)) {
+                consecutive = true;
             }
             constant_ids[i] = Some(id_num);
         } else if consecutive {

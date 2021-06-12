@@ -107,7 +107,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     pub const fn unstable_from_slice(raw: &[usize]) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
+        assert_inlawi_invariants_slice::<BW, LEN>(raw);
         let mut copy = [0; LEN];
         const_for!(i in {0..raw.len()} {
             copy[i] = raw[i];

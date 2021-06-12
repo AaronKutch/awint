@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{code_gen, inlawi};
+use crate::code_gen;
 
 macro_rules! failures {
     ($($input:expr, $error:expr);*;) => {
