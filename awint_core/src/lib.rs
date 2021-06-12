@@ -15,7 +15,7 @@
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_read)]
 #![feature(const_panic)]
-// TODO undo the pointer rotate change
+// TODO use ptr::write in several places if https://github.com/rust-lang/rust/issues/86236 is fixed
 //#![feature(const_ptr_write)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_slice_from_raw_parts)]
