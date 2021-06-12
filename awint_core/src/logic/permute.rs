@@ -10,6 +10,8 @@ use crate::Bits;
 /// it from https://github.com/rust-lang/rust/blob/master/library/core/src/slice/mod.rs
 /// and specialize it to work as `const`.
 ///
+/// This also has a workaround for https://github.com/rust-lang/rust/issues/86236
+///
 /// # Safety
 ///
 /// The range `[mid-left, mid+right)` must be valid for reading and writing
@@ -28,12 +30,12 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
                 let mut gcd = right;
                 loop {
                     let tmp_tmp = x.add(i).read();
-                    x.add(i).write(tmp);
+                    *x.add(i) = tmp;
                     tmp = tmp_tmp;
                     if i >= left {
                         i -= left;
                         if i == 0 {
-                            x.write(tmp);
+                            *x = tmp;
                             break
                         }
                         if i < gcd {
@@ -48,12 +50,12 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
                     i = start + right;
                     loop {
                         let tmp_tmp = x.add(i).read();
-                        x.add(i).write(tmp);
+                        *x.add(i) = tmp;
                         tmp = tmp_tmp;
                         if i >= left {
                             i -= left;
                             if i == start {
-                                x.add(start).write(tmp);
+                                *x.add(start) = tmp;
                                 break;
                             }
                         } else {

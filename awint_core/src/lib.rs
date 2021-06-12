@@ -15,7 +15,8 @@
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_read)]
 #![feature(const_panic)]
-#![feature(const_ptr_write)]
+// TODO undo the pointer rotate change
+//#![feature(const_ptr_write)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_swap)]
