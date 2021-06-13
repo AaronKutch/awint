@@ -1,8 +1,15 @@
+use alloc::{
+    borrow::ToOwned,
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::num::NonZeroUsize;
 
-use awint_ext::ExtAwi;
-
-use crate::structs::{ComponentType::*, *};
+use crate::{
+    internals::structs::{ComponentType::*, *},
+    ExtAwi,
+};
 
 fn remove_whitespace(s: &str) -> String {
     s.chars().filter(|c| !c.is_whitespace()).collect()
@@ -132,14 +139,6 @@ fn parse_component(component: &str) -> Result<Component, (String, bool)> {
     if let Err(e) = component.attempt_constify() {
         return Err((e, false))
     }
-    if let Some(w) = component.range.static_width() {
-        if w == 0 {
-            return Err((
-                "determined statically that this has zero bitwidth".to_owned(),
-                false,
-            ))
-        }
-    }
     Ok(component)
 }
 
@@ -216,6 +215,35 @@ pub(crate) fn parse_concatenation(
     } else {
         None
     };
+
+    // To allow grouping constants together into the same constant without
+    // dramatically increasing the complexity of the code gen part, we attempt to
+    // merge neighboring constants here. The truncation of the constants was already
+    // handled earlier in component constification, and the ranges have already been
+    // normalized to start at 0 and end at the end of the literal bitwidth
+    let mut i = components.len() - 1;
+    while i > 0 {
+        if components[i - 1].is_static_literal() && components[i].is_static_literal() {
+            // this is infallible, the only reason for this awkward arrangement is to get
+            // around borrowing issues
+            if let (Literal(lit0), Literal(lit1)) = (
+                components[i - 1].component_type.clone(),
+                components[i].component_type.clone(),
+            ) {
+                let w0 = components[i - 1].range.static_width().unwrap();
+                let w1 = components[i].range.static_width().unwrap();
+                let total = w0.checked_add(w1).unwrap();
+                let mut combined = ExtAwi::zero(NonZeroUsize::new(total).unwrap());
+                combined[..].zero_resize_assign(&lit0[..]);
+                combined[..].field(w0, &lit1[..], 0, w1).unwrap();
+                components[i - 1].component_type = Literal(combined);
+                components[i - 1].range = Usbr::new_static(0, total);
+                components.remove(i);
+            }
+        }
+        i -= 1;
+    }
+
     Ok(Concatenation {
         concatenation: components,
         total_bw,

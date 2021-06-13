@@ -5,8 +5,8 @@
 //! All of the macros usually require `InlAwi` to be in scope. This could be
 //! from `awint_core` or be a reexport from `awint`. `extawi!` always requires
 //! `ExtAwi` to be in scope, which could be imported from `awint_ext` or be a
-//! reexport from `awint`.
-//!
+//! reexport from `awint`. `cc!` may require none, one, or both depending on the
+//! input.
 //!
 //! ## Concatenations of Components
 //!
@@ -34,7 +34,7 @@
 //! construction macros additionally return the source concatenation in a
 //! storage type such as `InlAwi` or `ExtAwi`.
 //!
-//! ## Literals
+//! ### Literals
 //!
 //! When the parser sees that the first character of a component is '-' or
 //! '0'..='9', and it isn't part of a lone range, it will assume the component
@@ -51,14 +51,25 @@
 //! let awi: inlawi_ty!(28) = inlawi!(-1i4, 0000_0101_0011_1001, 42u8);
 //! assert_eq!(awi, inlawi!(1111_0000010100111001_00101010));
 //!
-//! // Literals can have ranges applied to them, which might be useful
+//! // Literals can have static ranges applied to them, which might be useful
 //! // in some circumstances for readability.
-//! assert_eq!(inlawi!(0x12345_u20[4..16]), inlawi!(0x234_u12));
+//! assert_eq!(inlawi!(0x654321_u24[4..16]), inlawi!(0x432_u12));
+//!
+//! // Arbitrary dynamic ranges using things from outside the macro can also
+//! // be applied. The macros will assume the range bounds to result in `usize`.
+//!
+//! // TODO
+//! //let x = 4;
+//! //let y = 8;
+//! //let awi = ExtAwi::zero(bw(12));
+//! //assert_eq!(extawi!(0x98765_u20[y..(awi.bw() + x)]).unwrap(), extawi!(87u8));
 //! ```
 //!
-//! ## Variables
+//! ### Variables
 //!
-//! ## Fillers
+//!
+//!
+//! ### Fillers
 //!
 //! The third type of component is written as a range with no variable or
 //! literal attached. When used in sources, corresponding sink bits are left
@@ -74,15 +85,15 @@
 //! try to expand until the bitwidths of different concatenations match.
 //!
 //! // To understand how unbounded fillers interact, consider these three cases:
-//! con!{
+//! cc!{
 //!     0x321u12;
 //!     .., y;
 //! }
-//! con!{
+//! cc!{
 //!     .., 0x321u12;
 //!     y;
 //! }
-//! con!{
+//! cc!{
 //!     .., 0x321u12;
 //!     .., y;
 //! }
@@ -104,24 +115,24 @@
 //! Unbounded fillers are also allowed in less significant positions, in
 //! which case alignment of the components occurs starting from the most
 //! significant bit.
-//! con!{
+//! cc!{
 //!     0x321u12, ..;
 //!     y, ..;
 //! }
 //!
 //! Concatenations are even smart enough to do this:
-//! con!(0x3u4, .., 0x21u8; y)
-//! con!(0x3u4, .., 0x21u8; y)
+//! cc!(0x3u4, .., 0x21u8; y)
+//! cc!(0x3u4, .., 0x21u8; y)
 //!
 //! Note again that filler bitwidths cannot be negative, and so this will cause
 //! an error because we are trying to compress the 4 bit and 8 bit components
 //! into a less than 12 bit space.
-//! //con!(0x3u4, .., 0x21u8; 0..1)
+//! //cc!(0x3u4, .., 0x21u8; 0..1)
 //!
 //! Only one unbounded filler per concatenation is allowed. Consider this case,
 //! in which it would be ambiguous about where the middle component
 //! should be aligned.
-//! con!{
+//! cc!{
 //!     .., 0x321u12, ..;
 //!     y;
 //! }
@@ -130,28 +141,28 @@
 //! have their fillers aligned to the same end or have a concatenation without
 //! an unbounded filler.
 //! // all allowed:
-//! con!{
+//! cc!{
 //!     .., x;
 //!     .., y;
 //!     .., z;
 //! }
-//! con!{
+//! cc!{
 //!     x, ..;
 //!     y, ..;
 //!     z, ..;
 //! }
-//! con!{
+//! cc!{
 //!     .., x;
 //!     y, .., z;
 //!     a, ..;
 //!     b;
 //! }
 //! // disallowed, because the overlaps are ambiguous
-//! con!{
+//! cc!{
 //!     .., x;
 //!     y, ..;
 //! }
-//! con!{
+//! cc!{
 //!     a, .., x;
 //!     b, .., y;
 //!     c, .., z;
@@ -159,19 +170,33 @@
 //!
 //! // It is technically possible to infer that ambiguous overlap could not
 //! occur in this case, but this is still disallowed by the macro, and it is
-//! more readable to just split the macro into two for both alignments. con!{
+//! more readable to just split the macro into two for both alignments. cc!{
 //!     0x4567u16, .., 0x123u12;
 //!     y0[..4], .., y1[..4];
 //! }
 //! // the above macro is equivalent to these two macros combined:
-//! con!{
+//! cc!{
 //!     0x4567u16, ..;
 //!     y0[..4], ..;
 //! }
-//! con!{
+//! cc!{
 //!     .., 0x123u12;
 //!     .., y1[..4];
 //! }
+//!
+//! ### Other Notes
+//!
+//! - Because bitwidths cannot be zero any range "0..r" is equivalent to "..r"
+//!   in the macros
+//! - No warnings about unused `Option<()>`s are produced from procedural
+//!   macros. If the `cc!` macro is called without appending `.unwrap()` or
+//!   otherwise handling the `Option`, it will silently do nothing if `None` is
+//!   returned.
+//! - The macros have to be unsanitized to support using arbitrary variables and
+//!   ranges. A best effort with plenty of parenthesis scoping is made so that
+//!   only the most obviously bad inputs (such as multiple unmatched parenthesis
+//!   and inputing things like "unsafe") could cause compiling broken checks or
+//!   errors that extend beyond the scope of the macro.
 
 #![feature(proc_macro_hygiene)]
 #![allow(clippy::needless_range_loop)]
@@ -180,15 +205,9 @@ extern crate alloc;
 use alloc::{format, string::ToString};
 
 extern crate proc_macro;
+use awint_ext::internals::code_gen;
 use awint_internals::*;
 use proc_macro::TokenStream;
-
-use crate::code_gen::code_gen;
-mod parse;
-pub(crate) use parse::*;
-mod code_gen;
-pub(crate) mod structs;
-mod tests;
 
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
 #[proc_macro]
@@ -209,12 +228,16 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 // prefix,integral,point,fractional,exPonent (can't use 'e' because it doesn't
 // work in hexadecimal, maybe allow for decimal),signed,bitwidth,point position
 
-/// Takes concatenations of components as an input, and copies bits of the
-/// source to corresponding bits of the sinks. Returns an `Option<()>`, and
-/// returns `None` if component indexes are out of bounds or if concatenation
-/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+// C4D
+/// Copy Corresponding Concatenations of Components Dynamically. Takes
+/// concatenations of components as an input, and copies bits of the source to
+/// corresponding bits of the sinks. Returns an `Option<()>`, and returns `None`
+/// if component indexes are out of bounds or if concatenation bitwidths
+/// mismatch. Performs allocation in general, but will try to avoid allocation
+/// if ranges are all static or if concatenations are all of single components.
+/// See the documentation of `awint_macros` for more.
 #[proc_macro]
-pub fn con(input: TokenStream) -> TokenStream {
+pub fn cc(input: TokenStream) -> TokenStream {
     match code_gen(&input.to_string(), false, false) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),

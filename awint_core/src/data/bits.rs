@@ -197,6 +197,24 @@ impl<'a> Bits {
         }
     }
 
+    /// Returns the argument of this function. This exists so that the macros in
+    /// `awint_macros` work on all storage types and `Bits` without needing to
+    /// determine the type.
+    #[doc(hidden)]
+    #[inline]
+    pub const fn const_as_ref(&'a self) -> &'a Bits {
+        self
+    }
+
+    /// Returns the argument of this function. This exists so that the macros in
+    /// `awint_macros` work on all storage types and `Bits` without needing to
+    /// determine the type.
+    #[doc(hidden)]
+    #[inline]
+    pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
+        self
+    }
+
     /// Returns a raw pointer to the underlying bit storage. The caller must
     /// ensure that the `Bits` outlives the pointer this function returns.
     /// The underlying memory should never be written to.
@@ -540,6 +558,8 @@ impl fmt::Debug for Bits {
         fmt::LowerHex::fmt(self, f)
     }
 }
+
+// TODO implement Display for everything
 
 /// Lowercase hexadecimal formatting.
 ///

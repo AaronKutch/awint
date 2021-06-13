@@ -162,6 +162,15 @@ impl<'a> ExtAwi {
         layout(self.nzbw())
     }
 
+    /// Creates an `ExtAwi` from copying a `Bits` reference. The same
+    /// functionality is provided by an `From<&Bits>` implementation for
+    /// `ExtAwi`.
+    pub fn from_bits(bits: &Bits) -> ExtAwi {
+        let mut tmp = ExtAwi::zero(bits.nzbw());
+        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp
+    }
+
     /// Zero-value construction with bitwidth `bw`
     pub fn zero(bw: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
@@ -171,6 +180,13 @@ impl<'a> ExtAwi {
             ptr.add(regular_digits(bw)).write(bw.get());
             ExtAwi::from_raw_parts(ptr, regular_digits(bw) + 1)
         }
+    }
+
+    /// Used by `awint_macros` in avoiding forcing a `NonZeroUsize` dependency
+    /// on users.
+    #[doc(hidden)]
+    pub fn panicking_zero(bw: usize) -> Self {
+        Self::zero(NonZeroUsize::new(bw).unwrap())
     }
 
     /// Unsigned-maximum-value construction with bitwidth `bw`

@@ -1,6 +1,37 @@
-#![cfg(test)]
+use awint::prelude::*;
+use awint_ext::internals::code_gen;
 
-use crate::code_gen;
+macro_rules! construction {
+    ($($bw:expr)*) => {
+        $(
+            let inlawi = inlawi_zero!($bw);
+            let extawi = ExtAwi::zero(bw($bw));
+            assert!(inlawi.const_as_ref().is_zero());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_umax!($bw);
+            let extawi = ExtAwi::umax(bw($bw));
+            assert!(inlawi.const_as_ref().is_umax());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_imax!($bw);
+            let extawi = ExtAwi::imax(bw($bw));
+            assert!(inlawi.const_as_ref().is_imax());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_imin!($bw);
+            let extawi = ExtAwi::imin(bw($bw));
+            assert!(inlawi.const_as_ref().is_imin());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            let inlawi = inlawi_uone!($bw);
+            let extawi = ExtAwi::uone(bw($bw));
+            assert!(inlawi.const_as_ref().is_uone());
+            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+        )*
+    };
+}
+
+#[test]
+fn construction() {
+    construction!(1 2 7 8 62 63 64 65 66 127 128 129 130 191 192 256 4096);
+}
 
 macro_rules! failures {
     ($($input:expr, $error:expr);*;) => {
@@ -11,7 +42,7 @@ macro_rules! failures {
 }
 
 #[test]
-fn failures() {
+fn macro_failures() {
     failures!(
         // This restriction could be lifted in the future
         "Ω", "concatenation 0 (\"Ω\"): component 0 (\"Ω\"): is not ascii";
@@ -53,4 +84,18 @@ fn failures() {
                 .to_owned()
         )
     );
+}
+
+#[test]
+fn macro_successes() {
+    assert_eq!(inlawi!(0xau4, 0x4321u16, 0x7u4), inlawi!(0xa43217u24));
+    assert_eq!(inlawi!(0xau4, 0x4321u32[8..12], 0x7u4), inlawi!(0xa37u12));
+    let a = inlawi!(0xau4);
+    let mut awi = ExtAwi::zero(bw(4));
+    let b = awi.const_as_mut();
+    let mut c = extawi!(0u4);
+    cc!(a;b;c).unwrap();
+    assert_eq!(a, inlawi!(0xau4));
+    assert_eq!(a.const_as_ref(), b);
+    assert_eq!(a.const_as_ref(), c.const_as_ref());
 }

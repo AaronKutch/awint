@@ -7,7 +7,7 @@
 #![feature(const_fn_transmute)]
 #![feature(const_mut_refs)]
 #![feature(vec_into_raw_parts)]
-#![no_std]
+//#![no_std] FIXME
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]
 // There are many guaranteed nonzero lengths
@@ -26,6 +26,14 @@ mod extawi;
 #[cfg(feature = "serde_support")]
 mod serde;
 mod strings;
+
+/// This crate contains the procedural macro internals, because we need to be
+/// able to test both `code_gen` and the macros. `awint_macros` can only export
+/// procedural macros, but tests inside `awint_macros` cannot use the procedural
+/// macros from their own crate. To prevent spinning off yet another crate, we
+/// put the internals in `awint_ext` which has the necessary `alloc`.
+#[doc(hidden)]
+pub mod internals;
 
 pub use extawi::ExtAwi;
 pub use strings::{bits_to_string_radix, bits_to_vec_radix};
