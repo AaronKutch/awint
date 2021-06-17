@@ -559,7 +559,12 @@ impl fmt::Debug for Bits {
     }
 }
 
-// TODO implement Display for everything
+/// Forwards to the `Debug` impl
+impl fmt::Display for Bits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
 
 /// Lowercase hexadecimal formatting.
 ///

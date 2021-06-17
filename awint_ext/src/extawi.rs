@@ -291,7 +291,7 @@ macro_rules! impl_fmt {
     };
 }
 
-impl_fmt!(Debug LowerHex UpperHex Octal Binary);
+impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl Hash for ExtAwi {
     fn hash<H: Hasher>(&self, state: &mut H) {
