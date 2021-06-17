@@ -1,5 +1,5 @@
 use awint::prelude::*;
-use awint_ext::internals::code_gen;
+use awint_macro_internals::code_gen;
 
 macro_rules! construction {
     ($($bw:expr)*) => {
@@ -36,7 +36,7 @@ fn construction() {
 macro_rules! failures {
     ($($input:expr, $error:expr);*;) => {
         $(
-            assert_eq!(code_gen(&$input, true, true), Err($error.to_owned()));
+            assert_eq!(code_gen(&$input, false, "zero", true, true), Err($error.to_owned()));
         )*
     };
 }
@@ -44,10 +44,13 @@ macro_rules! failures {
 #[test]
 fn macro_failures() {
     failures!(
-        // This restriction could be lifted in the future
+        // TODO This restriction could be lifted in the future
         "Ω", "concatenation 0 (\"Ω\"): component 0 (\"Ω\"): is not ascii";
-        "", "concatenation 0 (\"\"): component 0 (\"\"): is empty or only whitespace";
-        " ", "concatenation 0 (\" \"): component 0 (\" \"): is empty or only whitespace";
+        "", "input is empty or only whitespace";
+        ";", "concatenation 0: is empty or only whitespace";
+        ",", "concatenation 0 (\",\"): component 1: is empty or only whitespace";
+        ";a", "concatenation 0: is empty or only whitespace";
+        ",a", "concatenation 0 (\",a\"): component 1: is empty or only whitespace";
         "a[1", "concatenation 0 (\"a[1\"): component 0 (\"a[1\"): has an opening '[' but not a \
             closing ']'";
         "a[]", "concatenation 0 (\"a[]\"): component 0 (\"a[]\"): has an empty index";
@@ -60,16 +63,17 @@ fn macro_failures() {
         "a; 0x1u1", "concatenation 1 (\" 0x1u1\"): sink concatenations cannot have literals";
         "a[..0]", "concatenation 0 (\"a[..0]\"): component 0 (\"a[..0]\"): determined statically \
             that this has zero bitwidth";
-        "..;a", "a construction macro cannot have a filler in the source concatenation";
-        "5..6;a", "a construction macro cannot have a filler in the source concatenation";
-        "a;..", "concatenation 1 consists of only an unbounded filler";
+        "..;a", "a construction macro with unspecified initialization cannot have a filler in the \
+            source concatenation";
+        "5..6;a", "a construction macro with unspecified initialization cannot have a filler in \
+            the source concatenation";
         "a[..1];a[..2]", "determined statically that concatenations 0 and 1 have unequal bitwidths \
             1 and 2";
         "a", "InlAwi construction macros need at least one concatenation to have a width that can \
             be determined statically by the macro";
     );
     assert_eq!(
-        code_gen(&"a,..;b,..,c".to_string(), false, false),
+        code_gen(&"a,..;b,..,c".to_string(), true, "zero", false, false),
         Err(
             "there is an unbounded filler in the middle of a concatenation, and no concatenation \
              has a statically or dynamically determinable width"
@@ -77,7 +81,7 @@ fn macro_failures() {
         )
     );
     assert_eq!(
-        code_gen(&"a,..;..,b".to_string(), false, false),
+        code_gen(&"a,..;..,b".to_string(), true, "zero", false, false),
         Err(
             "there are two concatenations with unbounded fillers aligned opposite each other, and \
              no concatenation has a statically or dynamically determinable width"
@@ -88,8 +92,12 @@ fn macro_failures() {
 
 #[test]
 fn macro_successes() {
+    // both trailing comma and semicolon
+    let _ = inlawi!(0u1,;);
+    // basic concatenation
     assert_eq!(inlawi!(0xau4, 0x4321u16, 0x7u4), inlawi!(0xa43217u24));
     assert_eq!(inlawi!(0xau4, 0x4321u32[8..12], 0x7u4), inlawi!(0xa37u12));
+    // copy assign
     let a = inlawi!(0xau4);
     let mut awi = ExtAwi::zero(bw(4));
     let b = awi.const_as_mut();
@@ -98,4 +106,32 @@ fn macro_successes() {
     assert_eq!(a, inlawi!(0xau4));
     assert_eq!(a.const_as_ref(), b);
     assert_eq!(a.const_as_ref(), c.const_as_ref());
+    // dynamic ranges
+    let x: usize = 8;
+    let awi = ExtAwi::zero(bw(12));
+    assert_eq!(
+        extawi!(0x98765_u20[x..(x + awi.bw())]).unwrap(),
+        extawi!(0x987u12)
+    );
+    // unbounded fillers
+    let mut sink0 = ExtAwi::zero(bw(44));
+    let mut sink1 = ExtAwi::zero(bw(44));
+    let b = inlawi!(0xbbu8);
+    let e = inlawi!(0xeeeu12);
+    let result = extawi!(0xabbcffdeeefu44);
+    assert_eq!(
+        extawi_umax!(0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap(),
+        result
+    );
+    assert_eq!(sink0, result);
+    assert_eq!(sink1, result);
+    let mut sink0 = extawi!(0xf0f0f0f0f0fu44);
+    let mut sink1 = extawi!(0xf0f0f0f0f0fu44);
+    let b = inlawi!(0xbbu8);
+    let e = inlawi!(0xeeeu12);
+    let result = extawi!(0xabbcf0deeefu44);
+    cc!(0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap();
+    assert_eq!(sink0, result);
+    assert_eq!(sink1, result);
+    assert_eq!(extawi_umax!(..;..9).unwrap(), extawi_umax!(9));
 }

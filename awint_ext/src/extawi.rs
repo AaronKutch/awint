@@ -182,13 +182,6 @@ impl<'a> ExtAwi {
         }
     }
 
-    /// Used by `awint_macros` in avoiding forcing a `NonZeroUsize` dependency
-    /// on users.
-    #[doc(hidden)]
-    pub fn panicking_zero(bw: usize) -> Self {
-        Self::zero(NonZeroUsize::new(bw).unwrap())
-    }
-
     /// Unsigned-maximum-value construction with bitwidth `bw`
     pub fn umax(bw: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
@@ -223,6 +216,36 @@ impl<'a> ExtAwi {
         let mut awi = Self::zero(bw);
         *awi.const_as_mut().first_mut() = 1;
         awi
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_zero(bw: usize) -> Self {
+        Self::zero(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_umax(bw: usize) -> Self {
+        Self::umax(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_imax(bw: usize) -> Self {
+        Self::imax(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_imin(bw: usize) -> Self {
+        Self::imin(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_uone(bw: usize) -> Self {
+        Self::uone(NonZeroUsize::new(bw).unwrap())
     }
 }
 

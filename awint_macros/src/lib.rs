@@ -1,12 +1,27 @@
 //! # Accompanying procedural macros to `awint`
 //!
-//! ## Dependencies
+//! ## Scope Dependencies
 //!
-//! All of the macros usually require `InlAwi` to be in scope. This could be
-//! from `awint_core` or be a reexport from `awint`. `extawi!` always requires
-//! `ExtAwi` to be in scope, which could be imported from `awint_ext` or be a
-//! reexport from `awint`. `cc!` may require none, one, or both depending on the
-//! input.
+//! All of the macros often require `Bits` and `InlAwi` to be in scope. This
+//! could be from `awint_core` or be a reexport from `awint`. `extawi!` and
+//! similar always requires `ExtAwi` to be in scope, which could be imported
+//! from `awint_ext` or be a reexport from `awint`. `cc!` may require none, one,
+//! or both storage types depending on the input. Macros with fallible inputs
+//! require `Option<T>` variants to be in scope.
+//!
+//! ## Inputs
+//!
+//! Macros accepting only `usize` literals: `inlawi_ty`
+//!
+//! Macros accepting only concatenations of components: `inlawi`, `extawi`
+//!
+//! Macros accepting both: `inlawi_zero`, `inlawi_umax`, `inlawi_imax`,
+//! `inlawi_imin`, `inlawi_uone`, `extawi_zero`, `extawi_umax`, `extawi_imax`,
+//! `extawi_imin`, `extawi_uone`
+//!
+//! The macros that accept both work by first trying to parse the whole input as
+//! a `usize` literal, then if the parsing fails attempt to interpret the input
+//! as concatenations of components.
 //!
 //! ## Concatenations of Components
 //!
@@ -32,7 +47,8 @@
 //! if the concatenations all have the same bitwidths. If so, the corresponding
 //! bits from the source get copied to the corresponding bits of the sinks. The
 //! construction macros additionally return the source concatenation in a
-//! storage type such as `InlAwi` or `ExtAwi`.
+//! storage type such as `InlAwi` or `ExtAwi`. The construction macros can be
+//! written without any sink concatenations.
 //!
 //! ### Literals
 //!
@@ -42,7 +58,7 @@
 //! that documentation for more details.
 //!
 //! ```
-//! use awint::{InlAwi, inlawi, inlawi_ty};
+//! use awint::prelude::*;
 //!
 //! // Here, we pass a single concatenation of 3 literals to the `inlawi!`
 //! // construction macro. constructs an `InlAwi` out of a 4 bit signed
@@ -57,17 +73,92 @@
 //!
 //! // Arbitrary dynamic ranges using things from outside the macro can also
 //! // be applied. The macros will assume the range bounds to result in `usize`.
-//!
-//! // TODO
-//! //let x = 4;
-//! //let y = 8;
-//! //let awi = ExtAwi::zero(bw(12));
-//! //assert_eq!(extawi!(0x98765_u20[y..(awi.bw() + x)]).unwrap(), extawi!(87u8));
+//! let x: usize = 8;
+//! let awi = ExtAwi::zero(bw(12));
+//! // At runtime, `x` evaluates to 8 and `x + awi.bw()` evaluates to 20
+//! assert_eq!(
+//!     extawi!(0x98765_u20[x..(x + awi.bw())]).unwrap(),
+//!     extawi!(0x987u12)
+//! );
 //! ```
 //!
 //! ### Variables
 //!
+//! Anything that has a `const_as_ref() -> &Bits` or `const_as_mut() -> &mut
+//! Bits` function can be used as a variable. Arbitrary `Bits` references
+//! (`Bits` itself has these functions, they are just hidden from the
+//! documentation), `ExtAwi`, and `InlAwi` can thus be used as variables.
 //!
+//! ```
+//! use awint::prelude::*;
+//!
+//! let mut awi = ExtAwi::zero(bw(64));
+//! let a = awi.const_as_mut();
+//! let mut b = extawi!(0i64);
+//! let mut c = <inlawi_ty!(64)>::zero();
+//! let source = inlawi!(0xc4di64);
+//!
+//! // Use the `cc` macro to copy the source concatenation `source`
+//! // to the sink concatenations `a`, `b`, and `c`.
+//! cc!(source; a; b; c).unwrap();
+//!
+//! assert_eq!(a, inlawi!(0xc4di64).const_as_ref());
+//! assert_eq!(b, extawi!(0xc4di64));
+//! assert_eq!(c, inlawi!(0xc4di64));
+//! ```
+//!
+//! Now that we have both literals and variables, we can demonstrate more
+//! complicated interactions. In case it still isn't clear what the
+//! "corresponding copying" means, here we have a source concatenation of 4
+//! components each with 3 hexadecimal digits being copied onto a sink
+//! concatenation of 3 components each with 4 hexadecimal digits.
+//!
+//! ```
+//! use awint::prelude::*;
+//!
+//! let y3 = inlawi!(0xba9u12);
+//! let y2 = inlawi!(0x876u12);
+//! let y1 = inlawi!(0x543u12);
+//! let y0 = inlawi!(0x210u12);
+//!
+//! let mut z2 = inlawi!(0u16);
+//! let mut z1 = inlawi!(0u16);
+//! let mut z0 = inlawi!(0u16);
+//!
+//! cc!(
+//!     y3, y2, y1, y0;
+//!     z2, z1, z0;
+//! ).unwrap();
+//!
+//! assert_eq!(z2, inlawi!(0xba98u16));
+//! assert_eq!(z1, inlawi!(0x7654u16));
+//! assert_eq!(z0, inlawi!(0x3210u16));
+//! ```
+//!
+//! Visually, the components in the two concatenations are being aligned like
+//! this:
+//!
+//! ```text
+//! |-----y3----|-----y2----|-----y1----|-----y0----|
+//! | b   a   9 | 8   7   6 | 5   4   3 | 2   1   0 |
+//! | b   a   9   8 | 7   6   5   4 | 3   2   1   0 |
+//! |-------z2------|-------z1------|-------z0------|
+//! ```
+//!
+//! Again, arbitrary ranges can be applied to variables
+//!
+//! ```
+//! use awint::prelude::*;
+//!
+//! let mut a = inlawi!(0x9876543210u40);
+//!
+//! let b = extawi!(
+//!     a[..=7], a[(a.bw() - 16)..];
+//!     a[(5 * 4)..(9 * 4)], a[..(2 * 4)];
+//! ).unwrap();
+//! assert_eq!(a, inlawi!(0x9109843276u40));
+//! assert_eq!(b, extawi!(0x109876_u24));
+//! ```
 //!
 //! ### Fillers
 //!
@@ -75,138 +166,245 @@
 //! literal attached. When used in sources, corresponding sink bits are left
 //! unmutated. When used in sinks, corresponding source bits have no effect.
 //!
-//! Fillers are not allowed in the source bits of the construction macros
-//! `inlawi!` and `extawi!`, because it would be ambiguous what those bits
-//! should initially be set to.
+//! When used in the source bits of specified initialization construction macros
+//! (`inlawi_zero!`, `extawi_zero`, `inlawi_umax!`, etc), fillers adopt what the
+//! corresponding bits would be normally initialized to (zero, unsigned
+//! maximum value, etc).
+//!
+//! The unspecified initialization macros `inlawi!` and `extawi!` do not allow
+//! fillers in their source concatenations, because it would be ambiguous what
+//! those bits should initially be set to.
+//!
+//! ```
+//! use awint::prelude::*;
+//!
+//! let x = inlawi!(0x1234u16);
+//! let mut y = inlawi!(0x5678u16);
+//!
+//! // note: because the range bounds cannot be negative, ranges starting
+//! // with 0 (e.x. `0..r`) can have the zero omitted and just use `..r`.
+//! cc!(
+//!     x, ..8;
+//!     ..8, y;
+//! ).unwrap();
+//!
+//! assert_eq!(y, inlawi!(0x3478u16));
+//! ```
+//!
+//! The `..8` filler in the source aligned with the two digits `0x78u8` in the
+//! `y` component in the sink, so they were left unmutated. The digits `0x34u8`
+//! in the source aligned with and overwrote `0x56u8` in the sink. The `0x12u8`
+//! aligned with the `..8` filler in the sink, so they did nothing.
 //!
 //! ### Unbounded fillers
 //!
 //! Unbounded fillers can be thought as dynamically resizing fillers that
-//! try to expand until the bitwidths of different concatenations match.
+//! try to expand until the bitwidths of different concatenations match. To
+//! understand how unbounded fillers interact, consider these three cases:
 //!
-//! // To understand how unbounded fillers interact, consider these three cases:
-//! cc!{
+//! ```
+//! use awint::prelude::*;
+//!
+//! // This first case has no fillers in the first concatenation, so the filler
+//! // in the second concatenation will expand to be of bitwidth `12 - y.bw()`.
+//!
+//! let mut y = extawi!(0u8);
+//! cc!(
 //!     0x321u12;
 //!     .., y;
-//! }
-//! cc!{
+//! ).unwrap();
+//! assert_eq!(y, extawi!(0x21u8));
+//!
+//! // Do the same call again, but with `y.bw() == 4`
+//! let mut y = extawi!(0u4);
+//! cc!(
+//!     0x321u12;
+//!     .., y;
+//! ).unwrap();
+//! assert_eq!(y, extawi!(0x1u4));
+//!
+//! // The 12 bits of the first concatenation cannot correspond with
+//! // the minimum 16 bits of the second, so this call returns `None`.
+//! let mut y = extawi!(0u16);
+//! assert!(cc!(0x321u12; .., y).is_none());
+//!
+//! // This second case ends up enforcing that `y.bw()` is at least 12. The 12
+//! // bits of the literal always get copied to the least significant 12 bits
+//! // of `y`.
+//!
+//! let mut y = extawi!(0u20);
+//! cc!(
 //!     .., 0x321u12;
 //!     y;
-//! }
-//! cc!{
+//! ).unwrap();
+//! assert_eq!(y, extawi!(0x00321u20));
+//!
+//! let mut y = extawi_umax!(32);
+//! cc!(
+//!     .., 0x321u12;
+//!     y;
+//! ).unwrap();
+//! assert_eq!(y, extawi!(0xffff_f321_u32));
+//!
+//! let mut y = extawi_umax!(8);
+//! assert!(cc!(.., 0x321u12; y).is_none());
+//!
+//! // The third case allows `y.bw()` to be any possible bitwidth. If
+//! // `y.bw() < 12` it will act like the first case, otherwise it acts like the
+//! // second case. Because there are no restrictions on concatenation widths
+//! // and there are no ranges that could index the variables out of bounds,
+//! // these calls are infallible and no `Option` is returned.
+//!
+//! let mut y = extawi!(0u20);
+//! cc!(
 //!     .., 0x321u12;
 //!     .., y;
-//! }
+//! );
+//! assert_eq!(y, extawi!(0x00321u20));
 //!
-//! The first case has no fillers in the first concatenation, so the filler in
-//! the second concatenation will expand to be of bitwidth `12 - y.bw()`.
+//! let mut y = extawi!(0u4);
+//! cc!(
+//!     .., 0x321u12;
+//!     .., y;
+//! );
+//! assert_eq!(y, extawi!(0x1u4));
 //!
-//! TODO
+//! // Unbounded fillers are also allowed in less significant positions, in
+//! // which case alignment of the components occurs starting from the most
+//! // significant bit.
 //!
-//! Note that bitwidths cannot be negative, so if `y.bw() > 12` the macro will
-//! return `None`
-//!
-//! The second case ends up enforcing that `y.bw()` is at least 12. The 12 bits
-//! of the literal always get copied to the least significant 12 bits of `y`.
-//!
-//! The third case allows `y.bw()` to be anything. If `y.bw() < 12` it will act
-//! like the first case, otherwise it acts like the second case.
-//!
-//! Unbounded fillers are also allowed in less significant positions, in
-//! which case alignment of the components occurs starting from the most
-//! significant bit.
-//! cc!{
+//! let mut y = extawi!(0u20);
+//! cc!(
 //!     0x321u12, ..;
 //!     y, ..;
-//! }
+//! );
+//! assert_eq!(y, extawi!(0x32100u20));
 //!
-//! Concatenations are even smart enough to do this:
-//! cc!(0x3u4, .., 0x21u8; y)
-//! cc!(0x3u4, .., 0x21u8; y)
+//! // The macros are even smart enough to do this:
 //!
-//! Note again that filler bitwidths cannot be negative, and so this will cause
-//! an error because we are trying to compress the 4 bit and 8 bit components
-//! into a less than 12 bit space.
-//! //cc!(0x3u4, .., 0x21u8; 0..1)
+//! let mut y = extawi_umax!(24);
+//! cc!(0x3u4, .., 0x21u8; y).unwrap();
+//! assert_eq!(y, extawi!(0x3fff21u24));
+//!
+//! // Note again that filler widths cannot be negative, and so this will cause
+//! // an error because we are trying to compress the 4 bit and 8 bit components
+//! // into a less than 12 bit space.
+//!
+//! let mut y = extawi!(0u8);
+//! assert!(cc!(0x3u4, .., 0x21u8; y).is_none());
+//! ```
 //!
 //! Only one unbounded filler per concatenation is allowed. Consider this case,
-//! in which it would be ambiguous about where the middle component
-//! should be aligned.
-//! cc!{
+//! in which it would be ambiguous about how the middle component should be
+//! aligned.
+//!
+//! ```text
+//! cc!(
 //!     .., 0x321u12, ..;
 //!     y;
-//! }
+//! ); // Error: there is more than one unbounded filler
+//! ```
 //!
-//! // Additionally, multiple concatenations with unbounded fillers must all
-//! have their fillers aligned to the same end or have a concatenation without
+//! Additionally, multiple concatenations with unbounded fillers must all have
+//! their fillers aligned to the same end or have a concatenation without
 //! an unbounded filler.
+//!
+//! ```text
 //! // all allowed:
-//! cc!{
+//! cc!(
 //!     .., x;
 //!     .., y;
 //!     .., z;
-//! }
-//! cc!{
+//! );
+//! cc!(
 //!     x, ..;
 //!     y, ..;
 //!     z, ..;
-//! }
-//! cc!{
+//! );
+//! cc!(
 //!     .., x;
 //!     y, .., z;
 //!     a, ..;
-//!     b;
-//! }
-//! // disallowed, because the overlaps are ambiguous
-//! cc!{
+//!     var;
+//! );
+//! // disallowed, because the overlaps are ambiguous:
+//! cc!(
 //!     .., x;
 //!     y, ..;
-//! }
-//! cc!{
+//! );
+//! cc!(
 //!     a, .., x;
 //!     b, .., y;
 //!     c, .., z;
-//! }
+//! );
+//! ```
 //!
-//! // It is technically possible to infer that ambiguous overlap could not
-//! occur in this case, but this is still disallowed by the macro, and it is
-//! more readable to just split the macro into two for both alignments. cc!{
+//! It is technically possible to infer that ambiguous overlap could not occur
+//! in this case, but this is still disallowed by the macro, and it is more
+//! readable to just split the macro into two for both alignments.
+//!
+//! ```text
+//! cc!(
 //!     0x4567u16, .., 0x123u12;
 //!     y0[..4], .., y1[..4];
-//! }
-//! // the above macro is equivalent to these two macros combined:
-//! cc!{
+//! );
+//! // the above macro is semantically equivalent to these two macros combined:
+//! cc!(
 //!     0x4567u16, ..;
 //!     y0[..4], ..;
-//! }
-//! cc!{
+//! );
+//! cc!(
 //!     .., 0x123u12;
 //!     .., y1[..4];
-//! }
+//! );
+//! ```
 //!
 //! ### Other Notes
 //!
-//! - Because bitwidths cannot be zero any range "0..r" is equivalent to "..r"
-//!   in the macros
-//! - No warnings about unused `Option<()>`s are produced from procedural
-//!   macros. If the `cc!` macro is called without appending `.unwrap()` or
-//!   otherwise handling the `Option`, it will silently do nothing if `None` is
-//!   returned.
+//! - In general, the macros use the `Bits::field` operation to copy different
+//!   bitfields independently to a buffer, then field from the buffer to the
+//!   sink components. When concatenations take the form `variable or constant
+//!   with full range; var_1[..]; var_2[..]; var_3[..], ...`, the macros use
+//!   `Bits::copy_assign` to directly copy without an intermediate buffer. This
+//!   copy assigning mode cannot copy between `Bits` references that point to
+//!   the same underlying storage, because it results in aliasing. Thus, trying
+//!   to do something like `cc!(x; x)` results in the borrow checker complaining
+//!   about macro generated variables within the macro being borrowed as both
+//!   immutable and mutable. `cc!(x; x)` is semantically a no-op anyway, so it
+//!   should not be used.
+//! - The code generated by the macros takes special care to avoid panicking or
+//!   overflowing. If a range is reversed (the start value is larger than the
+//!   end value), the macro will will return a compile time error or `None` at
+//!   runtime before trying to calculate something like `end - start`. The only
+//!   way to overflow is to exceed `usize::MAX` in concatenation widths, or the
+//!   individual arbitrary expressions entered into the macro overflow (e.x.
+//!   `..(usize::MAX + 1)`).
+//! - Under some conditions, warnings about unused `Option<()>`s are not
+//!   produced from procedural macros. If a fallible macro is called without
+//!   appending `.unwrap()` or otherwise handling the `Option`, it will silently
+//!   do nothing if `None` is returned.
 //! - The macros have to be unsanitized to support using arbitrary variables and
-//!   ranges. A best effort with plenty of parenthesis scoping is made so that
-//!   only the most obviously bad inputs (such as multiple unmatched parenthesis
-//!   and inputing things like "unsafe") could cause compiling broken checks or
-//!   errors that extend beyond the scope of the macro.
+//!   ranges. It is still very hard to escape the scoping by some kind of
+//!   injection, because all arbitrary values are individually assigned to a
+//!   `let _: usize = ...;` statement, all variable names are individually
+//!   referenced like `let _: &Bits = (...).const_as_ref();`, and all semicolons
+//!   are eliminated early in the parsing process. Only obviously bad inputs
+//!   using things such as multiple unmatched parenthesis, other specially
+//!   designed macros, or fake structs could cause compiling broken checks or
+//!   problems that extend beyond the immediate scope of the macro.
+//! - In case you want to see the code generated by a macro, you can use the
+//!   `awint_macro_internals::code_gen` function and call it with the same
+//!   arguments as the respective macro does in `awint_macros/src/lib.rs`. Be
+//!   aware that this function will always be unstable and subject to change.
 
 #![feature(proc_macro_hygiene)]
-#![allow(clippy::needless_range_loop)]
 
 extern crate alloc;
 use alloc::{format, string::ToString};
 
 extern crate proc_macro;
-use awint_ext::internals::code_gen;
 use awint_internals::*;
+use awint_macro_internals::code_gen;
 use proc_macro::TokenStream;
 
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
@@ -231,69 +429,77 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 // C4D
 /// Copy Corresponding Concatenations of Components Dynamically. Takes
 /// concatenations of components as an input, and copies bits of the source to
-/// corresponding bits of the sinks. Returns an `Option<()>`, and returns `None`
-/// if component indexes are out of bounds or if concatenation bitwidths
-/// mismatch. Performs allocation in general, but will try to avoid allocation
-/// if ranges are all static or if concatenations are all of single components.
-/// See the documentation of `awint_macros` for more.
+/// corresponding bits of the sinks. Returns nothing if the operation is
+/// infallible, otherwise returns `Option<()>`. Returns `None` if component
+/// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
+/// allocation in general, but will try to avoid allocation if the common
+/// bitwdith can be determined statically, or if concatenations are all of
+/// single components. See the documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn cc(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, false) {
+    match code_gen(&input.to_string(), false, "zero", false, false) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),
     }
 }
 
 /// Takes concatenations of components as an input, and copies bits of the
-/// source to corresponding bits of the sinks. The source is also used to
+/// source to corresponding bits of the sinks. The source value is also used to
 /// construct an `InlAwi`. The common width must be statically determinable by
 /// the macro (e.g. at least one concatenation must have only literal ranges),
 /// and the source cannot contain fillers. Returns a plain `InlAwi` if only
-/// literals with literal ranges are used, otherwise returns `Option<InlAwi>`.
-/// Returns `None` if component indexes are out of range or if concatenation
-/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+/// literals with statically determinable ranges are used, otherwise returns
+/// `Option<InlAwi>`. Returns `None` if component indexes are invalid or if
+/// concatenation bitwidths mismatch. See the documentation of `awint_macros`
+/// for more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), true, true) {
+    match code_gen(&input.to_string(), false, "zero", true, true) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),
     }
 }
 
 /// Takes concatenations of components as an input, and copies bits of the
-/// source to corresponding bits of the sinks. The source is also used to
+/// source to corresponding bits of the sinks. The source value is also used to
 /// construct an `ExtAwi`. The common width must be dynamically determinable by
 /// the macro (e.g. not all concatenations can have unbounded fillers), and the
 /// source cannot contain fillers. Returns a plain `ExtAwi` if only literals
-/// with literal ranges are used, otherwise returns `Option<ExtAwi>`. Returns
-/// `None` if component indexes are out of range or if concatenation
-/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+/// with statically determinable ranges are used, otherwise returns
+/// `Option<ExtAwi>`. Returns `None` if component indexes are invalid or if
+/// concatenation bitwidths mismatch. See the documentation of `awint_macros`
+/// for more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, true) {
+    match code_gen(&input.to_string(), false, "zero", false, true) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),
     }
 }
+
+// TODO `cc_zero!`? would help cc!{.., a; y};
 
 macro_rules! inlawi_construction {
     ($($fn_name:ident, $inlawi_fn:expr, $doc:expr);*;) => {
         $(
+            #[doc = "The same as `inlawi!` but with"]
             #[doc = $doc]
-            #[doc = "construction of an `InlAwi`."]
-            #[doc = "The input should be a `usize` literal indicating bitwidth."]
+            #[doc = "specified initialization."]
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
-                let bw = input
-                    .to_string()
-                    .parse::<usize>()
-                    .expect("Input should parse as a `usize`");
-                if bw == 0 {
-                    panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
+                if let Ok(bw) = input.to_string().parse::<usize>() {
+                    if bw == 0 {
+                        panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
+                    }
+                    format!("InlAwi::<{}, {}>::{}()", bw, raw_digits(bw), $inlawi_fn)
+                        .parse()
+                        .unwrap()
+                } else {
+                    match code_gen(&input.to_string(), true, $inlawi_fn, true, true) {
+                        Ok(s) => s.parse().unwrap(),
+                        Err(s) => panic!("{}", s),
+                    }
                 }
-                format!("InlAwi::<{}, {}>::{}()", bw, raw_digits(bw), $inlawi_fn)
-                    .parse()
-                    .unwrap()
             }
         )*
     };
@@ -305,4 +511,38 @@ inlawi_construction!(
     inlawi_imax, "imax", "Signed-maximum-value";
     inlawi_imin, "imin", "Signed-minimum-value";
     inlawi_uone, "uone", "Unsigned-one-value";
+);
+
+macro_rules! extawi_construction {
+    ($($fn_name:ident, $extawi_fn:expr, $doc:expr);*;) => {
+        $(
+            #[doc = "The same as `extawi!` but with"]
+            #[doc = $doc]
+            #[doc = "specified initialization."]
+            #[proc_macro]
+            pub fn $fn_name(input: TokenStream) -> TokenStream {
+                if let Ok(bw) = input.to_string().parse::<usize>() {
+                    if bw == 0 {
+                        panic!("Tried to construct an `ExtAwi` with an invalid bitwidth of 0");
+                    }
+                    format!("ExtAwi::panicking_{}({})", $extawi_fn, bw)
+                        .parse()
+                        .unwrap()
+                } else {
+                    match code_gen(&input.to_string(), true, $extawi_fn, false, true) {
+                        Ok(s) => s.parse().unwrap(),
+                        Err(s) => panic!("{}", s),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+extawi_construction!(
+    extawi_zero, "zero", "Zero-value";
+    extawi_umax, "umax", "Unsigned-maximum-value";
+    extawi_imax, "imax", "Signed-maximum-value";
+    extawi_imin, "imin", "Signed-minimum-value";
+    extawi_uone, "uone", "Unsigned-one-value";
 );

@@ -19,6 +19,7 @@ awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features =
 awint_macros = { version = "0.1.0-pre.0", path = "../awint_macros" }
 
 [dev-dependencies]
+awint_macro_internals = { version = "0.1.0-pre.0", path = "../awint_macro_internals" }
 rand_xoshiro = "0.6"
 ron = "0.6"
 

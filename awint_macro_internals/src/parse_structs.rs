@@ -1,22 +1,11 @@
-use alloc::{borrow::ToOwned, format, string::String, vec::Vec};
-use core::{convert::TryInto, num::NonZeroUsize};
+use std::{convert::TryInto, num::NonZeroUsize};
 
 use awint_core::Bits;
-
-use crate::ExtAwi;
-
-/// Name used by the return construct
-pub(crate) const RET_AWI: &str = "__ret_awi";
-/// Prefix used for constants
-pub(crate) const CONSTANT: &str = "__constant";
-/// Name used for the common concatenation bitwidth
-pub(crate) const BW: &str = "__bw";
-/// Name used for the field `to` offset
-pub(crate) const SHL: &str = "__shl";
+use awint_ext::ExtAwi;
 
 /// Usize and/or String Bound. If `s.is_empty()`, then there is no arbitrary
 /// string in the bound and the base value is 0. `x` is added on to the value.
-#[derive(Debug, Clone)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub(crate) struct Usb {
     pub s: String,
     pub x: i128,
@@ -41,7 +30,8 @@ impl Usb {
         }
     }
 
-    pub fn attempt_constify(&mut self) {
+    /// Tries to parse the `s` part of `self` as an integer and adds it to `x`.
+    pub fn attempt_simplify(&mut self) {
         if !self.s.is_empty() {
             if let Ok(x) = self.s.parse::<i128>() {
                 self.s.clear();
@@ -87,14 +77,24 @@ impl Usb {
         if self.s.is_empty() {
             format!("{}", self.x)
         } else if self.x == 0 {
-            format!("{}", self.s)
+            self.s.clone()
+        } else {
+            format!("({} + {})", self.s, self.x)
+        }
+    }
+
+    pub fn lowered_value(&self) -> String {
+        if self.s.is_empty() {
+            format!("{}", self.x)
+        } else if self.x == 0 {
+            self.s.clone()
         } else {
             format!("({} + {})", self.s, self.x)
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub(crate) struct Usbr {
     pub start: Option<Usb>,
     pub end: Option<Usb>,
@@ -147,19 +147,21 @@ impl Usbr {
         self.static_range().map(|r| r.1.checked_sub(r.0).unwrap())
     }
 
-    pub fn attempt_constify_general(&mut self) {
+    /// General purpose constification
+    pub fn attempt_simplify_general(&mut self) {
         if let Some(ref mut start) = self.start {
-            start.attempt_constify();
+            start.attempt_simplify();
         }
         if let Some(ref mut end) = self.end {
-            end.attempt_constify();
+            end.attempt_simplify();
         }
     }
 
-    /// Returns an error if the function statically finds the range to be out of
+    /// Attempt to simplify the range for literal components. Returns an error
+    /// if the function statically finds the range to be out of
     /// bounds of `bits`
-    pub fn attempt_constify_literal(&mut self, bits: &Bits) -> Result<(), String> {
-        self.attempt_constify_general();
+    pub fn attempt_simplify_literal(&mut self, bits: &Bits) -> Result<(), String> {
+        self.attempt_simplify_general();
         if let Some(ref start) = self.start {
             if let Some(x) = start.static_val() {
                 if x >= bits.bw() {
@@ -191,14 +193,18 @@ impl Usbr {
         self.check_fits_usize_range()
     }
 
-    pub fn attempt_constify_filler_and_variable(&mut self) -> Result<(), String> {
-        self.attempt_constify_general();
+    /// Attempt to simplify the range for filler and variable components.
+    /// Returns an error if ranges are statically determined to be invalid
+    pub fn attempt_simplify_filler_and_variable(&mut self) -> Result<(), String> {
+        self.attempt_simplify_general();
         if self.start.is_none() {
             self.start = Some(Usb::zero());
         }
         self.check_fits_usize_range()
     }
 
+    /// Checks statically if `self` is a valid `usize` range. Returns an error
+    /// if the range is reversed or has zero bitwidth.
     pub fn check_fits_usize_range(&self) -> Result<(), String> {
         if let Some(ref start) = self.start {
             start.check_fits_usize()?;
@@ -242,25 +248,48 @@ impl Component {
     }
 
     pub fn is_static_literal(&self) -> bool {
-        if let Literal(_) = self.component_type {
+        if let Literal(..) = self.component_type {
             self.range.static_range().is_some()
         } else {
             false
         }
     }
 
+    /// Returns if the range on this component is "full". Unbounded fillers
+    /// return false.
+    pub fn has_full_range(&self) -> bool {
+        if let Some(ref start) = self.range.start {
+            if !start.is_guaranteed_zero() {
+                return false
+            }
+        }
+        match self.component_type {
+            Literal(ref lit) => {
+                if let Some(ref end) = self.range.end {
+                    if !end.s.is_empty() || (end.x != (lit.bw() as i128)) {
+                        return false
+                    }
+                }
+                true
+            }
+            Variable(_) => self.range.end.is_none(),
+            Filler => self.range.end.is_some(),
+        }
+    }
+
     /// An error is returned only if some statically determined bound is
-    /// violated, not if the constify attempt fails
-    pub fn attempt_constify(&mut self) -> Result<(), String> {
+    /// violated, not if the simplify attempt fails
+    pub fn attempt_simplify(&mut self) -> Result<(), String> {
         if let Literal(ref mut lit) = self.component_type.clone() {
             // note: `lit` here is a reference to a clone
-            self.range.attempt_constify_literal(lit.const_as_ref())?;
+            self.range.attempt_simplify_literal(lit.const_as_ref())?;
             // static ranges on literals have been verified, attempt to truncate
             if let Some(x) = self.range.end.clone().map(|x| x.static_val()).flatten() {
                 let mut tmp = ExtAwi::zero(NonZeroUsize::new(x).unwrap());
                 tmp[..].zero_resize_assign(&lit[..]);
                 *lit = tmp;
             }
+            // attempt to truncate bits below the start
             if let Some(x) = self.range.start.clone().map(|x| x.static_val()).flatten() {
                 let w = lit.bw() - x;
                 let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
@@ -271,130 +300,9 @@ impl Component {
             }
             self.component_type = Literal(lit.clone());
         } else {
-            self.range.attempt_constify_filler_and_variable()?;
+            self.range.attempt_simplify_filler_and_variable()?;
         }
         Ok(())
-    }
-
-    /// Panics if a name cannot be found for `self`. `lit_id` is the id for a
-    /// literal.
-    pub fn code_gen_name(&self, lit_id: Option<usize>) -> String {
-        match self.component_type {
-            Literal(_) => format!("{}_{}", CONSTANT, lit_id.unwrap()),
-            Variable(ref var) => var.clone(),
-            Filler => unreachable!(),
-        }
-    }
-
-    /// The name associated with a potential literal is `literal_name`. This is
-    /// ignored if the component has all static bounds or is not a literal.
-    pub fn code_gen_bw(&self, literal_name: Option<String>) -> Option<String> {
-        if let Some(w) = self.range.static_width() {
-            Some(format!("{}", w))
-        } else {
-            let name = match self.component_type {
-                Literal(_) => literal_name,
-                Variable(ref var) => Some(var.clone()),
-                Filler => None,
-            };
-            // simple 0 optimization
-            let start = if let Some(ref start) = self.range.start {
-                if start.is_guaranteed_zero() {
-                    None
-                } else {
-                    Some(start.clone())
-                }
-            } else {
-                None
-            };
-            let end = if let Some(ref end) = self.range.end {
-                if end.is_guaranteed_zero() {
-                    unreachable!() // TODO I think the static checker doesn't
-                                   // catch this
-                } else {
-                    Some(end.clone())
-                }
-            } else {
-                None
-            };
-            match (start, end) {
-                (Some(start), Some(end)) => Some(format!(
-                    "({} - {})",
-                    end.code_gen_value(),
-                    start.code_gen_value()
-                )),
-                (Some(start), None) => {
-                    name.map(|name| format!("({}.bw() - {})", name, start.code_gen_value()))
-                }
-                (None, Some(end)) => {
-                    name.map(|name| format!("({} - {}.bw())", end.code_gen_value(), name))
-                }
-                (None, None) => name.map(|name| format!("{}.bw()", name)),
-            }
-        }
-    }
-
-    // start >= x.bw() || end > x.bw() || start > end
-    pub fn code_gen_bounds_check(
-        &self,
-        literal_name: Option<String>,
-    ) -> Result<Option<String>, ()> {
-        if let Filler = self.component_type {
-            match (self.range.start.clone(), self.range.end.clone()) {
-                (Some(start), Some(end)) => Ok(Some(format!(
-                    "({} > {})",
-                    start.code_gen_value(),
-                    end.code_gen_value()
-                ))),
-                _ => Ok(None),
-            }
-        } else {
-            let name = match self.component_type {
-                Literal(_) => literal_name.unwrap(),
-                Variable(ref var) => var.clone(),
-                Filler => unreachable!(),
-            };
-            // simple 0 optimization
-            let start = if let Some(ref start) = self.range.start {
-                if start.is_guaranteed_zero() {
-                    None
-                } else {
-                    Some(start.clone())
-                }
-            } else {
-                None
-            };
-            let end = if let Some(ref end) = self.range.end {
-                if end.is_guaranteed_zero() {
-                    unreachable!() // TODO I think the static checker doesn't
-                                   // catch this
-                } else {
-                    Some(end.clone())
-                }
-            } else {
-                None
-            };
-            match (start, end) {
-                (Some(start), Some(end)) => Ok(Some(format!(
-                    "({} >= {}.bw()) || ({} > {}.bw()) || ({} > {})",
-                    start.code_gen_value(),
-                    name,
-                    end.code_gen_value(),
-                    name,
-                    start.code_gen_value(),
-                    end.code_gen_value(),
-                ))),
-                (Some(start), None) => Ok(Some(format!(
-                    "({} >= {}.bw())",
-                    start.code_gen_value(),
-                    name,
-                ))),
-                (None, Some(end)) => {
-                    Ok(Some(format!("({} > {}.bw())", end.code_gen_value(), name,)))
-                }
-                _ => Ok(None),
-            }
-        }
     }
 }
 

@@ -6,4 +6,5 @@ members = [
     "awint_ext",
     "awint_macros",
     "awint_internals",
+    "awint_macro_internals",
 ]

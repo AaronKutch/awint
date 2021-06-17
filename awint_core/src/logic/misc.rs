@@ -111,7 +111,7 @@ impl Bits {
         // (`tmp`) of the bitfield from `rhs` and then copy again to its final alignment
 
         // Safety: we test this vigorously in `awint/tests/fuzz/multi_bw.rs` and
-        // `awint/tests/misc.rs`
+        // `awint/tests/misc.rs`. There are debug asserts for out of bounds.
         unsafe {
             if (bw_digits != 0) && (from_bits == 0) && (to_bits == 0) {
                 const_for!(i in {0..bw_digits} {

@@ -45,5 +45,5 @@ pub use data::{Bits, InlAwi};
 mod logic;
 
 pub mod prelude {
-    pub use crate::{bw, Bits, InlAwi, SerdeError};
+    pub use crate::{bw, Bits, InlAwi};
 }

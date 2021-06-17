@@ -1,15 +1,8 @@
-use alloc::{
-    borrow::ToOwned,
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
-use core::num::NonZeroUsize;
+use std::num::NonZeroUsize;
 
-use crate::{
-    internals::structs::{ComponentType::*, *},
-    ExtAwi,
-};
+use awint_ext::ExtAwi;
+
+use crate::{ComponentType::*, *};
 
 fn remove_whitespace(s: &str) -> String {
     s.chars().filter(|c| !c.is_whitespace()).collect()
@@ -55,40 +48,28 @@ fn parse_range(s: &str) -> Result<Usbr, Option<String>> {
     }
 }
 
-/// The boolean in the error specifies if the input is empty
-fn parse_component(component: &str) -> Result<Component, (String, bool)> {
-    // TODO we remove whitespace because a space is inserted between negatives "-"
-    // and their literals. We should use `syn` to be more strict about whitespace.
-    // We should also use `syn` to be more flexible such as allowing comments.
-    let nw = remove_whitespace(component);
-    if !nw.is_ascii() {
-        return Err(("is not ascii".to_owned(), false))
-    }
-    let nw: Vec<u8> = nw.bytes().collect();
-    if nw.is_empty() {
-        return Err(("is empty or only whitespace".to_owned(), true))
-    }
+fn parse_component(nw: &[u8]) -> Result<Component, String> {
     // if the for loop does not find an index, the name defaults to the whole `nw`
     // and the range is unbounded
-    let mut name = String::from_utf8(nw.clone()).unwrap();
+    let mut name = String::from_utf8(nw.to_owned()).unwrap();
     let mut index: Option<Usbr> = None;
     for j0 in 0..nw.len() {
         // see if there is an index
         if nw[j0] == b'[' {
             if nw[nw.len() - 1] != b']' {
-                return Err(("has an opening '[' but not a closing ']'".to_owned(), false))
+                return Err("has an opening '[' but not a closing ']'".to_owned())
             }
             name = String::from_utf8(Vec::<u8>::from(&nw[0..j0])).unwrap();
             // get pattern split ability back
             let nw = String::from_utf8(Vec::<u8>::from(&nw[(j0 + 1)..(nw.len() - 1)])).unwrap();
             if nw.as_bytes().is_empty() {
-                return Err(("has an empty index".to_owned(), false))
+                return Err("has an empty index".to_owned())
             }
             match parse_range(&nw) {
                 Ok(range) => {
                     index = Some(range);
                 }
-                Err(Some(e)) => return Err((e, false)),
+                Err(Some(e)) => return Err(e),
                 Err(None) => {
                     // with no detected range, we assume the index is getting a single bit
                     index = Some(Usbr::single_bit(&nw));
@@ -106,7 +87,7 @@ fn parse_component(component: &str) -> Result<Component, (String, bool)> {
                 name.clear();
                 filler_range
             }
-            Err(Some(e)) => return Err((e, false)),
+            Err(Some(e)) => return Err(e),
             Err(None) => Usbr::unbounded(),
         },
     };
@@ -116,13 +97,10 @@ fn parse_component(component: &str) -> Result<Component, (String, bool)> {
             match name.parse::<ExtAwi>() {
                 Ok(awi) => Component::new(Literal(awi), index),
                 Err(e) => {
-                    return Err((
-                        format!(
-                            "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` which \
-                             returned SerdeError::{:?}",
-                            name, e
-                        ),
-                        false,
+                    return Err(format!(
+                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` which returned \
+                         SerdeError::{:?}",
+                        name, e
                     ))
                 }
             }
@@ -136,21 +114,21 @@ fn parse_component(component: &str) -> Result<Component, (String, bool)> {
             Component::new(Filler, index)
         }
     };
-    if let Err(e) = component.attempt_constify() {
-        return Err((e, false))
+    if let Err(e) = component.attempt_simplify() {
+        return Err(e)
     }
     Ok(component)
 }
 
-/// The boolean in the error specifies if the input is empty
 pub(crate) fn parse_concatenation(
     concatenation: &str,
     is_sink: bool,
-) -> Result<Concatenation, (String, bool)> {
+    id: &mut usize,
+) -> Result<Concatenation, String> {
     let input_components = concatenation
         .to_string()
         .split(',')
-        .rev()
+        .rev() // Note the reversal here for big endianness
         .map(|s| s.to_owned())
         .collect::<Vec<String>>();
     let mut components: Vec<Component> = Vec::new();
@@ -160,27 +138,36 @@ pub(crate) fn parse_concatenation(
     let mut total_bw: Option<usize> = Some(0);
     let mut unbounded_filler = false;
     for (i, component) in input_components.iter().enumerate() {
-        match parse_component(component) {
+        // TODO we remove whitespace because a space is inserted between negatives "-"
+        // and their literals. We should use `syn` to be more strict about whitespace.
+        // We should also use `syn` to be more flexible such as allowing comments.
+        let nw = remove_whitespace(component);
+        if !nw.is_ascii() {
+            return Err(format!("component {} (\"{}\"): is not ascii", i, component))
+        }
+        let nw: Vec<u8> = nw.bytes().collect();
+        if nw.is_empty() {
+            if i == 0 {
+                continue
+            } else {
+                return Err(format!("component {}: is empty or only whitespace", i))
+            }
+        }
+        match parse_component(&nw) {
             Ok(c) => {
                 match c.component_type {
                     Filler => {
                         if c.range.end.is_none() {
                             if unbounded_filler {
-                                return Err((
-                                    "there is more than one unbounded filler".to_owned(),
-                                    false,
-                                ))
+                                return Err("there is more than one unbounded filler".to_owned())
                             } else {
                                 unbounded_filler = true;
                             }
                         }
                     }
-                    Literal(_) => {
+                    Literal(..) => {
                         if is_sink {
-                            return Err((
-                                "sink concatenations cannot have literals".to_owned(),
-                                false,
-                            ))
+                            return Err("sink concatenations cannot have literals".to_owned())
                         }
                     }
                     _ => (),
@@ -194,23 +181,14 @@ pub(crate) fn parse_concatenation(
                 }
                 components.push(c);
             }
-            Err((e, empty)) => {
-                if !empty || (i != input_components.len()) {
-                    return Err((format!("component {} (\"{}\"): {}", i, component, e), false))
-                }
-                // else allow trailing commas
-            }
+            Err(e) => return Err(format!("component {} (\"{}\"): {}", i, component, e)),
         }
+        *id += 1;
     }
     let total_bw = if let Some(total_bw) = total_bw {
         match NonZeroUsize::new(total_bw) {
             Some(x) => Some(x),
-            None => {
-                return Err((
-                    "determined statically that this has zero bitwidth".to_owned(),
-                    false,
-                ))
-            }
+            None => return Err("determined statically that this has zero bitwidth".to_owned()),
         }
     } else {
         None
@@ -251,21 +229,32 @@ pub(crate) fn parse_concatenation(
 }
 
 pub(crate) fn parse_concats(input: &str) -> Result<Vec<Concatenation>, String> {
+    let tmp = remove_whitespace(input);
+    if tmp.is_empty() {
+        return Err("input is empty or only whitespace".to_owned())
+    }
     let concats: Vec<String> = input.to_string().split(';').map(|s| s.to_owned()).collect();
     let mut output = Vec::new();
+    let mut id = 0;
     for (i, concatenation) in concats.iter().enumerate() {
-        match parse_concatenation(concatenation, i != 0) {
+        let tmp = remove_whitespace(concatenation);
+        if tmp.is_empty() {
+            if i == (concats.len() - 1) {
+                // allow trailing semicolon
+                continue
+            } else {
+                return Err(format!("concatenation {}: is empty or only whitespace", i))
+            }
+        }
+        match parse_concatenation(concatenation, i != 0, &mut id) {
             Ok(v) => {
                 output.push(v);
             }
-            Err((e, is_empty)) => {
-                if !is_empty || (i != (concats.len() - 1)) {
-                    return Err(format!(
-                        "concatenation {} (\"{}\"): {}",
-                        i, concatenation, e
-                    ))
-                }
-                // else allow trailing semicolons
+            Err(e) => {
+                return Err(format!(
+                    "concatenation {} (\"{}\"): {}",
+                    i, concatenation, e
+                ))
             }
         }
     }
