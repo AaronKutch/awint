@@ -113,7 +113,7 @@ fn multi_bw_inner(
         } else {
             0
         };
-        let string = awint::bits_to_string_radix(
+        let string = ExtAwi::bits_to_string_radix(
             x0bw0,
             sign.is_some(),
             radix,

@@ -35,8 +35,8 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
 
 /// # `const` string representation conversion
 ///
-/// note: see higher level allocating functions from the `awint_ext` crate for
-/// more.
+/// Note: the `awint_ext` crate has higher level allocating functions
+/// `ExtAwi::bits_to_string_radix` and `ExtAwi::bits_to_vec_radix`
 impl Bits {
     /// A version of [Bits::bytes_radix_assign] optimized for power of two
     /// radixes

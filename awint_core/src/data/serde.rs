@@ -16,8 +16,8 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// it serializes into a struct named "InlAwi" with two fields "bw" and
     /// "bits". "bw" is the bitwidth in decimal, and "bits" are an unsigned
     /// hexadecimal string equivalent to what would be generated from
-    /// `bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)` from
-    /// the `awint_ext` crate. No allocation happens on `awint`'s side.
+    /// `ExtAwi::bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)`
+    /// from the `awint_ext` crate. No allocation happens on `awint`'s side.
     ///
     /// ```
     /// // Example using the `ron` crate. Note that it

@@ -1,6 +1,6 @@
 use core::cmp;
 
-use awint::Bits;
+use awint::{Bits, ExtAwi};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
@@ -423,7 +423,7 @@ fn identities_inner(
         } else {
             0
         };
-        let string = awint::bits_to_vec_radix(
+        let string = ExtAwi::bits_to_vec_radix(
             x0,
             sign.is_some(),
             radix,

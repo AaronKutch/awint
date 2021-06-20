@@ -28,8 +28,7 @@ mod serde;
 mod strings;
 
 pub use extawi::ExtAwi;
-pub use strings::{bits_to_string_radix, bits_to_vec_radix};
 
 pub mod prelude {
-    pub use crate::{bits_to_string_radix, bits_to_vec_radix, ExtAwi};
+    pub use crate::ExtAwi;
 }
