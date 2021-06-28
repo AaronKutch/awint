@@ -7,4 +7,5 @@ members = [
     "awint_macros",
     "awint_internals",
     "awint_macro_internals",
+    "testcrate",
 ]

@@ -15,7 +15,7 @@ as arguments to that function.
 flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within `awint_core` under a
 feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
 (which requires `ExtAwi`), the flag would be activated for the common compilation of `awint_core`.
-The `awint_macros` crate is a proc-macro crate with several utilities to construct `InlAwi`s.
+The `awint_macros` crate is a proc-macro crate with several construction utilities.
 The `awint_dag` crate is a WIP.
 The `awint` crate compiles these interfaces together and enables or disables different parts of the
 system depending on these feature flags:
@@ -35,10 +35,11 @@ prioritized. Please open an issue or PR if you would like these implemented fast
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track
    of leading zeros and ones to speed up operations on very large bitwidth integers with small
    numerical value.
-- Add a `const` Karatsuba algorithm to multiplication if possible, or add a `fast_mul` free function
-  to `awint_ext`
+- Add a `const` Karatsuba algorithm to multiplication if possible, or add a `fast_mul` function to
+   `awint_ext`
 - Add custom allocator parameter to `ExtAwi`
 - Rewrite the parsing behind `awint_macros` to use `syn` (so that things like comments can be
-  inserted into the macros) and make a smarter code generation function.
-- Do something about the `Display` impls. The `Debug` impls are probably final, but the `Display`
-  impl needs more functionality. Some of the serialization trait impls also need work.
+   inserted into the macros) and make a smarter code generation function.
+- Certain formatting and serialization trait impls need more work.
+- Make the crates compile on stable. Almost every unstable feature used by these crates is some kind
+   of `const` feature, and will hopefully be stabilized soon.

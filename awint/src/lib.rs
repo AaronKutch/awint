@@ -15,10 +15,9 @@ pub use awint_macros::*;
 pub mod prelude {
     pub use awint_macros::*;
 
-    pub use crate::{bw, cc, Bits, InlAwi};
-
     #[cfg(feature = "alloc")]
     pub use crate::ExtAwi;
+    pub use crate::{bw, cc, Bits, InlAwi};
 }
 
 #[cfg(feature = "awint_dag")]

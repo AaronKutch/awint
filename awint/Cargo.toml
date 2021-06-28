@@ -10,18 +10,12 @@ documentation = "https://docs.rs/awint"
 description = "Arbitrary width integers"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
-include = ["src/", "LICENSE-*", "README.md"]
 
 [dependencies]
 awint_core = { version = "0.1.0-pre.0", path = "../awint_core", default-features = false }
 awint_dag = { version = "0.1.0-pre.0", path = "../awint_dag", default-features = false, optional = true }
 awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features = false, optional = true }
 awint_macros = { version = "0.1.0-pre.0", path = "../awint_macros" }
-
-[dev-dependencies]
-awint_macro_internals = { version = "0.1.0-pre.0", path = "../awint_macro_internals" }
-rand_xoshiro = "0.6"
-ron = "0.6"
 
 # note: running the tests requires `--all-features`
 [features]
