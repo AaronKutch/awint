@@ -67,8 +67,7 @@ impl Bits {
         Some(())
     }
 
-    /// Note: this panics if `N == 0`, but a concatenation cannot contain zero
-    /// components
+    /// this panics if `N == 0`
     #[doc(hidden)]
     #[inline]
     pub const fn unstable_max<const N: usize>(x: [usize; N]) -> usize {

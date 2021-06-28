@@ -37,9 +37,12 @@ prioritized. Please open an issue or PR if you would like these implemented fast
    numerical value.
 - Add a `const` Karatsuba algorithm to multiplication if possible, or add a `fast_mul` function to
    `awint_ext`
+- Better string serialization and deserialization performance. Most basic numerical functions are
+   well optimized, but the serialization performance is currently very bad compared to what is
+   possible.
 - Add custom allocator parameter to `ExtAwi`
 - Rewrite the parsing behind `awint_macros` to use `syn` (so that things like comments can be
-   inserted into the macros) and make a smarter code generation function.
+   inserted into the macros) and refactor the code generation function.
 - Certain formatting and serialization trait impls need more work.
 - Make the crates compile on stable. Almost every unstable feature used by these crates is some kind
    of `const` feature, and will hopefully be stabilized soon.

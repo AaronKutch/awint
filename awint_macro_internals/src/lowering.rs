@@ -30,6 +30,15 @@
 //! the complexity multiplication problem, because the dynamic fielding to the
 //! sink would need to be aware of all dynamic fillers in the source.
 
+// TODO
+// Known issues: in some cases (e.x. `inlawi_imin(5..7)`), certain width values
+// and shift increments are created when they are not needed. However, the known
+// cases are very easily optimized away (I _think_ they are already optimized
+// away at the MIR level before progressing). The code is complicated enough as
+// it is, perhaps this should be fixed in a future refactor.
+//
+//
+
 use std::{
     collections::{BinaryHeap, HashMap, HashSet},
     num::NonZeroUsize,
@@ -45,8 +54,7 @@ pub(crate) fn lower(
     concats: &[Concatenation],
     dynamic_width_i: Option<usize>,
     total_bw: Option<NonZeroUsize>,
-    specified_source: bool,
-    undetermined: bool,
+    specified_initialization: bool,
     construct_fn: &str,
     inlawi: bool,
     return_source: bool,
@@ -156,24 +164,24 @@ pub(crate) fn lower(
         if unbounded {
             // check that we aren't trying to squeeze the unbounded filler into negative
             // widths
-            if undetermined {
+            if dynamic_width_i.is_none() {
                 // there should be no concat checks, and we need these for the common bitwidth
                 // calculation
                 bitwidth_partials.push(name);
             } else {
                 concat_lt_partials.push(name);
             }
-        } else {
-            // check that the concatenation width is equal to the common bitwidth
+        } else if dynamic_width_i.unwrap() != id {
             concat_ne_partials.push(name);
-        }
+        } // else the check is redundant, if there are `n` bitwidths we only
+          // need `n - 1` checks
     }
 
     // create the common bitwidth
     let common_bw = if let Some(bw) = total_bw {
         // note: need `: usize` because of this case
         format!("let {}: usize = {};\n", BW, bw)
-    } else if undetermined {
+    } else if dynamic_width_i.is_none() && !bitwidth_partials.is_empty() {
         // for the case with all unbounded fillers, find the max bitwidth for the buffer
         // to use.
         format!(
@@ -181,14 +189,14 @@ pub(crate) fn lower(
             BW,
             array_partials(bitwidth_partials)
         )
-    } else {
+    } else if let Some(id) = dynamic_width_i {
         // for dynamic bitwidths, we recorded the index of one concatenation
-        // which we know has a runtime deterministic bitwidth. In the case of
-        // all unbounded concatenations, we just choose the zeroeth concatenation
-        let id = dynamic_width_i.unwrap_or(0);
+        // which we know has a runtime deterministic bitwidth.
         let name = format!("{}_{}", BW, id);
         let s = format!("let {}: usize = {};\n", BW, name);
         s
+    } else {
+        String::new()
     };
 
     // create all references we may need
@@ -222,9 +230,11 @@ pub(crate) fn lower(
     // true if the input is of the form
     // `constant; a[..]; b[..]; c[..]; ...` or
     // `single full range var; a[..]; b[..]; c[..]; ...`
-    let no_buffer = all_copy_assign
+    let no_buffer = !return_source
+        && all_copy_assign
         && (concats[0].concatenation.len() == 1)
-        && concats[0].concatenation[0].has_full_range();
+        && concats[0].concatenation[0].has_full_range()
+        && !matches!(concats[0].concatenation[0].component_type, Filler);
 
     let mut constructing = if return_source {
         if inlawi {
@@ -272,7 +282,7 @@ pub(crate) fn lower(
 
     let mut fielding = String::new();
 
-    if filler_in_source && !specified_source {
+    if filler_in_source && !specified_initialization {
         // note: in all cases that reach here the source must be `AWI_REF`
         for j0 in 1..concats.len() {
             let concat = &concats[j0];
@@ -459,20 +469,38 @@ pub(crate) fn lower(
         );
     }
 
-    let returning = if undetermined && comp_check_partials.is_empty() {
-        // infallible
-        String::new()
-    } else if return_source {
-        format!("Some({})", AWI)
-    } else {
-        "Some(())".to_owned()
+    let infallible = concat_lt_partials.is_empty()
+        && concat_ne_partials.is_empty()
+        && comp_check_partials.is_empty();
+
+    let returning = match (return_source, infallible) {
+        (false, false) => "Some(())".to_owned(),
+        (false, true) => String::new(),
+        (true, false) => format!("Some({})", AWI),
+        (true, true) => AWI.to_owned(),
     };
 
     // construct the output code by starting with the innermost scope
-    let mut output = format!(
-        "\n{}\n{}\n{}\n{}\n",
-        referencing, constructing, fielding, returning
-    );
+    let mut output = if !return_source && (concats.len() < 2) {
+        // for cases where nothing is copied or constructed
+        format!("\n{}\n", returning)
+    } else {
+        format!(
+            "\n{}\n{}\n{}\n{}\n",
+            referencing, constructing, fielding, returning
+        )
+    };
+
+    if !infallible {
+        if return_source {
+            output = format!("if {} != 0 {{\n{}\n}} else {{None}}", BW, output);
+        } else {
+            // Non-construction macros can have a zero concatenation bitwidth, but we have
+            // to avoid creating the buffer.
+            output = format!("if {} != 0 {{\n{}\n}} else {{Some(())}}", BW, output);
+        }
+    }
+
     match (concat_ne_partials.is_empty(), concat_lt_partials.is_empty()) {
         (true, true) => (),
         (true, false) => {

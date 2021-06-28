@@ -45,12 +45,19 @@ pub(crate) const SHL: &str = "__shl";
 
 use ComponentType::*;
 
+// These macros turned out 5x more horrifically complicated than I expected, and
+// I went in expecting many complications. However, the complications are
+// assuaged by the explicit tests and special purpose `build.rs` fuzzer in
+// `testcrate`. I have explicit passing, explicit failing, and fuzzing passing
+// tests, TODO the only thing I think I am missing is fuzzing failure cases.
+
 /// Code generation for concatenations of components macros. `input` is the
-/// string input to the macro. `specified_source` is true if source must be
-/// specified and there can be no fillers in the source. `construct_fn` is the
-/// construction function used (e.x. "zero", "umax", etc, "zero" should be used
-/// by default). `inlawi` is if an `InlAwi` should be the return type.
-/// `return_souce` is if the value of the source should be returned.
+/// string input to the macro. `specified_initialization` is true if source has
+/// a specified default state, and fillers can be used in the source.
+/// `construct_fn` is the construction function used (e.x. "zero", "umax", etc,
+/// "zero" should be used by default). `inlawi` is if an `InlAwi` should be the
+/// return type. `return_souce` is if the value of the source should be
+/// returned.
 ///
 /// # Errors
 ///
@@ -59,7 +66,7 @@ use ComponentType::*;
 /// error.
 pub fn code_gen(
     input: &str,
-    specified_source: bool,
+    specified_initialization: bool,
     construct_fn: &str,
     inlawi: bool,
     return_source: bool,
@@ -80,7 +87,7 @@ pub fn code_gen(
         let mut deterministic_width = true;
         for (j1, component) in concat.concatenation.iter().enumerate() {
             if let Filler = component.component_type {
-                if (j0 == 0) && !specified_source && return_source {
+                if (j0 == 0) && !specified_initialization && return_source {
                     return Err(
                         "a construction macro with unspecified initialization cannot have a \
                          filler in the source concatenation"
@@ -88,14 +95,22 @@ pub fn code_gen(
                     )
                 }
                 if component.range.end.is_none() {
-                    if j1 == 0 {
-                        unbounded_alignment.0 = true;
-                    }
-                    if j1 == (concat.concatenation.len() - 1) {
-                        unbounded_alignment.2 = true;
-                    }
-                    if (j1 != 0) && (j1 != (concat.concatenation.len() - 1)) {
-                        unbounded_alignment.1 = true;
+                    if concat.concatenation.len() == 1 {
+                        if j0 != 0 {
+                            return Err("there is a sink concatenation that consists of only an \
+                                        unbounded filler"
+                                .to_owned())
+                        }
+                    } else {
+                        if j1 == 0 {
+                            unbounded_alignment.0 = true;
+                        }
+                        if j1 == (concat.concatenation.len() - 1) {
+                            unbounded_alignment.2 = true;
+                        }
+                        if (j1 != 0) && (j1 != (concat.concatenation.len() - 1)) {
+                            unbounded_alignment.1 = true;
+                        }
                     }
                     deterministic_width = false;
                 }
@@ -112,6 +127,11 @@ pub fn code_gen(
                 }
             }
         } else if let Some(width1) = concat.total_bw {
+            if dynamic_width_i.is_none() {
+                // make sure this is still set, because later logic uses this to determine if
+                // bitwidth is dynamically determinable
+                dynamic_width_i = Some(j0);
+            }
             static_width_i = Some((j0, width1));
         } else if deterministic_width && dynamic_width_i.is_none() {
             dynamic_width_i = Some(j0);
@@ -119,12 +139,20 @@ pub fn code_gen(
     }
     if inlawi && static_width_i.is_none() {
         return Err(
-            "InlAwi construction macros need at least one concatenation to have a width that can \
-             be determined statically by the macro"
+            "`InlAwi` construction macros need at least one concatenation to have a width that \
+             can be determined statically by the macro"
                 .to_owned(),
         )
     }
     let undetermined = dynamic_width_i.is_none() && static_width_i.is_none();
+    if undetermined && (concats.len() == 1) {
+        // prevent semantically wierd cases
+        return Err(
+            "there is a only a source concatenation that has no statically or dynamically \
+             determinable width"
+                .to_owned(),
+        )
+    }
     if undetermined && unbounded_alignment.1 {
         return Err(
             "there is an unbounded filler in the middle of a concatenation, and no concatenation \
@@ -147,8 +175,8 @@ pub fn code_gen(
 
     // code gen
 
-    // first check for infallibility
-    if (concats.len() == 1) && (concats[0].concatenation.len() == 1) {
+    // first check for simple infallible constant return
+    if return_source && (concats.len() == 1) && (concats[0].concatenation.len() == 1) {
         let comp = &concats[0].concatenation[0];
         if let Literal(ref lit) = comp.component_type {
             // constants have been normalized by now
@@ -178,8 +206,7 @@ pub fn code_gen(
         &concats,
         dynamic_width_i,
         total_bw,
-        specified_source,
-        undetermined,
+        specified_initialization,
         construct_fn,
         inlawi,
         return_source,

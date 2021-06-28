@@ -1,8 +1,10 @@
 use core::{
+    borrow::{Borrow, BorrowMut},
     fmt,
     hash::{Hash, Hasher},
     mem,
     num::NonZeroUsize,
+    ops::{Index, IndexMut, RangeFull},
 };
 
 use awint_internals::*;
@@ -185,5 +187,49 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.const_as_ref().hash(state);
+    }
+}
+
+impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
+    type Output = Bits;
+
+    #[inline]
+    fn index(&self, _i: RangeFull) -> &Bits {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn borrow(&self) -> &Bits {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn as_ref(&self) -> &Bits {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
+    #[inline]
+    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
     }
 }

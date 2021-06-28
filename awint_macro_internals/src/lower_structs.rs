@@ -97,6 +97,7 @@ pub(crate) fn lower_component_checks(
     literal_to_id: &HashMap<ExtAwi, usize>,
     comp: &Component,
 ) {
+    // Add as few checks as we statically determine possible
     if comp.has_full_range() {
         return
     }
@@ -121,7 +122,12 @@ pub(crate) fn lower_component_checks(
     };
     if matches!(&comp.component_type, Filler) {
         if let (Some(start), Some(end)) = (start, end) {
-            lt_checks.insert((end.lowered_value(), start.lowered_value()));
+            if let (Some(start), Some(end)) = (start.static_val(), end.static_val()) {
+                // no need for check, just make sure that earlier steps did not break
+                assert!(start <= end);
+            } else {
+                lt_checks.insert((end.lowered_value(), start.lowered_value()));
+            }
         }
     } else if let Some(name) = lowered_name(Some(literal_to_id), comp) {
         match (start, end) {
@@ -129,7 +135,11 @@ pub(crate) fn lower_component_checks(
                 // x.bw() < end
                 lt_checks.insert((name + ".bw()", end.lowered_value()));
                 // end < start
-                lt_checks.insert((end.lowered_value(), start.lowered_value()));
+                if let (Some(start), Some(end)) = (start.static_val(), end.static_val()) {
+                    assert!(start <= end);
+                } else {
+                    lt_checks.insert((end.lowered_value(), start.lowered_value()));
+                }
             }
             (Some(start), None) => {
                 // x.bw() < start

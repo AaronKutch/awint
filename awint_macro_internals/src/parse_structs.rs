@@ -111,14 +111,8 @@ impl Usbr {
 
     pub fn single_bit(s: &str) -> Self {
         Self {
-            start: Some(Usb {
-                s: s.to_owned(),
-                x: 0,
-            }),
-            end: Some(Usb {
-                s: s.to_owned(),
-                x: 1,
-            }),
+            start: Some(Usb::new(s, 0)),
+            end: Some(Usb::new(s, 1)),
         }
     }
 
@@ -151,6 +145,8 @@ impl Usbr {
     pub fn attempt_simplify_general(&mut self) {
         if let Some(ref mut start) = self.start {
             start.attempt_simplify();
+        } else {
+            self.start = Some(Usb::zero());
         }
         if let Some(ref mut end) = self.end {
             end.attempt_simplify();
@@ -193,14 +189,25 @@ impl Usbr {
         self.check_fits_usize_range()
     }
 
-    /// Attempt to simplify the range for filler and variable components.
     /// Returns an error if ranges are statically determined to be invalid
-    pub fn attempt_simplify_filler_and_variable(&mut self) -> Result<(), String> {
+    pub fn attempt_simplify_variable(&mut self) -> Result<(), String> {
         self.attempt_simplify_general();
-        if self.start.is_none() {
-            self.start = Some(Usb::zero());
-        }
         self.check_fits_usize_range()
+    }
+
+    /// Returns an error if ranges are statically determined to be invalid
+    pub fn attempt_simplify_filler(&mut self) -> Result<(), String> {
+        self.attempt_simplify_general();
+        self.check_fits_usize_range()?;
+        if let Some(ref start) = self.start {
+            if !start.is_guaranteed_zero() && self.end.is_none() {
+                // is a useless case anyway and prevents edge cases
+                return Err(
+                    "A filler with a bounded start should also have a bounded end".to_owned(),
+                )
+            }
+        }
+        Ok(())
     }
 
     /// Checks statically if `self` is a valid `usize` range. Returns an error
@@ -280,27 +287,37 @@ impl Component {
     /// An error is returned only if some statically determined bound is
     /// violated, not if the simplify attempt fails
     pub fn attempt_simplify(&mut self) -> Result<(), String> {
-        if let Literal(ref mut lit) = self.component_type.clone() {
-            // note: `lit` here is a reference to a clone
-            self.range.attempt_simplify_literal(lit.const_as_ref())?;
-            // static ranges on literals have been verified, attempt to truncate
-            if let Some(x) = self.range.end.clone().map(|x| x.static_val()).flatten() {
-                let mut tmp = ExtAwi::zero(NonZeroUsize::new(x).unwrap());
-                tmp[..].zero_resize_assign(&lit[..]);
-                *lit = tmp;
+        match self.component_type.clone() {
+            Literal(ref mut lit) => {
+                // note: `lit` here is a reference to a clone
+                self.range.attempt_simplify_literal(lit.const_as_ref())?;
+                // static ranges on literals have been verified, attempt to truncate
+                if let Some(x) = self.range.end.clone().map(|x| x.static_val()).flatten() {
+                    let mut tmp = ExtAwi::zero(NonZeroUsize::new(x).unwrap());
+                    tmp[..].zero_resize_assign(&lit[..]);
+                    *lit = tmp;
+                }
+                // Note: I only truncate the start when the end is a plain static value, because
+                // the subtraction from the end would introduce the possibility for an
+                // underflow, and we would need yet another layer to the checks in the code gen.
+                if let Some(ref end) = self.range.end {
+                    if end.static_val().is_some() {
+                        // attempt to truncate bits below the start
+                        if let Some(x) = self.range.start.clone().map(|x| x.static_val()).flatten()
+                        {
+                            let w = lit.bw() - x;
+                            let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+                            tmp[..].field(0, &lit[..], x, w);
+                            *lit = tmp;
+                            self.range.start.as_mut().unwrap().x = 0;
+                            self.range.end.as_mut().unwrap().x -= x as i128;
+                        }
+                    }
+                }
+                self.component_type = Literal(lit.clone());
             }
-            // attempt to truncate bits below the start
-            if let Some(x) = self.range.start.clone().map(|x| x.static_val()).flatten() {
-                let w = lit.bw() - x;
-                let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
-                tmp[..].field(0, &lit[..], x, w);
-                *lit = tmp;
-                self.range.start.as_mut().unwrap().x = 0;
-                self.range.end.as_mut().unwrap().x = w as i128;
-            }
-            self.component_type = Literal(lit.clone());
-        } else {
-            self.range.attempt_simplify_filler_and_variable()?;
+            Variable(_) => self.range.attempt_simplify_variable()?,
+            Filler => self.range.attempt_simplify_filler()?,
         }
         Ok(())
     }

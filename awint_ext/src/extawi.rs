@@ -305,7 +305,6 @@ impl Index<RangeFull> for ExtAwi {
 
     #[inline]
     fn index(&self, _i: RangeFull) -> &Bits {
-        // This function makes sure lifetimes do not become unbounded
         self.const_as_ref()
     }
 }
@@ -328,7 +327,6 @@ impl AsRef<Bits> for ExtAwi {
 impl IndexMut<RangeFull> for ExtAwi {
     #[inline]
     fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        // This function makes sure lifetimes do not become unbounded
         self.const_as_mut()
     }
 }
