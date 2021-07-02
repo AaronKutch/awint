@@ -449,7 +449,8 @@ impl<'a> Bits {
         // Safety: Adding on to what is satisfied in `as_slice`, [usize] can always be
         // divided into [u8] and the correct length is calculated above. If the bitwidth
         // is not a multiple of eight, there must be at least enough unused bits to form
-        // one more byte.
+        // one more byte. This is returned as a reference with a constrained lifetime,
+        // so we can't run into any deallocation alignment UB.
         unsafe { &*ptr::slice_from_raw_parts(self.as_ptr() as *const u8, size_in_u8) }
     }
 
