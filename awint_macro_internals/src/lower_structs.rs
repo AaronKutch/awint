@@ -181,8 +181,7 @@ pub(crate) fn lower_width(
         };
         let end = if let Some(ref end) = comp.range.end {
             if end.is_guaranteed_zero() {
-                unreachable!() // TODO I think the static checker doesn't
-                               // catch this
+                unreachable!()
             } else {
                 Some(end.clone())
             }

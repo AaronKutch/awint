@@ -37,7 +37,6 @@
 // away at the MIR level before progressing). The code is complicated enough as
 // it is, perhaps this should be fixed in a future refactor.
 //
-//
 
 use std::{
     collections::{BinaryHeap, HashMap, HashSet},

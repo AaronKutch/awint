@@ -2,8 +2,6 @@
 //! to be able to test errors returned from the code generation function while
 //! also being able to test the macros themselves.
 
-// FIXME publish crate
-
 #![feature(binary_heap_into_iter_sorted)]
 #![allow(clippy::needless_range_loop)]
 // TODO need a refactor
@@ -23,25 +21,23 @@ pub(crate) use lowering::*;
 pub(crate) use parse::*;
 pub(crate) use parse_structs::*;
 
-// TODO prefix "__awint_" on all these
-
 /// Prefix used for constants
-pub(crate) const CONSTANT: &str = "__constant";
+pub(crate) const CONSTANT: &str = "__awint_constant";
 /// Prefix used for values
-pub(crate) const VALUE: &str = "__val";
+pub(crate) const VALUE: &str = "__awint_val";
 /// Prefix used for widths
-pub(crate) const WIDTH: &str = "__width";
+pub(crate) const WIDTH: &str = "__awint_width";
 /// Prefix used for bitwidths
-pub(crate) const BW: &str = "__bw";
+pub(crate) const BW: &str = "__awint_bw";
 /// Prefix used for `Bits` references
-pub(crate) const REF: &str = "__ref";
+pub(crate) const REF: &str = "__awint_ref";
 /// Name used by the construct which might be created for returning, created as
 /// a temporary only, or never created.
-pub(crate) const AWI: &str = "__awi";
+pub(crate) const AWI: &str = "__awint_awi";
 /// Name used for the reference to `AWI`
-pub(crate) const AWI_REF: &str = "__awi_ref";
+pub(crate) const AWI_REF: &str = "__awint_awi_ref";
 /// Name used for the fielding `to` offset
-pub(crate) const SHL: &str = "__shl";
+pub(crate) const SHL: &str = "__awint_shl";
 
 use ComponentType::*;
 

@@ -48,8 +48,6 @@ const fn consts() {
     eq(sum, d1437.const_as_ref());
     let e1337: inlawi_ty!(12) = inlawi!(0101, 0011, 1001);
     eq(a1337.const_as_ref(), e1337.const_as_ref());
-
-    // TODO this could be expanded
 }
 
 #[test]
