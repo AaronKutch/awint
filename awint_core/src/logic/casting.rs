@@ -1,6 +1,7 @@
 use core::ptr;
 
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -9,6 +10,7 @@ impl Bits {
     /// Resize-copy-assigns `rhs` to `self`. If `self.bw() >= rhs.bw()`, the
     /// copied value of `rhs` will be extended with bits set to `extension`. If
     /// `self.bw() < rhs.bw()`, the copied value of `rhs` will be truncated.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn resize_assign(&mut self, rhs: &Self, extension: bool) {
         // Safety: the exact number of digits needed are copied or set
         unsafe {
@@ -29,6 +31,7 @@ impl Bits {
     /// Zero-resize-copy-assigns `rhs` to `self` and returns overflow. This is
     /// the same as `lhs.resize_assign(rhs, false)`, but returns `true` if the
     /// unsigned meaning of the integer is changed.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn zero_resize_assign(&mut self, rhs: &Self) -> bool {
         self.resize_assign(rhs, false);
         if self.bw() < rhs.bw() {
@@ -52,6 +55,7 @@ impl Bits {
     /// Sign-resize-copy-assigns `rhs` to `self` and returns overflow. This is
     /// the same as `lhs.resize_assign(rhs, rhs.msb())`, but returns `true` if
     /// the signed meaning of the integer is changed.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn sign_resize_assign(&mut self, rhs: &Self) -> bool {
         self.resize_assign(rhs, rhs.msb());
         // this function is far harder to implement than it would first seem

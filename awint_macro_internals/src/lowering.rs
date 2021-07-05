@@ -48,6 +48,31 @@ use ComponentType::*;
 
 use crate::*;
 
+// TODO when `feature(binary_heap_into_iter_sorted)` is stabilized fix this hack
+#[derive(Clone, Debug)]
+pub struct IntoIterSorted<T> {
+    inner: BinaryHeap<T>,
+}
+
+impl<T: Ord> Iterator for IntoIterSorted<T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let exact = self.inner.len();
+        (exact, Some(exact))
+    }
+}
+
+fn into_iter_sorted<T>(heap: BinaryHeap<T>) -> IntoIterSorted<T> {
+    IntoIterSorted { inner: heap }
+}
+
 /// Lowering of the parsed structs into Rust code.
 pub(crate) fn lower(
     concats: &[Concatenation],
@@ -72,7 +97,7 @@ pub(crate) fn lower(
     let num_literals = ord_literals.len();
     let mut literal_to_id: HashMap<ExtAwi, usize> = HashMap::new();
     let mut constants = String::new();
-    for (id, lit) in ord_literals.into_iter_sorted().enumerate() {
+    for (id, lit) in into_iter_sorted(ord_literals).enumerate() {
         constants += &format!(
             "let {}_{} = InlAwi::<{}, {}>::unstable_from_slice(&{:?});\n",
             CONSTANT,
@@ -97,7 +122,7 @@ pub(crate) fn lower(
     let ord_values: BinaryHeap<String> = values.drain().collect();
     // mapping values to unique ids
     let mut value_to_id: HashMap<String, usize> = HashMap::new();
-    for (id, value) in ord_values.into_iter_sorted().enumerate() {
+    for (id, value) in into_iter_sorted(ord_values).enumerate() {
         value_to_id.insert(value, id);
     }
     // this will keep track of what values are actually used
@@ -112,7 +137,7 @@ pub(crate) fn lower(
     }
     let ord_comp_checks: BinaryHeap<(String, String)> = comp_checks.drain().collect();
     let mut comp_check_partials: Vec<String> = Vec::new();
-    for check in ord_comp_checks.into_iter_sorted() {
+    for check in into_iter_sorted(ord_comp_checks) {
         let id0 = value_to_id[&check.0];
         let id1 = value_to_id[&check.1];
         // push a less-than check
@@ -133,7 +158,7 @@ pub(crate) fn lower(
     let ord_widths: BinaryHeap<Width> = widths.drain().collect();
     // mapping widths to unique ids
     let mut width_to_id: HashMap<Width, usize> = HashMap::new();
-    for (id, width) in ord_widths.into_iter_sorted().enumerate() {
+    for (id, width) in into_iter_sorted(ord_widths).enumerate() {
         width_to_id.insert(width, id);
     }
     // this will keep track of what widths are actually used
@@ -209,7 +234,7 @@ pub(crate) fn lower(
     }
     let mut ref_to_id: HashMap<String, usize> = HashMap::new();
     let ord_refs: BinaryHeap<String> = refs.drain().collect();
-    for (id, var) in ord_refs.into_iter_sorted().enumerate() {
+    for (id, var) in into_iter_sorted(ord_refs).enumerate() {
         ref_to_id.insert(var, id + num_literals);
     }
     // for immutable refs
@@ -422,7 +447,7 @@ pub(crate) fn lower(
     // checks.
     let ord_used_widths: BinaryHeap<Width> = used_widths.drain().collect();
     let mut s_widths = String::new();
-    for width in ord_used_widths.into_iter_sorted() {
+    for width in into_iter_sorted(ord_used_widths) {
         match width {
             Width::Single(ref s) => {
                 used_values.insert(s.clone());
@@ -445,14 +470,14 @@ pub(crate) fn lower(
     // lower all used values by assigning them to `let` bindings
     let ord_used_values: BinaryHeap<String> = used_values.drain().collect();
     let mut s_values = String::new();
-    for val in ord_used_values.into_iter_sorted() {
+    for val in into_iter_sorted(ord_used_values) {
         s_values += &format!("let {}_{}: usize = {};\n", VALUE, value_to_id[&val], val);
     }
 
     // lower all used references by assigning them to `let` bindings
     let ord_used_mut_refs: BinaryHeap<String> = used_mut_refs.drain().collect();
     let mut referencing = String::new();
-    for reference in ord_used_mut_refs.into_iter_sorted() {
+    for reference in into_iter_sorted(ord_used_mut_refs) {
         // mutable bindings supersede immutable ones
         used_ref_refs.remove(&reference);
         referencing += &format!(
@@ -461,7 +486,7 @@ pub(crate) fn lower(
         );
     }
     let ord_used_ref_refs: BinaryHeap<String> = used_ref_refs.drain().collect();
-    for reference in ord_used_ref_refs.into_iter_sorted() {
+    for reference in into_iter_sorted(ord_used_ref_refs) {
         referencing += &format!(
             "let {}_{}: &Bits = {}.const_as_ref();\n",
             REF, ref_to_id[&reference], reference

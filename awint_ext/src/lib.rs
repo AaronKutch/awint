@@ -4,9 +4,8 @@
 //! `InlAwi` in the `awint_core` crate. This crate is separate because it
 //! requires support for `alloc`.
 
-#![feature(const_fn_transmute)]
-#![feature(const_mut_refs)]
-#![feature(vec_into_raw_parts)]
+#![cfg_attr(feature = "const_support", feature(const_fn_transmute))]
+#![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]

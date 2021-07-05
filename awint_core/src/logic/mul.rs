@@ -1,4 +1,5 @@
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -7,6 +8,7 @@ use crate::Bits;
 /// # Multiplication
 impl Bits {
     /// Assigns `cin + (self * rhs)` to `self` and returns the overflow
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_cin_mul(&mut self, cin: usize, rhs: usize) -> usize {
         let mut carry = cin;
         for_each_mut!(
@@ -29,6 +31,7 @@ impl Bits {
     }
 
     /// Add-assigns `lhs * rhs` to `self` and returns if overflow happened
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_mul_add_triop(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
         let mut mul_carry = 0;
         let mut add_carry = 0;
@@ -51,6 +54,7 @@ impl Bits {
 
     /// Multiplies `lhs` by `rhs` and add-assigns the product to `self`. Three
     /// operands eliminates the need for an allocating temporary.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn mul_add_triop(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
             return None

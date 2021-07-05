@@ -1,6 +1,7 @@
 use core::{mem::MaybeUninit, num::NonZeroUsize, ptr};
 
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -15,6 +16,7 @@ use crate::Bits;
 /// # Safety
 ///
 /// The range `[mid-left, mid+right)` must be valid for reading and writing
+#[const_fn(cfg(feature = "const_support"))]
 const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: usize) {
     unsafe {
         type BufType = [usize; 32];
@@ -119,6 +121,7 @@ fn usize_rotate_test() {
 impl Bits {
     /// Shift-left-assigns at the digit level
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const fn digit_shl_assign(&mut self, s: NonZeroUsize) {
         // Should get optimized away when this function is inlined
         assert!(s.get() < self.bw());
@@ -144,6 +147,7 @@ impl Bits {
 
     /// Shift-left-assigns according to extra bits
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const fn subdigit_shl_assign(&mut self, s: NonZeroUsize, clear_unused_bits: bool) {
         let s = extra(s);
         if s != 0 {
@@ -163,6 +167,7 @@ impl Bits {
 
     /// Shift-right-assigns at the digit level
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const fn digit_shr_assign(
         &mut self,
         s: NonZeroUsize,
@@ -199,6 +204,7 @@ impl Bits {
 
     /// Shift-right-assigns according to extra bits
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const fn subdigit_shr_assign(
         &mut self,
         s: NonZeroUsize,
@@ -242,6 +248,7 @@ impl Bits {
     ///
     /// Left shifts can act as a very fast multiplication by a power of two for
     /// both the signed and unsigned interpretation of `Bits`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn shl_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -260,6 +267,7 @@ impl Bits {
     /// Logical right shifts do not copy the sign bit, and thus can act as a
     /// very fast floored division by a power of two for the unsigned
     /// interpretation of `Bits`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn lshr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -280,6 +288,7 @@ impl Bits {
     /// `Bits`. Note that signed division also diverges from this if `s ==
     /// (self.bw() - 1)` because the corresponding positive value cannot be
     /// represented.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn ashr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -343,6 +352,7 @@ impl Bits {
     /// Unlike the example above which needs cloning, this function avoids any
     /// allocation and has many optimized branches for different input sizes and
     /// shifts.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn rotl_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -407,6 +417,7 @@ impl Bits {
     /// `None` is returned and the `Bits` are left unchanged.
     ///
     /// See `Bits::rotl_assign` for more details.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn rotr_assign(&mut self, s: usize) -> Option<()> {
         let bw = self.bw();
         if s == 0 {
@@ -420,6 +431,7 @@ impl Bits {
     /// Reverse-bit-order-assigns `self`. The least significant bit becomes the
     /// most significant bit, the second least significant bit becomes the
     /// second most significant bit, etc.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn rev_assign(&mut self) {
         let len = self.len();
         if len == 1 {
@@ -508,6 +520,7 @@ impl Bits {
     /// field is assigned to `self` from `rhs` starting from the bit position
     /// `s`. The shift cannot overflow because of the restriction on the
     /// bitwidth of `s`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         // because we later call `s.to_usize()` and assume it fits within `s.bw()`
         s.assert_cleared_unused_bits();

@@ -9,8 +9,8 @@ repository = "https://github.com/AaronKutch/awint"
 description = "Internal macro utilities for the `awint` system of crates"
 
 [dependencies]
-awint_core = { version = "0.1.0-pre.0", path = "../awint_core" }
-awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext" }
+awint_core = { version = "0.1.0-pre.0", path = "../awint_core", default-features = false }
+awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features = false }
 
 # for examples
 [dev-dependencies]

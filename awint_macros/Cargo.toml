@@ -15,7 +15,7 @@ categories = ["data-structures", "mathematics", "algorithms"]
 proc-macro = true
 
 [dependencies]
-awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals" }
+awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals", default-features = false }
 awint_macro_internals = { version = "0.1.0-pre.0", path = "../awint_macro_internals" }
 
 [dev-dependencies]

@@ -445,8 +445,6 @@
 //!   arguments as the respective macro does in `awint_macros/src/lib.rs`. Be
 //!   aware that this function will always be unstable and subject to change.
 
-#![feature(proc_macro_hygiene)]
-
 extern crate alloc;
 use alloc::{format, string::ToString};
 

@@ -7,3 +7,11 @@ license = "MIT OR Apache-2.0"
 readme = "../README.md"
 repository = "https://github.com/AaronKutch/awint"
 description = "Internal utilities for the `awint` system of crates"
+
+[dependencies]
+const_fn = "0.4"
+
+[features]
+default = ["const_support"]
+# Turns on nightly features required for many functions to be marked `const`
+const_support = []

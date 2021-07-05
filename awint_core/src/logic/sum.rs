@@ -1,4 +1,5 @@
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -7,6 +8,7 @@ impl Bits {
     /// Increment-assigns `self` with a carry-in `cin` and returns the carry-out
     /// bit. If `cin == true` then one is added to `self`, otherwise nothing
     /// happens. `false` is always returned unless `self.is_umax()`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn inc_assign(&mut self, cin: bool) -> bool {
         if !cin {
             return false
@@ -44,6 +46,7 @@ impl Bits {
     /// Decrement-assigns `self` with a carry-in `cin` and returns the carry-out
     /// bit. If `cin == false` then one is subtracted from `self`, otherwise
     /// nothing happens. `true` is always returned unless `self.is_zero()`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn dec_assign(&mut self, cin: bool) -> bool {
         if cin {
             return true
@@ -78,6 +81,7 @@ impl Bits {
     }
 
     /// Negate-assigns `self`. Note that signed minimum values will overflow.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn neg_assign(&mut self) {
         self.not_assign();
         self.inc_assign(true);
@@ -85,6 +89,7 @@ impl Bits {
 
     /// Absolute-value-assigns `self`. Note that signed minimum values will
     /// overflow.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn abs_assign(&mut self) {
         if self.msb() {
             self.neg_assign();
@@ -92,6 +97,7 @@ impl Bits {
     }
 
     /// Add-assigns by `rhs`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 0;
         binop_for_each_mut!(
@@ -109,6 +115,7 @@ impl Bits {
     }
 
     /// Subtract-assigns by `rhs`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn sub_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
         binop_for_each_mut!(
@@ -126,6 +133,7 @@ impl Bits {
     }
 
     /// Reverse-subtract-assigns by `rhs`. Sets `self` to `(-self) + rhs`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn rsb_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
         binop_for_each_mut!(
@@ -147,6 +155,7 @@ impl Bits {
     /// carry-out bit) and the signed overflow is returned as a tuple. `None` is
     /// returned if any bitwidths do not match. If subtraction is desired,
     /// one of the operands can be negated.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn cin_sum_triop(
         &mut self,
         cin: bool,

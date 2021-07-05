@@ -2,25 +2,14 @@ use core::{
     borrow::{Borrow, BorrowMut},
     fmt,
     hash::{Hash, Hasher},
-    mem,
     num::NonZeroUsize,
     ops::{Index, IndexMut, RangeFull},
 };
 
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
-
-/// Companion to `bits::_ASSERT_BITS_ASSUMPTIONS`
-const _ASSERT_INLAWI_ASSUMPTIONS: () = {
-    // 7 bits works on every platform
-    let _ = ["Assertion that `InlAwi` size is what we expect"]
-        [(mem::size_of::<InlAwi<7, 2>>() != (mem::size_of::<usize>() * 2)) as usize];
-    let x = InlAwi::<7, 2>::imin();
-    let _ = ["Assertion that layouts are working"]
-        [((x.const_as_ref().raw_len() != 2) || (x.bw() != 7)) as usize];
-    let _ = ["Assertion that values are working"][(x.const_as_ref().to_u8() != (1 << 6)) as usize];
-};
 
 // `InlAwi` has two parameters, because we absolutely have to have a parameter
 // that directly specifies the raw array length, and because we also want Rust's
@@ -66,40 +55,43 @@ unsafe impl<const BW: usize, const LEN: usize> Sync for InlAwi<BW, LEN> {}
 impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns a reference to `self` in the form of `&Bits`.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // Safety: Only functions like `unstable_from_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
-        // to insure the raw invariants. The `_ASSERT_ASSUMPTIONS` constants make sure
-        // this layout works. The explicit lifetimes make sure they do not
+        // to insure the raw invariants. The explicit lifetimes make sure they do not
         // become unbounded.
         unsafe { Bits::from_raw_parts(self.raw.as_ptr(), self.raw.len()) }
     }
 
     /// Returns a reference to `self` in the form of `&mut Bits`.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: Only functions like `unstable_from_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
-        // to insure the raw invariants. The `_ASSERT_ASSUMPTIONS` constants make sure
-        // this layout works. The explicit lifetimes make sure they do not
+        // to insure the raw invariants. The explicit lifetimes make sure they do not
         // become unbounded.
         unsafe { Bits::from_raw_parts_mut(self.raw.as_mut_ptr(), self.raw.len()) }
     }
 
     /// Returns the bitwidth of this `InlAwi` as a `NonZeroUsize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn nzbw(&self) -> NonZeroUsize {
         self.const_as_ref().nzbw()
     }
 
     /// Returns the bitwidth of this `InlAwi` as a `usize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bw(&self) -> usize {
         self.const_as_ref().bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
         self.const_as_ref().len()
     }
@@ -107,6 +99,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// This is not intended for direct use, use `awint_macros::inlawi`
     /// or some other constructor instead.
     #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn unstable_from_slice(raw: &[usize]) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         assert_inlawi_invariants_slice::<BW, LEN>(raw);
@@ -118,6 +111,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Zero-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         let mut raw = [0; LEN];
@@ -127,6 +121,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Unsigned-maximum-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         let mut raw = [MAX; LEN];
@@ -138,6 +133,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Signed-maximum-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn imax() -> Self {
         let mut awi = Self::umax();
         *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
@@ -145,6 +141,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Signed-minimum-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn imin() -> Self {
         let mut awi = Self::zero();
         *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
@@ -152,6 +149,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Unsigned-one-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn uone() -> Self {
         let mut awi = Self::zero();
         *awi.const_as_mut().first_mut() = 1;

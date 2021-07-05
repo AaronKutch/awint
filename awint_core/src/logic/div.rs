@@ -1,4 +1,5 @@
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -29,6 +30,7 @@ use crate::Bits;
 impl Bits {
     /// Unsigned-divide-assign `self` by `div`, and returns the remainder.
     /// Returns `None` if `div == 0`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_udivide_assign(&mut self, div: usize) -> Option<usize> {
         if div == 0 {
             return None
@@ -50,6 +52,7 @@ impl Bits {
     /// Unsigned-divides `duo` by `div`, sets `self` to the quotient, and
     /// returns the remainder. Returns `None` if `self.bw() != duo.bw()` or
     /// `div == 0`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_udivide_triop(&mut self, duo: &Self, div: usize) -> Option<usize> {
         if div == 0 || self.bw() != duo.bw() {
             return None
@@ -73,6 +76,7 @@ impl Bits {
     /// Assumptions: The bitwidths all match, `div.lz() > duo.lz()`, `div.lz() -
     /// duo.lz() < BITS`, and there are is at least `BITS * 2` bits worth of
     /// significant bits in `duo`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const unsafe fn two_possibility_algorithm(
         quo: &mut Self,
         rem: &mut Self,
@@ -101,6 +105,7 @@ impl Bits {
     /// Unsigned-divides `duo` by `div` and assigns the quotient to `quo` and
     /// remainder to `rem`. Returns `None` if any bitwidths are not equal or
     /// `div.is_zero()`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
         // prevent any potential problems with the assumptions that many subroutines
         // make
@@ -363,6 +368,7 @@ impl Bits {
     /// `div.is_zero()`. `duo` and `div` are marked mutable but their values are
     /// not changed by this function. They are mutable in order to prevent
     /// internal complications.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn idivide(
         quo: &mut Self,
         rem: &mut Self,

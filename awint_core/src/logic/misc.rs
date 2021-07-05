@@ -1,4 +1,5 @@
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -6,12 +7,14 @@ use crate::Bits;
 impl Bits {
     /// Returns the least significant bit
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn lsb(&self) -> bool {
         (self.first() & 1) != 0
     }
 
     /// Returns the most significant bit
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn msb(&self) -> bool {
         if self.extra() == 0 {
             (self.last() as isize) < 0
@@ -21,6 +24,7 @@ impl Bits {
     }
 
     /// Returns the number of leading zero bits
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn lz(&self) -> usize {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
@@ -35,6 +39,7 @@ impl Bits {
     }
 
     /// Returns the number of trailing zero bits
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn tz(&self) -> usize {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
@@ -49,6 +54,7 @@ impl Bits {
     }
 
     /// Returns the number of set ones
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn count_ones(&self) -> usize {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
@@ -87,6 +93,7 @@ impl Bits {
     /// y.field(12 * 4, x, 3 * 4, 2 * 4);
     /// assert_eq!(y_awi, inlawi!(0xfd_42_ba9876543210u100));
     /// ```
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn field(&mut self, to: usize, rhs: &Self, from: usize, width: usize) -> Option<()> {
         let bw_digits = digits_u(width);
         let bw_bits = extra_u(width);
@@ -221,6 +228,7 @@ impl Bits {
     /// out.lut(lut, inx).unwrap();
     /// assert_eq!(out_awi, inlawi!(3u10));
     /// ```
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         // because we later call `inx.to_usize()` and assume that it fits within
         // `inx.bw()`

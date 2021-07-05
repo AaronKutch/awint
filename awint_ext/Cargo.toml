@@ -12,8 +12,9 @@ keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
 [dependencies]
-awint_core = { version = "0.1.0-pre.0", path = "../awint_core" }
-awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals" }
+awint_core = { version = "0.1.0-pre.0", path = "../awint_core", default-features = false }
+awint_internals = { version = "0.1.0-pre.0", path = "../awint_internals", default-features = false }
+const_fn = "0.4"
 serde = { version = "1.0", default-features = false, optional = true }
 
 # for examples
@@ -22,5 +23,8 @@ awint = { path = "../awint" }
 ron = "0.6"
 
 [features]
+default = ["const_support"]
+# Turns on nightly features required for many functions to be marked `const`
+const_support = ["awint_core/const_support", "awint_internals/const_support"]
 # Turns on `serde` support
 serde_support = ["serde"]

@@ -1,6 +1,7 @@
 use core::fmt;
 
 use awint_internals::*;
+use const_fn::const_fn;
 use SerdeError::*;
 
 use crate::Bits;
@@ -41,6 +42,7 @@ impl Bits {
     /// A version of [Bits::bytes_radix_assign] optimized for power of two
     /// radixes
     #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn power_of_two_bytes_assign(
         &mut self,
         sign: Option<bool>,
@@ -122,6 +124,7 @@ impl Bits {
     /// other chars result in an error. `src` cannot be empty. The value of
     /// the string must be representable in the bitwidth of `self` with the
     /// specified sign, otherwise an overflow error is returned.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bytes_radix_assign(
         &mut self,
         sign: Option<bool>,
@@ -203,6 +206,7 @@ impl Bits {
     /// This function can fail from `NonEqualWidths`, `InvalidRadix`, and
     /// `Overflow` (if `dst` cannot represent the value of `self`). See
     /// [crate::SerdeError].
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_bytes_radix(
         &self,
         signed: bool,

@@ -5,7 +5,7 @@
 //! `_internals` crate was made. The safety requirements of these macros may
 //! change over time, so this crate should never be used outside of this system.
 
-#![feature(const_panic)]
+#![cfg_attr(feature = "const_support", feature(const_panic))]
 #![no_std]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
@@ -15,6 +15,7 @@ mod serde_common;
 
 use core::num::NonZeroUsize;
 
+use const_fn::const_fn;
 pub use serde_common::*;
 
 /// Maximum bitwidth of an inline `Awi`
@@ -32,6 +33,7 @@ pub const MAX: usize = usize::MAX;
 /// If `bw == 0`, this function will panic.
 #[inline]
 #[track_caller]
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn bw(bw: usize) -> NonZeroUsize {
     match NonZeroUsize::new(bw) {
         None => {
@@ -88,6 +90,7 @@ pub fn raw_digits(bw: usize) -> usize {
 ///
 /// If `BW == 0`, `LEN < 2`, or the bitwidth is outside the range
 /// `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
     if BW == 0 {
         panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
@@ -111,6 +114,7 @@ pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
 ///
 /// If `raw.len() != LEN`, the bitwidth digit is zero, or the bitwidth is
 /// outside the range `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
@@ -127,6 +131,7 @@ pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(r
 ///
 /// If the bitwidth is outside the range `(((LEN - 2)*BITS) + 1)..=((LEN -
 /// 1)*BITS)`
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn assert_inlawi_invariants_2<const BW: usize, const LEN: usize>() {
     if BW == 0 {
         panic!("Tried to create an InlAwi with zero bitwidth")
@@ -162,6 +167,7 @@ macro_rules! widen_mul_add_internal {
 /// widened into a tuple, where the first element is the least significant part
 /// of the integer and the second is the most significant.
 #[inline]
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn widen_mul_add(x: usize, y: usize, z: usize) -> (usize, usize) {
     widen_mul_add_internal!(
         x, y, z;
@@ -228,6 +234,7 @@ macro_rules! dd_division_internal {
 ///
 /// If `div == 0`, this function will panic.
 #[inline]
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn dd_division(
     duo: (usize, usize),
     div: (usize, usize),

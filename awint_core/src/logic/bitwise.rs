@@ -1,29 +1,34 @@
 use core::{ops::Range, ptr};
 
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
 /// # Bitwise
 impl Bits {
     /// Zero-assigns. Same as the Unsigned-minimum-value. All bits are set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn zero_assign(&mut self) {
         unsafe { self.digit_set(false, 0..self.len(), false) }
     }
 
     /// Unsigned-maximum-value-assigns. All bits are set to 1.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn umax_assign(&mut self) {
         unsafe { self.digit_set(true, 0..self.len(), true) }
     }
 
     /// Signed-maximum-value-assigns. All bits are set to 1, except for the most
     /// significant bit.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn imax_assign(&mut self) {
         unsafe { self.digit_set(true, 0..self.len(), false) }
         *self.last_mut() = (isize::MAX as usize) >> self.unused();
     }
 
     /// Signed-minimum-value-assigns. Only the most significant bit is set.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn imin_assign(&mut self) {
         unsafe { self.digit_set(false, 0..self.len(), false) }
         *self.last_mut() = (isize::MIN as usize) >> self.unused();
@@ -32,17 +37,20 @@ impl Bits {
     /// Unsigned-one-assigns. Only the least significant bit is set. The
     /// unsigned distinction is important, because a positive one value does
     /// not exist for signed integers with a bitwidth of 1.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn uone_assign(&mut self) {
         unsafe { self.digit_set(false, 0..self.len(), false) }
         *self.first_mut() = 1;
     }
 
     /// Not-assigns `self`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn not_assign(&mut self) {
         for_each_mut!(self, x, { *x = !*x }, true);
     }
 
     /// Copy-assigns the bits of `rhs` to `self`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() != rhs.bw() {
             return None
@@ -54,16 +62,19 @@ impl Bits {
     }
 
     /// Or-assigns `rhs` to `self`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn or_assign(&mut self, rhs: &Self) -> Option<()> {
         binop_for_each_mut!(self, rhs, x, y, { *x |= y }, false)
     }
 
     /// And-assigns `rhs` to `self`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn and_assign(&mut self, rhs: &Self) -> Option<()> {
         binop_for_each_mut!(self, rhs, x, y, { *x &= y }, false)
     }
 
     /// Xor-assigns `rhs` to `self`
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn xor_assign(&mut self, rhs: &Self) -> Option<()> {
         binop_for_each_mut!(self, rhs, x, y, { *x ^= y }, false)
     }
@@ -71,6 +82,7 @@ impl Bits {
     /// And-assigns a range of ones to `self`. Useful for masking. An empty or
     /// reversed range zeroes `self`. `None` is returned if `range.start >
     /// self.bw()` or `range.end > self.bw()`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn range_and_assign(&mut self, range: Range<usize>) -> Option<()> {
         if range.start > self.bw() || range.end > self.bw() {
             return None
@@ -122,6 +134,7 @@ impl Bits {
 
     /// Or-assigns `rhs` to `self` at a position `shl`. Set bits of `rhs` that
     /// are shifted beyond the bitwidth of `self` are truncated.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn usize_or_assign(&mut self, rhs: usize, shl: usize) {
         if shl >= self.bw() {
             return

@@ -20,11 +20,13 @@ The `awint_dag` crate is a WIP.
 The `awint` crate compiles these interfaces together and enables or disables different parts of the
 system depending on these feature flags:
 
+- "const_support" turns on nightly features that are needed for many functions to be `const`
 - "alloc" turns on parts that require an allocator
-- "std" turns on parts that require std. This is turned on by default, although currently nothing
-  requires `std`.
+- "std" turns on parts that require std
 - "rand_support" turns on a dependency to `rand_core` without its default features
 - "serde_support" turns on a dependency to `serde` without its default features
+
+Note: By default, "const_support" and "std" are turned on.
 
 ## Planned Features
 

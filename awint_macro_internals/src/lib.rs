@@ -2,7 +2,6 @@
 //! to be able to test errors returned from the code generation function while
 //! also being able to test the macros themselves.
 
-#![feature(binary_heap_into_iter_sorted)]
 #![allow(clippy::needless_range_loop)]
 // TODO need a refactor
 #![allow(clippy::too_many_arguments)]
@@ -20,6 +19,7 @@ pub(crate) use lower_structs::*;
 pub(crate) use lowering::*;
 pub(crate) use parse::*;
 pub(crate) use parse_structs::*;
+use ComponentType::*;
 
 /// Prefix used for constants
 pub(crate) const CONSTANT: &str = "__awint_constant";
@@ -38,8 +38,6 @@ pub(crate) const AWI: &str = "__awint_awi";
 pub(crate) const AWI_REF: &str = "__awint_awi_ref";
 /// Name used for the fielding `to` offset
 pub(crate) const SHL: &str = "__awint_shl";
-
-use ComponentType::*;
 
 // These macros turned out 5x more horrifically complicated than I expected, and
 // I went in expecting many complications. However, the complications are

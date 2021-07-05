@@ -12,16 +12,7 @@ use core::{
 
 use awint_core::{Bits, InlAwi};
 use awint_internals::*;
-
-/// Companion to `bits::_ASSERT_BITS_ASSUMPTIONS`
-const _ASSERT_EXTAWI_ASSUMPTIONS: () = {
-    let _ = ["Assertion that `Option<ExtAwi>` has small size optimization"]
-        [(mem::size_of::<Option<ExtAwi>>() != mem::size_of::<ExtAwi>()) as usize];
-    let _ = ["Assertion that `ExtAwi` size is what we expect"]
-        [(mem::size_of::<ExtAwi>() != mem::size_of::<NonNull<Bits>>()) as usize];
-    let _ = ["Assertion that `NonNull<usize>` size is what we expect"]
-        [(mem::size_of::<NonNull<Bits>>() != mem::size_of::<&mut Bits>()) as usize];
-};
+use const_fn::const_fn;
 
 #[inline]
 pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
@@ -85,6 +76,7 @@ impl<'a> ExtAwi {
     /// metadata) of the corresponding `Bits`.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn from_raw_parts(ptr: *mut usize, raw_len: usize) -> ExtAwi {
         // Safety: The requirements on this function satisfies
         // `Bits::from_raw_parts_mut`.
@@ -97,35 +89,38 @@ impl<'a> ExtAwi {
 
     /// Returns a reference to `self` in the form of `&Bits`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // `as_ref` on NonNull is not const yet, so we have to use transmute.
-        // Safety: The `_ASSERT_ASSUMPTIONS` constants make sure this layout works. The
-        // explicit lifetimes make sure they do not become unbounded.
+        // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &Bits>(self.raw) }
     }
 
     /// Returns a reference to `self` in the form of `&mut Bits`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
-        // Safety: The `_ASSERT_ASSUMPTIONS` constants make sure this layout works. The
-        // explicit lifetimes make sure they do not become unbounded.
+        // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &mut Bits>(self.raw) }
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `NonZeroUsize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn nzbw(&self) -> NonZeroUsize {
         self.const_as_ref().nzbw()
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `usize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bw(&self) -> usize {
         self.const_as_ref().bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
         self.const_as_ref().len()
     }
@@ -133,6 +128,7 @@ impl<'a> ExtAwi {
     /// Returns the total length of the underlying raw array in `usize`s
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn raw_len(&self) -> usize {
         self.const_as_ref().raw_len()
     }
@@ -143,6 +139,7 @@ impl<'a> ExtAwi {
     /// never be written to.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub fn as_ptr(&self) -> *const usize {
         self.const_as_ref().as_ptr()
     }
@@ -152,12 +149,14 @@ impl<'a> ExtAwi {
     /// and that the `ExtAwi` is not reallocated.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub fn as_mut_ptr(&mut self) -> *mut usize {
         self.const_as_mut().as_mut_ptr()
     }
 
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn layout(&self) -> Layout {
         layout(self.nzbw())
     }
