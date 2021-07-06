@@ -19,7 +19,7 @@ use rand_xoshiro::{
 };
 
 // number of tests generated
-const NUM_TESTS: usize = 300;
+const NUM_TESTS: usize = 1000;
 // should be plenty to test all edge cases
 const MAX_CONCATS: usize = 4;
 // enough to get multiple components on each side of an unbounded filler

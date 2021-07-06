@@ -1,5 +1,7 @@
 //! Macro fuzzing tests. Uses code from `build.rs`
 
+// Only enable on Miri, because the regular compiler can't handle extremely large functions
+#![cfg(miri)]
 #![allow(bad_style)]
 #![allow(unused_imports)]
 
