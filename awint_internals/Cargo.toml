@@ -1,6 +1,6 @@
 [package]
 name = "awint_internals"
-version = "0.1.0-pre.0"
+version = "0.1.0"
 edition = "2018"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
