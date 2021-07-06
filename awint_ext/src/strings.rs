@@ -6,112 +6,110 @@ use awint_internals::{SerdeError::*, *};
 
 use crate::ExtAwi;
 
-// These need to be free functions because I want to enforce that `awint_core`
-// does not require `alloc`. We cannot impl stuff for `Bits` in `awint_ext`.
-
-/// Creates a `Vec<u8>` representing `self`. This function performs
-/// allocation. This is a wrapper around [awint_core::Bits::to_bytes_radix] that
-/// truncates leading zeros and possibly adds `-` as a sign indicator.
-/// An additional `minimum_chars` specifies the minimum number of
-/// characters that should exist. If the sign indicator plus significand
-/// length is less than `minimum_chars`, zeros will be filled between
-/// the sign indicator and significand, just like Rust's built in
-/// `{:0d}` formatting.
-///
-/// # Errors
-///
-/// This can only return an error if `radix` is not in the range 2..=36 or
-/// if resource exhaustion occurs.
-pub fn bits_to_vec_radix(
-    bits: &Bits,
-    signed: bool,
-    radix: u8,
-    upper: bool,
-    minimum_chars: usize,
-) -> Result<Vec<u8>, SerdeError> {
-    let needs_indicator = signed && bits.msb();
-    let mut dst = alloc::vec![0;
-        cmp::max(
-            minimum_chars,
-            (needs_indicator as usize)
-                + chars_upper_bound(bits.bw() - bits.lz(), radix)?
-        )
-    ];
-    let mut pad = ExtAwi::zero(bits.nzbw());
-    bits.to_bytes_radix(signed, &mut dst[..], radix, upper, pad.const_as_mut())?;
-    let len = dst.len();
-    for i in 0..len {
-        if dst[i] != b'0' {
-            // most significant digit
-            let msd;
-            // exclude sign indicator
-            if needs_indicator {
-                msd = i - 1;
-                dst[msd] = b'-';
-            } else {
-                msd = i;
-            }
-            // move downwards to get rid of leading zeros
-            dst.copy_within(msd..len, 0);
-            // this should be done for the sake of capacity determinism and for memory
-            // limited contexts
-            for _ in 0..msd {
-                dst.pop();
-            }
-            dst.shrink_to_fit();
-            break
-        }
-        if i == len - minimum_chars {
-            // terminate early to keep the minimum number of chars
-            if needs_indicator {
-                // cannot overwrite a nonzero digit because we added `needs_indicator` to
-                // `dst`'s length earlier
-                dst[i] = b'-';
-            }
-            // move the digits which are written in big endian form downwards to get rid of
-            // leading zeros
-            dst.copy_within(i..len, 0);
-            for _ in 0..i {
-                dst.pop();
-            }
-            dst.shrink_to_fit();
-            break
-        }
-        if (i + 1) == len {
-            // all zeros, remove all but one zero
-            for _ in 0..(len - 1) {
-                dst.pop();
-            }
-            dst.shrink_to_fit();
-            break
-        }
-    }
-    Ok(dst)
-}
-
-/// Creates a string representing `self`. This function performs allocation.
-/// This does the same thing as [bits_to_vec_radix] except with a `String`.
-pub fn bits_to_string_radix(
-    bits: &Bits,
-    signed: bool,
-    radix: u8,
-    upper: bool,
-    minimum_chars: usize,
-) -> Result<String, SerdeError> {
-    // It is impossible for the `from_utf8` conversion to panic because
-    // `to_vec_radix` sets all chars to valid utf8
-    Ok(String::from_utf8(bits_to_vec_radix(
-        bits,
-        signed,
-        radix,
-        upper,
-        minimum_chars,
-    )?)
-    .unwrap())
-}
-
 /// # non-`const` string representation conversion
 impl ExtAwi {
+    /// Creates a `Vec<u8>` representing `bits`. This function performs
+    /// allocation. This is a wrapper around [awint_core::Bits::to_bytes_radix]
+    /// that truncates leading zeros and possibly adds `-` as a sign
+    /// indicator. An additional `minimum_chars` specifies the minimum
+    /// number of characters that should exist. If the sign indicator plus
+    /// significand length is less than `minimum_chars`, zeros will be
+    /// filled between the sign indicator and significand, just like Rust's
+    /// built in `{:0d}` formatting.
+    ///
+    /// # Errors
+    ///
+    /// This can only return an error if `radix` is not in the range 2..=36 or
+    /// if resource exhaustion occurs.
+    pub fn bits_to_vec_radix(
+        bits: &Bits,
+        signed: bool,
+        radix: u8,
+        upper: bool,
+        minimum_chars: usize,
+    ) -> Result<Vec<u8>, SerdeError> {
+        let needs_indicator = signed && bits.msb();
+        let mut dst = alloc::vec![0;
+            cmp::max(
+                minimum_chars,
+                (needs_indicator as usize)
+                    + chars_upper_bound(bits.bw() - bits.lz(), radix)?
+            )
+        ];
+        let mut pad = ExtAwi::zero(bits.nzbw());
+        bits.to_bytes_radix(signed, &mut dst[..], radix, upper, pad.const_as_mut())?;
+        let len = dst.len();
+        for i in 0..len {
+            if dst[i] != b'0' {
+                // most significant digit
+                let msd;
+                // exclude sign indicator
+                if needs_indicator {
+                    msd = i - 1;
+                    dst[msd] = b'-';
+                } else {
+                    msd = i;
+                }
+                // move downwards to get rid of leading zeros
+                dst.copy_within(msd..len, 0);
+                // this should be done for the sake of capacity determinism and for memory
+                // limited contexts
+                for _ in 0..msd {
+                    dst.pop();
+                }
+                dst.shrink_to_fit();
+                break
+            }
+            if i == len - minimum_chars {
+                // terminate early to keep the minimum number of chars
+                if needs_indicator {
+                    // cannot overwrite a nonzero digit because we added `needs_indicator` to
+                    // `dst`'s length earlier
+                    dst[i] = b'-';
+                }
+                // move the digits which are written in big endian form downwards to get rid of
+                // leading zeros
+                dst.copy_within(i..len, 0);
+                for _ in 0..i {
+                    dst.pop();
+                }
+                dst.shrink_to_fit();
+                break
+            }
+            if (i + 1) == len {
+                // all zeros, remove all but one zero
+                for _ in 0..(len - 1) {
+                    dst.pop();
+                }
+                dst.shrink_to_fit();
+                break
+            }
+        }
+        Ok(dst)
+    }
+
+    /// Creates a string representing `bits`. This function performs allocation.
+    /// This does the same thing as [ExtAwi::bits_to_vec_radix] except with a
+    /// `String`.
+    pub fn bits_to_string_radix(
+        bits: &Bits,
+        signed: bool,
+        radix: u8,
+        upper: bool,
+        minimum_chars: usize,
+    ) -> Result<String, SerdeError> {
+        // It is impossible for the `from_utf8` conversion to panic because
+        // `to_vec_radix` sets all chars to valid utf8
+        Ok(String::from_utf8(ExtAwi::bits_to_vec_radix(
+            bits,
+            signed,
+            radix,
+            upper,
+            minimum_chars,
+        )?)
+        .unwrap())
+    }
+
     /// Creates an `ExtAwi` representing the given arguments. This function
     /// performs allocation. This is a wrapper around
     /// [awint_core::Bits::bytes_radix_assign] that zero or sign resizes the

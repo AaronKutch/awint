@@ -12,16 +12,7 @@ use core::{
 
 use awint_core::{Bits, InlAwi};
 use awint_internals::*;
-
-/// Companion to `bits::_ASSERT_BITS_ASSUMPTIONS`
-const _ASSERT_EXTAWI_ASSUMPTIONS: () = {
-    let _ = ["Assertion that `Option<ExtAwi>` has small size optimization"]
-        [(mem::size_of::<Option<ExtAwi>>() != mem::size_of::<ExtAwi>()) as usize];
-    let _ = ["Assertion that `ExtAwi` size is what we expect"]
-        [(mem::size_of::<ExtAwi>() != mem::size_of::<NonNull<Bits>>()) as usize];
-    let _ = ["Assertion that `NonNull<usize>` size is what we expect"]
-        [(mem::size_of::<NonNull<Bits>>() != mem::size_of::<&mut Bits>()) as usize];
-};
+use const_fn::const_fn;
 
 #[inline]
 pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
@@ -44,7 +35,9 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 /// use awint::{bw, inlawi, Bits, ExtAwi, InlAwi};
 ///
 /// const fn example(x0: &mut Bits, x1: &Bits) {
-///     // when dealing with `Bits` with different bitwidths, use the `_resize_assign` functions
+///     // when dealing with `Bits` with different bitwidths, use the
+///     // `_resize_assign` functions or the concatenations of components
+///     // macros with unbounded fillers from `awint_macros`
 ///     x0.sign_resize_assign(x1);
 ///     // multiply in place by 2 for an example
 ///     x0.short_cin_mul(0, 2);
@@ -85,6 +78,7 @@ impl<'a> ExtAwi {
     /// metadata) of the corresponding `Bits`.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn from_raw_parts(ptr: *mut usize, raw_len: usize) -> ExtAwi {
         // Safety: The requirements on this function satisfies
         // `Bits::from_raw_parts_mut`.
@@ -97,35 +91,38 @@ impl<'a> ExtAwi {
 
     /// Returns a reference to `self` in the form of `&Bits`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // `as_ref` on NonNull is not const yet, so we have to use transmute.
-        // Safety: The `_ASSERT_ASSUMPTIONS` constants make sure this layout works. The
-        // explicit lifetimes make sure they do not become unbounded.
+        // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &Bits>(self.raw) }
     }
 
     /// Returns a reference to `self` in the form of `&mut Bits`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
-        // Safety: The `_ASSERT_ASSUMPTIONS` constants make sure this layout works. The
-        // explicit lifetimes make sure they do not become unbounded.
+        // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &mut Bits>(self.raw) }
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `NonZeroUsize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn nzbw(&self) -> NonZeroUsize {
         self.const_as_ref().nzbw()
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `usize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bw(&self) -> usize {
         self.const_as_ref().bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
         self.const_as_ref().len()
     }
@@ -133,6 +130,7 @@ impl<'a> ExtAwi {
     /// Returns the total length of the underlying raw array in `usize`s
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn raw_len(&self) -> usize {
         self.const_as_ref().raw_len()
     }
@@ -143,6 +141,7 @@ impl<'a> ExtAwi {
     /// never be written to.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub fn as_ptr(&self) -> *const usize {
         self.const_as_ref().as_ptr()
     }
@@ -152,17 +151,28 @@ impl<'a> ExtAwi {
     /// and that the `ExtAwi` is not reallocated.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub fn as_mut_ptr(&mut self) -> *mut usize {
         self.const_as_mut().as_mut_ptr()
     }
 
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn layout(&self) -> Layout {
         layout(self.nzbw())
     }
 
-    /// Zero-value construction with bitwidth `bw`. All bits are unset.
+    /// Creates an `ExtAwi` from copying a `Bits` reference. The same
+    /// functionality is provided by an `From<&Bits>` implementation for
+    /// `ExtAwi`.
+    pub fn from_bits(bits: &Bits) -> ExtAwi {
+        let mut tmp = ExtAwi::zero(bits.nzbw());
+        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp
+    }
+
+    /// Zero-value construction with bitwidth `bw`
     pub fn zero(bw: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
@@ -173,9 +183,8 @@ impl<'a> ExtAwi {
         }
     }
 
-    /// Unsigned-maximum-value construction with bitwidth `bw`. All bits are
-    /// set.
-    pub fn umax(bw: NonZeroUsize) -> ExtAwi {
+    /// Unsigned-maximum-value construction with bitwidth `bw`
+    pub fn umax(bw: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
             let ptr: *mut usize = alloc(layout(bw)).cast();
@@ -187,6 +196,57 @@ impl<'a> ExtAwi {
         };
         x.const_as_mut().clear_unused_bits();
         x
+    }
+
+    /// Signed-maximum-value construction with bitwidth `bw`
+    pub fn imax(bw: NonZeroUsize) -> Self {
+        let mut awi = Self::umax(bw);
+        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Signed-minimum-value construction with bitwidth `bw`
+    pub fn imin(bw: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(bw);
+        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Unsigned-one-value construction with bitwidth `bw`
+    pub fn uone(bw: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(bw);
+        *awi.const_as_mut().first_mut() = 1;
+        awi
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_zero(bw: usize) -> Self {
+        Self::zero(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_umax(bw: usize) -> Self {
+        Self::umax(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_imax(bw: usize) -> Self {
+        Self::imax(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_imin(bw: usize) -> Self {
+        Self::imin(NonZeroUsize::new(bw).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_uone(bw: usize) -> Self {
+        Self::uone(NonZeroUsize::new(bw).unwrap())
     }
 }
 
@@ -232,7 +292,7 @@ macro_rules! impl_fmt {
     };
 }
 
-impl_fmt!(Debug LowerHex UpperHex Octal Binary);
+impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl Hash for ExtAwi {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -246,7 +306,6 @@ impl Index<RangeFull> for ExtAwi {
 
     #[inline]
     fn index(&self, _i: RangeFull) -> &Bits {
-        // This function makes sure lifetimes do not become unbounded
         self.const_as_ref()
     }
 }
@@ -269,7 +328,6 @@ impl AsRef<Bits> for ExtAwi {
 impl IndexMut<RangeFull> for ExtAwi {
     #[inline]
     fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        // This function makes sure lifetimes do not become unbounded
         self.const_as_mut()
     }
 }

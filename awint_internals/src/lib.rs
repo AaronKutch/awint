@@ -5,7 +5,7 @@
 //! `_internals` crate was made. The safety requirements of these macros may
 //! change over time, so this crate should never be used outside of this system.
 
-#![feature(const_panic)]
+#![cfg_attr(feature = "const_support", feature(const_panic))]
 #![no_std]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
@@ -15,6 +15,7 @@ mod serde_common;
 
 use core::num::NonZeroUsize;
 
+use const_fn::const_fn;
 pub use serde_common::*;
 
 /// Maximum bitwidth of an inline `Awi`
@@ -32,6 +33,7 @@ pub const MAX: usize = usize::MAX;
 /// If `bw == 0`, this function will panic.
 #[inline]
 #[track_caller]
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn bw(bw: usize) -> NonZeroUsize {
     match NonZeroUsize::new(bw) {
         None => {
@@ -41,21 +43,99 @@ pub const fn bw(bw: usize) -> NonZeroUsize {
     }
 }
 
+/// Returns the number of extra bits given `bw`
+#[inline]
+pub const fn extra_u(bw: usize) -> usize {
+    bw & (BITS - 1)
+}
+
+/// Returns the number of _whole_ digits (not including a digit with unused
+/// bits) given `bw`
+#[inline]
+pub const fn digits_u(bw: usize) -> usize {
+    bw.wrapping_shr(BITS.trailing_zeros())
+}
+
+/// Returns the number of extra bits given `bw`
 #[inline]
 pub const fn extra(bw: NonZeroUsize) -> usize {
-    bw.get() & (BITS - 1)
+    extra_u(bw.get())
 }
 
+/// Returns the number of _whole_ digits (not including a digit with unused
+/// bits) given `bw`
 #[inline]
 pub const fn digits(bw: NonZeroUsize) -> usize {
-    bw.get().wrapping_shr(BITS.trailing_zeros())
+    digits_u(bw.get())
 }
 
+/// Returns the number of `usize` digits needed to represent `bw`, including any
+/// digit with unused bits
 #[inline]
 pub const fn regular_digits(bw: NonZeroUsize) -> usize {
-    bw.get()
-        .wrapping_shr(BITS.trailing_zeros())
-        .wrapping_add((extra(bw) != 0) as usize)
+    digits(bw).wrapping_add((extra(bw) != 0) as usize)
+}
+
+/// Returns `regular_digits + 1` to account for the bitwidth digit
+#[inline]
+pub fn raw_digits(bw: usize) -> usize {
+    digits_u(bw)
+        .wrapping_add((extra_u(bw) != 0) as usize)
+        .wrapping_add(1)
+}
+
+/// Checks that the `BW` and `LEN` values are valid for an `InlAwi`.
+///
+/// # Panics
+///
+/// If `BW == 0`, `LEN < 2`, or the bitwidth is outside the range
+/// `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+#[const_fn(cfg(feature = "const_support"))]
+pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
+    if BW == 0 {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
+    }
+    if LEN < 2 {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
+    }
+    if BW <= ((LEN - 2) * BITS) {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW <= BITS*(LEN - 2)`")
+    }
+    if BW > ((LEN - 1) * BITS) {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW > BITS*(LEN - 1)`")
+    }
+}
+
+/// Checks that a raw slice for `InlAwi` construction is correct. Assumes that
+/// `assert_inlawi_invariants` has already been run to check the correctness of
+/// the `BW` and `LEN` values.
+///
+/// # Panics
+///
+/// If `raw.len() != LEN`, the bitwidth digit is zero, or the bitwidth is
+/// outside the range `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+#[const_fn(cfg(feature = "const_support"))]
+pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
+    if raw.len() != LEN {
+        panic!("`length of raw slice does not equal LEN")
+    }
+    let bw = raw[raw.len() - 1];
+    if bw != BW {
+        panic!("bitwidth digit does not equal BW")
+    }
+}
+
+/// Alternate check for `InlAwi` invariants
+///
+/// # Panics
+///
+/// If the bitwidth is outside the range `(((LEN - 2)*BITS) + 1)..=((LEN -
+/// 1)*BITS)`
+#[const_fn(cfg(feature = "const_support"))]
+pub const fn assert_inlawi_invariants_2<const BW: usize, const LEN: usize>() {
+    if BW == 0 {
+        panic!("Tried to create an InlAwi with zero bitwidth")
+    }
 }
 
 /// Computes x + y + z and returns the widened result as a tuple.
@@ -87,6 +167,7 @@ macro_rules! widen_mul_add_internal {
 /// widened into a tuple, where the first element is the least significant part
 /// of the integer and the second is the most significant.
 #[inline]
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn widen_mul_add(x: usize, y: usize, z: usize) -> (usize, usize) {
     widen_mul_add_internal!(
         x, y, z;
@@ -153,6 +234,7 @@ macro_rules! dd_division_internal {
 ///
 /// If `div == 0`, this function will panic.
 #[inline]
+#[const_fn(cfg(feature = "const_support"))]
 pub const fn dd_division(
     duo: (usize, usize),
     div: (usize, usize),

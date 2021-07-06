@@ -7,7 +7,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{bits_to_string_radix, ExtAwi};
+use crate::ExtAwi;
 
 /// A `serde_support` impl
 impl Serialize for ExtAwi {
@@ -15,7 +15,7 @@ impl Serialize for ExtAwi {
     /// it serializes into a struct named "ExtAwi" with two fields "bw" and
     /// "bits". "bw" is the bitwidth in decimal, and "bits" are an unsigned
     /// hexadecimal string equivalent to what would be generated from
-    /// `bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)`
+    /// `ExtAwi::bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)`
     ///
     /// ```
     /// // Example using the `ron` crate. Note that it
@@ -34,7 +34,7 @@ impl Serialize for ExtAwi {
         S: Serializer,
     {
         let str_buf: &str =
-            &bits_to_string_radix(self.const_as_ref(), false, 16, false, 0).unwrap();
+            &ExtAwi::bits_to_string_radix(self.const_as_ref(), false, 16, false, 0).unwrap();
         if serializer.is_human_readable() {
             let mut s = serializer.serialize_struct("ExtAwi", 2)?;
             s.serialize_field("bw", &self.bw())?;

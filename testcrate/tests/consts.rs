@@ -2,7 +2,10 @@
 #![feature(const_panic)]
 #![feature(const_option)]
 
-use awint::prelude::{bw, inlawi, inlawi_ty, inlawi_umax, inlawi_zero, Bits, InlAwi};
+use awint::prelude::{
+    bw, cc, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero,
+    Bits, InlAwi,
+};
 
 const fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
@@ -23,8 +26,8 @@ const fn eq(lhs: &Bits, rhs: &Bits) {
 /// functions to make sure `fuzz.rs` isn't running into false positives.
 #[test]
 const fn consts() {
-    let mut awi0: inlawi_ty!(256) = inlawi_zero!(256);
-    let mut awi1 = inlawi_zero!(256);
+    let mut awi0: inlawi_ty!(256) = InlAwi::zero();
+    let mut awi1: inlawi_ty!(256) = InlAwi::zero();
     //let mut awi2 = InlAwi::<5>::zero();
     let x: &mut Bits = awi0.const_as_mut();
     let y: &mut Bits = awi1.const_as_mut();
@@ -43,10 +46,30 @@ const fn consts() {
     let sum = b1337.const_as_mut();
     sum.add_assign(c_100.const_as_ref()).unwrap();
     eq(sum, d1437.const_as_ref());
-    let e1337: inlawi_ty!(12) = inlawi!(1001, 0011, 0101);
+    let e1337: inlawi_ty!(12) = inlawi!(0101, 0011, 1001);
     eq(a1337.const_as_ref(), e1337.const_as_ref());
 
-    // TODO this could be expanded
+    let y3 = inlawi!(0xba9u12);
+    let y2 = inlawi!(0x876u12);
+    let y1 = inlawi!(0x543u12);
+    let y0 = inlawi!(0x210u12);
+
+    let mut z2 = inlawi!(0u16);
+    let mut z1 = inlawi!(0u16);
+    let mut z0 = inlawi!(0u16);
+    let r0 = 0;
+    let r1 = 12;
+
+    cc!(
+        y3, y2[r0..r1], y1, y0;
+        z2, z1, z0;
+        ..48;
+    )
+    .unwrap();
+
+    eq(z2.const_as_ref(), inlawi!(0xba98u16).const_as_ref());
+    eq(z1.const_as_ref(), inlawi!(0x7654u16).const_as_ref());
+    eq(z0.const_as_ref(), inlawi!(0x3210u16).const_as_ref());
 }
 
 #[test]
@@ -83,26 +106,48 @@ macro_rules! test_nonequal_bw {
 /// and checks `None` return cases.
 #[test]
 const fn bits_functions() {
+    // these macros also test the corresponding `InlAwi` functions
     let mut awi0 = inlawi_zero!(128);
-    let mut awi1 = inlawi_zero!(192);
-    let mut awi2 = inlawi_umax!(192);
-    let mut awi3 = inlawi_zero!(192);
-    let mut awi4 = inlawi_zero!(192);
+    let mut awi1 = inlawi_umax!(192);
+    let mut awi2 = inlawi_imax!(192);
+    let mut awi3 = inlawi_imin!(192);
+    let mut awi4 = inlawi_uone!(192);
     let x0 = awi0.const_as_mut();
     let x1 = awi1.const_as_mut();
     let x2 = awi2.const_as_mut();
     let x3 = awi3.const_as_mut();
     let x4 = awi4.const_as_mut();
 
-    assert!(x1.is_zero());
-    assert!(x2.is_umax());
+    // test the inlawi macros first
+    assert!(x0.is_zero());
+    assert!(x1.is_umax());
+    assert!(x2.is_imax());
+    assert!(x3.is_imin());
+    assert!(x4.is_uone());
 
     // miscellanious functions that won't work with the macro
 
     assert!(x0.range_and_assign(0..128).is_some());
     assert!(x0.range_and_assign(127..0).is_some());
-    assert!(x0.range_and_assign(128..128).is_none());
+    assert!(x0.range_and_assign(128..128).is_some());
+    assert!(x0.range_and_assign(129..129).is_none());
+    assert!(x0.range_and_assign(129..128).is_none());
     assert!(x0.range_and_assign(0..129).is_none());
+
+    assert!(x0.field(0, x1, 0, 128).is_some());
+    assert!(x0.field(0, x1, 64, 128).is_some());
+    assert!(x0.field(0, x1, 0, 129).is_none());
+    assert!(x0.field(1, x1, 0, 128).is_none());
+    assert!(x1.field(0, x0, 0, 128).is_some());
+    assert!(x1.field(64, x0, 0, 128).is_some());
+    assert!(x1.field(0, x0, 0, 129).is_none());
+    assert!(x1.field(0, x0, 1, 128).is_none());
+    assert!(x0.field(128, x1, 192, 0).is_some());
+    assert!(x0.field(129, x1, 192, 0).is_none());
+    assert!(x0.field(128, x1, 193, 0).is_none());
+
+    assert!(x0.lut(x1, x3).is_none());
+    assert!(x0.funnel(x1, x3).is_none());
 
     x0.short_cin_mul(0, 0);
 
@@ -173,7 +218,7 @@ const fn bits_functions() {
         lz
         tz
         count_ones
-        reverse_bits
+        rev_assign
         to_usize
         to_isize
         to_u8

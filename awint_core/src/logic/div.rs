@@ -1,4 +1,5 @@
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -29,6 +30,7 @@ use crate::Bits;
 impl Bits {
     /// Unsigned-divide-assign `self` by `div`, and returns the remainder.
     /// Returns `None` if `div == 0`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_udivide_assign(&mut self, div: usize) -> Option<usize> {
         if div == 0 {
             return None
@@ -50,6 +52,7 @@ impl Bits {
     /// Unsigned-divides `duo` by `div`, sets `self` to the quotient, and
     /// returns the remainder. Returns `None` if `self.bw() != duo.bw()` or
     /// `div == 0`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_udivide_triop(&mut self, duo: &Self, div: usize) -> Option<usize> {
         if div == 0 || self.bw() != duo.bw() {
             return None
@@ -73,6 +76,7 @@ impl Bits {
     /// Assumptions: The bitwidths all match, `div.lz() > duo.lz()`, `div.lz() -
     /// duo.lz() < BITS`, and there are is at least `BITS * 2` bits worth of
     /// significant bits in `duo`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const unsafe fn two_possibility_algorithm(
         quo: &mut Self,
         rem: &mut Self,
@@ -101,7 +105,14 @@ impl Bits {
     /// Unsigned-divides `duo` by `div` and assigns the quotient to `quo` and
     /// remainder to `rem`. Returns `None` if any bitwidths are not equal or
     /// `div.is_zero()`.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
+        // prevent any potential problems with the assumptions that many subroutines
+        // make
+        quo.assert_cleared_unused_bits();
+        rem.assert_cleared_unused_bits();
+        duo.assert_cleared_unused_bits();
+        div.assert_cleared_unused_bits();
         let bw = quo.bw();
         if div.is_zero() || bw != rem.bw() || bw != duo.bw() || bw != div.bw() {
             return None
@@ -199,8 +210,8 @@ impl Bits {
                 // `get_dd_unchecked` will not work, e.x. bw = 192 and duo_lz = 0, it will
                 // attempt to access an imaginary zero bit beyond the bitwidth
                 let duo_sig_dd = unsafe {
-                    let digits = duo_extra.wrapping_shr(BITS.trailing_zeros());
-                    let bits = duo_extra & (BITS - 1);
+                    let digits = digits_u(duo_extra);
+                    let bits = extra_u(duo_extra);
                     if bits == 0 {
                         (rem.get_unchecked(digits), rem.get_unchecked(digits + 1))
                     } else {
@@ -218,8 +229,8 @@ impl Bits {
                 };
                 let quo_part = dd_division(duo_sig_dd, div_sig_d_add1).0 .0;
                 let extra_shl = duo_extra - div_extra;
-                let shl_bits = extra_shl & (BITS - 1);
-                let shl_digits = extra_shl.wrapping_shr(BITS.trailing_zeros());
+                let shl_bits = extra_u(extra_shl);
+                let shl_digits = digits_u(extra_shl);
 
                 // Addition of `quo_part << extra_shl` to the quotient.
                 let (carry, next) = unsafe {
@@ -357,6 +368,7 @@ impl Bits {
     /// `div.is_zero()`. `duo` and `div` are marked mutable but their values are
     /// not changed by this function. They are mutable in order to prevent
     /// internal complications.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn idivide(
         quo: &mut Self,
         rem: &mut Self,

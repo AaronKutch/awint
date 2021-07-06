@@ -1,6 +1,6 @@
 name: Awint CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 env:
   # NOTE: do not set RUSTFLAGS here, because it overwrites
@@ -52,10 +52,24 @@ jobs:
           rustup set profile minimal
           rustup default nightly
           rustup target add riscv32i-unknown-none-elf
+      # no_alloc_test has `rand_support` and `serde_support` enabled in its `Cargo.toml`
       - name: Run `cargo doc` and `cargo build`
         run: |
-          cargo doc
+          cargo doc --all-features
           cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
+
+  stable_build:
+    name: Build on stable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust components
+        run: |
+          rustup set profile minimal
+          rustup default stable
+      - name: Run `cargo build`
+        run: |
+          cargo build --no-default-features --features=rand_support,serde_support
 
   rustfmt:
     name: Rustfmt

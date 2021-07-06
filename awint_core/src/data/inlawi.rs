@@ -1,23 +1,15 @@
 use core::{
+    borrow::{Borrow, BorrowMut},
     fmt,
     hash::{Hash, Hasher},
-    mem,
     num::NonZeroUsize,
+    ops::{Index, IndexMut, RangeFull},
 };
 
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
-
-/// Companion to `bits::_ASSERT_BITS_ASSUMPTIONS`
-const _ASSERT_INLAWI_ASSUMPTIONS: () = {
-    // 7 bits works on every platform
-    let _ = ["Assertion that `InlAwi` size is what we expect"]
-        [(mem::size_of::<InlAwi<7, 2>>() != (mem::size_of::<usize>() * 2)) as usize];
-    let x = InlAwi::<7, 2>::unstable_zero(7);
-    let _ = ["Assertion that layouts are working"]
-        [((x.const_as_ref().raw_len() != 2) || (x.bw() != 7)) as usize];
-};
 
 // `InlAwi` has two parameters, because we absolutely have to have a parameter
 // that directly specifies the raw array length, and because we also want Rust's
@@ -32,11 +24,44 @@ const _ASSERT_INLAWI_ASSUMPTIONS: () = {
 /// DST support and const generics limitations makes this currently impossible.
 /// The two const generic parameters of an `InlAwi` are part of a workaround for
 /// this. Typing out a
-/// `let _: InlAwi<BW, LEN> = InlAwi<BW, LEN>::unstable_zero()` should not be
+/// `let _: InlAwi<BW, LEN> = InlAwi<BW, LEN>::zero()` should not be
 /// done directly because it is non-portable and relies on unstable internal
 /// details. Instead, you should use
-/// `let _: inlawi_ty!(100) = inlawi_zero!(100);` using macros from the
-/// `awint_macros` crate.
+///
+/// `let _: inlawi_ty!(100) = inlawi_zero!(100);` or `let _ =
+/// <inlawi_ty!(100)>::zero();` using macros from the `awint_macros` crate.
+///
+/// See the crate level documentation of `awint_macros` for more macros and
+/// information.
+///
+/// ```
+/// #![feature(const_mut_refs)]
+/// #![feature(const_option)]
+/// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
+///
+/// const fn const_fn(lhs: &mut Bits, rhs: &Bits) {
+///     // `InlAwi` stored on the stack does no allocation
+///     let mut tmp_awi = inlawi!(0i100);
+///     let tmp = tmp_awi.const_as_mut();
+///     tmp.mul_add_triop(lhs, rhs).unwrap();
+///     cc!(tmp; lhs).unwrap();
+/// }
+///
+/// // Because `InlAwi`'s construction functions are `const`, we can make full
+/// // use of `Bits` `const` abilities
+/// const AWI: inlawi_ty!(100) = {
+///     let mut awi0 = inlawi!(123i100);
+///     let x = awi0.const_as_mut();
+///     let awi1 = inlawi!(2i100);
+///     let y = awi1.const_as_ref();
+///     x.neg_assign();
+///     const_fn(x, y);
+///     awi0
+/// };
+/// const X: &'static Bits = AWI.const_as_ref();
+///
+/// assert_eq!(X, inlawi!(-246i100).const_as_ref());
+/// ```
 #[derive(Clone, Copy)] // following what arrays do
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     /// # Raw Invariants
@@ -46,43 +71,6 @@ pub struct InlAwi<const BW: usize, const LEN: usize> {
     /// first digit and metadata. The bitwidth must be set to value in the
     /// range `(((BW - 2)*BITS) + 1)..=((BW - 1)*BITS)`.
     raw: [usize; LEN],
-}
-
-/// Instead of an indexing operation on `raw` panicking with a confusing error
-/// before `assert_inlawi_invariants_1`, this will panic with a proper error.
-///
-/// # Panics
-///
-/// If `BW == 0` or `LEN < 2`
-const fn assert_inlawi_invariants_0<const BW: usize, const LEN: usize>() {
-    if BW == 0 {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
-    }
-    if LEN < 2 {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
-    }
-}
-
-/// This is crucial for preventing unsafety when `Bits` references are created
-///
-/// # Panics
-///
-/// If `raw.len() != LEN`, the bitwidth digit is zero, or the bitwidth is
-/// outside the range `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
-const fn assert_inlawi_invariants_1<const BW: usize, const LEN: usize>(raw: &[usize]) {
-    if raw.len() != LEN {
-        panic!("`assert_inlawi_invariants` expects `LEN == raw.len()`")
-    }
-    let bw = raw[raw.len() - 1];
-    if bw == 0 {
-        panic!("Tried to create an InlAwi with zero bitwidth")
-    }
-    if bw <= ((LEN - 2) * BITS) {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW <= BITS*(LEN - 2)`")
-    }
-    if bw > ((LEN - 1) * BITS) {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW > BITS*(LEN - 1)`")
-    }
 }
 
 /// `InlAwi` is safe to send between threads since it does not own
@@ -96,50 +84,54 @@ unsafe impl<const BW: usize, const LEN: usize> Sync for InlAwi<BW, LEN> {}
 impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns a reference to `self` in the form of `&Bits`.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // Safety: Only functions like `unstable_from_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
-        // to insure the raw invariants. The `_ASSERT_ASSUMPTIONS` constants make sure
-        // this layout works. The explicit lifetimes make sure they do not
+        // to insure the raw invariants. The explicit lifetimes make sure they do not
         // become unbounded.
         unsafe { Bits::from_raw_parts(self.raw.as_ptr(), self.raw.len()) }
     }
 
     /// Returns a reference to `self` in the form of `&mut Bits`.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: Only functions like `unstable_from_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
-        // to insure the raw invariants. The `_ASSERT_ASSUMPTIONS` constants make sure
-        // this layout works. The explicit lifetimes make sure they do not
+        // to insure the raw invariants. The explicit lifetimes make sure they do not
         // become unbounded.
         unsafe { Bits::from_raw_parts_mut(self.raw.as_mut_ptr(), self.raw.len()) }
     }
 
     /// Returns the bitwidth of this `InlAwi` as a `NonZeroUsize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn nzbw(&self) -> NonZeroUsize {
         self.const_as_ref().nzbw()
     }
 
     /// Returns the bitwidth of this `InlAwi` as a `usize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bw(&self) -> usize {
         self.const_as_ref().bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
         self.const_as_ref().len()
     }
 
-    /// This is not intended for direct use, use `awint_macros::awi`
+    /// This is not intended for direct use, use `awint_macros::inlawi`
     /// or some other constructor instead.
     #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn unstable_from_slice(raw: &[usize]) -> Self {
-        assert_inlawi_invariants_0::<BW, LEN>();
-        assert_inlawi_invariants_1::<BW, LEN>(&raw);
+        assert_inlawi_invariants::<BW, LEN>();
+        assert_inlawi_invariants_slice::<BW, LEN>(raw);
         let mut copy = [0; LEN];
         const_for!(i in {0..raw.len()} {
             copy[i] = raw[i];
@@ -147,27 +139,49 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         InlAwi { raw: copy }
     }
 
-    /// This is not intended for direct use, use `awint_macros::inlawi_zero`
-    /// instead.
-    #[doc(hidden)]
-    pub const fn unstable_zero(bw: usize) -> Self {
-        assert_inlawi_invariants_0::<BW, LEN>();
+    /// Zero-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn zero() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
         let mut raw = [0; LEN];
-        raw[raw.len() - 1] = bw;
-        assert_inlawi_invariants_1::<BW, LEN>(&raw);
+        raw[raw.len() - 1] = BW;
+        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
         InlAwi { raw }
     }
 
-    /// This is not intended for direct use, use `awint_macros::inlawi_zero`
-    /// instead.
-    #[doc(hidden)]
-    pub const fn unstable_umax(bw: usize) -> Self {
-        assert_inlawi_invariants_0::<BW, LEN>();
+    /// Unsigned-maximum-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn umax() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
         let mut raw = [MAX; LEN];
-        raw[raw.len() - 1] = bw;
-        assert_inlawi_invariants_1::<BW, LEN>(&raw);
+        raw[raw.len() - 1] = BW;
+        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
         let mut awi = InlAwi { raw };
         awi.const_as_mut().clear_unused_bits();
+        awi
+    }
+
+    /// Signed-maximum-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn imax() -> Self {
+        let mut awi = Self::umax();
+        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Signed-minimum-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn imin() -> Self {
+        let mut awi = Self::zero();
+        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
+        awi
+    }
+
+    /// Unsigned-one-value construction with bitwidth `BW`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn uone() -> Self {
+        let mut awi = Self::zero();
+        *awi.const_as_mut().first_mut() = 1;
         awi
     }
 }
@@ -195,10 +209,54 @@ macro_rules! impl_fmt {
     };
 }
 
-impl_fmt!(Debug LowerHex UpperHex Octal Binary);
+impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.const_as_ref().hash(state);
+    }
+}
+
+impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
+    type Output = Bits;
+
+    #[inline]
+    fn index(&self, _i: RangeFull) -> &Bits {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn borrow(&self) -> &Bits {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn as_ref(&self) -> &Bits {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
+    #[inline]
+    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
     }
 }

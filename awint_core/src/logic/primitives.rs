@@ -2,6 +2,7 @@
 #![allow(clippy::reversed_empty_ranges)]
 
 use awint_internals::*;
+use const_fn::const_fn;
 
 use crate::Bits;
 
@@ -10,6 +11,7 @@ use crate::Bits;
 macro_rules! bits_assign {
     ($($unsigned_name:ident, $uX:ident, $signed_name:ident, $iX:ident);*;) => {
         $(
+            #[const_fn(cfg(feature = "const_support"))]
             pub const fn $unsigned_name(&mut self, x: $uX) {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
@@ -40,6 +42,7 @@ macro_rules! bits_assign {
                 self.clear_unused_bits();
             }
 
+            #[const_fn(cfg(feature = "const_support"))]
             pub const fn $signed_name(&mut self, x: $iX) {
                 const BW: usize = $iX::BITS as usize;
                 const LEN: usize = BW / BITS;
@@ -93,6 +96,7 @@ impl Bits {
         u128_assign, u128, i128_assign, i128;
     );
 
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bool_assign(&mut self, x: bool) {
         self.zero_assign();
         *self.first_mut() = x as usize;
@@ -102,6 +106,7 @@ impl Bits {
 macro_rules! bits_convert {
     ($($unsigned_name:ident, $uX:ident, $signed_name:ident, $iX:ident);*;) => {
         $(
+            #[const_fn(cfg(feature = "const_support"))]
             pub const fn $unsigned_name(&self) -> $uX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
@@ -127,6 +132,7 @@ macro_rules! bits_convert {
                 }
             }
 
+            #[const_fn(cfg(feature = "const_support"))]
             pub const fn $signed_name(&self) -> $iX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
@@ -166,6 +172,7 @@ impl Bits {
         to_u128, u128, to_i128, i128;
     );
 
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_bool(&self) -> bool {
         (self.first() & 1) != 0
     }

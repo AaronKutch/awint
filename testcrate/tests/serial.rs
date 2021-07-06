@@ -46,6 +46,7 @@ fn string_conversion() {
     assert!(matches!("u".parse::<ExtAwi>(), Err(Empty)));
     assert!(matches!("123i".parse::<ExtAwi>(), Err(Empty)));
     assert!(matches!("123".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("0u0".parse::<ExtAwi>(), Err(ZeroBitwidth)));
     assert!(matches!("i64".parse::<ExtAwi>(), Err(Empty)));
     assert!(matches!("-123i".parse::<ExtAwi>(), Err(Empty)));
     assert!(matches!("-123".parse::<ExtAwi>(), Err(InvalidChar)));

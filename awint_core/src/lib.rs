@@ -9,18 +9,20 @@
 //! `Result`. The only exceptions are some `core::ops` implementations and the
 //! `bw` function.
 
-#![feature(const_fn_transmute)]
-#![feature(const_maybe_uninit_as_ptr)]
-#![feature(const_mut_refs)]
-#![feature(const_ptr_offset)]
-#![feature(const_ptr_read)]
-#![feature(const_panic)]
-#![feature(const_ptr_write)]
-#![feature(const_intrinsic_copy)]
-#![feature(const_slice_from_raw_parts)]
-#![feature(const_swap)]
-#![feature(const_raw_ptr_deref)]
-#![feature(const_option)]
+#![cfg_attr(feature = "const_support", feature(const_fn_transmute))]
+#![cfg_attr(feature = "const_support", feature(const_maybe_uninit_as_ptr))]
+#![cfg_attr(feature = "const_support", feature(const_mut_refs))]
+#![cfg_attr(feature = "const_support", feature(const_ptr_offset))]
+#![cfg_attr(feature = "const_support", feature(const_ptr_read))]
+#![cfg_attr(feature = "const_support", feature(const_panic))]
+// TODO use ptr::write in several places if https://github.com/rust-lang/rust/issues/86236 is fixed
+//#![feature(const_ptr_write)]
+#![cfg_attr(feature = "const_support", feature(const_ptr_write))]
+#![cfg_attr(feature = "const_support", feature(const_intrinsic_copy))]
+#![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts))]
+#![cfg_attr(feature = "const_support", feature(const_swap))]
+#![cfg_attr(feature = "const_support", feature(const_raw_ptr_deref))]
+#![cfg_attr(feature = "const_support", feature(const_option))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]
@@ -42,5 +44,5 @@ pub use data::{Bits, InlAwi};
 mod logic;
 
 pub mod prelude {
-    pub use crate::{bw, Bits, InlAwi, SerdeError};
+    pub use crate::{bw, Bits, InlAwi};
 }

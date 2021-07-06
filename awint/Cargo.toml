@@ -1,6 +1,6 @@
 [package]
 name = "awint"
-version = "0.1.0-pre.0"
+version = "0.1.0"
 edition = "2018"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -10,25 +10,25 @@ documentation = "https://docs.rs/awint"
 description = "Arbitrary width integers"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
-include = ["src/", "LICENSE-*", "README.md"]
 
 [dependencies]
-awint_core = { version = "0.1.0-pre.0", path = "../awint_core", default-features = false }
-awint_ext = { version = "0.1.0-pre.0", path = "../awint_ext", default-features = false, optional = true }
-awint_macros = { version = "0.1.0-pre.0", path = "../awint_macros" }
-
-[dev-dependencies]
-rand_xoshiro = "0.6"
-ron = "0.6"
+awint_core = { version = "0.1.0", path = "../awint_core", default-features = false }
+#awint_dag = { version = "0.1.0", path = "../awint_dag", default-features = false, optional = true }
+awint_ext = { version = "0.1.0", path = "../awint_ext", default-features = false, optional = true }
+awint_macros = { version = "0.1.0", path = "../awint_macros" }
 
 # note: running the tests requires `--all-features`
 [features]
-default = ["std"]
+default = ["const_support", "std"]
+# Turns on nightly features required for some functions to be marked `const`
+const_support = ["awint_core/const_support", "awint_ext/const_support"]
 # Turns on parts of the crate that require `alloc`
 alloc = ["awint_ext"]
-# Turns on parts of the crate that require `std``
+# Turns on parts of the crate that require `std`
 std = ["alloc"]
 # Turns on `rand` support
 rand_support = ["awint_core/rand_support"]
 # Turns on `serde` support
 serde_support = ["awint_core/serde_support", "awint_ext/serde_support"]
+# Turns on the experimental `awint_dag`. Note: this activates `alloc`.
+#dag = ["alloc", "awint_dag"]

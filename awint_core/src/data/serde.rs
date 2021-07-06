@@ -16,8 +16,8 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// it serializes into a struct named "InlAwi" with two fields "bw" and
     /// "bits". "bw" is the bitwidth in decimal, and "bits" are an unsigned
     /// hexadecimal string equivalent to what would be generated from
-    /// `bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)` from
-    /// the `awint_ext` crate. No allocation happens on `awint`'s side.
+    /// `ExtAwi::bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)`
+    /// from the `awint_ext` crate. No allocation happens on `awint`'s side.
     ///
     /// ```
     /// // Example using the `ron` crate. Note that it
@@ -39,7 +39,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
         let bits = self.const_as_ref();
         // TODO this buffer is ~5 times larger than needed
         let mut buf = [0u8; BW];
-        let mut pad = InlAwi::<BW, LEN>::unstable_zero(BW);
+        let mut pad = Self::zero();
         // do the minimum amount of work necessary
         let upper = chars_upper_bound(bits.bw() - bits.lz(), 16).unwrap();
         bits.to_bytes_radix(false, &mut buf[..upper], 16, false, pad.const_as_mut())
@@ -157,8 +157,8 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::unstable_zero(BW);
-        let mut pad = InlAwi::<BW, LEN>::unstable_zero(BW);
+        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut pad = InlAwi::<BW, LEN>::zero();
         let result = awi.const_as_mut().power_of_two_bytes_assign(
             None,
             bits.as_bytes(),
@@ -191,8 +191,8 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::unstable_zero(BW);
-        let mut pad = InlAwi::<BW, LEN>::unstable_zero(BW);
+        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut pad = InlAwi::<BW, LEN>::zero();
         let result = awi.const_as_mut().power_of_two_bytes_assign(
             None,
             bits.as_bytes(),

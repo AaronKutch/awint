@@ -12,9 +12,9 @@
 //!   bits in the remaining bits of the second.
 //! - Unused bits are zeroed. Note that this is not a safety critical invariant.
 //!   Setting unused bits via `Bits::as_mut_slice` or `Bits::last_mut` will not
-//!   cause Rust U.B., but it may result in arithmetically incorrect results
-//!   from the functions on `Bits`. Arbitrary bits can in the last digit can be
-//!   set temporarily, but [Bits::clear_unused_bits] should be run before
+//!   cause Rust U.B., but it may result in arithmetically incorrect results or
+//!   panics from the functions on `Bits`. Arbitrary bits can in the last digit
+//!   can be set temporarily, but [Bits::clear_unused_bits] should be run before
 //!   reaching a function that expects all these invariants to hold.
 
 use core::{
@@ -27,36 +27,7 @@ use core::{
 };
 
 use awint_internals::*;
-
-/// Because of the current limitations on custom DSTs, we had to resort to some
-/// highly unsafe transmutes. To make the situation as safe as we could, we
-/// shifted the transmute boundaries such that these transmutes only occur
-/// between `&[usize], &Bits` and `&mut [usize], &mut Bits`. We also applied
-/// `#[repr(transparent)]` to `Bits`. However, we still want to account for
-/// unexpected changes by future compilers that are enough to break these. This
-/// crate will fail to compile instead of causing accessible UB if this constant
-/// fails.
-const _ASSERT_BITS_ASSUMPTIONS: () = {
-    let _ = ["Assertion that the size of `&mut [usize]` is what we expect"]
-        [(mem::size_of::<&mut [usize]>() != mem::size_of::<&mut Bits>()) as usize];
-    let _ = ["Assertion that the alignment of `&mut [usize]` is what we expect"]
-        [(mem::align_of::<&mut [usize]>() != mem::align_of::<&mut Bits>()) as usize];
-
-    // We cannot properly use `as *mut usize` in constants yet, but this should be
-    // good enough. Make a round trip through two transmute boundaries to make sure
-    // basic properties are not broken.
-    let array: [usize; 2] = [42, 7]; // bitwidth of 7 and value 42
-    let fat_ptr: *const usize = (&array) as *const usize;
-    let bits: &Bits = unsafe { Bits::from_raw_parts(fat_ptr, array.len()) };
-    let _ = ["Bitwidth check"][(bits.bw() != 7) as usize];
-    let _ = ["Length check"][(bits.len() != 1) as usize];
-    // these go through `get_unchecked` and `as_ptr` among other things
-    let _ = ["Digit check"][(bits.first() != 42) as usize];
-    let _ = ["Digit check"][(bits.last() != 42) as usize];
-    let array_ref = bits.as_slice();
-    let _ = ["Digit check"][(array_ref[0] != 42) as usize];
-    let _ = ["Length check"][(array_ref.len() != 1) as usize];
-};
+use const_fn::const_fn;
 
 /// A reference to the bits in an `InlAwi`, `ExtAwi`, or other backing
 /// construct. This allows the same functions that operate on a dynamic `ExtAwi`
@@ -100,7 +71,7 @@ const _ASSERT_BITS_ASSUMPTIONS: () = {
 /// the zeroeth bit or a given bit position like [Bits::short_cin_mul],
 /// [Bits::short_udivide_assign], or [Bits::usize_or_assign], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
-/// `0..u8::MAX`.
+/// `0..u16::MAX`.
 ///
 /// The `Bits::as_bytes` function and related functions, the serialization impls
 /// enabled by `serde_support`, the strings produced by the `const`
@@ -174,10 +145,11 @@ impl<'a> Bits {
     /// accessed through any other reference for the duration of lifetime `'a`.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn from_raw_parts(raw_ptr: *const usize, raw_len: usize) -> &'a Self {
         // Safety: `Bits` follows standard slice initialization invariants and is marked
-        // `#[repr(transparent)]`. `_ASSERT_BITS_ASSUMPTIONS` also has safeguards. The
-        // explicit lifetimes make sure they do not become unbounded.
+        // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
+        // unbounded.
         unsafe { mem::transmute::<&[usize], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, raw_len)) }
     }
 
@@ -186,15 +158,35 @@ impl<'a> Bits {
     /// see [Bits::from_raw_parts]
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn from_raw_parts_mut(raw_ptr: *mut usize, raw_len: usize) -> &'a mut Self {
         // Safety: `Bits` follows standard slice initialization invariants and is marked
-        // `#[repr(transparent)]`. `_ASSERT_BITS_ASSUMPTIONS` also has safeguards. The
-        // explicit lifetimes make sure they do not become unbounded.
+        // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
+        // unbounded.
         unsafe {
             mem::transmute::<&mut [usize], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
                 raw_ptr, raw_len,
             ))
         }
+    }
+
+    /// Returns the argument of this function. This exists so that the macros in
+    /// `awint_macros` work on all storage types and `Bits` without needing to
+    /// determine the type.
+    #[doc(hidden)]
+    #[inline]
+    pub const fn const_as_ref(&'a self) -> &'a Bits {
+        self
+    }
+
+    /// Returns the argument of this function. This exists so that the macros in
+    /// `awint_macros` work on all storage types and `Bits` without needing to
+    /// determine the type.
+    #[doc(hidden)]
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
+        self
     }
 
     /// Returns a raw pointer to the underlying bit storage. The caller must
@@ -210,6 +202,7 @@ impl<'a> Bits {
     /// ensure that the `Bits` outlives the pointer this function returns.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_mut_ptr(&mut self) -> *mut usize {
         self.raw.as_mut_ptr()
     }
@@ -228,6 +221,7 @@ impl<'a> Bits {
     /// `i < self.raw_len()` should hold true
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const unsafe fn raw_get_unchecked(&self, i: usize) -> usize {
         debug_assert!(i < self.raw_len());
         // Safety: `i` is bounded by `raw_len`
@@ -241,6 +235,7 @@ impl<'a> Bits {
     /// `i < self.raw_len()` should hold true
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub(crate) const unsafe fn raw_get_unchecked_mut(&'a mut self, i: usize) -> &'a mut usize {
         debug_assert!(i < self.raw_len());
         // Safety: `i` is bounded by `raw_len`. The lifetimes are bounded.
@@ -249,6 +244,7 @@ impl<'a> Bits {
 
     /// Returns the bitwidth as a `NonZeroUsize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn nzbw(&self) -> NonZeroUsize {
         unsafe {
             // Safety: The bitwidth is stored in the last raw slice element. The bitwidth is
@@ -263,6 +259,7 @@ impl<'a> Bits {
 
     /// Returns the bitwidth as a `usize`
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn bw(&self) -> usize {
         self.nzbw().get()
     }
@@ -272,6 +269,7 @@ impl<'a> Bits {
     /// `i < self.len()` should hold true
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn get_unchecked(&self, i: usize) -> usize {
         debug_assert!(i < self.len());
         // Safety: `i < self.len()` means the access is within the slice
@@ -283,6 +281,7 @@ impl<'a> Bits {
     /// `i < self.len()` should hold true
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn get_unchecked_mut(&'a mut self, i: usize) -> &'a mut usize {
         debug_assert!(i < self.len());
         // Safety: The bounds of this are a subset of `raw_get_unchecked_mut`
@@ -301,6 +300,7 @@ impl<'a> Bits {
     /// Returns the number of unused bits.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn unused(&self) -> usize {
         if self.extra() == 0 {
             0
@@ -313,6 +313,7 @@ impl<'a> Bits {
     /// there are no unused bits, this is zero.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn extra(&self) -> usize {
         extra(self.nzbw())
     }
@@ -320,6 +321,7 @@ impl<'a> Bits {
     /// Returns the first `usize` digit
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn first(&self) -> usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked(0) }
@@ -328,6 +330,7 @@ impl<'a> Bits {
     /// Returns a mutable reference to the first `usize` digit
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn first_mut(&'a mut self) -> &'a mut usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked_mut(0) }
@@ -336,6 +339,7 @@ impl<'a> Bits {
     /// Returns the last `usize` digit
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn last(&self) -> usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked(self.len() - 1) }
@@ -344,6 +348,7 @@ impl<'a> Bits {
     /// Returns a mutable reference to the last `usize` digit
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn last_mut(&'a mut self) -> &'a mut usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked_mut(self.len() - 1) }
@@ -351,11 +356,27 @@ impl<'a> Bits {
 
     /// Clears the unused bits.
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn clear_unused_bits(&mut self) {
         if self.extra() == 0 {
             return // There are no unused bits
         }
         *self.last_mut() &= MAX >> (BITS - self.extra());
+    }
+
+    /// Some functions cannot handle set unused bits, so this acts as a quick
+    /// way to check if unused bits are indeed clear.
+    ///
+    /// # Panics
+    ///
+    /// Panics if unused bits are set.
+    #[doc(hidden)]
+    #[track_caller]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn assert_cleared_unused_bits(&self) {
+        if (self.extra() != 0) && (self.last() >= 1usize.wrapping_shl(self.extra() as u32)) {
+            panic!("unused bits are set");
+        }
     }
 
     /// Returns a reference to all of the underlying bits of `self`, including
@@ -367,10 +388,21 @@ impl<'a> Bits {
     /// even if the `Bits` are intended to be a sign extended integer.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_slice(&'a self) -> &'a [usize] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
         // acquires a subslice that includes everything except for the metadata digit.
         unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.len()) }
+    }
+
+    /// Same as [Bits::as_slice] except it includes the bitwidth digit
+    #[doc(hidden)]
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn as_raw_slice(&'a self) -> &'a [usize] {
+        // Safety: `Bits` already follows standard slice initialization invariants. This
+        // acquires a subslice that includes everything except for the metadata digit.
+        unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.raw_len()) }
     }
 
     /// Returns a mutable reference to all of the underlying bits of `self`,
@@ -381,9 +413,10 @@ impl<'a> Bits {
     /// Unused bits can be temporarily set but should be cleared before they
     /// are used by another function that expects the standard `Bits` invariants
     /// to be upheld. Set unused bits will not cause Rust undefined behavior,
-    /// but may cause incorrect arithmetical results.
+    /// but may cause incorrect arithmetical results or panics.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_mut_slice(&'a mut self) -> &'a mut [usize] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
         // acquires a subslice that includes everything except for the metadata digit,
@@ -398,6 +431,7 @@ impl<'a> Bits {
     ///
     /// If the `Bits` has unused bits, those bits will always be set to zero,
     /// even if the `Bits` are intended to be a sign extended integer.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_bytes(&'a self) -> &'a [u8] {
         // This will result in an 8 bit digit analog of unused bits
         let size_in_u8 = if (self.bw() % 8) == 0 {
@@ -408,7 +442,8 @@ impl<'a> Bits {
         // Safety: Adding on to what is satisfied in `as_slice`, [usize] can always be
         // divided into [u8] and the correct length is calculated above. If the bitwidth
         // is not a multiple of eight, there must be at least enough unused bits to form
-        // one more byte.
+        // one more byte. This is returned as a reference with a constrained lifetime,
+        // so we can't run into any deallocation alignment UB.
         unsafe { &*ptr::slice_from_raw_parts(self.as_ptr() as *const u8, size_in_u8) }
     }
 
@@ -420,7 +455,8 @@ impl<'a> Bits {
     /// Unused bits can be temporarily set but should be cleared before they
     /// are used by another function that expects the standard `Bits` invariants
     /// to be upheld. Set unused bits will not cause Rust undefined behavior,
-    /// but may cause incorrect arithmetical results.
+    /// but may cause incorrect arithmetical results or panics.
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_mut_bytes(&'a mut self) -> &'a mut [u8] {
         let size_in_u8 = if (self.bw() % 8) == 0 {
             self.bw() / 8
@@ -437,6 +473,7 @@ impl<'a> Bits {
     /// self.len()`
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const unsafe fn digit_set(
         &mut self,
         val: bool,
@@ -464,9 +501,10 @@ impl<'a> Bits {
     /// Gets one `usize` digit from `self` starting at the bit index `start`.
     /// Bits that extend beyond `self.bw()` are zeroed.
     #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn get_digit(&self, start: usize) -> usize {
-        let digits = start.wrapping_shr(BITS.trailing_zeros());
-        let bits = start & (BITS - 1);
+        let digits = digits_u(start);
+        let bits = extra_u(start);
         let mut tmp = 0;
         // Safety: The checks avoid indexing beyond `self.len() - 1`
         unsafe {
@@ -484,9 +522,10 @@ impl<'a> Bits {
     /// and returns them in little endian order. Bits that extend beyond
     /// `self.bw()` are zeroed.
     #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
     pub const fn get_double_digit(&self, start: usize) -> (usize, usize) {
-        let digits = start.wrapping_shr(BITS.trailing_zeros());
-        let bits = start & (BITS - 1);
+        let digits = digits_u(start);
+        let bits = extra_u(start);
         let mut first = 0;
         let mut second = 0;
         // Safety: The checks avoid indexing beyond `self.len() - 1`
@@ -515,6 +554,13 @@ impl<'a> Bits {
 impl fmt::Debug for Bits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::LowerHex::fmt(self, f)
+    }
+}
+
+/// Forwards to the `Debug` impl
+impl fmt::Display for Bits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
     }
 }
 
