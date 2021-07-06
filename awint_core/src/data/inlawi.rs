@@ -33,6 +33,35 @@ use crate::Bits;
 ///
 /// See the crate level documentation of `awint_macros` for more macros and
 /// information.
+///
+/// ```
+/// #![feature(const_mut_refs)]
+/// #![feature(const_option)]
+/// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
+///
+/// const fn const_fn(lhs: &mut Bits, rhs: &Bits) {
+///     // `InlAwi` stored on the stack does no allocation
+///     let mut tmp_awi = inlawi!(0i100);
+///     let tmp = tmp_awi.const_as_mut();
+///     tmp.mul_add_triop(lhs, rhs).unwrap();
+///     cc!(tmp; lhs).unwrap();
+/// }
+///
+/// // Because `InlAwi`'s construction functions are `const`, we can make full
+/// // use of `Bits` `const` abilities
+/// const AWI: inlawi_ty!(100) = {
+///     let mut awi0 = inlawi!(123i100);
+///     let x = awi0.const_as_mut();
+///     let awi1 = inlawi!(2i100);
+///     let y = awi1.const_as_ref();
+///     x.neg_assign();
+///     const_fn(x, y);
+///     awi0
+/// };
+/// const X: &'static Bits = AWI.const_as_ref();
+///
+/// assert_eq!(X, inlawi!(-246i100).const_as_ref());
+/// ```
 #[derive(Clone, Copy)] // following what arrays do
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     /// # Raw Invariants

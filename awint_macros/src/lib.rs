@@ -47,8 +47,87 @@
 //! if the concatenations all have the same bitwidths. If so, the corresponding
 //! bits from the source get copied to the corresponding bits of the sinks. The
 //! construction macros additionally return the source concatenation in a
-//! storage type such as `InlAwi` or `ExtAwi`. The construction macros can be
-//! written without any sink concatenations.
+//! storage type such as `InlAwi` or `ExtAwi`. The sink concatenations are
+//! optional. If there is only a source concatenation, `inlawi_` and `extawi_`
+//! will just construct the value of the source, and `cc_` will just perform
+//! bounds checks.
+//!
+//! These macros automate a large number of things for the user:
+//!  - Using only `const` capable constructions and functions if possible
+//!  - All bounds checks are run before any fielding happens, so that no
+//!    mutation or allocation occurs when an error is returned, matching the
+//!    common behavior of functions in the `awint` system.
+//!  - Trying to optimize away as many bounds checks as possible
+//!  - Trying to optimize away intermediate buffers
+//!  - Concatenating literals together at compile time, and even returning
+//!    infallibly if possible
+//!  - Trying to use the most efficient copying method
+//!
+//! Before going into detail on each component type, we will first explain all
+//! the error conditions for the index bounds checks. Even though `cc_` macros
+//! with only a source concatenation do no construction or copying, they are
+//! useful for bounds checks. Here, we pass the simplest variable input to the
+//! `cc!` macro, a single concatenation with a single component.
+//!
+//! ```
+//! use awint::prelude::*;
+//!
+//! let x = ExtAwi::zero(bw(10));
+//! let r0 = 2;
+//! let r1 = 8;
+//! let r2 = 20;
+//!
+//! // The input is just the variable `x`. The macro is able to determine that
+//! // no bounds checks are needed, so it returns `()`.
+//! assert_eq!(cc!(x), ());
+//!
+//! // This component is the variable `x` indexed with the bit range `r0..r1`.
+//! // The bounds checks succeed, so the macro returns `Some(())`.
+//! assert!(cc!(x[r0..r1]).is_some());
+//!
+//! // We could also use a static range. We call it "static" because the macro
+//! // is able to know the value of the range at compile time.
+//! assert!(cc!(x[2..8]).is_some());
+//!
+//! // The first kind of invalid bound is a reversed range, in which the
+//! // start of the range is larger than the end of the range.
+//! assert!(cc!(x[r1..r0]).is_none());
+//!
+//! // Here, the macro is able to determine at compile time that the range is
+//! // reversed
+//! //cc!(x[8..2]); // error: ... has a reversed range
+//!
+//! // The second kind of invalid bound is a range that extends beyond the
+//! // width of the variable or literal. Earlier, the values of 2 and 8 were
+//! // less than or equal to `x.bw()`, so the check succeeded. Here the value
+//! // of 20 causes the macro to return `None`.
+//! assert!(cc!(x[r0..r2]).is_none());
+//!
+//! // Note: the widths of concatenations can be zero for the `cc_` macros.
+//! // Static zero width ranges will cause a compile-time panic as a warning
+//! // about components that do nothing, but they are achievable with dynamic
+//! // ranges.
+//! let r = 5;
+//! assert!(cc!(x[r..r]).is_some());
+//! let r = 10;
+//! assert!(cc!(x[r..r]).is_some());
+//! // The restriction about values not being larger than `x.bw()` still
+//! // applies.
+//! let r = 11;
+//! assert!(cc!(x[r..r]).is_none());
+//!
+//! // `InlAwi`s and `ExtAwi`s cannot have zero bitwidths, so zero width
+//! // concatenations will cause their macros to panic at compile time or
+//! // return `None`.
+//! let r = 5;
+//! assert!(extawi!(x[r..r]).is_none());
+//! // error: determined statically that this has zero bitwidth
+//! //let _ = inlawi!(x[5..5]);
+//!
+//! // The third error condition occurs when concatenation bitwidths are
+//! // unequal, but first we need to go into more detail on the component
+//! // types.
+//! ```
 //!
 //! ### Literals
 //!
@@ -56,6 +135,12 @@
 //! '0'..='9', and it isn't part of a lone range, it will assume the component
 //! is a literal and pass it to the `FromStr` implementation of `ExtAwi`. See
 //! that documentation for more details.
+//!
+//! Note: The `FromStr` implementation allows for signed and unsigned values,
+//! binary, octal, decimal, and hexadecimal bases, but for the remainder of this
+//! documentation we will mainly be using unsigned hexadecimal. This is because
+//! it neatly divides along bit multiples of 4, and the large base allows one to
+//! easily see where different groups of 4 bits are being copied.
 //!
 //! ```
 //! use awint::prelude::*;
@@ -398,17 +483,6 @@
 //!
 //! ### Other Notes
 //!
-//! - When trying to use ranges like `..0`, the macros will panic at
-//!   compile-time, but these panics are more like compile-time warnings about
-//!   components that do nothing. Zero width ranges are allowed and are
-//!   achievable with dynamic ranges. `cc!` accepts zero width concatenations,
-//!   and acts as a successful no-op as long as all the regular component and
-//!   concatenation checks succeed. `inlawi!` will always panic at compile time
-//!   if concatenations with zero width are attempted. The only special case is
-//!   that `extawi!` will return `None` if a concatenation has zero bitwidth.
-//! - Calling `cc!` with a single concatenation does no copying or constructing,
-//!   but this case was left in because it may be useful as a bounds checker
-//!   (e.g. `if cc!(x[r0..r1]).is_none() {...}`).
 //! - In general, the macros use the `Bits::field` operation to copy different
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
@@ -442,8 +516,7 @@
 //!   problems that extend beyond the immediate scope of the macro.
 //! - In case you want to see the code generated by a macro, you can use the
 //!   `awint_macro_internals::code_gen` function and call it with the same
-//!   arguments as the respective macro does in `awint_macros/src/lib.rs`. Be
-//!   aware that this function will always be unstable and subject to change.
+//!   arguments as the respective macro in `awint_macros/src/lib.rs`.
 
 extern crate alloc;
 use alloc::{format, string::ToString};

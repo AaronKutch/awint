@@ -35,7 +35,9 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 /// use awint::{bw, inlawi, Bits, ExtAwi, InlAwi};
 ///
 /// const fn example(x0: &mut Bits, x1: &Bits) {
-///     // when dealing with `Bits` with different bitwidths, use the `_resize_assign` functions
+///     // when dealing with `Bits` with different bitwidths, use the
+///     // `_resize_assign` functions or the concatenations of components
+///     // macros with unbounded fillers from `awint_macros`
 ///     x0.sign_resize_assign(x1);
 ///     // multiply in place by 2 for an example
 ///     x0.short_cin_mul(0, 2);

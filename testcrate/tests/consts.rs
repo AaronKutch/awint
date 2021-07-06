@@ -3,8 +3,8 @@
 #![feature(const_option)]
 
 use awint::prelude::{
-    bw, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero, Bits,
-    InlAwi,
+    bw, cc, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero,
+    Bits, InlAwi,
 };
 
 const fn check_invariants(x: &Bits) {
@@ -48,6 +48,28 @@ const fn consts() {
     eq(sum, d1437.const_as_ref());
     let e1337: inlawi_ty!(12) = inlawi!(0101, 0011, 1001);
     eq(a1337.const_as_ref(), e1337.const_as_ref());
+
+    let y3 = inlawi!(0xba9u12);
+    let y2 = inlawi!(0x876u12);
+    let y1 = inlawi!(0x543u12);
+    let y0 = inlawi!(0x210u12);
+
+    let mut z2 = inlawi!(0u16);
+    let mut z1 = inlawi!(0u16);
+    let mut z0 = inlawi!(0u16);
+    let r0 = 0;
+    let r1 = 12;
+
+    cc!(
+        y3, y2[r0..r1], y1, y0;
+        z2, z1, z0;
+        ..48;
+    )
+    .unwrap();
+
+    eq(z2.const_as_ref(), inlawi!(0xba98u16).const_as_ref());
+    eq(z1.const_as_ref(), inlawi!(0x7654u16).const_as_ref());
+    eq(z0.const_as_ref(), inlawi!(0x3210u16).const_as_ref());
 }
 
 #[test]
