@@ -18,8 +18,11 @@ use rand_xoshiro::{
     Xoshiro128StarStar,
 };
 
+// Note: I would like 1000 tests, but the compiler on GitHub
+// Actions is acting up and returning exit code 255
+
 // number of tests generated
-const NUM_TESTS: usize = 1000;
+const NUM_TESTS: usize = 300;
 // should be plenty to test all edge cases
 const MAX_CONCATS: usize = 4;
 // enough to get multiple components on each side of an unbounded filler
