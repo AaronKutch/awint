@@ -19,8 +19,10 @@
 
 #![no_std]
 extern crate alloc;
+pub(crate) mod arena;
 mod awi;
 mod bits;
+mod lowering;
 mod op;
 pub mod primitive;
 
