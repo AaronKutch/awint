@@ -1,5 +1,3 @@
-#![cfg(feature = "rand_support")]
-
 use awint::prelude::*;
 use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 

@@ -1,5 +1,3 @@
-#![cfg(feature = "serde_support")]
-
 use awint::{inlawi, inlawi_ty, InlAwi};
 
 #[test]
