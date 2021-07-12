@@ -266,8 +266,8 @@ impl Bits {
                         char_digit += b'a' - 10;
                     }
                     // Safety: we strictly capped the range of possible values above with `& 0b1111`
-                    let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    f.write_fmt(format_args!("{}", c))?;
+                    let c = char::from_u32(char_digit as u32);
+                    f.write_fmt(format_args!("{:?}", c))?;
                     if ((j1 % 8) == 0) && (j1 != 0) {
                         f.write_fmt(format_args!("_"))?;
                     }
@@ -292,8 +292,8 @@ impl Bits {
                     let mut char_digit = (self.get_digit(j1 * 3) & 0b111) as u8;
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b111`
-                    let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    if let Err(e) = f.write_fmt(format_args!("{}", c)) {
+                    let c = char::from_u32(char_digit as u32);
+                    if let Err(e) = f.write_fmt(format_args!("{:?}", c)) {
                         return Err(e)
                     }
                     if ((j1 % 8) == 0) && (j1 != 0) {
@@ -321,8 +321,8 @@ impl Bits {
                     let mut char_digit = (self.get_digit(j1) & 0b1) as u8;
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b1`
-                    let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    if let Err(e) = f.write_fmt(format_args!("{}", c)) {
+                    let c = char::from_u32(char_digit as u32).unwrap();
+                    if let Err(e) = f.write_fmt(format_args!("{:?}", c)) {
                         return Err(e)
                     }
                     if ((j1 % 8) == 0) && (j1 != 0) {

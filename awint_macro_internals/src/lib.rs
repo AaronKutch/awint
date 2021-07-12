@@ -2,6 +2,7 @@
 //! to be able to test errors returned from the code generation function while
 //! also being able to test the macros themselves.
 
+#![feature(or_patterns)]
 #![allow(clippy::needless_range_loop)]
 // TODO need a refactor
 #![allow(clippy::too_many_arguments)]

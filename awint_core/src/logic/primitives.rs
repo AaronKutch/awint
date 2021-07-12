@@ -27,7 +27,7 @@ macro_rules! bits_assign {
                     unsafe {
                         const_for!(i in {0..LEN} {
                             *self.get_unchecked_mut(i) = x as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            x = x.wrapping_shr(usize::MAX.count_ones());
                         });
                         self.digit_set(false, LEN..self.len(), false);
                     }
@@ -35,7 +35,7 @@ macro_rules! bits_assign {
                     unsafe {
                         const_for!(i in {0..self.len()} {
                             *self.get_unchecked_mut(i) = x as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            x = x.wrapping_shr(usize::MAX.count_ones());
                         });
                     }
                 }
@@ -61,7 +61,7 @@ macro_rules! bits_assign {
                         let sign = x < 0;
                         const_for!(i in {0..LEN} {
                             *self.get_unchecked_mut(i) = x as isize as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            x = x.wrapping_shr(usize::MAX.count_ones());
                         });
                         self.digit_set(sign, LEN..self.len(), true);
                     }
@@ -69,7 +69,7 @@ macro_rules! bits_assign {
                     unsafe {
                         const_for!(i in {0..self.len()} {
                             *self.get_unchecked_mut(i) = x as isize as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            x = x.wrapping_shr(usize::MAX.count_ones());
                         });
                     }
                     self.clear_unused_bits();

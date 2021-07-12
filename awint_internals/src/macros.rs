@@ -181,7 +181,7 @@ macro_rules! subdigits_mut {
             // digit.
             let tmp = $bits.as_ptr().add($range.end).read();
             *$bits.raw_get_unchecked_mut($range.end) =
-                ($range.end - $range.start) * (usize::BITS as usize);
+                ($range.end - $range.start) * (usize::MAX.count_ones() as usize);
             let $subbits: &mut Bits = Bits::from_raw_parts_mut(
                 $bits.as_mut_ptr().add($range.start),
                 ($range.end - $range.start) + 1,

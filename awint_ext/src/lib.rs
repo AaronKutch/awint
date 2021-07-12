@@ -6,6 +6,8 @@
 
 #![cfg_attr(feature = "const_support", feature(const_fn_transmute))]
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
+#![feature(int_bits_const)]
+#![feature(unsafe_block_in_unsafe_fn)]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]

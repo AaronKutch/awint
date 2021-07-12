@@ -23,6 +23,9 @@
 #![cfg_attr(feature = "const_support", feature(const_swap))]
 #![cfg_attr(feature = "const_support", feature(const_raw_ptr_deref))]
 #![cfg_attr(feature = "const_support", feature(const_option))]
+#![feature(assoc_char_funcs)]
+#![feature(int_bits_const)]
+#![feature(unsafe_block_in_unsafe_fn)]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]

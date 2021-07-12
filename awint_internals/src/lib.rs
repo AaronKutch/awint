@@ -19,7 +19,7 @@ use const_fn::const_fn;
 pub use serde_common::*;
 
 /// Maximum bitwidth of an inline `Awi`
-pub const BITS: usize = usize::BITS as usize;
+pub const BITS: usize = usize::MAX.count_ones() as usize;
 
 /// Maximum value of an inline `Awi`
 pub const MAX: usize = usize::MAX;
