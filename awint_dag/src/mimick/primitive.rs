@@ -1,13 +1,13 @@
-use alloc::rc::Rc;
-use core::{num::NonZeroUsize, ops::*};
+use std::{num::NonZeroUsize, ops::*, rc::Rc};
 
 use awint_internals::{bw, BITS};
 
-use crate::{primitive as prim, Bits, Lineage, Op};
+use crate::mimick::{primitive as prim, Bits, Lineage, Op};
 
 macro_rules! prim {
     ($($name:ident $assign:ident $bw:expr),*,) => {
         $(
+            /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
             #[derive(Debug, Clone)]
             pub struct $name(Bits);

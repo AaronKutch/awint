@@ -1,11 +1,11 @@
-use alloc::rc::Rc;
-use core::num::NonZeroUsize;
+use std::{num::NonZeroUsize, rc::Rc};
 
 use awint_internals::BITS;
 use Op::*;
 
-use crate::{primitive as prim, Lineage, Op};
+use crate::mimick::{primitive as prim, Lineage, Op};
 
+/// Mimicking `awint_core::Bits`
 #[derive(Debug, Clone)]
 pub struct Bits {
     bw: NonZeroUsize,

@@ -1,7 +1,6 @@
 // TODO fix this
 #![allow(dead_code)]
 
-use alloc::vec::Vec;
 use core::num::NonZeroU64;
 
 /// Internal entry for a `Arena`

@@ -1,9 +1,8 @@
-use alloc::{rc::Rc, vec::Vec};
-
 use crate::primitive as prim;
 
-type P = Rc<Op>;
+type P = std::rc::Rc<Op>;
 
+/// Mimicking operation
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Op {
@@ -88,11 +87,11 @@ pub enum Op {
     OrAssign(P, P),
     AndAssign(P, P),
     XorAssign(P, P),
-    ShlAssign(P, P),
-    LshrAssign(P, P),
-    AshrAssign(P, P),
-    RotlAssign(P, P),
-    RotrAssign(P, P),
+    //ShlAssign(P, P),
+    //LshrAssign(P, P),
+    //AshrAssign(P, P),
+    //RotlAssign(P, P),
+    //RotrAssign(P, P),
     AddAssign(P, P),
     SubAssign(P, P),
     RsbAssign(P, P),

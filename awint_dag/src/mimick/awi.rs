@@ -1,10 +1,10 @@
-use alloc::{rc::Rc, vec::Vec};
-use core::num::NonZeroUsize;
+use std::{num::NonZeroUsize, rc::Rc};
 
 use awint_internals::*;
 
-use crate::{Bits, Lineage, Op};
+use crate::mimick::{Bits, Lineage, Op};
 
+/// Mimicking `awint_core::InlAwi`
 #[derive(Debug, Clone)]
 pub struct InlAwi<const BW: usize, const LEN: usize>(Bits);
 
@@ -83,6 +83,7 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     }
 }
 
+/// Mimicking `awint_ext::ExtAwi`
 #[derive(Debug, Clone)]
 pub struct ExtAwi(Bits);
 
