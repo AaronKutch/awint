@@ -22,7 +22,7 @@ struct InternalEntry<T> {
 ///
 /// Note: `Ptr`s contain `NonZeroU64`s which allow certain enum optimizations
 /// to be applied.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Ptr {
     /// Generation of the index when this internal allocation was made
     pub(crate) gen: NonZeroU64,

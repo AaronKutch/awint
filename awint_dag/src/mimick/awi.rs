@@ -45,27 +45,32 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(NonZeroUsize::new(BW).unwrap(), Op::ZeroAssign)
+        let nzbw = NonZeroUsize::new(BW).unwrap();
+        Self::new(nzbw, Op::ZeroAssign(nzbw))
     }
 
     pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(NonZeroUsize::new(BW).unwrap(), Op::UmaxAssign)
+        let nzbw = NonZeroUsize::new(BW).unwrap();
+        Self::new(nzbw, Op::UmaxAssign(nzbw))
     }
 
     pub fn imax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(NonZeroUsize::new(BW).unwrap(), Op::ImaxAssign)
+        let nzbw = NonZeroUsize::new(BW).unwrap();
+        Self::new(nzbw, Op::ImaxAssign(nzbw))
     }
 
     pub fn imin() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(NonZeroUsize::new(BW).unwrap(), Op::IminAssign)
+        let nzbw = NonZeroUsize::new(BW).unwrap();
+        Self::new(nzbw, Op::IminAssign(nzbw))
     }
 
     pub fn uone() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(NonZeroUsize::new(BW).unwrap(), Op::UoneAssign)
+        let nzbw = NonZeroUsize::new(BW).unwrap();
+        Self::new(nzbw, Op::UoneAssign(nzbw))
     }
 }
 
@@ -108,12 +113,55 @@ impl ExtAwi {
         &mut self.0
     }
 
+    pub fn from_bits(bits: &Bits) -> ExtAwi {
+        let mut tmp = Self::new(bits.nzbw(), Op::ZeroAssign(bits.nzbw()));
+        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp
+    }
+
     pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::ZeroAssign)
+        Self::new(bw, Op::ZeroAssign(bw))
     }
 
     pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::UmaxAssign)
+        Self::new(bw, Op::UmaxAssign(bw))
+    }
+
+    pub fn imax(bw: NonZeroUsize) -> Self {
+        Self::new(bw, Op::ImaxAssign(bw))
+    }
+
+    pub fn imin(bw: NonZeroUsize) -> Self {
+        Self::new(bw, Op::IminAssign(bw))
+    }
+
+    pub fn uone(bw: NonZeroUsize) -> Self {
+        Self::new(bw, Op::UoneAssign(bw))
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_zero(bw: usize) -> Self {
+        Self::zero(NonZeroUsize::new(bw).unwrap())
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_umax(bw: usize) -> Self {
+        Self::umax(NonZeroUsize::new(bw).unwrap())
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_imax(bw: usize) -> Self {
+        Self::imax(NonZeroUsize::new(bw).unwrap())
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_imin(bw: usize) -> Self {
+        Self::imin(NonZeroUsize::new(bw).unwrap())
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_uone(bw: usize) -> Self {
+        Self::uone(NonZeroUsize::new(bw).unwrap())
     }
 }
 

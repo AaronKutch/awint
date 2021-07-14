@@ -1,23 +1,81 @@
 //! This DAG is for lowering into a LUT-only DAG
 
-use std::{collections::HashMap, num::NonZeroUsize, rc::Rc};
+use std::{
+    collections::{hash_map::Entry, BinaryHeap, HashMap},
+    num::NonZeroUsize,
+    rc::Rc,
+};
 
-use awint_ext::ExtAwi;
-
+use super::into_iter_sorted;
 use crate::{
     lowering::{Arena, Op, Ptr},
     mimick,
 };
 
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Node {
-    bw: NonZeroUsize,
+    bw: Option<NonZeroUsize>,
     op: Op,
-    // When deleting nodes, we need to make sure that no other nodes are depending on this one
+    /// Lists nodes that use this one as a source
     dependents: Vec<Ptr>,
+}
+
+impl Node {
+    pub fn new(op: Op) -> Self {
+        Node {
+            bw: None,
+            op,
+            dependents: Vec::new(),
+        }
+    }
 }
 
 struct Dag {
     dag: Arena<Node>,
-    /// keeps track if a mimick node is already in the arena
-    rc_nodes: HashMap<Rc<mimick::Op>, Ptr>,
+}
+
+/// Defines equality using Rc::ptr_eq
+#[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
+#[derive(Debug, Hash, Clone, Eq, PartialOrd, Ord)]
+struct PtrEqRc(Rc<mimick::Op>);
+
+impl PartialEq for PtrEqRc {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Dag {
+    /// Constructs a directed acyclic graph from the root sinks of a mimicking
+    /// version
+    pub fn new(root_sinks: Vec<Rc<mimick::Op>>) -> Self {
+        // keeps track if a mimick node is already tracked in the arena
+        let mut rc_nodes: HashMap<PtrEqRc, Ptr> = HashMap::new();
+        // keep a frontier which will guarantee that the whole mimick DAG is explored,
+        // and keep track of dependents
+        let mut frontier: Vec<Rc<mimick::Op>> = root_sinks;
+        let mut dag: Arena<Node> = Arena::new();
+        // because some nodes may not be in the arena yet, we have to bootstrap
+        // dependencies by looking up the source later (source, sink)
+        let mut deps: Vec<(PtrEqRc, Ptr)> = Vec::new();
+        while let Some(next) = frontier.pop() {
+            match rc_nodes.entry(PtrEqRc(Rc::clone(&next))) {
+                Entry::Occupied(_) => (),
+                Entry::Vacant(v) => {
+                    let sink = dag.insert(Node::new(Op::Unlowered(next.clone())));
+                    v.insert(sink);
+                    for source in next.list_sources() {
+                        deps.push((PtrEqRc(Rc::clone(&source)), sink));
+                        frontier.push(source);
+                    }
+                }
+            }
+        }
+        // set all dependents
+        for dep in deps {
+            let source = rc_nodes[&dep.0];
+            dag.get_mut(source).unwrap().dependents.push(dep.1);
+        }
+        Self { dag }
+    }
 }

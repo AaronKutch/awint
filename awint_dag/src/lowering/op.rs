@@ -1,16 +1,25 @@
+use std::{num::NonZeroUsize, rc::Rc};
+
+use crate::mimick;
+
 type P = crate::lowering::Ptr;
 
 /// Intermediate Operation for lowering from the mimicking operation to lut-only
 /// form
-#[derive(Debug, Clone)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[non_exhaustive]
 pub(crate) enum Op {
-    // (&mut self) but with no dependence on previous value of `self`
-    ZeroAssign,
-    UmaxAssign,
-    ImaxAssign,
-    IminAssign,
-    UoneAssign,
+    Unlowered(Rc<mimick::Op>),
+
+    // represents an unknown, arbitrary, or opaque-boxed source
+    OpaqueAssign(NonZeroUsize),
+
+    // no dependence on previous value of `self`
+    ZeroAssign(NonZeroUsize),
+    UmaxAssign(NonZeroUsize),
+    ImaxAssign(NonZeroUsize),
+    IminAssign(NonZeroUsize),
+    UoneAssign(NonZeroUsize),
 
     // used by `unstable_from_slice`
     LitRawSliceAssign(Vec<usize>),
@@ -69,4 +78,17 @@ pub(crate) enum Op {
     URemAssign(P, P, P),
     IQuoAssign(P, P, P),
     IRemAssign(P, P, P),
+}
+
+use Op::*;
+
+impl Op {
+    pub fn is_initialization(&self) -> bool {
+        match self {
+            Unlowered(p) => p.is_initialization(),
+            OpaqueAssign(_) | ZeroAssign(_) | UmaxAssign(_) | ImaxAssign(_) | IminAssign(_)
+            | UoneAssign(_) | LitRawSliceAssign(_) => true,
+            _ => false,
+        }
+    }
 }

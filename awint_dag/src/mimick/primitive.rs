@@ -9,7 +9,7 @@ macro_rules! prim {
         $(
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
             pub struct $name(Bits);
 
             impl $name {

@@ -50,7 +50,7 @@ use crate::*;
 
 // TODO when `feature(binary_heap_into_iter_sorted)` is stabilized fix this hack
 #[derive(Clone, Debug)]
-pub struct IntoIterSorted<T> {
+struct IntoIterSorted<T> {
     inner: BinaryHeap<T>,
 }
 

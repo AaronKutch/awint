@@ -6,7 +6,7 @@ use Op::*;
 use crate::mimick::{primitive as prim, Lineage, Op};
 
 /// Mimicking `awint_core::Bits`
-#[derive(Debug, Clone)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Bits {
     bw: NonZeroUsize,
     op: Rc<Op>,
@@ -36,7 +36,7 @@ impl Lineage for Bits {
     }
 
     fn op(&self) -> Rc<Op> {
-        self.op.clone()
+        Rc::clone(&self.op)
     }
 
     fn op_mut(&mut self) -> &mut Rc<Op> {
@@ -44,11 +44,11 @@ impl Lineage for Bits {
     }
 }
 
-macro_rules! nullary {
+macro_rules! unary_bw {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self) {
-                self.update($enum_var);
+                self.update($enum_var(self.nzbw()));
             }
         )*
     };
@@ -135,7 +135,8 @@ macro_rules! ref_self_output_usize {
 /// These functions are all mirrors of functions for [awint_core::Bits] (see
 /// this link for more documentation).
 impl Bits {
-    nullary!(
+    unary_bw!(
+        opaque_assign OpaqueAssign, // unique to `mimick::Bits`
         zero_assign ZeroAssign,
         umax_assign UmaxAssign,
         imax_assign ImaxAssign,
