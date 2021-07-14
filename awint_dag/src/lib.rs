@@ -17,8 +17,8 @@
 //! be called like normal and can have the typical compiler optimizations
 //! applied, while the DAG can be inspected for more complicated things.
 
-pub(crate) mod lowering;
-pub(crate) mod mimick;
+pub mod lowering;
+pub mod mimick;
 pub use mimick::primitive;
 
 pub mod prelude {

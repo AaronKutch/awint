@@ -6,13 +6,25 @@ type P = crate::lowering::Ptr;
 
 /// Intermediate Operation for lowering from the mimicking operation to lut-only
 /// form
-#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub(crate) enum Op {
+pub enum Op {
     Unlowered(Rc<mimick::Op>),
 
     // represents an unknown, arbitrary, or opaque-boxed source
     OpaqueAssign(NonZeroUsize),
+
+    // special
+    ResizeAssign(NonZeroUsize, P, P),
+    ZeroResizeAssign(NonZeroUsize, P),
+    SignResizeAssign(NonZeroUsize, P),
+    CopyAssign(P),
+    Lut(P, P),
+    Funnel(P, P),
+    UQuoAssign(P, P),
+    URemAssign(P, P),
+    IQuoAssign(P, P),
+    IRemAssign(P, P),
 
     // no dependence on previous value of `self`
     ZeroAssign(NonZeroUsize),
@@ -21,8 +33,8 @@ pub(crate) enum Op {
     IminAssign(NonZeroUsize),
     UoneAssign(NonZeroUsize),
 
-    // used by `unstable_from_slice`
-    LitRawSliceAssign(Vec<usize>),
+    // literal assign
+    LitAssign(awint_ext::ExtAwi),
 
     // (&mut self)
     NotAssign(P),
@@ -45,7 +57,6 @@ pub(crate) enum Op {
     CountOnes(P),
 
     // (&mut self, rhs: &Self)
-    CopyAssign(P, P),
     OrAssign(P, P),
     AndAssign(P, P),
     XorAssign(P, P),
@@ -70,14 +81,7 @@ pub(crate) enum Op {
     Igt(P, P),
     Ige(P, P),
 
-    Lut(P, P, P),
     Field(P, P, P, P, P),
-    ResizeAssign(P, P, P),
-    Funnel(P, P, P),
-    UQuoAssign(P, P, P),
-    URemAssign(P, P, P),
-    IQuoAssign(P, P, P),
-    IRemAssign(P, P, P),
 }
 
 use Op::*;
@@ -87,7 +91,7 @@ impl Op {
         match self {
             Unlowered(p) => p.is_initialization(),
             OpaqueAssign(_) | ZeroAssign(_) | UmaxAssign(_) | ImaxAssign(_) | IminAssign(_)
-            | UoneAssign(_) | LitRawSliceAssign(_) => true,
+            | UoneAssign(_) | LitAssign(_) => true,
             _ => false,
         }
     }

@@ -687,3 +687,11 @@ extawi_construction!(
     extawi_imin, "imin", "Signed-minimum-value";
     extawi_uone, "uone", "Unsigned-one-value";
 );
+
+/*
+#[cfg(feature = "dag")]
+#[proc_macro_attribute]
+pub fn create_dag(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // `attr` gets set to the variable name to which the DAG is set
+}
+*/

@@ -1,18 +1,17 @@
 //! This DAG is for lowering into a LUT-only DAG
 
 use std::{
-    collections::{hash_map::Entry, BinaryHeap, HashMap},
+    collections::{hash_map::Entry, HashMap},
     num::NonZeroUsize,
     rc::Rc,
 };
 
-use super::into_iter_sorted;
 use crate::{
     lowering::{Arena, Op, Ptr},
     mimick,
 };
 
-#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
 struct Node {
     bw: Option<NonZeroUsize>,
     op: Op,
@@ -30,13 +29,13 @@ impl Node {
     }
 }
 
-struct Dag {
+pub struct Dag {
     dag: Arena<Node>,
 }
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
-#[derive(Debug, Hash, Clone, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, Eq)]
 struct PtrEqRc(Rc<mimick::Op>);
 
 impl PartialEq for PtrEqRc {
@@ -77,5 +76,9 @@ impl Dag {
             dag.get_mut(source).unwrap().dependents.push(dep.1);
         }
         Self { dag }
+    }
+
+    pub fn lower(&mut self) {
+        let _ = self.dag.is_empty();
     }
 }

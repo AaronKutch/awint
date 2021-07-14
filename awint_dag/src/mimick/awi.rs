@@ -33,14 +33,12 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     #[doc(hidden)]
     pub fn unstable_from_slice(raw: &[usize]) -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
-        assert_inlawi_invariants_slice::<BW, LEN>(raw);
-        // `collect` does not work
-        let mut v = Vec::new();
-        for x in raw.iter() {
-            v.push(*x);
-        }
-        Self::new(NonZeroUsize::new(BW).unwrap(), Op::LitRawSliceAssign(v))
+        Self::new(
+            NonZeroUsize::new(BW).unwrap(),
+            Op::LitAssign(awint_ext::ExtAwi::from_bits(
+                awint_core::InlAwi::<BW, LEN>::unstable_from_slice(raw).const_as_ref(),
+            )),
+        )
     }
 
     pub fn zero() -> Self {

@@ -20,11 +20,9 @@ pub mod prelude {
     pub use crate::{bw, cc, Bits, InlAwi};
 }
 
-/*
 #[cfg(feature = "awint_dag")]
 pub mod dag_prelude {
     pub use awint_core::bw;
-    pub use awint_dag::{Bits, ExtAwi, InlAwi};
+    pub use awint_dag::prelude::*;
     pub use awint_macros::*;
 }
-*/
