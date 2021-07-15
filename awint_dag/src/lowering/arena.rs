@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use core::num::NonZeroU64;
+use std::ops::{Index, IndexMut};
 
 /// Internal entry for a `Arena`
 #[derive(Debug)]
@@ -313,5 +314,39 @@ impl<T> Arena<T> {
         self.gen = inc_gen(self.gen);
         self.len = 0;
         self.free_range = (0, 0);
+    }
+}
+
+impl<T> Default for Arena<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> Index<Ptr> for Arena<T> {
+    type Output = T;
+
+    fn index(&self, index: Ptr) -> &T {
+        self.get(index).unwrap()
+    }
+}
+
+impl<T> IndexMut<Ptr> for Arena<T> {
+    fn index_mut(&mut self, index: Ptr) -> &mut T {
+        self.get_mut(index).unwrap()
+    }
+}
+
+impl<T> Index<&Ptr> for Arena<T> {
+    type Output = T;
+
+    fn index(&self, index: &Ptr) -> &T {
+        self.get(*index).unwrap()
+    }
+}
+
+impl<T> IndexMut<&Ptr> for Arena<T> {
+    fn index_mut(&mut self, index: &Ptr) -> &mut T {
+        self.get_mut(*index).unwrap()
     }
 }
