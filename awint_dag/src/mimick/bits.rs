@@ -6,7 +6,7 @@ use Op::*;
 use crate::mimick::{primitive as prim, Lineage, Op};
 
 /// Mimicking `awint_core::Bits`
-#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct Bits {
     bw: NonZeroUsize,
     op: Rc<Op>,

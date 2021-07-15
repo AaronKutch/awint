@@ -5,8 +5,14 @@ use awint_internals::*;
 use crate::mimick::{Bits, Lineage, Op};
 
 /// Mimicking `awint_core::InlAwi`
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InlAwi<const BW: usize, const LEN: usize>(Bits);
+
+impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
+    fn clone(&self) -> Self {
+        Self::new(self.nzbw(), Op::CopyAssign(self.op()))
+    }
+}
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn new(bw: NonZeroUsize, op: Op) -> Self {
@@ -87,8 +93,14 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
 }
 
 /// Mimicking `awint_ext::ExtAwi`
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExtAwi(Bits);
+
+impl Clone for ExtAwi {
+    fn clone(&self) -> Self {
+        Self::new(self.nzbw(), Op::CopyAssign(self.op()))
+    }
+}
 
 impl ExtAwi {
     pub(crate) fn new(bw: NonZeroUsize, op: Op) -> Self {
