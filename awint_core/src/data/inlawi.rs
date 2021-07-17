@@ -104,18 +104,32 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         unsafe { Bits::from_raw_parts_mut(self.raw.as_mut_ptr(), self.raw.len()) }
     }
 
-    /// Returns the bitwidth of this `InlAwi` as a `NonZeroUsize`
-    #[inline]
+    /// Returns the bitwidth of this type of `InlAwi` as a `NonZeroUsize`
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn nzbw(&self) -> NonZeroUsize {
-        self.const_as_ref().nzbw()
+    pub const fn const_nzbw() -> NonZeroUsize {
+        assert_inlawi_invariants::<BW, LEN>();
+        NonZeroUsize::new(BW).unwrap()
     }
 
-    /// Returns the bitwidth of this `InlAwi` as a `usize`
-    #[inline]
+    /// Returns the bitwidth of this type of `InlAwi` as a `usize`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn const_bw() -> usize {
+        assert_inlawi_invariants::<BW, LEN>();
+        BW
+    }
+
+    /// The same as `Self::const_nzbw()` except that it takes `&self`, this
+    /// exists to help with macros
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn nzbw(&self) -> NonZeroUsize {
+        Self::const_nzbw()
+    }
+
+    /// The same as `Self::const_bw()` except that it takes `&self`, this exists
+    /// to help with macros
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn bw(&self) -> usize {
-        self.const_as_ref().bw()
+        Self::const_bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
