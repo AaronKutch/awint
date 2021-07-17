@@ -1,15 +1,18 @@
 use std::{num::NonZeroUsize, ops::*, rc::Rc};
 
-use awint_internals::{bw, BITS};
+use awint_internals::BITS;
 
-use crate::mimick::{primitive as prim, Bits, Lineage, Op};
+use crate::{
+    mimick::{primitive as prim, Bits, ConstBwLineage, Lineage, State},
+    Op,
+};
 
 macro_rules! op_assign {
-    ($name:ident; $($std_trait:ident $std_fn:ident $op:ident),*,) => {
+    ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
         $(
             impl<I> $std_trait<I> for $name where I: Into<prim::$name> {
                 fn $std_fn(&mut self, rhs: I) where I: Into<prim::$name> {
-                    self.update(Op::$op(self.op(), rhs.into().op()));
+                    self.0.$assign_name(&rhs.into().0).unwrap();
                 }
             }
         )*
@@ -24,7 +27,7 @@ macro_rules! triop {
 
                 fn $std_fn(self, rhs: Self) -> Self {
                     let mut tmp = self.clone();
-                    tmp.update(Op::$op(tmp.op(), rhs.op()));
+                    tmp.0.add_assign(&rhs.0).unwrap();
                     tmp
                 }
             }
@@ -34,8 +37,7 @@ macro_rules! triop {
 
                 fn $std_fn(self, rhs: core::primitive::$name) -> Self {
                     let mut tmp = self.clone();
-                    let rhs = Self::from(rhs);
-                    tmp.update(Op::$op(tmp.op(), rhs.op()));
+                    tmp.0.add_assign(&$name::from(rhs).0).unwrap();
                     tmp
                 }
             }
@@ -51,44 +53,38 @@ macro_rules! prim {
             #[derive(Debug, Hash, PartialEq, Eq)]
             pub struct $name(Bits);
 
-            impl $name {
-                pub(crate) fn from_op(op: Op) -> Self {
-                    Self(Bits::new(bw($bw), op))
-                }
-            }
-
-            impl Lineage for $name {
-                fn nzbw(&self) -> NonZeroUsize {
-                    self.0.nzbw()
+            impl ConstBwLineage for $name {
+                fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+                    Self(Bits::new(Self::hidden_const_nzbw(), op, ops))
                 }
 
-                fn op(&self) -> Rc<Op> {
-                    self.0.op()
+                fn hidden_const_nzbw() -> NonZeroUsize {
+                    NonZeroUsize::new($bw).unwrap()
                 }
 
-                fn op_mut(&mut self) -> &mut Rc<Op> {
-                    self.0.op_mut()
+                fn state(&self) -> Rc<State> {
+                    self.0.state()
                 }
             }
 
             impl From<core::primitive::$name> for $name {
                 fn from(x: core::primitive::$name) -> Self {
-                    Self::from_op(Op::LitAssign(awint_ext::ExtAwi::from(x)))
+                    Self::new(Op::Literal(awint_ext::ExtAwi::from(x)), vec![])
                 }
             }
 
             impl Clone for $name {
                 fn clone(&self) -> Self {
-                    Self::from_op(Op::CopyAssign(self.op()))
+                    Self::new(Op::CopyAssign, vec![self.state()])
                 }
             }
 
             op_assign!($name;
-                AddAssign add_assign AddAssign,
-                SubAssign sub_assign SubAssign,
-                BitOrAssign bitor_assign OrAssign,
-                BitAndAssign bitand_assign AndAssign,
-                BitXorAssign bitxor_assign XorAssign,
+                AddAssign add_assign add_assign,
+                SubAssign sub_assign sub_assign,
+                BitOrAssign bitor_assign or_assign,
+                BitAndAssign bitand_assign and_assign,
+                BitXorAssign bitxor_assign xor_assign,
             );
 
             triop!($name;

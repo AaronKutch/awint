@@ -20,6 +20,9 @@
 pub mod lowering;
 pub mod mimick;
 pub use mimick::primitive;
+mod op;
+
+pub use op::Op;
 
 pub mod prelude {
     pub use crate::mimick::{Bits, ExtAwi, InlAwi};

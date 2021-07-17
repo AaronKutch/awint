@@ -2,31 +2,50 @@ use std::{num::NonZeroUsize, rc::Rc};
 
 use awint_internals::*;
 
-use crate::mimick::{Bits, Lineage, Op};
+use crate::{
+    mimick::{Bits, ConstBwLineage, Lineage, State},
+    Op,
+};
 
 /// Mimicking `awint_core::InlAwi`
 #[derive(Debug)]
 pub struct InlAwi<const BW: usize, const LEN: usize>(Bits);
 
+impl<const BW: usize, const LEN: usize> ConstBwLineage for InlAwi<BW, LEN> {
+    fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self(Bits::new(Self::const_nzbw(), op, ops))
+    }
+
+    fn hidden_const_nzbw() -> NonZeroUsize {
+        Self::const_nzbw()
+    }
+
+    fn state(&self) -> Rc<State> {
+        self.0.state()
+    }
+}
+
 impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
     fn clone(&self) -> Self {
-        Self::new(self.nzbw(), Op::CopyAssign(self.op()))
+        Self::new(Op::CopyAssign, vec![self.state()])
     }
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub(crate) fn new(bw: NonZeroUsize, op: Op) -> Self {
-        // double check the invariants
-        assert_inlawi_invariants::<BW, LEN>();
-        Self(Bits::new(bw, op))
+    pub fn const_nzbw() -> NonZeroUsize {
+        NonZeroUsize::new(BW).unwrap()
+    }
+
+    pub fn const_bw() -> usize {
+        BW
     }
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.0.nzbw()
+        Self::const_nzbw()
     }
 
     pub fn bw(&self) -> usize {
-        self.0.bw()
+        Self::const_bw()
     }
 
     pub fn const_as_ref(&self) -> &Bits {
@@ -40,55 +59,36 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     pub fn unstable_from_slice(raw: &[usize]) -> Self {
         Self::new(
-            NonZeroUsize::new(BW).unwrap(),
-            Op::LitAssign(awint_ext::ExtAwi::from_bits(
+            Op::Literal(awint_ext::ExtAwi::from_bits(
                 awint_core::InlAwi::<BW, LEN>::unstable_from_slice(raw).const_as_ref(),
             )),
+            vec![],
         )
     }
 
     pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        let nzbw = NonZeroUsize::new(BW).unwrap();
-        Self::new(nzbw, Op::ZeroAssign(nzbw))
+        Self::new(Op::ZeroAssign, vec![])
     }
 
     pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        let nzbw = NonZeroUsize::new(BW).unwrap();
-        Self::new(nzbw, Op::UmaxAssign(nzbw))
+        Self::new(Op::UmaxAssign, vec![])
     }
 
     pub fn imax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        let nzbw = NonZeroUsize::new(BW).unwrap();
-        Self::new(nzbw, Op::ImaxAssign(nzbw))
+        Self::new(Op::ImaxAssign, vec![])
     }
 
     pub fn imin() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        let nzbw = NonZeroUsize::new(BW).unwrap();
-        Self::new(nzbw, Op::IminAssign(nzbw))
+        Self::new(Op::IminAssign, vec![])
     }
 
     pub fn uone() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        let nzbw = NonZeroUsize::new(BW).unwrap();
-        Self::new(nzbw, Op::UoneAssign(nzbw))
-    }
-}
-
-impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
-    fn nzbw(&self) -> NonZeroUsize {
-        self.0.nzbw()
-    }
-
-    fn op(&self) -> Rc<Op> {
-        self.0.op()
-    }
-
-    fn op_mut(&mut self) -> &mut Rc<Op> {
-        self.0.op_mut()
+        Self::new(Op::UoneAssign, vec![])
     }
 }
 
@@ -96,16 +96,28 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
 #[derive(Debug)]
 pub struct ExtAwi(Bits);
 
+impl Lineage for ExtAwi {
+    fn new(bw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self(Bits::new(bw, op, ops))
+    }
+
+    fn state(&self) -> Rc<State> {
+        self.0.state()
+    }
+}
+
 impl Clone for ExtAwi {
     fn clone(&self) -> Self {
-        Self::new(self.nzbw(), Op::CopyAssign(self.op()))
+        Self::new(self.nzbw(), Op::CopyAssign, vec![self.state()])
     }
 }
 
 impl ExtAwi {
-    pub(crate) fn new(bw: NonZeroUsize, op: Op) -> Self {
-        Self(Bits::new(bw, op))
+    /*
+    pub fn bw(&self) -> prim::usize {
+        prim::usize::new(BwAssign, vec![self.state()])
     }
+    */
 
     pub fn nzbw(&self) -> NonZeroUsize {
         self.0.nzbw()
@@ -124,29 +136,27 @@ impl ExtAwi {
     }
 
     pub fn from_bits(bits: &Bits) -> ExtAwi {
-        let mut tmp = Self::new(bits.nzbw(), Op::ZeroAssign(bits.nzbw()));
-        tmp.const_as_mut().copy_assign(bits).unwrap();
-        tmp
+        Self::new(bits.nzbw(), Op::CopyAssign, vec![bits.state()])
     }
 
     pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::ZeroAssign(bw))
+        Self::new(bw, Op::ZeroAssign, vec![])
     }
 
     pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::UmaxAssign(bw))
+        Self::new(bw, Op::UmaxAssign, vec![])
     }
 
     pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::ImaxAssign(bw))
+        Self::new(bw, Op::ImaxAssign, vec![])
     }
 
     pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::IminAssign(bw))
+        Self::new(bw, Op::IminAssign, vec![])
     }
 
     pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::UoneAssign(bw))
+        Self::new(bw, Op::UoneAssign, vec![])
     }
 
     #[doc(hidden)]
@@ -172,19 +182,5 @@ impl ExtAwi {
     #[doc(hidden)]
     pub fn panicking_uone(bw: usize) -> Self {
         Self::uone(NonZeroUsize::new(bw).unwrap())
-    }
-}
-
-impl Lineage for ExtAwi {
-    fn nzbw(&self) -> NonZeroUsize {
-        self.0.nzbw()
-    }
-
-    fn op(&self) -> Rc<Op> {
-        self.0.op()
-    }
-
-    fn op_mut(&mut self) -> &mut Rc<Op> {
-        self.0.op_mut()
     }
 }
