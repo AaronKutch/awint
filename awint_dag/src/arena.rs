@@ -315,6 +315,18 @@ impl<T> Arena<T> {
         self.len = 0;
         self.free_range = (0, 0);
     }
+
+    /// Returns a list of `Ptr`s to all valid elements
+    pub fn list_ptrs(&self) -> Vec<Ptr> {
+        let mut v = Vec::new();
+        for (i, entry) in self.m.iter().enumerate() {
+            match entry.data {
+                Some((gen, _)) => v.push(Ptr { gen, index: i }),
+                None => (),
+            }
+        }
+        v
+    }
 }
 
 impl<T> Default for Arena<T> {

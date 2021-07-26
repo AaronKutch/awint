@@ -1,0 +1,15 @@
+[package]
+name = "binaries"
+version = "0.0.0"
+edition = "2018"
+publish = false
+
+# binaries for manipulating DAGs from `awint_dag`
+
+[lib]
+name = "common"
+path = "src/lib/common.rs"
+
+[dependencies]
+awint = { path = "../awint", features = ["dag"] }
+awint_dag = { path = "../awint_dag" }

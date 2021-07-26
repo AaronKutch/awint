@@ -11,16 +11,16 @@ use crate::{
 };
 
 impl Dag {
-    /// Constructs a directed acyclic graph from the root sinks of a mimicking
+    /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
     /// version
-    pub fn new(roots: Vec<Rc<mimick::State>>) -> Self {
+    pub fn new(leaves: Vec<Rc<mimick::State>>) -> Self {
         // keeps track if a mimick node is already tracked in the arena
         let mut lowerings: HashMap<PtrEqRc, Ptr> = HashMap::new();
         // used later for when all nodes are allocated
         let mut raisings: Vec<(Ptr, PtrEqRc)> = Vec::new();
         // keep a frontier which will guarantee that the whole mimick DAG is explored,
         // and keep track of dependents
-        let mut frontier = roots;
+        let mut frontier = leaves;
         let mut dag: Arena<Node> = Arena::new();
         // because some nodes may not be in the arena yet, we have to bootstrap
         // dependencies by looking up the source later (source, sink)
@@ -55,5 +55,27 @@ impl Dag {
             }
         }
         Self { dag }
+    }
+
+    /// Returns all source roots that have no operands
+    pub fn roots(&self) -> Vec<Ptr> {
+        let mut v = Vec::new();
+        for p in self.dag.list_ptrs() {
+            if self.dag[p].ops.is_empty() {
+                v.push(p);
+            }
+        }
+        v
+    }
+
+    /// Returns all sink leaves that have no dependents
+    pub fn leaves(&self) -> Vec<Ptr> {
+        let mut v = Vec::new();
+        for p in self.dag.list_ptrs() {
+            if self.dag[p].deps.is_empty() {
+                v.push(p);
+            }
+        }
+        v
     }
 }

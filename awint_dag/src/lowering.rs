@@ -1,11 +1,11 @@
-mod arena;
 mod dag;
 
 use std::{num::NonZeroUsize, rc::Rc};
 
-pub use arena::{Arena, Ptr};
-
-use crate::{mimick, Op};
+use crate::{
+    arena::{Arena, Ptr},
+    mimick, Op,
+};
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
@@ -32,5 +32,5 @@ pub struct Node {
 
 #[derive(Debug)]
 pub struct Dag {
-    dag: Arena<Node>,
+    pub dag: Arena<Node>,
 }
