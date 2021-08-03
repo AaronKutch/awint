@@ -34,6 +34,50 @@ fn lut_and_field() {
     }
 }
 
+/// Test [Bits::lut] and [Bits::lut_set]
+#[test]
+fn lut_and_lut_set() {
+    let mut rng = Xoshiro128StarStar::seed_from_u64(0);
+    #[cfg(not(miri))]
+    let (entry_bw_max, pow_max) = (258, 8);
+    #[cfg(miri)]
+    let (entry_bw_max, pow_max) = (68, 3);
+    for entry_bw in 1..entry_bw_max {
+        let mut awi_entry = ExtAwi::zero(bw(entry_bw));
+        let entry = awi_entry.const_as_mut();
+        let mut awi_entry_copy = ExtAwi::zero(entry.nzbw());
+        let entry_copy = awi_entry_copy.const_as_mut();
+        let mut awi_entry_old = ExtAwi::zero(entry.nzbw());
+        let entry_old = awi_entry_old.const_as_mut();
+        for pow in 1..pow_max {
+            let mul = 1 << pow;
+            let mut awi_lut = ExtAwi::zero(bw(entry_bw * mul));
+            let lut = awi_lut.const_as_mut();
+            lut.rand_assign_using(&mut rng).unwrap();
+            let mut awi_lut_copy = ExtAwi::zero(lut.nzbw());
+            let lut_copy = awi_lut_copy.const_as_mut();
+            lut_copy.copy_assign(lut).unwrap();
+            let mut awi_inx = ExtAwi::zero(bw(pow));
+            let inx = awi_inx.const_as_mut();
+            for _ in 0..mul {
+                inx.rand_assign_using(&mut rng).unwrap();
+                entry.rand_assign_using(&mut rng).unwrap();
+                entry_copy.copy_assign(entry).unwrap();
+                // before `lut_set`, copy the old entry
+                entry_old.lut(lut, inx).unwrap();
+                // set new value
+                lut.lut_set(entry, inx).unwrap();
+                // get the value that was set
+                entry.lut(lut, inx).unwrap();
+                assert_eq!(entry, entry_copy);
+                // restore to original state and make sure nothing else was overwritten
+                lut.lut_set(entry_old, inx).unwrap();
+                assert_eq!(lut, lut_copy);
+            }
+        }
+    }
+}
+
 #[test]
 fn funnel() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
