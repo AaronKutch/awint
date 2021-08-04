@@ -232,6 +232,22 @@ impl Bits {
         None
     }
 
+    pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
+        if entry.bw() < BITS {
+            if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
+                if lut_len == self.bw() {
+                    self.state = State::new(self.nzbw(), LutSet, vec![
+                        self.state(),
+                        entry.state(),
+                        inx.state(),
+                    ]);
+                    return Some(())
+                }
+            }
+        }
+        None
+    }
+
     pub fn field<U>(&mut self, to: U, rhs: &Self, from: U, width: U) -> Option<()>
     where
         U: Into<prim::usize>,

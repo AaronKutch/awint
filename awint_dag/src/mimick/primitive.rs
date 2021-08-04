@@ -7,6 +7,22 @@ use crate::{
     Op,
 };
 
+macro_rules! unary {
+    ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
+        $(
+            impl $std_trait for $name {
+                type Output = Self;
+
+                fn $std_fn(self) -> Self {
+                    let mut tmp = self.clone();
+                    tmp.0.$assign_name();
+                    tmp
+                }
+            }
+        )*
+    };
+}
+
 macro_rules! op_assign {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
         $(
@@ -20,14 +36,14 @@ macro_rules! op_assign {
 }
 
 macro_rules! triop {
-    ($name:ident; $($std_trait:ident $std_fn:ident $op:ident),*,) => {
+    ($name:ident; $($std_trait:ident $std_fn:ident $op_assign:ident),*,) => {
         $(
             impl $std_trait for $name {
                 type Output = Self;
 
                 fn $std_fn(self, rhs: Self) -> Self {
                     let mut tmp = self.clone();
-                    tmp.0.add_assign(&rhs.0).unwrap();
+                    tmp.0.$op_assign(&rhs.0).unwrap();
                     tmp
                 }
             }
@@ -37,7 +53,7 @@ macro_rules! triop {
 
                 fn $std_fn(self, rhs: core::primitive::$name) -> Self {
                     let mut tmp = self.clone();
-                    tmp.0.add_assign(&$name::from(rhs).0).unwrap();
+                    tmp.0.$op_assign(&$name::from(rhs).0).unwrap();
                     tmp
                 }
             }
@@ -50,7 +66,7 @@ macro_rules! prim {
         $(
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
-            #[derive(Debug, Hash, PartialEq, Eq)]
+            #[derive(Debug)]
             pub struct $name(Bits);
 
             impl ConstBwLineage for $name {
@@ -79,6 +95,10 @@ macro_rules! prim {
                 }
             }
 
+            unary!($name;
+                Not not not_assign,
+            );
+
             op_assign!($name;
                 AddAssign add_assign add_assign,
                 SubAssign sub_assign sub_assign,
@@ -88,18 +108,17 @@ macro_rules! prim {
             );
 
             triop!($name;
-                Add add AddAssign,
-                Sub sub SubAssign,
-                BitOr bitor OrAssign,
-                BitAnd bitand AndAssign,
-                BitXor bitxor XorAssign,
+                Add add add_assign,
+                Sub sub sub_assign,
+                BitOr bitor or_assign,
+                BitAnd bitand and_assign,
+                BitXor bitxor xor_assign,
             );
         )*
     };
 }
 
 prim!(
-    bool BoolAssign 1,
     usize UsizeAssign BITS,
     isize IsizeAssign BITS,
     u8 U8Assign 8,
@@ -112,4 +131,51 @@ prim!(
     i64 I64Assign 64,
     u128 U128Assign 128,
     i128 I128Assign 128,
+);
+
+/// Mimicking primitive of same name
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+pub struct bool(Bits);
+
+impl ConstBwLineage for bool {
+    fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self(Bits::new(Self::hidden_const_nzbw(), op, ops))
+    }
+
+    fn hidden_const_nzbw() -> NonZeroUsize {
+        NonZeroUsize::new(1).unwrap()
+    }
+
+    fn state(&self) -> Rc<State> {
+        self.0.state()
+    }
+}
+
+impl From<core::primitive::bool> for bool {
+    fn from(x: core::primitive::bool) -> Self {
+        Self::new(Op::Literal(awint_ext::ExtAwi::from(x)), vec![])
+    }
+}
+
+impl Clone for bool {
+    fn clone(&self) -> Self {
+        Self::new(Op::CopyAssign, vec![self.state()])
+    }
+}
+
+unary!(bool;
+    Not not not_assign,
+);
+
+op_assign!(bool;
+    BitOrAssign bitor_assign or_assign,
+    BitAndAssign bitand_assign and_assign,
+    BitXorAssign bitxor_assign xor_assign,
+);
+
+triop!(bool;
+    BitOr bitor or_assign,
+    BitAnd bitand and_assign,
+    BitXor bitxor xor_assign,
 );

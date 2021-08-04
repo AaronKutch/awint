@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Mimicking `awint_core::Bits`
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Bits {
     pub(crate) state: Rc<State>,
 }

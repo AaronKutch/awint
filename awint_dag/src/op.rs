@@ -90,5 +90,6 @@ pub enum Op {
     UnsignedOverflow,
     SignedOverflow,
 
+    LutSet,
     Field,
 }
