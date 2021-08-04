@@ -57,10 +57,15 @@ impl Dag {
         Self { dag }
     }
 
+    /// Returns a list of pointers to all nodes in no particular order
+    pub fn list_ptrs(&self) -> Vec<Ptr> {
+        self.dag.list_ptrs()
+    }
+
     /// Returns all source roots that have no operands
     pub fn roots(&self) -> Vec<Ptr> {
         let mut v = Vec::new();
-        for p in self.dag.list_ptrs() {
+        for p in self.list_ptrs() {
             if self.dag[p].ops.is_empty() {
                 v.push(p);
             }
@@ -71,7 +76,7 @@ impl Dag {
     /// Returns all sink leaves that have no dependents
     pub fn leaves(&self) -> Vec<Ptr> {
         let mut v = Vec::new();
-        for p in self.dag.list_ptrs() {
+        for p in self.list_ptrs() {
             if self.dag[p].deps.is_empty() {
                 v.push(p);
             }

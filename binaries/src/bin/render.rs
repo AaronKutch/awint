@@ -1,7 +1,8 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry::*, HashMap, HashSet},
     fs::{self, OpenOptions},
     io::Write,
+    ops::Index,
     path::PathBuf,
 };
 
@@ -33,10 +34,13 @@ fn main() {
     let dag = Dag::new(leaves);
 
     // DFS for topological sort
-    let mut sorted: Vec<Ptr> = Vec::new();
+    let mut sorted: Vec<Ptr> = vec![];
+    // done nodes
     let mut done_nodes: HashSet<Ptr> = HashSet::new();
-    let mut node: Vec<Ptr> = Vec::new();
-    let mut dep_i: Vec<usize> = Vec::new();
+    // frontier
+    let mut node: Vec<Ptr> = vec![];
+    // path through dependencies
+    let mut dep_i: Vec<usize> = vec![];
     let roots: Vec<Ptr> = dag.roots();
     for root in &roots {
         node.push(*root);
@@ -46,9 +50,11 @@ fn main() {
             match dag.dag[current].deps.get(dep_i[dep_i.len() - 1]) {
                 Some(dependent) => {
                     if done_nodes.contains(&dependent) {
+                        // if node was already explored, check the next dependency
                         let len = dep_i.len();
                         dep_i[len - 1] += 1;
                     } else {
+                        // else explore further
                         node.push(*dependent);
                         dep_i.push(0);
                     }
@@ -62,6 +68,7 @@ fn main() {
                     if node.is_empty() {
                         break
                     }
+                    // check next dependency
                     let len = dep_i.len();
                     dep_i[len - 1] += 1;
                 }
@@ -69,66 +76,57 @@ fn main() {
         }
     }
 
-    // we structure the graph by looking at the first operand and seeing how far
-    // back that operand is used
-    let mut first_operands: Vec<Ptr> = Vec::new();
-    let mut done_nodes: HashSet<Ptr> = HashSet::new();
-    let mut node: Vec<Ptr> = Vec::new();
-    let mut op_i: Vec<usize> = Vec::new();
-    let leaves = dag.leaves();
-    for leaf in &leaves {
-        //first_operands.push(*leaf);
-        node.push(*leaf);
-        op_i.push(0);
-        loop {
-            let current = node[node.len() - 1];
-            let i = op_i[op_i.len() - 1];
-            match dag.dag[current].ops.get(i) {
-                Some(operand) => {
-                    if done_nodes.contains(operand) {
-                        let len = op_i.len();
-                        op_i[len - 1] += 1;
-                    } else {
-                        if i != 0 {
-                            dbg!();
-                            first_operands.push(current);
-                        }
-                        node.push(*operand);
-                        op_i.push(0);
+    // map `Ptr`s to their position in `sorted`
+    let mut sort_map: HashMap<Ptr, usize> = HashMap::new();
+    for (i, ptr) in sorted.iter().enumerate() {
+        sort_map.insert(*ptr, i);
+    }
+
+    // we structure the graph by looking at the first operand of an operation and
+    // constructing a "lineage" where the same backing storage is being used as the
+    // first operand. We use a special "lineage search" that constructs a vector of
+    // lineages. It works by selecting any unexplored node, then adding on to the
+    // lineage all the way until a root is reached. If the leafward parts of the
+    // lineage are not touched on the first exploration, later explorations through
+    // the same lineage will overwrite the lineage number.
+    let mut n = 0;
+    let mut lineage_map: HashMap<Ptr, usize> = HashMap::new();
+    let mut lineage_leaves: HashMap<usize, Ptr> = HashMap::new();
+    for ptr in dag.list_ptrs() {
+        if !lineage_map.contains_key(&ptr) {
+            let mut next = ptr;
+            lineage_map.insert(next, n);
+            lineage_leaves.insert(n, next);
+            while let Some(next_zeroeth) = dag.dag[next].ops.get(0) {
+                next = *next_zeroeth;
+                match lineage_map.entry(next) {
+                    Occupied(mut o) => {
+                        // remove prior firsts
+                        let _ = lineage_leaves.remove(o.get());
+                        o.insert(n);
                     }
-                }
-                None => {
-                    // no more dependents, backtrack
-                    done_nodes.insert(current);
-                    node.pop();
-                    op_i.pop();
-                    if node.is_empty() {
-                        break
+                    Vacant(v) => {
+                        v.insert(n);
                     }
-                    let len = op_i.len();
-                    op_i[len - 1] += 1;
                 }
             }
+            n += 1;
         }
     }
 
-    //dbg!(&dag);
-    //dbg!(dag.roots(), dag.leaves());
-    dbg!(&sorted, &first_operands);
-
-    let mut grid: Vec<Vec<Ptr>> = Vec::new();
-    for op in first_operands {
-        let mut current = op;
-        let mut vertical = Vec::new();
-        loop {
-            vertical.push(current);
-            match dag.dag[current].ops.first() {
-                Some(op) => current = *op,
-                None => break,
-            }
+    // get ordered lineages
+    let mut lineages: Vec<Vec<Ptr>> = vec![];
+    for leaf in lineage_leaves {
+        let mut next = leaf.1;
+        let mut lineage = vec![next];
+        while let Some(next_zeroeth) = dag.dag[next].ops.get(0) {
+            next = *next_zeroeth;
+            lineage.push(next);
         }
-        grid.push(vertical);
+        lineages.push(lineage);
     }
+
+    //
 
     let mut s = String::new();
     //s += "<g fill="" />";
