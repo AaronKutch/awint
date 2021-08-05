@@ -1,6 +1,5 @@
 /// Mimicking operation
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum Op {
     // literal assign
     Literal(awint_ext::ExtAwi),
@@ -35,6 +34,8 @@ pub enum Op {
     IRemAssign,
     MulAddTriop,
     CinSumTriop,
+    UnsignedOverflow,
+    SignedOverflow,
 
     // (&mut self)
     NotAssign,
@@ -86,10 +87,90 @@ pub enum Op {
     DecAssign,
     DecAssignCout,
 
-    // also used in `cin_sum_triop`
-    UnsignedOverflow,
-    SignedOverflow,
-
     LutSet,
     Field,
+}
+
+use Op::*;
+
+impl Op {
+    /// Returns a tuple of mutable operand names and immutable operand names
+    pub fn operand_stats(&self) -> Vec<&'static str> {
+        let mut v = vec![];
+        // add common "lhs"
+        match *self {
+            Literal(_) | ZeroAssign | UmaxAssign | ImaxAssign | IminAssign | UoneAssign
+            | OpaqueAssign => (),
+
+            ResizeAssign => {
+                v.push("x");
+                v.push("extension");
+            }
+            ZeroResizeAssign
+            | SignResizeAssign
+            | ZeroResizeAssignOverflow
+            | SignResizeAssignOverflow => {
+                v.push("x");
+            }
+            CopyAssign => {
+                v.push("x");
+            }
+            Lut => {
+                v.push("lut");
+                v.push("inx")
+            }
+            Funnel => {
+                v.push("x");
+                v.push("s");
+            }
+            UQuoAssign | URemAssign | IQuoAssign | IRemAssign => {
+                v.push("duo");
+                v.push("div");
+            }
+            MulAddTriop => {
+                v.push("lhs");
+                v.push("rhs");
+            }
+            CinSumTriop | UnsignedOverflow | SignedOverflow => {
+                v.push("cin");
+                v.push("lhs");
+                v.push("rhs");
+            }
+
+            NotAssign | RevAssign | NegAssign | AbsAssign => v.push("x"),
+
+            IsZero | IsUmax | IsImax | IsImin | IsUone | Lsb | Msb => v.push("x"),
+
+            Lz | Tz | CountOnes => v.push("x"),
+
+            OrAssign | AndAssign | XorAssign | ShlAssign | LshrAssign | AshrAssign | RotlAssign
+            | RotrAssign | AddAssign | SubAssign | RsbAssign => {
+                v.push("lhs");
+                v.push("rhs")
+            }
+
+            ConstEq | ConstNe | Ult | Ule | Ugt | Uge | Ilt | Ile | Igt | Ige => {
+                v.push("lhs");
+                v.push("rhs");
+            }
+
+            IncAssign | IncAssignCout | DecAssignCout | DecAssign => {
+                v.push("x");
+                v.push("cin");
+            }
+            LutSet => {
+                v.push("lut");
+                v.push("entry");
+                v.push("inx");
+            }
+            Field => {
+                v.push("lhs");
+                v.push("to");
+                v.push("rhs");
+                v.push("from");
+                v.push("width");
+            }
+        }
+        v
+    }
 }
