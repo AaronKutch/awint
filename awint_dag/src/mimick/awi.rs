@@ -32,7 +32,7 @@ impl<const BW: usize, const LEN: usize> ConstBwLineage for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
     fn clone(&self) -> Self {
-        Self::new(Op::CopyAssign, vec![self.state()])
+        Self::new(Op::Copy, vec![self.state()])
     }
 }
 
@@ -73,27 +73,27 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::ZeroAssign, vec![])
+        Self::new(Op::Zero, vec![])
     }
 
     pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::UmaxAssign, vec![])
+        Self::new(Op::Umax, vec![])
     }
 
     pub fn imax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::ImaxAssign, vec![])
+        Self::new(Op::Imax, vec![])
     }
 
     pub fn imin() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::IminAssign, vec![])
+        Self::new(Op::Imin, vec![])
     }
 
     pub fn uone() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::UoneAssign, vec![])
+        Self::new(Op::Uone, vec![])
     }
 }
 
@@ -151,7 +151,7 @@ impl Lineage for ExtAwi {
 
 impl Clone for ExtAwi {
     fn clone(&self) -> Self {
-        Self::new(self.nzbw(), Op::CopyAssign, vec![self.state()])
+        Self::new(self.nzbw(), Op::Copy, vec![self.state()])
     }
 }
 
@@ -179,27 +179,27 @@ impl ExtAwi {
     }
 
     pub fn from_bits(bits: &Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::CopyAssign, vec![bits.state()])
+        Self::new(bits.nzbw(), Op::Copy, vec![bits.state()])
     }
 
     pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::ZeroAssign, vec![])
+        Self::new(bw, Op::Zero, vec![])
     }
 
     pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::UmaxAssign, vec![])
+        Self::new(bw, Op::Umax, vec![])
     }
 
     pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::ImaxAssign, vec![])
+        Self::new(bw, Op::Imax, vec![])
     }
 
     pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::IminAssign, vec![])
+        Self::new(bw, Op::Imin, vec![])
     }
 
     pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::UoneAssign, vec![])
+        Self::new(bw, Op::Uone, vec![])
     }
 
     #[doc(hidden)]
@@ -268,19 +268,19 @@ impl AsMut<Bits> for ExtAwi {
 
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::CopyAssign, vec![bits.state()])
+        Self::new(bits.nzbw(), Op::Copy, vec![bits.state()])
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::CopyAssign, vec![awi.state()])
+        Self::new(awi.nzbw(), Op::Copy, vec![awi.state()])
     }
 }
 
 impl From<bool> for ExtAwi {
     fn from(x: bool) -> ExtAwi {
-        Self::new(prim::bool::hidden_const_nzbw(), Op::CopyAssign, vec![
+        Self::new(prim::bool::hidden_const_nzbw(), Op::Copy, vec![
             prim::bool::from(x).state(),
         ])
     }
@@ -288,9 +288,7 @@ impl From<bool> for ExtAwi {
 
 impl From<prim::bool> for ExtAwi {
     fn from(x: prim::bool) -> ExtAwi {
-        Self::new(prim::bool::hidden_const_nzbw(), Op::CopyAssign, vec![
-            x.state()
-        ])
+        Self::new(prim::bool::hidden_const_nzbw(), Op::Copy, vec![x.state()])
     }
 }
 
@@ -301,7 +299,7 @@ macro_rules! to_extawi {
                 fn from(x: $ty) -> Self {
                     Self::new(
                         prim::$ty::hidden_const_nzbw(),
-                        Op::CopyAssign,
+                        Op::Copy,
                         vec![prim::$ty::from(x).state()]
                     )
                 }
@@ -309,7 +307,7 @@ macro_rules! to_extawi {
 
             impl From<prim::$ty> for ExtAwi {
                 fn from(x: prim::$ty) -> Self {
-                    Self::new(prim::$ty::hidden_const_nzbw(), Op::CopyAssign, vec![x.state()])
+                    Self::new(prim::$ty::hidden_const_nzbw(), Op::Copy, vec![x.state()])
                 }
             }
         )*

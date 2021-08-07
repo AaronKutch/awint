@@ -15,8 +15,8 @@ pub fn dag_input() -> Vec<Rc<awint_dag::mimick::State>> {
     let z = awi2.const_as_mut();
     z.not_assign();
     z.not_assign();
-    let mut v = Vec::new();
-    v.push(<Bits as awint_dag::mimick::Lineage>::state(x));
-    v.push(<Bits as awint_dag::mimick::Lineage>::state(z));
-    v
+    vec![
+        <Bits as awint_dag::mimick::Lineage>::state(x),
+        <Bits as awint_dag::mimick::Lineage>::state(z),
+    ]
 }

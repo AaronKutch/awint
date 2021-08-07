@@ -320,9 +320,8 @@ impl<T> Arena<T> {
     pub fn list_ptrs(&self) -> Vec<Ptr> {
         let mut v = Vec::new();
         for (i, entry) in self.m.iter().enumerate() {
-            match entry.data {
-                Some((gen, _)) => v.push(Ptr { gen, index: i }),
-                None => (),
+            if let Some((gen, _)) = entry.data {
+                v.push(Ptr { gen, index: i });
             }
         }
         v

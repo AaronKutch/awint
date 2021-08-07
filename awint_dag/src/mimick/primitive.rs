@@ -91,7 +91,7 @@ macro_rules! prim {
 
             impl Clone for $name {
                 fn clone(&self) -> Self {
-                    Self::new(Op::CopyAssign, vec![self.state()])
+                    Self::new(Op::Copy, vec![self.state()])
                 }
             }
 
@@ -160,7 +160,7 @@ impl From<core::primitive::bool> for bool {
 
 impl Clone for bool {
     fn clone(&self) -> Self {
-        Self::new(Op::CopyAssign, vec![self.state()])
+        Self::new(Op::Copy, vec![self.state()])
     }
 }
 

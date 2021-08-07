@@ -5,43 +5,43 @@ pub enum Op {
     Literal(awint_ext::ExtAwi),
 
     // no dependence on any `self`
-    ZeroAssign,
-    UmaxAssign,
-    ImaxAssign,
-    IminAssign,
-    UoneAssign,
+    Zero,
+    Umax,
+    Imax,
+    Imin,
+    Uone,
 
     // represents an unknown, arbitrary, or opaque-boxed source
-    OpaqueAssign,
+    Opaque,
 
-    // Assigns the bitwidth value
-    //BwAssign,
+    // the bitwidth value
+    //Bw,
 
     // these are special because although they take `&mut self`, the value of `self` is completely
     // overridden, so there is no dependency on `self.op()`.
-    ResizeAssign,
-    ZeroResizeAssign,
-    ZeroResizeAssignOverflow,
-    SignResizeAssign,
-    SignResizeAssignOverflow,
+    Resize,
+    ZeroResize,
+    ZeroResizeOverflow,
+    SignResize,
+    SignResizeOverflow,
     // I'm not sure what to do about dynamic `None` cases which would depend on `self`
-    CopyAssign,
+    Copy,
     Lut,
     Funnel,
-    UQuoAssign,
-    URemAssign,
-    IQuoAssign,
-    IRemAssign,
-    MulAddTriop,
-    CinSumTriop,
+    UQuo,
+    URem,
+    IQuo,
+    IRem,
+    MulAdd,
+    CinSum,
     UnsignedOverflow,
     SignedOverflow,
 
     // (&mut self)
-    NotAssign,
-    RevAssign,
-    NegAssign,
-    AbsAssign,
+    Not,
+    Rev,
+    Neg,
+    Abs,
 
     // (&self) -> bool
     IsZero,
@@ -58,21 +58,21 @@ pub enum Op {
     CountOnes,
 
     // (&mut self, rhs: &Self)
-    OrAssign,
-    AndAssign,
-    XorAssign,
-    ShlAssign,
-    LshrAssign,
-    AshrAssign,
-    RotlAssign,
-    RotrAssign,
-    AddAssign,
-    SubAssign,
-    RsbAssign,
+    Or,
+    And,
+    Xor,
+    Shl,
+    Lshr,
+    Ashr,
+    Rotl,
+    Rotr,
+    Add,
+    Sub,
+    Rsb,
 
     // (&self, rhs: &Self) -> Option<bool>
-    ConstEq,
-    ConstNe,
+    Eq,
+    Ne,
     Ult,
     Ule,
     Ugt,
@@ -82,10 +82,10 @@ pub enum Op {
     Igt,
     Ige,
 
-    IncAssign,
-    IncAssignCout,
-    DecAssign,
-    DecAssignCout,
+    Inc,
+    IncCout,
+    Dec,
+    DecCout,
 
     LutSet,
     Field,
@@ -94,25 +94,91 @@ pub enum Op {
 use Op::*;
 
 impl Op {
-    /// Returns a tuple of mutable operand names and immutable operand names
-    pub fn operand_stats(&self) -> Vec<&'static str> {
+    /// Returns the name of the operation
+    pub fn operation_name(&self) -> &'static str {
+        match *self {
+            Literal(_) => "literal",
+            Zero => "zero",
+            Umax => "umax",
+            Imax => "imax",
+            Imin => "imin",
+            Uone => "uone",
+            Opaque => "opaque",
+            Resize => "resize",
+            ZeroResize => "zero_resize",
+            ZeroResizeOverflow => "zero_reisze_overflow",
+            SignResize => "sign_resize",
+            SignResizeOverflow => "sign_resize_overflow",
+            Copy => "copy",
+            Lut => "lut",
+            Funnel => "funnel",
+            UQuo => "uquo",
+            URem => "urem",
+            IQuo => "iquo",
+            IRem => "irem",
+            MulAdd => "mul_add",
+            CinSum => "cin_sum",
+            UnsignedOverflow => "unsigned_overflow",
+            SignedOverflow => "signed_overflow",
+            Not => "not",
+            Rev => "rev",
+            Neg => "neg",
+            Abs => "abs",
+            IsZero => "is_zero",
+            IsUmax => "is_umax",
+            IsImax => "is_imax",
+            IsImin => "is_imin",
+            IsUone => "is_uone",
+            Lsb => "lsb",
+            Msb => "msb",
+            Lz => "lz",
+            Tz => "tz",
+            CountOnes => "count_ones",
+            Or => "or",
+            And => "and",
+            Xor => "xor",
+            Shl => "shl",
+            Lshr => "lshr",
+            Ashr => "ashr",
+            Rotl => "rotl",
+            Rotr => "rotr",
+            Add => "add",
+            Sub => "sub",
+            Rsb => "rsb",
+            Eq => "eq",
+            Ne => "ne",
+            Ult => "ult",
+            Ule => "ule",
+            Ugt => "ugt",
+            Uge => "uge",
+            Ilt => "ilt",
+            Ile => "ile",
+            Igt => "igt",
+            Ige => "ige",
+            Inc => "inc",
+            IncCout => "inc_cout",
+            Dec => "dec",
+            DecCout => "dec_cout",
+            LutSet => "lut_set",
+            Field => "field",
+        }
+    }
+
+    /// Returns names of operands
+    pub fn operand_names(&self) -> Vec<&'static str> {
         let mut v = vec![];
         // add common "lhs"
         match *self {
-            Literal(_) | ZeroAssign | UmaxAssign | ImaxAssign | IminAssign | UoneAssign
-            | OpaqueAssign => (),
+            Literal(_) | Zero | Umax | Imax | Imin | Uone | Opaque => (),
 
-            ResizeAssign => {
+            Resize => {
                 v.push("x");
                 v.push("extension");
             }
-            ZeroResizeAssign
-            | SignResizeAssign
-            | ZeroResizeAssignOverflow
-            | SignResizeAssignOverflow => {
+            ZeroResize | SignResize | ZeroResizeOverflow | SignResizeOverflow => {
                 v.push("x");
             }
-            CopyAssign => {
+            Copy => {
                 v.push("x");
             }
             Lut => {
@@ -123,38 +189,37 @@ impl Op {
                 v.push("x");
                 v.push("s");
             }
-            UQuoAssign | URemAssign | IQuoAssign | IRemAssign => {
+            UQuo | URem | IQuo | IRem => {
                 v.push("duo");
                 v.push("div");
             }
-            MulAddTriop => {
+            MulAdd => {
                 v.push("lhs");
                 v.push("rhs");
             }
-            CinSumTriop | UnsignedOverflow | SignedOverflow => {
+            CinSum | UnsignedOverflow | SignedOverflow => {
                 v.push("cin");
                 v.push("lhs");
                 v.push("rhs");
             }
 
-            NotAssign | RevAssign | NegAssign | AbsAssign => v.push("x"),
+            Not | Rev | Neg | Abs => v.push("x"),
 
             IsZero | IsUmax | IsImax | IsImin | IsUone | Lsb | Msb => v.push("x"),
 
             Lz | Tz | CountOnes => v.push("x"),
 
-            OrAssign | AndAssign | XorAssign | ShlAssign | LshrAssign | AshrAssign | RotlAssign
-            | RotrAssign | AddAssign | SubAssign | RsbAssign => {
+            Or | And | Xor | Shl | Lshr | Ashr | Rotl | Rotr | Add | Sub | Rsb => {
                 v.push("lhs");
                 v.push("rhs")
             }
 
-            ConstEq | ConstNe | Ult | Ule | Ugt | Uge | Ilt | Ile | Igt | Ige => {
+            Eq | Ne | Ult | Ule | Ugt | Uge | Ilt | Ile | Igt | Ige => {
                 v.push("lhs");
                 v.push("rhs");
             }
 
-            IncAssign | IncAssignCout | DecAssignCout | DecAssign => {
+            Inc | IncCout | DecCout | Dec => {
                 v.push("x");
                 v.push("cin");
             }

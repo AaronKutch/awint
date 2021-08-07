@@ -1,12 +1,138 @@
 use std::{
+    cmp::max,
     collections::{hash_map::Entry::*, HashMap, HashSet},
     fs::{self, OpenOptions},
     io::Write,
     path::PathBuf,
 };
 
-use awint_dag::{arena::Ptr, lowering::Dag};
+use awint_dag::{
+    arena::Ptr,
+    lowering::{Dag, Node},
+};
 use common::dag_input::dag_input;
+
+// for calibration
+//<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+//<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+//"http://www.w3.org/Graphics///SVG/1.1/DTD/svg11.dtd">
+//<svg preserveAspectRatio="meet" viewBox="0 0 400 200" width="100%"
+//height="100%" version="1.1" xmlns="http://www.w3.org/2000/svg">
+//<rect fill="#111" x="0" y="64" width="200" height="16"/>
+//<text fill="red" font-size="16" font-family="monospace" x="0"
+//<text //y="75">0123456789abcdef=|_</text>
+//<line x1="0" y1="80" x2="154" y2="82" stroke="#f08" stroke-width="2" />
+//</svg>
+
+const FONT_FAMILY: &str = "monospace";
+const FONT_SIZE: i32 = 16;
+const FONT_WX: i32 = 10;
+const FONT_WY: i32 = 16;
+// Fonts tend to hang downwards below the point at which they are written, so
+// this corrects that
+const FONT_ADJUST_Y: i32 = -5;
+const PAD: i32 = 4;
+const NODE_PAD: i32 = 32;
+const RECT_OUTLINE_WIDTH: i32 = 1;
+
+#[derive(Debug, Clone, Copy)]
+enum TextType {
+    Operand,
+    Operation,
+}
+
+struct RenderNode {
+    pub rects: Vec<(i32, i32, i32, i32)>,
+    pub text: Vec<((i32, i32), TextType, &'static str)>,
+    pub input_points: Vec<(i32, i32)>,
+    pub output_point: (i32, i32),
+    pub wx: i32,
+    pub wy: i32,
+}
+
+impl RenderNode {
+    pub fn new(node: &Node) -> Self {
+        let operand_names = node.op.operand_names();
+        let operation_name = node.op.operation_name();
+        let total_operand_len: i32 = operand_names.iter().map(|name| name.len() as i32).sum();
+        let operation_len = operation_name.len() as i32;
+        let min_operands_wx =
+            FONT_WX * total_operand_len + (2 * PAD) * (operand_names.len() as i32);
+        let min_operation_wx = FONT_WX * operation_len + 2 * PAD;
+        let wx = max(min_operands_wx, min_operation_wx);
+        // for spreading out inputs
+        let extra_space = if min_operands_wx < min_operation_wx {
+            min_operation_wx - min_operands_wx
+        } else {
+            0
+        };
+        let mut rects = vec![];
+        let mut text = vec![];
+        let mut input_points = vec![];
+        let mut wy = 0;
+        let textbox_wy = 2 * PAD + FONT_WY;
+        if operand_names.len() > 1 {
+            let individual_spaces = extra_space / (operand_names.len() as i32 - 1);
+            let mut x_progression = 0;
+            for name in &operand_names {
+                let rect = (
+                    x_progression,
+                    0,
+                    FONT_WX * (name.len() as i32) + 2 * PAD,
+                    textbox_wy,
+                );
+                text.push((
+                    (rect.0 + PAD, (rect.1 + rect.3) - PAD),
+                    TextType::Operand,
+                    *name,
+                ));
+                let center_x = rect.0 + (rect.2 / 2);
+                input_points.push((center_x, 0));
+                x_progression += rect.2 + individual_spaces;
+                rects.push(rect);
+            }
+            wy += textbox_wy;
+        }
+        let rect = (0, wy, wx, textbox_wy);
+        wy += rect.3;
+        let center_x = rect.0 + (rect.2 / 2);
+        text.push((
+            (
+                center_x - ((FONT_WX * (operation_name.len() as i32)) / 2),
+                wy - PAD,
+            ),
+            TextType::Operation,
+            operation_name,
+        ));
+        rects.push(rect);
+
+        Self {
+            rects,
+            text,
+            input_points,
+            output_point: (center_x, wy),
+            wx,
+            wy,
+        }
+    }
+
+    pub fn translate(&mut self, mov: (i32, i32)) {
+        for rect in &mut self.rects {
+            rect.0 += mov.0;
+            rect.1 += mov.1;
+        }
+        for tmp in &mut self.text {
+            tmp.0 .0 += mov.0;
+            tmp.0 .1 += mov.1;
+        }
+        for point in &mut self.input_points {
+            point.0 += mov.0;
+            point.1 += mov.1;
+        }
+        self.output_point.0 += mov.0;
+        self.output_point.1 += mov.1;
+    }
+}
 
 fn main() {
     let out_file = PathBuf::from("./rendered.svg".to_owned());
@@ -152,6 +278,54 @@ fn main() {
         }
     }
 
+    let mut max_y_nodes = 0;
+    for vert in &grid {
+        for slot in &*vert {
+            max_y_nodes = max(max_y_nodes, slot.1);
+        }
+    }
+    let mut grid_max_wx = vec![0; grid.len()];
+    let mut grid_max_wy = vec![0; max_y_nodes + 1];
+    let mut render_grid: Vec<Vec<Option<RenderNode>>> = vec![];
+
+    for (x_i, vertical) in grid.iter().enumerate() {
+        let mut tmp = vec![];
+        for (ptr, pos) in &*vertical {
+            for _ in tmp.len()..*pos {
+                tmp.push(None);
+            }
+            let node = RenderNode::new(&dag.dag[ptr]);
+            grid_max_wx[x_i] = max(grid_max_wx[x_i], node.wx);
+            grid_max_wy[*pos] = max(grid_max_wy[*pos], node.wy);
+            tmp.push(Some(node));
+        }
+        for _ in tmp.len()..max_y_nodes {
+            tmp.push(None);
+        }
+        render_grid.push(tmp);
+    }
+    // `render_grid` is now completely rectangular and the `_max_` values are
+    // correct
+
+    // translate to final places
+    let mut cumulative_x = vec![];
+    let mut tot_wx = 0;
+    for wx in &grid_max_wx {
+        cumulative_x.push(tot_wx);
+        tot_wx += wx + NODE_PAD;
+    }
+    let mut cumulative_y = vec![];
+    let mut tot_wy = 0;
+    for wy in &grid_max_wy {
+        tot_wy += wy + NODE_PAD;
+        cumulative_y.push(tot_wy);
+    }
+    for (i, vert) in render_grid.iter_mut().enumerate() {
+        for (j, node) in vert.iter_mut().flatten().enumerate() {
+            node.translate((cumulative_x[i], cumulative_y[j]));
+        }
+    }
+
     // create the SVG code
 
     // example code for future reference
@@ -172,8 +346,6 @@ fn main() {
     //<polyline fill="none" />
     //<line x1="50" y1="50" x2="200" y2="200" stroke="blue" stroke-width="4" />
     //-->
-    let mut s = String::new();
-    //s += "<g fill="" />";
 
     // #111 background
     // gray #877
@@ -183,9 +355,58 @@ fn main() {
     // green #090
     // cyan #0a7
     // blue #08f
-    //s += "<rect fill=\"#111\">\n";
+    let mut s = String::new();
+    //s += &format!("<circle cx=\"{}\" cy=\"{}\" r=\"4\" fill=\"#f0f\"/>", tmp.0
+    // .0, tmp.0 .1);
 
-    let viewbox = (256, 256);
+    // rectangles and outlines first
+    for vert in &render_grid {
+        for node in (*vert).iter().flatten() {
+            for rect in &node.rects {
+                s += &format!(
+                    "<rect fill=\"#111\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/>\n",
+                    rect.0, rect.1, rect.2, rect.3
+                );
+                // outline the rectangle
+                s += &format!(
+                    "<polyline stroke=\"#877\" stroke-width=\"{}\" points=\"{},{} {},{} {},{} \
+                     {},{} {},{}\"  fill=\"#0000\"/>",
+                    RECT_OUTLINE_WIDTH,
+                    rect.0,
+                    rect.1,
+                    rect.0 + rect.2,
+                    rect.1,
+                    rect.0 + rect.2,
+                    rect.1 + rect.3,
+                    rect.0,
+                    rect.1 + rect.3,
+                    rect.0,
+                    rect.1,
+                );
+            }
+        }
+    }
+
+    // lines second
+
+    // text last
+    for vert in &render_grid {
+        for node in (*vert).iter().flatten() {
+            for tmp in &node.text {
+                s += &format!(
+                    "<text fill=\"#877\" font-size=\"{}\" font-family=\"{}\" x=\"{}\" \
+                     y=\"{}\">{}</text>\n",
+                    FONT_SIZE,
+                    FONT_FAMILY,
+                    tmp.0 .0,
+                    tmp.0 .1 + FONT_ADJUST_Y,
+                    tmp.2
+                );
+            }
+        }
+    }
+
+    let viewbox = (tot_wx, tot_wy);
     let output = format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n\
         <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \
         \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n\
