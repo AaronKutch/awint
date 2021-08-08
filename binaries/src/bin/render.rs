@@ -1,3 +1,5 @@
+#![allow(clippy::many_single_char_names)]
+
 use std::{
     cmp::max,
     collections::{hash_map::Entry::*, HashMap, HashSet},
@@ -41,17 +43,20 @@ enum TextType {
     Operation,
 }
 
+#[derive(Debug, Clone)]
 struct RenderNode {
+    pub ptr: Ptr,
     pub rects: Vec<(i32, i32, i32, i32)>,
     pub text: Vec<((i32, i32), TextType, &'static str)>,
-    pub input_points: Vec<(i32, i32)>,
+    pub input_points: Vec<((i32, i32), Ptr)>,
     pub output_point: (i32, i32),
     pub wx: i32,
     pub wy: i32,
 }
 
 impl RenderNode {
-    pub fn new(node: &Node) -> Self {
+    #[allow(clippy::comparison_chain)]
+    pub fn new(node: &Node, ptr: Ptr) -> Self {
         let operand_names = node.op.operand_names();
         let operation_name = node.op.operation_name();
         let total_operand_len: i32 = operand_names.iter().map(|name| name.len() as i32).sum();
@@ -74,7 +79,7 @@ impl RenderNode {
         if operand_names.len() > 1 {
             let individual_spaces = extra_space / (operand_names.len() as i32 - 1);
             let mut x_progression = 0;
-            for name in &operand_names {
+            for (op_i, name) in operand_names.iter().enumerate() {
                 let rect = (
                     x_progression,
                     0,
@@ -87,11 +92,13 @@ impl RenderNode {
                     *name,
                 ));
                 let center_x = rect.0 + (rect.2 / 2);
-                input_points.push((center_x, 0));
+                input_points.push(((center_x, 0), node.ops[op_i]));
                 x_progression += rect.2 + individual_spaces;
                 rects.push(rect);
             }
             wy += textbox_wy;
+        } else if operand_names.len() == 1 {
+            input_points.push(((wx / 2, 0), node.ops[0]));
         }
         let rect = (0, wy, wx, textbox_wy);
         wy += rect.3;
@@ -107,6 +114,7 @@ impl RenderNode {
         rects.push(rect);
 
         Self {
+            ptr,
             rects,
             text,
             input_points,
@@ -126,8 +134,8 @@ impl RenderNode {
             tmp.0 .1 += mov.1;
         }
         for point in &mut self.input_points {
-            point.0 += mov.0;
-            point.1 += mov.1;
+            point.0 .0 += mov.0;
+            point.0 .1 += mov.1;
         }
         self.output_point.0 += mov.0;
         self.output_point.1 += mov.1;
@@ -236,14 +244,6 @@ fn main() {
     // sort by the the topological sorting of the leaves
     lineages.sort_by(|a, b| sort_map[&a[0]].cmp(&sort_map[&b[0]]));
 
-    // make a new map of ptrs to their lineage and lineage positions
-    let mut lineage_map: HashMap<Ptr, (usize, usize)> = HashMap::new();
-    for (lineage_i, lineage) in lineages.iter().enumerate() {
-        for (ptr_i, ptr) in lineage.iter().enumerate() {
-            lineage_map.insert(*ptr, (lineage_i, ptr_i));
-        }
-    }
-
     // Finally, make a grid such that any dependency must flow one way. The second
     // element in the tuple says how far back from the leaf line the node should be
     // placed.
@@ -281,31 +281,44 @@ fn main() {
     let mut max_y_nodes = 0;
     for vert in &grid {
         for slot in &*vert {
-            max_y_nodes = max(max_y_nodes, slot.1);
+            max_y_nodes = max(max_y_nodes, slot.1 + 1);
         }
     }
     let mut grid_max_wx = vec![0; grid.len()];
-    let mut grid_max_wy = vec![0; max_y_nodes + 1];
+    let mut grid_max_wy = vec![0; max_y_nodes];
     let mut render_grid: Vec<Vec<Option<RenderNode>>> = vec![];
+    for _ in 0..grid_max_wx.len() {
+        let mut v = vec![];
+        for _ in 0..grid_max_wy.len() {
+            v.push(None);
+        }
+        render_grid.push(v);
+    }
 
     for (x_i, vertical) in grid.iter().enumerate() {
-        let mut tmp = vec![];
         for (ptr, pos) in &*vertical {
-            for _ in tmp.len()..*pos {
-                tmp.push(None);
-            }
-            let node = RenderNode::new(&dag.dag[ptr]);
-            grid_max_wx[x_i] = max(grid_max_wx[x_i], node.wx);
-            grid_max_wy[*pos] = max(grid_max_wy[*pos], node.wy);
-            tmp.push(Some(node));
+            let node = RenderNode::new(&dag.dag[ptr], *ptr);
+            let tmp = grid_max_wx[x_i];
+            grid_max_wx[x_i] = max(tmp, node.wx);
+            // y is reversed to make the data flow downwards graphically
+            let tmp = grid_max_wy[max_y_nodes - 1 - *pos];
+            grid_max_wy[max_y_nodes - 1 - *pos] = max(tmp, node.wy);
+            render_grid[x_i][max_y_nodes - 1 - *pos] = Some(node);
         }
-        for _ in tmp.len()..max_y_nodes {
-            tmp.push(None);
-        }
-        render_grid.push(tmp);
     }
     // `render_grid` is now completely rectangular and the `_max_` values are
     // correct
+
+    // create map for later use
+    let mut grid_map: HashMap<Ptr, (usize, usize)> = HashMap::new();
+    for (i, vert) in render_grid.iter().enumerate() {
+        for (j, node) in vert.iter().enumerate() {
+            // do not flatten, it messes up the indexing
+            if let Some(node) = node {
+                grid_map.insert(node.ptr, (i, j));
+            }
+        }
+    }
 
     // translate to final places
     let mut cumulative_x = vec![];
@@ -317,12 +330,16 @@ fn main() {
     let mut cumulative_y = vec![];
     let mut tot_wy = 0;
     for wy in &grid_max_wy {
-        tot_wy += wy + NODE_PAD;
         cumulative_y.push(tot_wy);
+        tot_wy += wy + NODE_PAD;
     }
+
     for (i, vert) in render_grid.iter_mut().enumerate() {
-        for (j, node) in vert.iter_mut().flatten().enumerate() {
-            node.translate((cumulative_x[i], cumulative_y[j]));
+        for (j, node) in vert.iter_mut().enumerate() {
+            // do not flatten, it messes up the indexing
+            if let Some(node) = node {
+                node.translate((cumulative_x[i], cumulative_y[j]));
+            }
         }
     }
 
@@ -355,7 +372,9 @@ fn main() {
     // green #090
     // cyan #0a7
     // blue #08f
+
     let mut s = String::new();
+
     //s += &format!("<circle cx=\"{}\" cy=\"{}\" r=\"4\" fill=\"#f0f\"/>", tmp.0
     // .0, tmp.0 .1);
 
@@ -388,6 +407,32 @@ fn main() {
     }
 
     // lines second
+    for i in 0..render_grid.len() {
+        for j in 0..render_grid[i].len() {
+            let num_inputs = if let Some(ref node) = render_grid[i][j] {
+                node.input_points.len()
+            } else {
+                continue
+            };
+            for k in 0..num_inputs {
+                let (i, ptr) = render_grid[i][j].as_ref().unwrap().input_points[k];
+                let (o_i, o_j) = grid_map[&ptr];
+                let o = render_grid[o_i][o_j].as_ref().unwrap().output_point;
+                let p = NODE_PAD / 2;
+                s += &format!(
+                    "<path stroke=\"#0a7\" fill=\"#0000\" d=\"M {},{} C {},{} {},{} {},{}\"/>",
+                    o.0,
+                    o.1,
+                    o.0,
+                    o.1 + p,
+                    i.0,
+                    i.1 - p,
+                    i.0,
+                    i.1
+                );
+            }
+        }
+    }
 
     // text last
     for vert in &render_grid {
@@ -410,12 +455,14 @@ fn main() {
     let output = format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n\
         <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \
         \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n\
-        <svg preserveAspectRatio=\"meet\" viewBox=\"0 0 {} {}\" width=\"100%\" height=\"100%\" \
+        <svg preserveAspectRatio=\"meet\" viewBox=\"{} {} {} {}\" width=\"100%\" height=\"100%\" \
         version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n\
         {}\n\
         </svg>",
-        viewbox.0,
-        viewbox.1,
+        -PAD,
+        -PAD,
+        viewbox.0 + PAD,
+        viewbox.1 + PAD,
         s,
     );
     OpenOptions::new()

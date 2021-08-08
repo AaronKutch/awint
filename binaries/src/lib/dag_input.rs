@@ -8,12 +8,12 @@ pub fn dag_input() -> Vec<Rc<awint_dag::mimick::State>> {
     let x = awi0.const_as_mut();
     let y = awi1.const_as_mut();
     x.xor_assign(y).unwrap();
-    y.xor_assign(x).unwrap();
-    x.xor_assign(y).unwrap();
+    y.and_assign(x).unwrap();
+    x.or_assign(y).unwrap();
 
     let mut awi2 = inlawi!(-1i4);
     let z = awi2.const_as_mut();
-    z.not_assign();
+    z.rev_assign();
     z.not_assign();
     vec![
         <Bits as awint_dag::mimick::Lineage>::state(x),
