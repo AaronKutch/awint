@@ -4,7 +4,6 @@
 //! `InlAwi` in the `awint_core` crate. This crate is separate because it
 //! requires support for `alloc`.
 
-#![cfg_attr(feature = "const_support", feature(const_fn_transmute))]
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly

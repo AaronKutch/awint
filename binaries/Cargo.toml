@@ -11,5 +11,5 @@ name = "common"
 path = "src/lib/common.rs"
 
 [dependencies]
-awint = { path = "../awint", features = ["dag"] }
+awint = { path = "../awint", default-features = false , features = ["dag"] }
 awint_dag = { path = "../awint_dag" }

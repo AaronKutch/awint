@@ -9,7 +9,6 @@
 //! `Result`. The only exceptions are some `core::ops` implementations and the
 //! `bw` function.
 
-#![cfg_attr(feature = "const_support", feature(const_fn_transmute))]
 #![cfg_attr(feature = "const_support", feature(const_maybe_uninit_as_ptr))]
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_offset))]
