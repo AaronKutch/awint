@@ -21,8 +21,9 @@ use common::dag_input::dag_input;
 //<svg preserveAspectRatio="meet" viewBox="0 0 400 200" width="100%"
 //height="100%" version="1.1" xmlns="http://www.w3.org/2000/svg">
 //<rect fill="#111" x="0" y="64" width="200" height="16"/>
-//<text fill="red" font-size="16" font-family="monospace" x="0"
-//<text //y="75">0123456789abcdef=|_</text>
+//<text fill="red" font-size="16" font-family="monospace" x="0" y="75">
+//0123456789abcdef=|_
+//</text>
 //<line x1="0" y1="80" x2="154" y2="82" stroke="#f08" stroke-width="2" />
 //</svg>
 
@@ -30,24 +31,33 @@ const FONT_FAMILY: &str = "monospace";
 const FONT_SIZE: i32 = 16;
 const FONT_WX: i32 = 10;
 const FONT_WY: i32 = 16;
+const INPUT_FONT_SIZE: i32 = 8;
+const INPUT_FONT_WX: i32 = 5;
+const INPUT_FONT_WY: i32 = 8;
+const INPUT_PAD: i32 = 2;
 // Fonts tend to hang downwards below the point at which they are written, so
 // this corrects that
 const FONT_ADJUST_Y: i32 = -5;
 const PAD: i32 = 4;
 const NODE_PAD: i32 = 32;
 const RECT_OUTLINE_WIDTH: i32 = 1;
-
-#[derive(Debug, Clone, Copy)]
-enum TextType {
-    Operand,
-    Operation,
-}
+// This is calculated by using CIELAB colors, taking 4 combinations of 2 of max
+// green, red, blue, and yellow at 50% lightness and 4 single max values at 75%
+// lightness. The ff0000 and 009800 values together are not colorblind friendly,
+// so I replace the red one with ff8080. There are two blue values 00a9ff and
+// 00caff that are too close to each other, so I replace one with the grayscale
+// b9b9b9. This has an interesting symmetry of 4 elements of magenta to yellow,
+// 2 elements of green to cyan, 1 element of blue, and 1 gray element to close
+// off the power of 2.
+const COLORS: [&str; 8] = [
+    "b900ff", "ff00be", "ff8080", "e0b500", "009800", "00e6b6", "00a9ff", "b9b9b9",
+];
 
 #[derive(Debug, Clone)]
 struct RenderNode {
     pub ptr: Ptr,
     pub rects: Vec<(i32, i32, i32, i32)>,
-    pub text: Vec<((i32, i32), TextType, &'static str)>,
+    pub text: Vec<((i32, i32), i32, &'static str)>,
     pub input_points: Vec<((i32, i32), Ptr)>,
     pub output_point: (i32, i32),
     pub wx: i32,
@@ -62,7 +72,7 @@ impl RenderNode {
         let total_operand_len: i32 = operand_names.iter().map(|name| name.len() as i32).sum();
         let operation_len = operation_name.len() as i32;
         let min_operands_wx =
-            FONT_WX * total_operand_len + (2 * PAD) * (operand_names.len() as i32);
+            INPUT_FONT_WX * total_operand_len + (2 * PAD) * (operand_names.len() as i32);
         let min_operation_wx = FONT_WX * operation_len + 2 * PAD;
         let wx = max(min_operands_wx, min_operation_wx);
         // for spreading out inputs
@@ -75,40 +85,29 @@ impl RenderNode {
         let mut text = vec![];
         let mut input_points = vec![];
         let mut wy = 0;
-        let textbox_wy = 2 * PAD + FONT_WY;
         if operand_names.len() > 1 {
+            wy += 2 * INPUT_PAD + INPUT_FONT_WY;
             let individual_spaces = extra_space / (operand_names.len() as i32 - 1);
             let mut x_progression = 0;
             for (op_i, name) in operand_names.iter().enumerate() {
-                let rect = (
-                    x_progression,
-                    0,
-                    FONT_WX * (name.len() as i32) + 2 * PAD,
-                    textbox_wy,
-                );
-                text.push((
-                    (rect.0 + PAD, (rect.1 + rect.3) - PAD),
-                    TextType::Operand,
-                    *name,
-                ));
-                let center_x = rect.0 + (rect.2 / 2);
+                text.push(((x_progression + PAD, wy), INPUT_FONT_SIZE, *name));
+                let this_wx = INPUT_FONT_WX * (name.len() as i32) + 2 * PAD;
+                let center_x = x_progression + (this_wx / 2);
                 input_points.push(((center_x, 0), node.ops[op_i]));
-                x_progression += rect.2 + individual_spaces;
-                rects.push(rect);
+                x_progression += this_wx + individual_spaces;
             }
-            wy += textbox_wy;
         } else if operand_names.len() == 1 {
             input_points.push(((wx / 2, 0), node.ops[0]));
         }
-        let rect = (0, wy, wx, textbox_wy);
-        wy += rect.3;
+        wy += 2 * PAD + FONT_WY;
+        let rect = (0, 0, wx, wy);
         let center_x = rect.0 + (rect.2 / 2);
         text.push((
             (
                 center_x - ((FONT_WX * (operation_name.len() as i32)) / 2),
                 wy - PAD,
             ),
-            TextType::Operation,
+            FONT_SIZE,
             operation_name,
         ));
         rects.push(rect);
@@ -364,15 +363,6 @@ fn main() {
     //<line x1="50" y1="50" x2="200" y2="200" stroke="blue" stroke-width="4" />
     //-->
 
-    // #111 background
-    // gray #877
-    // pink #f08
-    // orange #e30
-    // yellow #970
-    // green #090
-    // cyan #0a7
-    // blue #08f
-
     let mut s = String::new();
 
     //s += &format!("<circle cx=\"{}\" cy=\"{}\" r=\"4\" fill=\"#f0f\"/>", tmp.0
@@ -388,7 +378,7 @@ fn main() {
                 );
                 // outline the rectangle
                 s += &format!(
-                    "<polyline stroke=\"#877\" stroke-width=\"{}\" points=\"{},{} {},{} {},{} \
+                    "<polyline stroke=\"#777\" stroke-width=\"{}\" points=\"{},{} {},{} {},{} \
                      {},{} {},{}\"  fill=\"#0000\"/>",
                     RECT_OUTLINE_WIDTH,
                     rect.0,
@@ -417,10 +407,12 @@ fn main() {
             for k in 0..num_inputs {
                 let (i, ptr) = render_grid[i][j].as_ref().unwrap().input_points[k];
                 let (o_i, o_j) = grid_map[&ptr];
+                let color = COLORS[o_i % COLORS.len()];
                 let o = render_grid[o_i][o_j].as_ref().unwrap().output_point;
                 let p = NODE_PAD / 2;
                 s += &format!(
-                    "<path stroke=\"#0a7\" fill=\"#0000\" d=\"M {},{} C {},{} {},{} {},{}\"/>",
+                    "<path stroke=\"#{}\" fill=\"#0000\" d=\"M {},{} C {},{} {},{} {},{}\"/>",
+                    color,
                     o.0,
                     o.1,
                     o.0,
@@ -438,10 +430,11 @@ fn main() {
     for vert in &render_grid {
         for node in (*vert).iter().flatten() {
             for tmp in &node.text {
+                let size = tmp.1;
                 s += &format!(
-                    "<text fill=\"#877\" font-size=\"{}\" font-family=\"{}\" x=\"{}\" \
+                    "<text fill=\"#777\" font-size=\"{}\" font-family=\"{}\" x=\"{}\" \
                      y=\"{}\">{}</text>\n",
-                    FONT_SIZE,
+                    size,
                     FONT_FAMILY,
                     tmp.0 .0,
                     tmp.0 .1 + FONT_ADJUST_Y,
