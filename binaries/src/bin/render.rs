@@ -50,7 +50,7 @@ const RECT_OUTLINE_WIDTH: i32 = 1;
 // 2 elements of green to cyan, 1 element of blue, and 1 gray element to close
 // off the power of 2.
 const COLORS: [&str; 8] = [
-    "b900ff", "ff00be", "ff8080", "e0b500", "009800", "00e6b6", "00a9ff", "b9b9b9",
+    "b9b9b9", "e0b500", "00a9ff", "ff8080", "00e6b6", "ff00be", "009800", "b900ff",
 ];
 
 #[derive(Debug, Clone)]
@@ -240,8 +240,6 @@ fn main() {
         }
         lineages.push(lineage);
     }
-    // sort by the the topological sorting of the leaves
-    lineages.sort_by(|a, b| sort_map[&a[0]].cmp(&sort_map[&b[0]]));
 
     // Finally, make a grid such that any dependency must flow one way. The second
     // element in the tuple says how far back from the leaf line the node should be
@@ -254,7 +252,7 @@ fn main() {
         }
         grid.push(vertical);
     }
-    // compress as much as possible
+    // compress vertically as much as possible
     let mut changed;
     loop {
         changed = false;
@@ -277,6 +275,70 @@ fn main() {
         }
     }
 
+    // Reordering columns to try and minimize dependency line crossings.
+    // create some maps first.
+    let mut ptr_to_x_i: HashMap<Ptr, usize> = HashMap::new();
+    let mut x_i_to_ptr: HashMap<usize, Ptr> = HashMap::new();
+    for (x_i, vertical) in grid.iter().enumerate() {
+        for slot in vertical {
+            ptr_to_x_i.insert(slot.0, x_i);
+            x_i_to_ptr.insert(x_i, slot.0);
+        }
+    }
+    let mut done_lineages: HashSet<usize> = HashSet::new();
+    let mut sorted_lineages: Vec<usize> = vec![];
+    // ordered DFS starting from leaves to determine order of lineages
+    // done nodes
+    let mut done_nodes: HashSet<Ptr> = HashSet::new();
+    // frontier
+    let mut node: Vec<Ptr> = vec![];
+    // path through operands
+    let mut ops_i: Vec<usize> = vec![];
+    for leaf in &dag.leaves() {
+        node.push(*leaf);
+        ops_i.push(0);
+        loop {
+            let current = node[node.len() - 1];
+            match dag.dag[current].ops.get(ops_i[ops_i.len() - 1]) {
+                Some(operand) => {
+                    if done_nodes.contains(operand) {
+                        // if node was already explored, check the next dependency
+                        let len = ops_i.len();
+                        ops_i[len - 1] += 1;
+                    } else {
+                        // else explore further
+                        node.push(*operand);
+                        ops_i.push(0);
+                    }
+                }
+                None => {
+                    // no more dependents, backtrack
+                    let x_i = ptr_to_x_i[&current];
+                    if !done_lineages.contains(&x_i) {
+                        sorted_lineages.push(x_i);
+                        done_lineages.insert(x_i);
+                    }
+                    done_nodes.insert(current);
+                    node.pop();
+                    ops_i.pop();
+                    if node.is_empty() {
+                        break
+                    }
+                    // check next dependency
+                    let len = ops_i.len();
+                    ops_i[len - 1] += 1;
+                }
+            }
+        }
+    }
+    // do the sorting
+    let mut new_grid = vec![];
+    for x_i in sorted_lineages {
+        new_grid.push(grid[x_i].clone());
+    }
+    let grid = new_grid;
+
+    // find maximum column and row widths, and cumulative positions
     let mut max_y_nodes = 0;
     for vert in &grid {
         for slot in &*vert {
@@ -285,15 +347,14 @@ fn main() {
     }
     let mut grid_max_wx = vec![0; grid.len()];
     let mut grid_max_wy = vec![0; max_y_nodes];
-    let mut render_grid: Vec<Vec<Option<RenderNode>>> = vec![];
+    let mut rect_grid: Vec<Vec<Option<RenderNode>>> = vec![];
     for _ in 0..grid_max_wx.len() {
         let mut v = vec![];
         for _ in 0..grid_max_wy.len() {
             v.push(None);
         }
-        render_grid.push(v);
+        rect_grid.push(v);
     }
-
     for (x_i, vertical) in grid.iter().enumerate() {
         for (ptr, pos) in &*vertical {
             let node = RenderNode::new(&dag.dag[ptr], *ptr);
@@ -302,15 +363,15 @@ fn main() {
             // y is reversed to make the data flow downwards graphically
             let tmp = grid_max_wy[max_y_nodes - 1 - *pos];
             grid_max_wy[max_y_nodes - 1 - *pos] = max(tmp, node.wy);
-            render_grid[x_i][max_y_nodes - 1 - *pos] = Some(node);
+            rect_grid[x_i][max_y_nodes - 1 - *pos] = Some(node);
         }
     }
-    // `render_grid` is now completely rectangular and the `_max_` values are
+    // `rect_grid` is now completely rectangular and the `_max_` values are
     // correct
 
-    // create map for later use
+    // create map for positions in grid
     let mut grid_map: HashMap<Ptr, (usize, usize)> = HashMap::new();
-    for (i, vert) in render_grid.iter().enumerate() {
+    for (i, vert) in rect_grid.iter().enumerate() {
         for (j, node) in vert.iter().enumerate() {
             // do not flatten, it messes up the indexing
             if let Some(node) = node {
@@ -319,7 +380,6 @@ fn main() {
         }
     }
 
-    // translate to final places
     let mut cumulative_x = vec![];
     let mut tot_wx = 0;
     for wx in &grid_max_wx {
@@ -333,7 +393,8 @@ fn main() {
         tot_wy += wy + NODE_PAD;
     }
 
-    for (i, vert) in render_grid.iter_mut().enumerate() {
+    // translate to final places
+    for (i, vert) in rect_grid.iter_mut().enumerate() {
         for (j, node) in vert.iter_mut().enumerate() {
             // do not flatten, it messes up the indexing
             if let Some(node) = node {
@@ -369,7 +430,7 @@ fn main() {
     // .0, tmp.0 .1);
 
     // rectangles and outlines first
-    for vert in &render_grid {
+    for vert in &rect_grid {
         for node in (*vert).iter().flatten() {
             for rect in &node.rects {
                 s += &format!(
@@ -397,18 +458,18 @@ fn main() {
     }
 
     // lines second
-    for i in 0..render_grid.len() {
-        for j in 0..render_grid[i].len() {
-            let num_inputs = if let Some(ref node) = render_grid[i][j] {
+    for i in 0..rect_grid.len() {
+        for j in 0..rect_grid[i].len() {
+            let num_inputs = if let Some(ref node) = rect_grid[i][j] {
                 node.input_points.len()
             } else {
                 continue
             };
             for k in 0..num_inputs {
-                let (i, ptr) = render_grid[i][j].as_ref().unwrap().input_points[k];
+                let (i, ptr) = rect_grid[i][j].as_ref().unwrap().input_points[k];
                 let (o_i, o_j) = grid_map[&ptr];
                 let color = COLORS[o_i % COLORS.len()];
-                let o = render_grid[o_i][o_j].as_ref().unwrap().output_point;
+                let o = rect_grid[o_i][o_j].as_ref().unwrap().output_point;
                 let p = NODE_PAD / 2;
                 s += &format!(
                     "<path stroke=\"#{}\" fill=\"#0000\" d=\"M {},{} C {},{} {},{} {},{}\"/>",
@@ -427,7 +488,7 @@ fn main() {
     }
 
     // text last
-    for vert in &render_grid {
+    for vert in &rect_grid {
         for node in (*vert).iter().flatten() {
             for tmp in &node.text {
                 let size = tmp.1;
