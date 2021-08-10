@@ -1,4 +1,5 @@
 mod dag;
+mod eval;
 
 use std::{num::NonZeroUsize, rc::Rc};
 
@@ -18,7 +19,7 @@ impl PartialEq for PtrEqRc {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Node {
     /// Bitwidth
     pub nzbw: NonZeroUsize,
@@ -30,7 +31,42 @@ pub struct Node {
     pub deps: Vec<Ptr>,
 }
 
+/*
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.nzbw.hash(state);
+        self.op.hash(state);
+        self.ops.hash(state);
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        (self.nzbw == other.nzbw) && (self.op == other.op) && (self.ops == other.ops)
+    }
+}
+*/
+
 #[derive(Debug)]
 pub struct Dag {
     pub dag: Arena<Node>,
+}
+
+#[derive(Debug)]
+pub enum EvalError {
+    // Thrown if a `Literal`, `Invalid`, or `Opaque` node is attempted to be evaluated
+    Unevaluatable,
+    // wrong number of operands
+    WrongNumberOfOperands,
+    // An operand points nowhere, so the DAG is broken
+    InvalidPtr,
+    // an operand is not a `Literal`
+    NonliteralOperand,
+    // wrong bitwidths of operands
+    WrongBitwidth,
+    // wrong integer value of an operand, such as overshifting from a shift operation or going out
+    // of bounds in a field operation
+    InvalidOperandValue,
+    // Some other kind of brokenness, such as dependency edges not agreeing with operand edges
+    Other,
 }

@@ -5,6 +5,7 @@ use std::{
     rc::Rc,
 };
 
+use super::EvalError;
 use crate::{
     lowering::{Arena, Dag, Node, Ptr, PtrEqRc},
     mimick,
@@ -54,7 +55,35 @@ impl Dag {
                 dag[ptr].ops.push(lowerings[&PtrEqRc(rc.0.ops[i].clone())]);
             }
         }
-        Self { dag }
+        let dag = Self { dag };
+        dag.verify_integrity().unwrap();
+        dag
+    }
+
+    /// Checks that the DAG is not broken and that the bitwidth checks work.
+    /// Note that if the DAG is evaluated, there may be invalid operand value
+    /// errors.
+    pub fn verify_integrity(&self) -> Result<(), EvalError> {
+        for p in self.list_ptrs() {
+            let len = self.dag[p].ops.len();
+            if let Some(expected) = self.dag[p].op.operands_len() {
+                if expected != len {
+                    return Err(EvalError::WrongNumberOfOperands)
+                }
+            }
+            let mut bitwidths = vec![];
+            for i in 0..self.dag[p].ops.len() {
+                let op = self.dag[p].ops[i];
+                bitwidths.push(self.dag[op].nzbw.get());
+                if !self.dag[op].deps.contains(&p) {
+                    return Err(EvalError::Other)
+                }
+            }
+            if self.dag[p].op.check_bitwidths(self.dag[p].nzbw, &bitwidths) {
+                return Err(EvalError::WrongBitwidth)
+            }
+        }
+        Ok(())
     }
 
     /// Returns a list of pointers to all nodes in no particular order

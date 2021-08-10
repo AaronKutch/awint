@@ -39,11 +39,15 @@ macro_rules! zero_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name<I>(&mut self, x: I) where I: Into<prim::$prim> {
-                self.state = State::new(self.nzbw(), ZeroResize, vec![x.into().state()]);
+                self.state = State::new(
+                    self.nzbw(),
+                    ZeroResize(self.nzbw()),
+                    vec![x.into().state()]
+                );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(ZeroResize, vec![self.state()])
+                prim::$prim::new(ZeroResize(self.nzbw()), vec![self.state()])
             }
         )*
     };
@@ -53,11 +57,15 @@ macro_rules! sign_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name<I>(&mut self, x: I) where I: Into<prim::$prim> {
-                self.state = State::new(self.nzbw(), SignResize, vec![x.into().state()]);
+                self.state = State::new(
+                    self.nzbw(),
+                    SignResize(self.nzbw()),
+                    vec![x.into().state()]
+                );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(SignResize, vec![self.state()])
+                prim::$prim::new(SignResize(self.nzbw()), vec![self.state()])
             }
         )*
     };
@@ -79,6 +87,20 @@ macro_rules! compare {
             pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
                 if self.bw() == rhs.bw() {
                     Some(prim::bool::new($enum_var, vec![self.state(), rhs.state()]))
+                } else {
+                    None
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! compare_reversed {
+    ($($fn_name:ident $enum_var:ident),*,) => {
+        $(
+            pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
+                if self.bw() == rhs.bw() {
+                    Some(prim::bool::new($enum_var, vec![rhs.state(), self.state()]))
                 } else {
                     None
                 }
@@ -170,12 +192,15 @@ impl Bits {
         const_ne Ne,
         ult Ult,
         ule Ule,
-        ugt Ugt,
-        uge Uge,
         ilt Ilt,
         ile Ile,
-        igt Igt,
-        ige Ige,
+    );
+
+    compare_reversed!(
+        ugt Ult,
+        uge Ule,
+        igt Ilt,
+        ige Ile,
     );
 
     shift!(
@@ -249,7 +274,10 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
-                    self.state = State::new(self.nzbw(), Lut, vec![lut.state(), inx.state()]);
+                    self.state = State::new(self.nzbw(), Lut(self.nzbw()), vec![
+                        lut.state(),
+                        inx.state(),
+                    ]);
                     return Some(())
                 }
             }
@@ -258,7 +286,7 @@ impl Bits {
     }
 
     pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
-        if entry.bw() < BITS {
+        if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
                 if lut_len == self.bw() {
                     self.state = State::new(self.nzbw(), LutSet, vec![
@@ -291,20 +319,22 @@ impl Bits {
     where
         B: Into<prim::bool>,
     {
-        self.state = State::new(self.nzbw(), Resize, vec![
+        self.state = State::new(self.nzbw(), Resize(self.nzbw()), vec![
             rhs.state(),
             extension.into().state(),
         ]);
     }
 
     pub fn zero_resize_assign<B>(&mut self, rhs: &Self) -> prim::bool {
-        self.state = State::new(self.nzbw(), ZeroResize, vec![rhs.state()]);
-        prim::bool::new(ZeroResizeOverflow, vec![rhs.state()])
+        let b = prim::bool::new(ZeroResizeOverflow(self.nzbw()), vec![rhs.state()]);
+        self.state = State::new(self.nzbw(), ZeroResize(self.nzbw()), vec![rhs.state()]);
+        b
     }
 
     pub fn sign_resize_assign<B>(&mut self, rhs: &Self) -> prim::bool {
-        self.state = State::new(self.nzbw(), SignResize, vec![rhs.state()]);
-        prim::bool::new(SignResizeOverflow, vec![rhs.state()])
+        let b = prim::bool::new(SignResizeOverflow(self.nzbw()), vec![rhs.state()]);
+        self.state = State::new(self.nzbw(), SignResize(self.nzbw()), vec![rhs.state()]);
+        b
     }
 
     pub fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
@@ -341,8 +371,9 @@ impl Bits {
         B: Into<prim::bool>,
     {
         let b = cin.into();
+        let out = prim::bool::new(IncCout, vec![self.state(), b.state()]);
         self.state = State::new(self.nzbw(), Inc, vec![self.state(), b.state()]);
-        prim::bool::new(IncCout, vec![self.state(), b.state()])
+        out
     }
 
     pub fn dec_assign<B>(&mut self, cin: B) -> prim::bool
@@ -350,8 +381,9 @@ impl Bits {
         B: Into<prim::bool>,
     {
         let b = cin.into();
+        let out = prim::bool::new(DecCout, vec![self.state(), b.state()]);
         self.state = State::new(self.nzbw(), Dec, vec![self.state(), b.state()]);
-        prim::bool::new(DecCout, vec![self.state(), b.state()])
+        out
     }
 
     pub fn cin_sum_triop<B>(
@@ -364,15 +396,16 @@ impl Bits {
         B: Into<prim::bool>,
     {
         let b = cin.into();
+        let out = Some((
+            prim::bool::new(UnsignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
+            prim::bool::new(SignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
+        ));
         self.state = State::new(self.nzbw(), CinSum, vec![
             b.state(),
             lhs.state(),
             rhs.state(),
         ]);
-        Some((
-            prim::bool::new(UnsignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
-            prim::bool::new(SignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
-        ))
+        out
     }
 
     #[doc(hidden)]
