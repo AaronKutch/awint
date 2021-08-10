@@ -1,17 +1,9 @@
 #![allow(clippy::many_single_char_names)]
 
-use std::{
-    cmp::max,
-    collections::{hash_map::Entry::*, HashMap, HashSet},
-    fs::{self, OpenOptions},
-    io::Write,
-    path::PathBuf,
-};
+use std::{ascii::AsciiExt, cmp::max, collections::{hash_map::Entry::*, HashMap, HashSet}, fs::{self, OpenOptions}, io::Write, path::PathBuf};
 
-use awint_dag::{
-    arena::Ptr,
-    lowering::{Dag, Node},
-};
+use awint::ExtAwi;
+use awint_dag::{Op, arena::Ptr, lowering::{Dag, Node}};
 use common::dag_input::dag_input;
 
 // for calibration
@@ -57,7 +49,7 @@ const COLORS: [&str; 8] = [
 struct RenderNode {
     pub ptr: Ptr,
     pub rects: Vec<(i32, i32, i32, i32)>,
-    pub text: Vec<((i32, i32), i32, &'static str)>,
+    pub text: Vec<((i32, i32), i32, String)>,
     pub input_points: Vec<((i32, i32), Ptr)>,
     pub output_point: (i32, i32),
     pub wx: i32,
@@ -67,57 +59,79 @@ struct RenderNode {
 impl RenderNode {
     #[allow(clippy::comparison_chain)]
     pub fn new(node: &Node, ptr: Ptr) -> Self {
-        let operand_names = node.op.operand_names();
-        let operation_name = node.op.operation_name();
-        let total_operand_len: i32 = operand_names.iter().map(|name| name.len() as i32).sum();
-        let operation_len = operation_name.len() as i32;
-        let min_operands_wx =
-            INPUT_FONT_WX * total_operand_len + (2 * PAD) * (operand_names.len() as i32);
-        let min_operation_wx = FONT_WX * operation_len + 2 * PAD;
-        let wx = max(min_operands_wx, min_operation_wx);
-        // for spreading out inputs
-        let extra_space = if min_operands_wx < min_operation_wx {
-            min_operation_wx - min_operands_wx
-        } else {
-            0
-        };
         let mut rects = vec![];
         let mut text = vec![];
         let mut input_points = vec![];
+        let wx: i32;
         let mut wy = 0;
-        if operand_names.len() > 1 {
-            wy += 2 * INPUT_PAD + INPUT_FONT_WY;
-            let individual_spaces = extra_space / (operand_names.len() as i32 - 1);
-            let mut x_progression = 0;
-            for (op_i, name) in operand_names.iter().enumerate() {
-                text.push(((x_progression + PAD, wy), INPUT_FONT_SIZE, *name));
-                let this_wx = INPUT_FONT_WX * (name.len() as i32) + 2 * PAD;
-                let center_x = x_progression + (this_wx / 2);
-                input_points.push(((center_x, 0), node.ops[op_i]));
-                x_progression += this_wx + individual_spaces;
+        if let Op::Literal(ref lit) = node.op {
+            let l = lit.const_as_ref();
+            let repr = if l.is_zero() {
+                "zero".to_owned()
+            } else if l.is_uone() {
+                "uone".to_owned()
+            } else if l.is_umax() {
+                "umax".to_owned()
+            } else if l.is_imax() {
+                "imax".to_owned()
+            } else if l.is_imin() {
+                "imin".to_owned()
+            } else {
+                format!("0x{}", ExtAwi::bits_to_string_radix(l, false, 16, false, 0).unwrap())
+            };
+            wx = FONT_WX * (repr.len() as i32);
+            wy += 2*FONT_WY + INPUT_FONT_WY;
+            let bw = format!("u{}", l.bw());
+            text.push(((wx - ((bw.len() as i32) * FONT_WX), FONT_WY + PAD), FONT_SIZE, bw));
+            text.push(((0, wy - PAD), FONT_SIZE, repr));
+        } else {
+            let operation_name = node.op.operation_name();
+            let operand_names = node.op.operand_names();
+            let total_operand_len: i32 = operand_names.iter().map(|name| name.len() as i32).sum();
+            let operation_len = operation_name.len() as i32;
+            let min_operands_wx =
+                INPUT_FONT_WX * total_operand_len + (2 * PAD) * (operand_names.len() as i32);
+            let min_operation_wx = FONT_WX * operation_len + 2 * PAD;
+            wx = max(min_operands_wx, min_operation_wx);
+            // for spreading out inputs
+            let extra_space = if min_operands_wx < min_operation_wx {
+                min_operation_wx - min_operands_wx
+            } else {
+                0
+            };
+            if operand_names.len() > 1 {
+                wy += 2 * INPUT_PAD + INPUT_FONT_WY;
+                let individual_spaces = extra_space / (operand_names.len() as i32 - 1);
+                let mut x_progression = 0;
+                for (op_i, name) in operand_names.iter().enumerate() {
+                    text.push(((x_progression + PAD, wy), INPUT_FONT_SIZE, (*name).to_owned()));
+                    let this_wx = INPUT_FONT_WX * (name.len() as i32) + 2 * PAD;
+                    let center_x = x_progression + (this_wx / 2);
+                    input_points.push(((center_x, 0), node.ops[op_i]));
+                    x_progression += this_wx + individual_spaces;
+                }
+            } else if operand_names.len() == 1 {
+                input_points.push(((wx / 2, 0), node.ops[0]));
             }
-        } else if operand_names.len() == 1 {
-            input_points.push(((wx / 2, 0), node.ops[0]));
+            wy += 2 * PAD + FONT_WY;
+            let rect = (0, 0, wx, wy);
+            text.push((
+                (
+                    (wx / 2) - ((FONT_WX * (operation_name.len() as i32)) / 2),
+                    wy - PAD,
+                ),
+                FONT_SIZE,
+                operation_name.to_owned(),
+            ));
+            rects.push(rect);
         }
-        wy += 2 * PAD + FONT_WY;
-        let rect = (0, 0, wx, wy);
-        let center_x = rect.0 + (rect.2 / 2);
-        text.push((
-            (
-                center_x - ((FONT_WX * (operation_name.len() as i32)) / 2),
-                wy - PAD,
-            ),
-            FONT_SIZE,
-            operation_name,
-        ));
-        rects.push(rect);
 
         Self {
             ptr,
             rects,
             text,
             input_points,
-            output_point: (center_x, wy),
+            output_point: (wx / 2, wy),
             wx,
             wy,
         }
@@ -440,7 +454,7 @@ fn main() {
                 // outline the rectangle
                 s += &format!(
                     "<polyline stroke=\"#777\" stroke-width=\"{}\" points=\"{},{} {},{} {},{} \
-                     {},{} {},{}\"  fill=\"#0000\"/>",
+                     {},{} {},{}\"  fill=\"#0000\"/>\n",
                     RECT_OUTLINE_WIDTH,
                     rect.0,
                     rect.1,
@@ -472,7 +486,7 @@ fn main() {
                 let o = rect_grid[o_i][o_j].as_ref().unwrap().output_point;
                 let p = NODE_PAD / 2;
                 s += &format!(
-                    "<path stroke=\"#{}\" fill=\"#0000\" d=\"M {},{} C {},{} {},{} {},{}\"/>",
+                    "<path stroke=\"#{}\" fill=\"#0000\" d=\"M {},{} C {},{} {},{} {},{}\"/>\n",
                     color,
                     o.0,
                     o.1,
