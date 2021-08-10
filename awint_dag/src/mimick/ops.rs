@@ -6,16 +6,6 @@ use crate::{
     primitive as prim, Op,
 };
 
-macro_rules! nullary {
-    ($($fn_name:ident $enum_var:ident),*,) => {
-        $(
-            pub fn $fn_name(&mut self) {
-                self.state = State::new(self.nzbw(), $enum_var, vec![]);
-            }
-        )*
-    };
-}
-
 macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
@@ -130,15 +120,6 @@ macro_rules! ref_self_output_usize {
 /// These functions are all mirrors of functions for [awint_core::Bits], except
 /// for the special `opaque_assign` that can never be evaluated.
 impl Bits {
-    nullary!(
-        opaque_assign Opaque,
-        zero_assign Zero,
-        umax_assign Umax,
-        imax_assign Imax,
-        imin_assign Imin,
-        uone_assign Uone,
-    );
-
     unary!(
         not_assign Not,
         rev_assign Rev,
@@ -210,6 +191,50 @@ impl Bits {
         tz Tz,
         count_ones CountOnes,
     );
+
+    pub fn opaque_assign(&mut self) {
+        self.state = State::new(self.nzbw(), Opaque, vec![]);
+    }
+
+    pub fn zero_assign(&mut self) {
+        self.state = State::new(
+            self.nzbw(),
+            Op::Literal(awint_ext::ExtAwi::zero(self.nzbw())),
+            vec![],
+        );
+    }
+
+    pub fn umax_assign(&mut self) {
+        self.state = State::new(
+            self.nzbw(),
+            Op::Literal(awint_ext::ExtAwi::umax(self.nzbw())),
+            vec![],
+        );
+    }
+
+    pub fn imax_assign(&mut self) {
+        self.state = State::new(
+            self.nzbw(),
+            Op::Literal(awint_ext::ExtAwi::imax(self.nzbw())),
+            vec![],
+        );
+    }
+
+    pub fn imin_assign(&mut self) {
+        self.state = State::new(
+            self.nzbw(),
+            Op::Literal(awint_ext::ExtAwi::imin(self.nzbw())),
+            vec![],
+        );
+    }
+
+    pub fn uone_assign(&mut self) {
+        self.state = State::new(
+            self.nzbw(),
+            Op::Literal(awint_ext::ExtAwi::uone(self.nzbw())),
+            vec![],
+        );
+    }
 
     pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() == rhs.bw() {

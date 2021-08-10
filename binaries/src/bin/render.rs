@@ -1,9 +1,19 @@
 #![allow(clippy::many_single_char_names)]
 
-use std::{ascii::AsciiExt, cmp::max, collections::{hash_map::Entry::*, HashMap, HashSet}, fs::{self, OpenOptions}, io::Write, path::PathBuf};
+use std::{
+    cmp::max,
+    collections::{hash_map::Entry::*, HashMap, HashSet},
+    fs::{self, OpenOptions},
+    io::Write,
+    path::PathBuf,
+};
 
 use awint::ExtAwi;
-use awint_dag::{Op, arena::Ptr, lowering::{Dag, Node}};
+use awint_dag::{
+    arena::Ptr,
+    lowering::{Dag, Node},
+    Op,
+};
 use common::dag_input::dag_input;
 
 // for calibration
@@ -77,12 +87,19 @@ impl RenderNode {
             } else if l.is_imin() {
                 "imin".to_owned()
             } else {
-                format!("0x{}", ExtAwi::bits_to_string_radix(l, false, 16, false, 0).unwrap())
+                format!(
+                    "0x{}",
+                    ExtAwi::bits_to_string_radix(l, false, 16, false, 0).unwrap()
+                )
             };
             wx = FONT_WX * (repr.len() as i32);
-            wy += 2*FONT_WY + INPUT_FONT_WY;
+            wy += 2 * FONT_WY + INPUT_FONT_WY;
             let bw = format!("u{}", l.bw());
-            text.push(((wx - ((bw.len() as i32) * FONT_WX), FONT_WY + PAD), FONT_SIZE, bw));
+            text.push((
+                (wx - ((bw.len() as i32) * FONT_WX), FONT_WY + PAD),
+                FONT_SIZE,
+                bw,
+            ));
             text.push(((0, wy - PAD), FONT_SIZE, repr));
         } else {
             let operation_name = node.op.operation_name();
@@ -104,7 +121,11 @@ impl RenderNode {
                 let individual_spaces = extra_space / (operand_names.len() as i32 - 1);
                 let mut x_progression = 0;
                 for (op_i, name) in operand_names.iter().enumerate() {
-                    text.push(((x_progression + PAD, wy), INPUT_FONT_SIZE, (*name).to_owned()));
+                    text.push((
+                        (x_progression + PAD, wy),
+                        INPUT_FONT_SIZE,
+                        (*name).to_owned(),
+                    ));
                     let this_wx = INPUT_FONT_WX * (name.len() as i32) + 2 * PAD;
                     let center_x = x_progression + (this_wx / 2);
                     input_points.push(((center_x, 0), node.ops[op_i]));

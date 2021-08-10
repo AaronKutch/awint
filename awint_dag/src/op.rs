@@ -4,13 +4,6 @@ pub enum Op {
     // literal assign
     Literal(awint_ext::ExtAwi),
 
-    // no dependence on any `self`
-    Zero,
-    Umax,
-    Imax,
-    Imin,
-    Uone,
-
     // represents an unknown, arbitrary, or opaque-boxed source
     Opaque,
 
@@ -98,11 +91,6 @@ impl Op {
     pub fn operation_name(&self) -> &'static str {
         match *self {
             Literal(_) => "literal",
-            Zero => "zero",
-            Umax => "umax",
-            Imax => "imax",
-            Imin => "imin",
-            Uone => "uone",
             Opaque => "opaque",
             Resize => "resize",
             ZeroResize => "zero_resize",
@@ -169,7 +157,7 @@ impl Op {
         let mut v = vec![];
         // add common "lhs"
         match *self {
-            Literal(_) | Zero | Umax | Imax | Imin | Uone | Opaque => (),
+            Literal(_) | Opaque => (),
 
             Resize => {
                 v.push("x");

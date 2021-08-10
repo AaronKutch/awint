@@ -71,29 +71,34 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         )
     }
 
+    pub fn opaque() -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self::new(Op::Opaque, vec![])
+    }
+
     pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Zero, vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::zero(bw(BW))), vec![])
     }
 
     pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Umax, vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::umax(bw(BW))), vec![])
     }
 
     pub fn imax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Imax, vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::imax(bw(BW))), vec![])
     }
 
     pub fn imin() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Imin, vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::imin(bw(BW))), vec![])
     }
 
     pub fn uone() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Uone, vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::uone(bw(BW))), vec![])
     }
 }
 
@@ -182,24 +187,28 @@ impl ExtAwi {
         Self::new(bits.nzbw(), Op::Copy, vec![bits.state()])
     }
 
+    pub fn opaque(bw: NonZeroUsize) -> Self {
+        Self::new(bw, Op::Opaque, vec![])
+    }
+
     pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Zero, vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::zero(bw)), vec![])
     }
 
     pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Umax, vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::umax(bw)), vec![])
     }
 
     pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Imax, vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imax(bw)), vec![])
     }
 
     pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Imin, vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imin(bw)), vec![])
     }
 
     pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Uone, vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::uone(bw)), vec![])
     }
 
     #[doc(hidden)]
