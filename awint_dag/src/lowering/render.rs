@@ -8,13 +8,13 @@ use std::{
     path::PathBuf,
 };
 
-use awint::ExtAwi;
-use awint_dag::{
+use awint_ext::ExtAwi;
+
+use crate::{
     arena::Ptr,
     lowering::{Dag, Node},
     Op,
 };
-use common::dag_input::dag_input;
 
 // for calibration
 //<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -176,12 +176,9 @@ impl RenderNode {
     }
 }
 
-fn main() {
-    let out_file = PathBuf::from("./rendered.svg".to_owned());
+/// Creates an SVG file representing the `dag`, and writes it to `out_file`
+pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     drop(fs::remove_file(&out_file));
-
-    let leaves = dag_input();
-    let dag = Dag::new(leaves);
 
     // DFS for topological sort
     let mut sorted: Vec<Ptr> = vec![];

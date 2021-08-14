@@ -4,8 +4,6 @@ version = "0.0.0"
 edition = "2018"
 publish = false
 
-# binaries for manipulating DAGs from `awint_dag`
-
 [lib]
 name = "common"
 path = "src/lib/common.rs"

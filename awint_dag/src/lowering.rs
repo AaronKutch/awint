@@ -1,7 +1,10 @@
 mod dag;
 mod eval;
+mod render;
 
 use std::{num::NonZeroUsize, rc::Rc};
+
+pub use render::render_to_file;
 
 use crate::{
     arena::{Arena, Ptr},
