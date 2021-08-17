@@ -103,7 +103,11 @@ impl RenderNode {
             text.push(((0, wy - PAD), FONT_SIZE, repr));
         } else {
             let operation_name = node.op.operation_name();
-            let operand_names = node.op.operand_names();
+            let mut operand_names = node.op.operand_names();
+            for _ in operand_names.len()..node.ops.len() {
+                // add extra operands for cases like `Opaque`
+                operand_names.push("");
+            }
             let total_operand_len: i32 = operand_names.iter().map(|name| name.len() as i32).sum();
             let operation_len = operation_name.len() as i32;
             let min_operands_wx =

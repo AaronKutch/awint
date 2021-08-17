@@ -284,7 +284,7 @@ impl Op {
             Literal(_) | Invalid | Opaque => false,
 
             Copy | Not | Rev | Neg | Abs | UQuo | URem | IQuo | IRem | MulAdd | Or | And | Xor
-            | Add | Sub | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile => {
+            | Add | Sub | Rsb => {
                 let mut b = false;
                 for x in v {
                     if *x != bw {
@@ -293,6 +293,10 @@ impl Op {
                     }
                 }
                 b
+            }
+
+            Eq | Ne | Ult | Ule | Ilt | Ile => {
+                (bw != 1) || (v[0] != v[1])
             }
 
             Resize(nzbw) => (bw != nzbw.get()) || (v[0] != 1),
