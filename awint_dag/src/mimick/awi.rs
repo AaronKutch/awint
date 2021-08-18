@@ -8,21 +8,23 @@ use std::{
 use awint_internals::*;
 
 use crate::{
-    mimick::{Bits, ConstBwLineage, Lineage, State},
+    mimick::{Bits, Lineage, State},
     primitive as prim, Op,
 };
 
 /// Mimicking `awint_core::InlAwi`
 #[derive(Debug)]
+// Note: must use `Bits` instead of `State`, because we need to return
+// references
 pub struct InlAwi<const BW: usize, const LEN: usize>(Bits);
 
-impl<const BW: usize, const LEN: usize> ConstBwLineage for InlAwi<BW, LEN> {
-    fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self(Bits::new(Self::const_nzbw(), op, ops))
+impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
+    fn from_state(state: Rc<State>) -> Self {
+        Self(Bits::from_state(state))
     }
 
-    fn hidden_const_nzbw() -> NonZeroUsize {
-        Self::const_nzbw()
+    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
+        Some(NonZeroUsize::new(BW).unwrap())
     }
 
     fn state(&self) -> Rc<State> {
@@ -37,6 +39,14 @@ impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
+    fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self::from_state(State::new(
+            Some(Self::hidden_const_nzbw().unwrap()),
+            op,
+            ops,
+        ))
+    }
+
     pub fn const_nzbw() -> NonZeroUsize {
         NonZeroUsize::new(BW).unwrap()
     }
@@ -145,8 +155,12 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
 pub struct ExtAwi(Bits);
 
 impl Lineage for ExtAwi {
-    fn new(bw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self(Bits::new(bw, op, ops))
+    fn from_state(state: Rc<State>) -> Self {
+        Self(Bits::from_state(state))
+    }
+
+    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
+        None
     }
 
     fn state(&self) -> Rc<State> {
@@ -161,6 +175,10 @@ impl Clone for ExtAwi {
 }
 
 impl ExtAwi {
+    fn new(nzbw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self::from_state(State::new(Some(nzbw), op, ops))
+    }
+
     /*
     pub fn bw(&self) -> prim::usize {
         prim::usize::new(BwAssign, vec![self.state()])
@@ -168,11 +186,11 @@ impl ExtAwi {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.0.nzbw()
+        self.state().nzbw.unwrap()
     }
 
     pub fn bw(&self) -> usize {
-        self.0.bw()
+        self.nzbw().get()
     }
 
     pub fn const_as_ref(&self) -> &Bits {
@@ -289,7 +307,7 @@ impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
 
 impl From<bool> for ExtAwi {
     fn from(x: bool) -> ExtAwi {
-        Self::new(prim::bool::hidden_const_nzbw(), Op::Copy, vec![
+        Self::new(prim::bool::hidden_const_nzbw().unwrap(), Op::Copy, vec![
             prim::bool::from(x).state(),
         ])
     }
@@ -297,7 +315,9 @@ impl From<bool> for ExtAwi {
 
 impl From<prim::bool> for ExtAwi {
     fn from(x: prim::bool) -> ExtAwi {
-        Self::new(prim::bool::hidden_const_nzbw(), Op::Copy, vec![x.state()])
+        Self::new(prim::bool::hidden_const_nzbw().unwrap(), Op::Copy, vec![
+            x.state()
+        ])
     }
 }
 
@@ -307,7 +327,7 @@ macro_rules! to_extawi {
             impl From<$ty> for ExtAwi {
                 fn from(x: $ty) -> Self {
                     Self::new(
-                        prim::$ty::hidden_const_nzbw(),
+                        prim::$ty::hidden_const_nzbw().unwrap(),
                         Op::Copy,
                         vec![prim::$ty::from(x).state()]
                     )
@@ -316,7 +336,7 @@ macro_rules! to_extawi {
 
             impl From<prim::$ty> for ExtAwi {
                 fn from(x: prim::$ty) -> Self {
-                    Self::new(prim::$ty::hidden_const_nzbw(), Op::Copy, vec![x.state()])
+                    Self::new(prim::$ty::hidden_const_nzbw().unwrap(), Op::Copy, vec![x.state()])
                 }
             }
         )*

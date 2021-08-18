@@ -12,10 +12,12 @@ pub struct Bits {
 }
 
 impl Lineage for Bits {
-    fn new(nzbw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self {
-            state: Rc::new(State { nzbw, op, ops }),
-        }
+    fn from_state(state: Rc<State>) -> Self {
+        Self { state }
+    }
+
+    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
+        None
     }
 
     fn state(&self) -> Rc<State> {
@@ -24,6 +26,12 @@ impl Lineage for Bits {
 }
 
 impl Bits {
+    pub(crate) fn new(nzbw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self {
+            state: State::new(Some(nzbw), op, ops),
+        }
+    }
+
     // TODO if we use dynamic bitwidths do we do something like this?
     /*
     pub fn bw(&self) -> prim::usize {
@@ -32,7 +40,7 @@ impl Bits {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.state.nzbw
+        self.state.nzbw.unwrap()
     }
 
     pub fn bw(&self) -> usize {

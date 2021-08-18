@@ -5,7 +5,7 @@ use awint_internals::BITS;
 use Op::*;
 
 use crate::{
-    mimick::{Bits, ConstBwLineage, Lineage, State},
+    mimick::{Bits, Lineage, State},
     primitive as prim, Op,
 };
 
@@ -13,7 +13,7 @@ macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self) {
-                self.state = State::new(self.nzbw(), $enum_var, vec![self.state()]);
+                self.state = State::new(self.state_nzbw(), $enum_var, vec![self.state()]);
             }
         )*
     };
@@ -25,7 +25,7 @@ macro_rules! binary {
             pub fn $fn_name(&mut self, rhs: &Self) -> Option<()> {
                 if self.bw() == rhs.bw() {
                     self.state = State::new(
-                        self.nzbw(),
+                        self.state_nzbw(),
                         $enum_var,
                         vec![self.state(), rhs.state()]
                     );
@@ -43,14 +43,17 @@ macro_rules! zero_cast {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
                 self.state = State::new(
-                    self.nzbw(),
+                    Some(self.nzbw()),
                     ZeroResize(self.nzbw()),
                     vec![x.into().state()]
                 );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(ZeroResize(prim::$prim::hidden_const_nzbw()), vec![self.state()])
+                prim::$prim::new(
+                    ZeroResize(prim::$prim::hidden_const_nzbw().unwrap()),
+                    vec![self.state()]
+                )
             }
         )*
     };
@@ -61,14 +64,17 @@ macro_rules! sign_cast {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
                 self.state = State::new(
-                    self.nzbw(),
+                    self.state_nzbw(),
                     SignResize(self.nzbw()),
                     vec![x.into().state()]
                 );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(SignResize(prim::$prim::hidden_const_nzbw()), vec![self.state()])
+                prim::$prim::new(
+                    SignResize(prim::$prim::hidden_const_nzbw().unwrap()),
+                    vec![self.state()]
+                )
             }
         )*
     };
@@ -117,7 +123,7 @@ macro_rules! shift {
         $(
             pub fn $fn_name(&mut self, s: impl Into<prim::usize>) -> Option<()> {
                 self.state = State::new(
-                    self.nzbw(),
+                    self.state_nzbw(),
                     $enum_var,
                     vec![self.state(), s.into().state()]
                 );
@@ -218,12 +224,12 @@ impl Bits {
     );
 
     pub fn opaque_assign(&mut self) {
-        self.state = State::new(self.nzbw(), Opaque, vec![]);
+        self.state = State::new(self.state_nzbw(), Opaque, vec![]);
     }
 
     pub fn zero_assign(&mut self) {
         self.state = State::new(
-            self.nzbw(),
+            self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::zero(self.nzbw())),
             vec![],
         );
@@ -231,7 +237,7 @@ impl Bits {
 
     pub fn umax_assign(&mut self) {
         self.state = State::new(
-            self.nzbw(),
+            self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::umax(self.nzbw())),
             vec![],
         );
@@ -239,7 +245,7 @@ impl Bits {
 
     pub fn imax_assign(&mut self) {
         self.state = State::new(
-            self.nzbw(),
+            self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::imax(self.nzbw())),
             vec![],
         );
@@ -247,7 +253,7 @@ impl Bits {
 
     pub fn imin_assign(&mut self) {
         self.state = State::new(
-            self.nzbw(),
+            self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::imin(self.nzbw())),
             vec![],
         );
@@ -255,7 +261,7 @@ impl Bits {
 
     pub fn uone_assign(&mut self) {
         self.state = State::new(
-            self.nzbw(),
+            self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::uone(self.nzbw())),
             vec![],
         );
@@ -263,7 +269,7 @@ impl Bits {
 
     pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() == rhs.bw() {
-            self.state = State::new(self.nzbw(), Copy, vec![rhs.state()]);
+            self.state = State::new(self.state_nzbw(), Copy, vec![rhs.state()]);
             Some(())
         } else {
             None
@@ -274,7 +280,7 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
-                    self.state = State::new(self.nzbw(), Lut(self.nzbw()), vec![
+                    self.state = State::new(self.state_nzbw(), Lut(self.nzbw()), vec![
                         lut.state(),
                         inx.state(),
                     ]);
@@ -289,7 +295,7 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
                 if lut_len == self.bw() {
-                    self.state = State::new(self.nzbw(), LutSet, vec![
+                    self.state = State::new(self.state_nzbw(), LutSet, vec![
                         self.state(),
                         entry.state(),
                         inx.state(),
@@ -308,7 +314,7 @@ impl Bits {
         from: impl Into<prim::usize>,
         width: impl Into<prim::usize>,
     ) -> Option<()> {
-        self.state = State::new(self.nzbw(), Field, vec![
+        self.state = State::new(self.state_nzbw(), Field, vec![
             self.state(),
             to.into().state(),
             rhs.state(),
@@ -319,7 +325,7 @@ impl Bits {
     }
 
     pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<prim::bool>) {
-        self.state = State::new(self.nzbw(), Resize(self.nzbw()), vec![
+        self.state = State::new(self.state_nzbw(), Resize(self.nzbw()), vec![
             rhs.state(),
             extension.into().state(),
         ]);
@@ -327,13 +333,21 @@ impl Bits {
 
     pub fn zero_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(ZeroResizeOverflow(self.nzbw()), vec![rhs.state()]);
-        self.state = State::new(self.nzbw(), ZeroResize(self.nzbw()), vec![rhs.state()]);
+        self.state = State::new(
+            self.state_nzbw(),
+            ZeroResize(self.nzbw()),
+            vec![rhs.state()],
+        );
         b
     }
 
     pub fn sign_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(SignResizeOverflow(self.nzbw()), vec![rhs.state()]);
-        self.state = State::new(self.nzbw(), SignResize(self.nzbw()), vec![rhs.state()]);
+        self.state = State::new(
+            self.state_nzbw(),
+            SignResize(self.nzbw()),
+            vec![rhs.state()],
+        );
         b
     }
 
@@ -344,39 +358,39 @@ impl Bits {
         {
             None
         } else {
-            self.state = State::new(self.nzbw(), Funnel, vec![rhs.state(), s.state()]);
+            self.state = State::new(self.state_nzbw(), Funnel, vec![rhs.state(), s.state()]);
             Some(())
         }
     }
 
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.state = State::new(quo.nzbw(), UQuo, vec![duo.state(), div.state()]);
-        rem.state = State::new(rem.nzbw(), URem, vec![duo.state(), div.state()]);
+        quo.state = State::new(quo.state_nzbw(), UQuo, vec![duo.state(), div.state()]);
+        rem.state = State::new(rem.state_nzbw(), URem, vec![duo.state(), div.state()]);
         Some(())
     }
 
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.state = State::new(quo.nzbw(), IQuo, vec![duo.state(), div.state()]);
-        rem.state = State::new(rem.nzbw(), IRem, vec![duo.state(), div.state()]);
+        quo.state = State::new(quo.state_nzbw(), IQuo, vec![duo.state(), div.state()]);
+        rem.state = State::new(rem.state_nzbw(), IRem, vec![duo.state(), div.state()]);
         Some(())
     }
 
     pub fn mul_add_triop(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        self.state = State::new(self.nzbw(), MulAdd, vec![lhs.state(), rhs.state()]);
+        self.state = State::new(self.state_nzbw(), MulAdd, vec![lhs.state(), rhs.state()]);
         Some(())
     }
 
     pub fn inc_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
         let out = prim::bool::new(IncCout, vec![self.state(), b.state()]);
-        self.state = State::new(self.nzbw(), Inc, vec![self.state(), b.state()]);
+        self.state = State::new(self.state_nzbw(), Inc, vec![self.state(), b.state()]);
         out
     }
 
     pub fn dec_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
         let out = prim::bool::new(DecCout, vec![self.state(), b.state()]);
-        self.state = State::new(self.nzbw(), Dec, vec![self.state(), b.state()]);
+        self.state = State::new(self.state_nzbw(), Dec, vec![self.state(), b.state()]);
         out
     }
 
@@ -391,7 +405,7 @@ impl Bits {
             prim::bool::new(UnsignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
             prim::bool::new(SignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
         ));
-        self.state = State::new(self.nzbw(), CinSum, vec![
+        self.state = State::new(self.state_nzbw(), CinSum, vec![
             b.state(),
             lhs.state(),
             rhs.state(),

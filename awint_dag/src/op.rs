@@ -276,10 +276,13 @@ impl Op {
     /// Checks validity of bitwidths. Assumes that errors from
     /// `expected_operands_len` have already been caught. `self_bw` is bitwidth
     /// of the `self` operand, and `v` is a vector of the bitwidths of the rest
-    /// of the operands. Returns `true` if a bitwidth mismatch error has
-    /// occured.
-    pub fn check_bitwidths(&self, self_bw: NonZeroUsize, v: &[usize]) -> bool {
-        let bw = self_bw.get();
+    /// of the operands. Returns `true` if a bitwidth is zero or a mismatch
+    /// error has occured.
+    pub fn check_bitwidths(&self, self_bw: usize, v: &[usize]) -> bool {
+        if self_bw == 0 || v.iter().fold(false, |acc, e| acc || *e == 0) {
+            return true
+        }
+        let bw = self_bw;
         match self {
             Literal(_) | Invalid | Opaque => false,
 

@@ -49,30 +49,31 @@ impl Dag {
         }
 
         // check bitwidths and values
-        let self_bw = self.dag[ptr].nzbw;
-        let bitwidths: Vec<usize> = v.iter().map(|a| a.bw()).collect();
-        if op.check_bitwidths(self_bw, &bitwidths) {
-            return Err(EvalError::WrongBitwidth)
-        }
-        if op.check_values(self_bw, &v) {
-            return Err(EvalError::InvalidOperandValue)
-        }
-        if let Some(res) = op.eval(self_bw, &v) {
-            // remove operand edges
-            for op_i in 0..self.dag[ptr].ops.len() {
-                let op = self.dag[ptr].ops[op_i];
-                remove(&mut self.dag[op].deps, ptr);
-                // only if the node is not being used by something else do we remove it
-                if self.dag[op].deps.is_empty() {
-                    self.dag.remove(op);
-                }
+        if let Some(self_bw) = self.dag[ptr].nzbw {
+            let bitwidths: Vec<usize> = v.iter().map(|a| a.nzbw().get()).collect();
+            if op.check_bitwidths(self_bw.get(), &bitwidths) {
+                return Err(EvalError::WrongBitwidth)
             }
-            self.dag[ptr].ops.clear();
-            // make literal
-            let _ = std::mem::replace(&mut self.dag[ptr].op, Op::Literal(res));
-        } else {
-            // some kind of internal bug
-            return Err(EvalError::Other)
+            if op.check_values(self_bw, &v) {
+                return Err(EvalError::InvalidOperandValue)
+            }
+            if let Some(res) = op.eval(self_bw, &v) {
+                // remove operand edges
+                for op_i in 0..self.dag[ptr].ops.len() {
+                    let op = self.dag[ptr].ops[op_i];
+                    remove(&mut self.dag[op].deps, ptr);
+                    // only if the node is not being used by something else do we remove it
+                    if self.dag[op].deps.is_empty() {
+                        self.dag.remove(op);
+                    }
+                }
+                self.dag[ptr].ops.clear();
+                // make literal
+                let _ = std::mem::replace(&mut self.dag[ptr].op, Op::Literal(res));
+            } else {
+                // some kind of internal bug
+                return Err(EvalError::Other)
+            }
         }
 
         Ok(())

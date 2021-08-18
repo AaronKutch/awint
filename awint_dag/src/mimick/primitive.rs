@@ -1,9 +1,9 @@
 use std::{num::NonZeroUsize, ops::*, rc::Rc};
 
-use awint_internals::BITS;
+use awint_internals::{bw, BITS};
 
 use crate::{
-    mimick::{primitive as prim, Bits, ConstBwLineage, Lineage, State},
+    mimick::{primitive as prim, Bits, Lineage, State},
     Op,
 };
 
@@ -69,17 +69,23 @@ macro_rules! prim {
             #[derive(Debug)]
             pub struct $name(Bits);
 
-            impl ConstBwLineage for $name {
-                fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-                    Self(Bits::new(Self::hidden_const_nzbw(), op, ops))
+            impl Lineage for $name {
+                fn from_state(state: Rc<State>) -> Self {
+                    Self(Bits::from_state(state))
                 }
 
-                fn hidden_const_nzbw() -> NonZeroUsize {
-                    NonZeroUsize::new($bw).unwrap()
+                fn hidden_const_nzbw() -> Option<NonZeroUsize> {
+                    Some(bw($bw))
                 }
 
                 fn state(&self) -> Rc<State> {
                     self.0.state()
+                }
+            }
+
+            impl $name {
+                pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+                    Self(Bits::new(Self::hidden_const_nzbw().unwrap(), op, ops))
                 }
             }
 
@@ -138,17 +144,23 @@ prim!(
 #[derive(Debug)]
 pub struct bool(Bits);
 
-impl ConstBwLineage for bool {
-    fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self(Bits::new(Self::hidden_const_nzbw(), op, ops))
+impl Lineage for bool {
+    fn from_state(state: Rc<State>) -> Self {
+        Self(Bits::from_state(state))
     }
 
-    fn hidden_const_nzbw() -> NonZeroUsize {
-        NonZeroUsize::new(1).unwrap()
+    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
+        Some(bw(1))
     }
 
     fn state(&self) -> Rc<State> {
         self.0.state()
+    }
+}
+
+impl bool {
+    pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+        Self(Bits::new(Self::hidden_const_nzbw().unwrap(), op, ops))
     }
 }
 

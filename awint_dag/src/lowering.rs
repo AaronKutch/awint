@@ -25,7 +25,7 @@ impl PartialEq for PtrEqRc {
 #[derive(Debug)]
 pub struct Node {
     /// Bitwidth
-    pub nzbw: NonZeroUsize,
+    pub nzbw: Option<NonZeroUsize>,
     /// Operation
     pub op: Op,
     /// Operands
