@@ -112,6 +112,13 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 }
 
+#[cfg(feature = "special_traits")]
+impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
+    fn eq(&self, other: &Self) -> bool {
+        self[..].eq(&other[..])
+    }
+}
+
 impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
     type Output = Bits;
 
@@ -252,6 +259,13 @@ impl ExtAwi {
     #[doc(hidden)]
     pub fn panicking_uone(bw: usize) -> Self {
         Self::uone(NonZeroUsize::new(bw).unwrap())
+    }
+}
+
+#[cfg(feature = "special_traits")]
+impl PartialEq for ExtAwi {
+    fn eq(&self, other: &Self) -> bool {
+        self[..].eq(&other[..])
     }
 }
 

@@ -2,6 +2,7 @@
 
 use std::{
     collections::{hash_map::Entry, HashMap},
+    ops::{Index, IndexMut},
     rc::Rc,
 };
 
@@ -10,6 +11,34 @@ use crate::{
     lowering::{Arena, Dag, Node, Ptr, PtrEqRc},
     mimick,
 };
+
+impl Index<Ptr> for Dag {
+    type Output = Node;
+
+    fn index(&self, index: Ptr) -> &Node {
+        self.dag.get(index).unwrap()
+    }
+}
+
+impl IndexMut<Ptr> for Dag {
+    fn index_mut(&mut self, index: Ptr) -> &mut Node {
+        self.dag.get_mut(index).unwrap()
+    }
+}
+
+impl Index<&Ptr> for Dag {
+    type Output = Node;
+
+    fn index(&self, index: &Ptr) -> &Node {
+        self.dag.get(*index).unwrap()
+    }
+}
+
+impl IndexMut<&Ptr> for Dag {
+    fn index_mut(&mut self, index: &Ptr) -> &mut Node {
+        self.dag.get_mut(*index).unwrap()
+    }
+}
 
 impl Dag {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
@@ -65,27 +94,27 @@ impl Dag {
     /// errors.
     pub fn verify_integrity(&self) -> Result<(), EvalError> {
         'outer: for p in self.list_ptrs() {
-            let len = self.dag[p].ops.len();
-            if let Some(expected) = self.dag[p].op.operands_len() {
+            let len = self[p].ops.len();
+            if let Some(expected) = self[p].op.operands_len() {
                 if expected != len {
                     return Err(EvalError::WrongNumberOfOperands)
                 }
             }
             let mut bitwidths = vec![];
-            for i in 0..self.dag[p].ops.len() {
-                let op = self.dag[p].ops[i];
-                if let Some(nzbw) = self.dag[op].nzbw {
+            for i in 0..self[p].ops.len() {
+                let op = self[p].ops[i];
+                if let Some(nzbw) = self[op].nzbw {
                     bitwidths.push(nzbw.get());
                 } else {
                     // can't do anything
                     continue 'outer
                 }
-                if !self.dag[op].deps.contains(&p) {
+                if !self[op].deps.contains(&p) {
                     return Err(EvalError::Other)
                 }
             }
-            if let Some(nzbw) = self.dag[p].nzbw {
-                if self.dag[p].op.check_bitwidths(nzbw.get(), &bitwidths) {
+            if let Some(nzbw) = self[p].nzbw {
+                if self[p].op.check_bitwidths(nzbw.get(), &bitwidths) {
                     return Err(EvalError::WrongBitwidth)
                 }
             }
@@ -102,7 +131,7 @@ impl Dag {
     pub fn roots(&self) -> Vec<Ptr> {
         let mut v = Vec::new();
         for p in self.list_ptrs() {
-            if self.dag[p].ops.is_empty() {
+            if self[p].ops.is_empty() {
                 v.push(p);
             }
         }
@@ -113,7 +142,7 @@ impl Dag {
     pub fn leaves(&self) -> Vec<Ptr> {
         let mut v = Vec::new();
         for p in self.list_ptrs() {
-            if self.dag[p].deps.is_empty() {
+            if self[p].deps.is_empty() {
                 v.push(p);
             }
         }

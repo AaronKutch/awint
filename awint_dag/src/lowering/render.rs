@@ -199,7 +199,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
         dep_i.push(0);
         loop {
             let current = node[node.len() - 1];
-            match dag.dag[current].deps.get(dep_i[dep_i.len() - 1]) {
+            match dag[current].deps.get(dep_i[dep_i.len() - 1]) {
                 Some(dependent) => {
                     if done_nodes.contains(dependent) {
                         // if node was already explored, check the next dependency
@@ -249,7 +249,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
             let mut next = ptr;
             lineage_map.insert(next, n);
             lineage_leaves.insert(n, next);
-            while let Some(next_zeroeth) = dag.dag[next].ops.get(0) {
+            while let Some(next_zeroeth) = dag[next].ops.get(0) {
                 next = *next_zeroeth;
                 match lineage_map.entry(next) {
                     Occupied(mut o) => {
@@ -271,7 +271,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     for leaf in lineage_leaves {
         let mut next = leaf.1;
         let mut lineage = vec![next];
-        while let Some(next_zeroeth) = dag.dag[next].ops.get(0) {
+        while let Some(next_zeroeth) = dag[next].ops.get(0) {
             next = *next_zeroeth;
             lineage.push(next);
         }
@@ -296,7 +296,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
         for vertical in &mut grid {
             for slot in &mut *vertical {
                 let mut pos = 0;
-                for dep in &dag.dag[slot.0].deps {
+                for dep in &dag[slot.0].deps {
                     pos = std::cmp::max(pos, sort_map[dep] + 1);
                 }
                 if pos < slot.1 {
@@ -336,7 +336,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
         ops_i.push(0);
         loop {
             let current = node[node.len() - 1];
-            match dag.dag[current].ops.get(ops_i[ops_i.len() - 1]) {
+            match dag[current].ops.get(ops_i[ops_i.len() - 1]) {
                 Some(operand) => {
                     if done_nodes.contains(operand) {
                         // if node was already explored, check the next dependency
@@ -394,7 +394,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     }
     for (x_i, vertical) in grid.iter().enumerate() {
         for (ptr, pos) in &*vertical {
-            let node = RenderNode::new(&dag.dag[ptr], *ptr);
+            let node = RenderNode::new(&dag[ptr], *ptr);
             let tmp = grid_max_wx[x_i];
             grid_max_wx[x_i] = max(tmp, node.wx);
             // y is reversed to make the data flow downwards graphically

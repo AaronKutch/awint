@@ -279,7 +279,7 @@ impl Op {
     /// of the operands. Returns `true` if a bitwidth is zero or a mismatch
     /// error has occured.
     pub fn check_bitwidths(&self, self_bw: usize, v: &[usize]) -> bool {
-        if self_bw == 0 || v.iter().fold(false, |acc, e| acc || *e == 0) {
+        if self_bw == 0 || v.iter().any(|e| *e == 0) {
             return true
         }
         let bw = self_bw;

@@ -18,3 +18,7 @@ awint_internals = { version = "0.1.0", path = "../awint_internals", default-feat
 
 [dev-dependencies]
 awint = { path = "../awint" }
+
+[features]
+# This enables things such as an evaluating `PartialEq` on the mimicking types
+special_traits = []

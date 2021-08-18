@@ -224,7 +224,7 @@ impl Bits {
     );
 
     pub fn opaque_assign(&mut self) {
-        self.state = State::new(self.state_nzbw(), Opaque, vec![]);
+        self.state = State::new(self.state_nzbw(), Opaque, vec![self.state()]);
     }
 
     pub fn zero_assign(&mut self) {
