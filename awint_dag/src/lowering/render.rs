@@ -1,4 +1,5 @@
 #![allow(clippy::many_single_char_names)]
+#![allow(clippy::same_item_push)]
 
 use std::{
     cmp::max,

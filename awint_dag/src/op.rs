@@ -295,9 +295,7 @@ impl Op {
                 b
             }
 
-            Eq | Ne | Ult | Ule | Ilt | Ile => {
-                (bw != 1) || (v[0] != v[1])
-            }
+            Eq | Ne | Ult | Ule | Ilt | Ile => (bw != 1) || (v[0] != v[1]),
 
             Resize(nzbw) => (bw != nzbw.get()) || (v[0] != 1),
 

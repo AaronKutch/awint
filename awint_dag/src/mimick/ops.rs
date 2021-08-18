@@ -1,3 +1,6 @@
+// Note: we use `impl Into<...>` heavily instead of `U: Into<...>` generics,
+// because it allows arguments to be different types
+
 use awint_internals::BITS;
 use Op::*;
 
@@ -38,7 +41,7 @@ macro_rules! binary {
 macro_rules! zero_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
-            pub fn $assign_name<I>(&mut self, x: I) where I: Into<prim::$prim> {
+            pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
                 self.state = State::new(
                     self.nzbw(),
                     ZeroResize(self.nzbw()),
@@ -47,7 +50,7 @@ macro_rules! zero_cast {
             }
 
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(ZeroResize(self.nzbw()), vec![self.state()])
+                prim::$prim::new(ZeroResize(prim::$prim::hidden_const_nzbw()), vec![self.state()])
             }
         )*
     };
@@ -56,7 +59,7 @@ macro_rules! zero_cast {
 macro_rules! sign_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
-            pub fn $assign_name<I>(&mut self, x: I) where I: Into<prim::$prim> {
+            pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
                 self.state = State::new(
                     self.nzbw(),
                     SignResize(self.nzbw()),
@@ -65,7 +68,7 @@ macro_rules! sign_cast {
             }
 
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(SignResize(self.nzbw()), vec![self.state()])
+                prim::$prim::new(SignResize(prim::$prim::hidden_const_nzbw()), vec![self.state()])
             }
         )*
     };
@@ -112,10 +115,7 @@ macro_rules! compare_reversed {
 macro_rules! shift {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
-            pub fn $fn_name<U>(&mut self, s: U) -> Option<()>
-            where
-                U: Into<prim::usize>,
-            {
+            pub fn $fn_name(&mut self, s: impl Into<prim::usize>) -> Option<()> {
                 self.state = State::new(
                     self.nzbw(),
                     $enum_var,
@@ -301,10 +301,13 @@ impl Bits {
         None
     }
 
-    pub fn field<U>(&mut self, to: U, rhs: &Self, from: U, width: U) -> Option<()>
-    where
-        U: Into<prim::usize>,
-    {
+    pub fn field(
+        &mut self,
+        to: impl Into<prim::usize>,
+        rhs: &Self,
+        from: impl Into<prim::usize>,
+        width: impl Into<prim::usize>,
+    ) -> Option<()> {
         self.state = State::new(self.nzbw(), Field, vec![
             self.state(),
             to.into().state(),
@@ -315,23 +318,20 @@ impl Bits {
         Some(())
     }
 
-    pub fn resize_assign<B>(&mut self, rhs: &Self, extension: B)
-    where
-        B: Into<prim::bool>,
-    {
+    pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<prim::bool>) {
         self.state = State::new(self.nzbw(), Resize(self.nzbw()), vec![
             rhs.state(),
             extension.into().state(),
         ]);
     }
 
-    pub fn zero_resize_assign<B>(&mut self, rhs: &Self) -> prim::bool {
+    pub fn zero_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(ZeroResizeOverflow(self.nzbw()), vec![rhs.state()]);
         self.state = State::new(self.nzbw(), ZeroResize(self.nzbw()), vec![rhs.state()]);
         b
     }
 
-    pub fn sign_resize_assign<B>(&mut self, rhs: &Self) -> prim::bool {
+    pub fn sign_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(SignResizeOverflow(self.nzbw()), vec![rhs.state()]);
         self.state = State::new(self.nzbw(), SignResize(self.nzbw()), vec![rhs.state()]);
         b
@@ -366,35 +366,26 @@ impl Bits {
         Some(())
     }
 
-    pub fn inc_assign<B>(&mut self, cin: B) -> prim::bool
-    where
-        B: Into<prim::bool>,
-    {
+    pub fn inc_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
         let out = prim::bool::new(IncCout, vec![self.state(), b.state()]);
         self.state = State::new(self.nzbw(), Inc, vec![self.state(), b.state()]);
         out
     }
 
-    pub fn dec_assign<B>(&mut self, cin: B) -> prim::bool
-    where
-        B: Into<prim::bool>,
-    {
+    pub fn dec_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
         let out = prim::bool::new(DecCout, vec![self.state(), b.state()]);
         self.state = State::new(self.nzbw(), Dec, vec![self.state(), b.state()]);
         out
     }
 
-    pub fn cin_sum_triop<B>(
+    pub fn cin_sum_triop(
         &mut self,
-        cin: B,
+        cin: impl Into<prim::bool>,
         lhs: &Self,
         rhs: &Self,
-    ) -> Option<(prim::bool, prim::bool)>
-    where
-        B: Into<prim::bool>,
-    {
+    ) -> Option<(prim::bool, prim::bool)> {
         let b = cin.into();
         let out = Some((
             prim::bool::new(UnsignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
@@ -409,29 +400,25 @@ impl Bits {
     }
 
     #[doc(hidden)]
-    pub fn unstable_lt_checks<U, const N: usize>(_lt_checks: [(U, U); N]) -> Option<()>
-    where
-        U: Into<prim::usize>,
-    {
+    pub fn unstable_lt_checks<const N: usize>(
+        _lt_checks: [(impl Into<prim::usize>, impl Into<prim::usize>); N],
+    ) -> Option<()> {
         Some(())
     }
 
     #[doc(hidden)]
-    pub fn unstable_common_lt_checks<U, const N: usize>(
-        _common_lhs: U,
-        _rhss: [usize; N],
-    ) -> Option<()>
-    where
-        U: Into<prim::usize>,
-    {
+    pub fn unstable_common_lt_checks<const N: usize>(
+        _common_lhs: impl Into<prim::usize>,
+        _rhss: [impl Into<prim::usize>; N],
+    ) -> Option<()> {
         Some(())
     }
 
     #[doc(hidden)]
-    pub fn unstable_common_ne_checks<U, const N: usize>(_common_lhs: U, _rhss: [U; N]) -> Option<()>
-    where
-        U: Into<prim::usize>,
-    {
+    pub fn unstable_common_ne_checks<const N: usize>(
+        _common_lhs: impl Into<prim::usize>,
+        _rhss: [impl Into<prim::usize>; N],
+    ) -> Option<()> {
         Some(())
     }
 }
