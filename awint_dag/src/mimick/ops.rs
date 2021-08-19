@@ -376,7 +376,7 @@ impl Bits {
     }
 
     pub fn mul_add_triop(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), MulAdd, vec![lhs.state(), rhs.state()]);
+        self.state = State::new(self.state_nzbw(), MulAdd, vec![self.state(), lhs.state(), rhs.state()]);
         Some(())
     }
 

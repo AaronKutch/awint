@@ -191,6 +191,7 @@ impl Op {
                 v.push("div");
             }
             MulAdd => {
+                v.push("add");
                 v.push("lhs");
                 v.push("rhs");
             }
@@ -263,12 +264,12 @@ impl Op {
             | Tz
             | CountOnes => 1,
 
-            Resize(_) | Lut(_) | Funnel | UQuo | URem | IQuo | IRem | MulAdd | CinSum
+            Resize(_) | Lut(_) | Funnel | UQuo | URem | IQuo | IRem | CinSum
             | UnsignedOverflow | SignedOverflow | Or | And | Xor | Shl | Lshr | Ashr | Rotl
             | Rotr | Add | Sub | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile | Inc | IncCout | Dec
             | DecCout => 2,
 
-            LutSet => 3,
+            LutSet | MulAdd => 3,
             Field => 5,
         })
     }
@@ -477,7 +478,10 @@ impl Op {
                 t2.copy_assign(v[1])?;
                 Bits::idivide(t, e, t1, t2)
             }
-            MulAdd => e.mul_add_triop(v[0], v[1]),
+            MulAdd => {
+                e.copy_assign(v[0])?;
+                e.mul_add_triop(v[1], v[2])
+            },
             CinSum => {
                 if e.cin_sum_triop(v[0].to_bool(), v[1], v[2]).is_some() {
                     Some(())
