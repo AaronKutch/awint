@@ -4,7 +4,7 @@
 
 use std::{
     cmp::{max, min},
-    env::{self},
+    env,
     fs,
     fs::OpenOptions,
     io::Write,
