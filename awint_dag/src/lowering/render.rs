@@ -468,7 +468,10 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     // .0, tmp.0 .1);
 
     // background
-    s += &format!("<rect fill=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>", tot_wx, tot_wy);
+    s += &format!(
+        "<rect fill=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>",
+        tot_wx, tot_wy
+    );
 
     // rectangles and outlines first
     for vert in &rect_grid {

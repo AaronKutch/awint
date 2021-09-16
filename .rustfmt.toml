@@ -1,4 +1,4 @@
-# this was made for rustfmt 1.4.29-nightly (70ce1825 2020-12-04)
+# this was made for rustfmt 1.4.37-nightly (fdf65053 2021-09-07)
 
 condense_wildcard_suffixes = true # better
 error_on_line_overflow = true # be more strict
