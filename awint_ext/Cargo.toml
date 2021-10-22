@@ -25,6 +25,6 @@ ron = "0.6"
 [features]
 default = ["const_support"]
 # Turns on nightly features required for many functions to be marked `const`
-const_support = ["awint_core/const_support", "awint_internals/const_support"]
+const_support = ["awint_core/const_support"]
 # Turns on `serde` support
 serde_support = ["serde"]

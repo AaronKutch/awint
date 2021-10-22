@@ -538,9 +538,10 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
         .to_string()
         .parse::<usize>()
         .expect("Input should parse as a `usize`");
-    if bw == 0 {
-        panic!("Tried to make an `InlAwi` type with an invalid bitwidth of 0");
-    }
+    assert!(
+        bw != 0,
+        "Tried to make an `InlAwi` type with an invalid bitwidth of 0"
+    );
     format!("InlAwi<{}, {}>", bw, raw_digits(bw))
         .parse()
         .unwrap()
@@ -634,9 +635,10 @@ macro_rules! inlawi_construction {
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
                 if let Ok(bw) = input.to_string().parse::<usize>() {
-                    if bw == 0 {
-                        panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
-                    }
+                    assert!(
+                        bw != 0,
+                        "Tried to construct an `InlAwi` with an invalid bitwidth of 0"
+                    );
                     format!("InlAwi::<{}, {}>::{}()", bw, raw_digits(bw), $inlawi_fn)
                         .parse()
                         .unwrap()
@@ -668,9 +670,10 @@ macro_rules! extawi_construction {
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
                 if let Ok(bw) = input.to_string().parse::<usize>() {
-                    if bw == 0 {
-                        panic!("Tried to construct an `ExtAwi` with an invalid bitwidth of 0");
-                    }
+                    assert!(
+                        bw != 0,
+                        "Tried to construct an `ExtAwi` with an invalid bitwidth of 0"
+                    );
                     format!("ExtAwi::panicking_{}({})", $extawi_fn, bw)
                         .parse()
                         .unwrap()

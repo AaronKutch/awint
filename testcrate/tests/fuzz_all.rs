@@ -1,7 +1,6 @@
 #![feature(const_option)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
 
 mod fuzz;
 use core::cmp;

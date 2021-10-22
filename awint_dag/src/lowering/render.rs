@@ -550,7 +550,8 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     }
 
     let viewbox = (tot_wx, tot_wy);
-    let output = format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n\
+    let output = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n\
         <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \
         \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n\
         <svg preserveAspectRatio=\"meet\" viewBox=\"{} {} {} {}\" width=\"100%\" height=\"100%\" \

@@ -13,7 +13,6 @@
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_offset))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_read))]
-#![cfg_attr(feature = "const_support", feature(const_panic))]
 // TODO use ptr::write in several places if https://github.com/rust-lang/rust/issues/86236 is fixed
 //#![feature(const_ptr_write)]
 #![cfg_attr(feature = "const_support", feature(const_ptr_write))]

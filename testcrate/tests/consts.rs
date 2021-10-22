@@ -1,5 +1,4 @@
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
 #![feature(const_option)]
 
 use awint::prelude::{
