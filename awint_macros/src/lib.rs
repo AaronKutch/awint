@@ -483,6 +483,11 @@
 //!
 //! ### Other Notes
 //!
+//! - If dynamic values are used in ranges, they should not use generator like
+//!   behavior (e.x. using a function that changes its output between calls in
+//!   `x[f()..=f()]`), or else you may get unexpected behavior. The parser and
+//!   code generator treats identical strings like they produce the same value
+//!   every time, and would call `f()` only once.
 //! - In general, the macros use the `Bits::field` operation to copy different
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
