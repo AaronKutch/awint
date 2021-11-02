@@ -32,6 +32,17 @@
 
 // TODO
 // Known issues:
+//
+// Make default initializations be postfixed with '$' to reduce macro
+// duplication. The only thing this will prevent is certain strings and macros.
+// I considered '#', but this would collide with raw identifiers. Don't forbid
+// the single bitwidth value condition.
+//
+// There needs to be an initial typeless binding e.x. `let __awint_bind_0 = f(x)`
+// so that complicated expressions are not called twice for their bitwidths and
+// getting references from them. This also prevents lifetimes being too short
+// from intermediates.
+//
 // In some cases (e.x. `inlawi_imin(5..7)`), certain width values and shift
 // increments are created when they are not needed. However, the known cases
 // are very easily optimized away (I _think_ they are already optimized away
