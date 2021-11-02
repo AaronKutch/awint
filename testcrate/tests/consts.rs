@@ -150,6 +150,13 @@ const fn bits_functions() {
 
     x0.short_cin_mul(0, 0);
 
+    assert!(x0.mul_add_triop(x1, x2).is_none());
+    assert!(x1.mul_add_triop(x0, x2).is_none());
+    assert!(x2.mul_add_triop(x1, x0).is_none());
+    assert!(x0.mul_assign(x1, x2).is_none());
+    assert!(x1.mul_assign(x0, x2).is_none());
+    assert!(x2.mul_assign(x1, x0).is_none());
+
     x0.bool_assign(true);
 
     x0.inc_assign(false);

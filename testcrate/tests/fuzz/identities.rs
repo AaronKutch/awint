@@ -381,6 +381,13 @@ fn identities_inner(
     x4.copy_assign(x0)?;
     x3.short_mul_add_triop(x4, rhs)?;
 
+    // alternate multiplication
+    x2.copy_assign(x0)?;
+    x2.mul_assign(x1, x3)?;
+    x4.zero_assign();
+    x4.mul_add_triop(x0, x1)?;
+    eq(x2, x4);
+
     // unsigned division and logical right shift
     x2.uone_assign();
     x2.shl_assign(s0)?;

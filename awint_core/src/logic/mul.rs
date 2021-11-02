@@ -77,4 +77,32 @@ impl Bits {
         self.clear_unused_bits();
         Some(())
     }
+
+    /// Multiply-assigns `self` by `rhs`. `pad` is a scratchpad that will be
+    /// mutated arbitrarily.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn mul_assign(&mut self, rhs: &Self, pad: &mut Self) -> Option<()> {
+        if self.bw() != rhs.bw() || self.bw() != pad.bw() {
+            return None
+        }
+        pad.zero_assign();
+        unsafe {
+            const_for!(self_i in {0..self.len()} {
+                // carry from the short multiplication
+                let mut carry0 = 0;
+                let mut carry1 = 0;
+                const_for!(rhs_i in {0..(self.len() - self_i)} {
+                    let tmp0 =
+                        widen_mul_add(self.get_unchecked(self_i), rhs.get_unchecked(rhs_i), carry0);
+                    carry0 = tmp0.1;
+                    let tmp1 = widen_add(pad.get_unchecked(self_i + rhs_i), tmp0.0, carry1);
+                    carry1 = tmp1.1;
+                    *pad.get_unchecked_mut(self_i + rhs_i) = tmp1.0;
+                });
+            });
+        }
+        pad.clear_unused_bits();
+        self.copy_assign(pad);
+        Some(())
+    }
 }
