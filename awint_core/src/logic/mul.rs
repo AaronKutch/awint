@@ -105,4 +105,77 @@ impl Bits {
         self.copy_assign(pad);
         Some(())
     }
+
+    /// Arbitrarily-unsigned-multiplies `lhs` by `rhs` and add-assigns the
+    /// product to `self`. This function is equivalent to:
+    /// ```
+    /// use awint::prelude::*;
+    ///
+    /// fn arb_umul_assign(add: &mut Bits, lhs: &Bits, rhs: &Bits) {
+    ///     let mut resized_lhs = ExtAwi::zero(add.nzbw());
+    ///     // Note that this function is specified as unsigned,
+    ///     // because we use `zero_resize_assign`
+    ///     resized_lhs[..].zero_resize_assign(lhs);
+    ///     let mut resized_rhs = ExtAwi::zero(add.nzbw());
+    ///     resized_rhs[..].zero_resize_assign(rhs);
+    ///     add.const_as_mut()
+    ///         .mul_add_triop(&resized_lhs[..], &resized_rhs[..])
+    ///         .unwrap();
+    /// }
+    /// ```
+    /// except that it avoids allocation and is more efficient overall
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn arb_umul_add_assign(&mut self, lhs: &Self, rhs: &Self) {
+        // first, we swap references so that `x0.bw() <= x1.bw()`
+        let (x0, x1) = if lhs.bw() <= rhs.bw() {
+            (lhs, rhs)
+        } else {
+            (rhs, lhs)
+        };
+        let x0_upper_bound = if self.len() < x0.len() {
+            self.len()
+        } else {
+            x0.len()
+        };
+        // Safety: all the `get_unchecked_` are in bounds, since `x0_i < x0_upper_bound
+        // < x0.len()` and there are independent checks every loop for the
+        // `x1_i` and `self_i` cases.
+        unsafe {
+            const_for!(x0_i in {0..x0_upper_bound} {
+                // carry from the short multiplication
+                let mut carry0 = 0;
+                let mut carry1 = 0;
+                let mut x1_i = 0;
+                let mut self_i = x0_i;
+                loop {
+                    if x1_i >= x1.len() || self_i >= self.len() {
+                        break
+                    }
+                    let tmp0 =
+                        widen_mul_add(x0.get_unchecked(x0_i), x1.get_unchecked(x1_i), carry0);
+                    carry0 = tmp0.1;
+                    let tmp1 = widen_add(self.get_unchecked(self_i), tmp0.0, carry1);
+                    carry1 = tmp1.1;
+                    *self.get_unchecked_mut(self_i) = tmp1.0;
+                    x1_i += 1;
+                    self_i += 1;
+                }
+                // handle the last short multiplication carry if `self` continues
+                if self_i < self.len() {
+                    let tmp = widen_add(self.get_unchecked(self_i), carry0, carry1);
+                    *self.get_unchecked_mut(self_i) = tmp.0;
+                    carry1 = tmp.1;
+                    self_i += 1;
+                    // handle arbitrarily many addition carries
+                    while self_i < self.len() && carry1 != 0 {
+                        let tmp = widen_add(self.get_unchecked(self_i), carry1, 0);
+                        *self.get_unchecked_mut(self_i) = tmp.0;
+                        carry1 = tmp.1;
+                        self_i += 1;
+                    }
+                }
+            });
+        }
+        self.clear_unused_bits();
+    }
 }

@@ -12,57 +12,59 @@ fn multi_bw_inner(
     #[allow(unused_variables)] // for miri
     rng: &mut Xoshiro128StarStar,
     x0bw0: &Bits,
+    x1bw0: &mut Bits,
     x2bw0: &mut Bits,
     x3bw0: &mut Bits,
     x0bw1: &Bits,
+    x1bw1: &mut Bits,
     x2bw1: &mut Bits,
-    x3bw1: &mut Bits,
+    x0bw2: &Bits,
     b: bool,
 ) -> Option<()> {
     let bw0 = x0bw0.bw();
     let bw1 = x0bw1.bw();
 
     // basic resize assign
-    x2bw1.resize_assign(x0bw0, b);
-    x2bw0.resize_assign(x2bw1, b);
-    if !x0bw0.const_eq(x2bw0)? {
+    x1bw1.resize_assign(x0bw0, b);
+    x1bw0.resize_assign(x1bw1, b);
+    if !x0bw0.const_eq(x1bw0)? {
         assert!(bw1 < bw0);
     }
     if bw0 <= bw1 {
         // only truncation should be lossy
-        eq(x0bw0, x2bw0);
+        eq(x0bw0, x1bw0);
     } else if b {
-        x3bw0.umax_assign();
-        x3bw0.shl_assign(bw1)?;
-        x3bw0.or_assign(x0bw0);
-        eq(x2bw0, x3bw0);
+        x2bw0.umax_assign();
+        x2bw0.shl_assign(bw1)?;
+        x2bw0.or_assign(x0bw0);
+        eq(x1bw0, x2bw0);
     } else {
-        x3bw0.copy_assign(x0bw0)?;
-        x3bw0.range_and_assign(0..bw1)?;
-        eq(x2bw0, x3bw0);
+        x2bw0.copy_assign(x0bw0)?;
+        x2bw0.range_and_assign(0..bw1)?;
+        eq(x1bw0, x2bw0);
     }
 
     // zero resize assign
-    let o0 = x2bw1.zero_resize_assign(x0bw0);
-    let o1 = x2bw0.zero_resize_assign(x2bw1);
+    let o0 = x1bw1.zero_resize_assign(x0bw0);
+    let o1 = x1bw0.zero_resize_assign(x1bw1);
     // the overflow should only occur the first time if it does
     assert!(!o1);
     if o0 {
         assert!(bw1 < bw0);
-        ne(x0bw0, x2bw0)
+        ne(x0bw0, x1bw0)
     } else {
-        eq(x0bw0, x2bw0)
+        eq(x0bw0, x1bw0)
     }
 
     // sign resize assign
-    let o0 = x2bw1.sign_resize_assign(x0bw0);
-    let o1 = x2bw0.sign_resize_assign(x2bw1);
+    let o0 = x1bw1.sign_resize_assign(x0bw0);
+    let o1 = x1bw0.sign_resize_assign(x1bw1);
     assert!(!o1);
     if o0 {
         assert!(bw1 < bw0);
-        ne(x0bw0, x2bw0)
+        ne(x0bw0, x1bw0)
     } else {
-        eq(x0bw0, x2bw0)
+        eq(x0bw0, x1bw0)
     }
 
     // bitfields
@@ -77,24 +79,33 @@ fn multi_bw_inner(
     } else {
         (rng.next_u32() as usize) % (bw1 - width)
     };
-    // set x3bw1 to what x2bw1 will be without the copied field
+    // set x2bw1 to what x1bw1 will be without the copied field
+    x1bw1.copy_assign(x0bw1)?;
+    x1bw1.range_and_assign(0..to).unwrap();
     x2bw1.copy_assign(x0bw1)?;
-    x2bw1.range_and_assign(0..to).unwrap();
-    x3bw1.copy_assign(x0bw1)?;
-    x3bw1.range_and_assign((to + width)..bw1).unwrap();
-    x3bw1.or_assign(x2bw1)?;
-    // set x2bw1 to what the x2bw1 will be with only the copied field
-    x2bw0.copy_assign(x0bw0)?;
-    x2bw0.range_and_assign(from..(from + width)).unwrap();
-    x2bw0.lshr_assign(from).unwrap();
-    x2bw1.zero_resize_assign(x2bw0);
-    x2bw1.shl_assign(to).unwrap();
+    x2bw1.range_and_assign((to + width)..bw1).unwrap();
+    x2bw1.or_assign(x1bw1)?;
+    // set x1bw1 to what the x1bw1 will be with only the copied field
+    x1bw0.copy_assign(x0bw0)?;
+    x1bw0.range_and_assign(from..(from + width)).unwrap();
+    x1bw0.lshr_assign(from).unwrap();
+    x1bw1.zero_resize_assign(x1bw0);
+    x1bw1.shl_assign(to).unwrap();
     // combine
-    x3bw1.or_assign(x2bw1);
-    // x2bw1 is done being used as a temporary
-    x2bw1.copy_assign(x0bw1)?;
-    x2bw1.field(to, x0bw0, from, width).unwrap();
-    eq(x2bw1, x3bw1);
+    x2bw1.or_assign(x1bw1);
+    // x1bw1 is done being used as a temporary
+    x1bw1.copy_assign(x0bw1)?;
+    x1bw1.field(to, x0bw0, from, width).unwrap();
+    eq(x1bw1, x2bw1);
+
+    // arbitrary width multiplication
+    x1bw0.copy_assign(x0bw0)?;
+    x2bw0.zero_resize_assign(x0bw1);
+    x3bw0.zero_resize_assign(x0bw2);
+    x1bw0.mul_add_triop(x2bw0, x3bw0)?;
+    x2bw0.copy_assign(x0bw0)?;
+    x2bw0.arb_umul_add_assign(x0bw1, x0bw2);
+    eq(x1bw0, x2bw0);
 
     // no unsafe code being used in these functions, disabling because it is too
     // slow
@@ -129,11 +140,11 @@ fn multi_bw_inner(
         match ExtAwi::from_str_radix(sign, src, radix, bw(bw1)) {
             Ok(awi) => {
                 if sign.is_none() {
-                    x2bw1.zero_resize_assign(x0bw0);
+                    x1bw1.zero_resize_assign(x0bw0);
                 } else {
-                    x2bw1.sign_resize_assign(x0bw0);
+                    x1bw1.sign_resize_assign(x0bw0);
                 }
-                eq(x2bw1, &awi[..]);
+                eq(x1bw1, &awi[..]);
             }
             Err(e) => {
                 // this should be the only error we will encounter
@@ -153,6 +164,7 @@ pub fn multi_bw(seed: u64) -> Option<()> {
 
     let bw0 = bw(((rng.next_u32() % 258) + 1) as usize);
     let bw1 = bw(((rng.next_u32() % 258) + 1) as usize);
+    let bw2 = bw(((rng.next_u32() % 258) + 1) as usize);
     let mut awi0_0 = ExtAwi::zero(bw0);
     let mut awi1_0 = ExtAwi::zero(bw0);
     let mut awi2_0 = ExtAwi::zero(bw0);
@@ -160,24 +172,29 @@ pub fn multi_bw(seed: u64) -> Option<()> {
     let mut awi0_1 = ExtAwi::zero(bw1);
     let mut awi1_1 = ExtAwi::zero(bw1);
     let mut awi2_1 = ExtAwi::zero(bw1);
-    let mut awi3_1 = ExtAwi::zero(bw1);
+    let mut awi0_2 = ExtAwi::zero(bw2);
+    let mut awi1_2 = ExtAwi::zero(bw2);
+    // only the `x0_`s are being randomized, the `x1_`s however are needed for fuzz
+    // step temporaries
     let mut x0bw0 = awi0_0.const_as_mut();
     let mut x1bw0 = awi1_0.const_as_mut();
-    let mut x2bw0 = awi2_0.const_as_mut();
+    let x2bw0 = awi2_0.const_as_mut();
     let x3bw0 = awi3_0.const_as_mut();
     let mut x0bw1 = awi0_1.const_as_mut();
     let mut x1bw1 = awi1_1.const_as_mut();
-    let mut x2bw1 = awi2_1.const_as_mut();
-    let x3bw1 = awi3_1.const_as_mut();
+    let x2bw1 = awi2_1.const_as_mut();
+    let mut x0bw2 = awi0_2.const_as_mut();
+    let mut x1bw2 = awi1_2.const_as_mut();
 
     for _ in 0..16 {
-        fuzz_step(rng, &mut x0bw0, &mut x2bw0);
-        fuzz_step(rng, &mut x1bw0, &mut x2bw0);
-        fuzz_step(rng, &mut x0bw1, &mut x2bw1);
-        fuzz_step(rng, &mut x1bw1, &mut x2bw1);
+        fuzz_step(rng, &mut x0bw0, &mut x1bw0);
+        fuzz_step(rng, &mut x0bw1, &mut x1bw1);
+        fuzz_step(rng, &mut x0bw2, &mut x1bw2);
         let b = (rng.next_u32() & 1) == 0;
 
-        multi_bw_inner(rng, x0bw0, x2bw0, x3bw0, x0bw1, x2bw1, x3bw1, b)?;
+        multi_bw_inner(
+            rng, x0bw0, x1bw0, x2bw0, x3bw0, x0bw1, x1bw1, x2bw1, x0bw2, b,
+        )?;
     }
     Some(())
 }
