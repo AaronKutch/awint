@@ -160,6 +160,153 @@ impl ExtAwi {
     ) -> Result<ExtAwi, SerdeError> {
         ExtAwi::from_bytes_radix(sign, str.as_bytes(), radix, bw)
     }
+
+    /// Creates an `ExtAwi` representing the given arguments. This function
+    /// performs allocation. In addition to the arguments and semantics from
+    /// [ExtAwi::from_bytes_radix], this function includes the ability to deal
+    /// with general fixed point integer deserialization. A point `.` can
+    /// now be included in `src` which separates the integer part from the
+    /// fractional part. An exponent `exp` further multiplies the numerical
+    /// value by `radix^exp`. `fp` is the location of the fixed point in the
+    /// output representation of the numerical value (e.x. for a plain
+    /// integer `fp == 0`). `fp` can be negative and greater than the
+    /// bitwidth.
+    ///
+    /// This function uses a single rigorous Banker's rounding that occurs after
+    /// the exponent and fixed point multiplier are applied and before any
+    /// numerical information is lost.
+    ///
+    /// # Errors
+    ///
+    /// See the error conditions of [ExtAwi::from_bytes_radix]. It is allowed
+    /// for there to be no chars before or after the point, in which case the
+    /// respective part is interpreted as 0, but a single point by itself is
+    /// not allowed.
+    pub fn from_bytes_general(
+        sign: Option<bool>,
+        src: &[u8],
+        exp: isize,
+        radix: u8,
+        bw: NonZeroUsize,
+        fp: isize,
+    ) -> Result<ExtAwi, SerdeError> {
+        let mut i_len = src.len();
+        let mut point_exists = false;
+        for i in 0..src.len() {
+            if src[i] == b'.' {
+                if src.len() == 1 {
+                    return Err(Empty)
+                }
+                i_len = i;
+                point_exists = true;
+                break
+            }
+        }
+        // TODO guard all plain adds in the serialization functions
+        let f_len = src.len() - i_len - (point_exists as usize);
+        let exp_sub_f_len = exp.checked_sub(isize::try_from(f_len).unwrap()).unwrap();
+
+        // The problem we encounter is that the only way to do the correct banker's
+        // rounding in the general case is to consider the integer part, the entire
+        // fractional part (maybe there is some optimization that can be applied here to
+        // truncate), fixed point multiplier, and exponent all at once.
+        //
+        // `((i_part * 2^fp) + (f_part * 2^fp * radix^f_len)) * radix^exp`
+        // <=> `((i * radix^f_len) + f) * r^(exp - f_len) * 2^fp`
+
+        // this width includes space for everything
+        let tmp_bw = awint_internals::bw(
+            (sign.is_some() as usize)
+                + awint_internals::bits_upper_bound(
+                    i_len + f_len + exp_sub_f_len.unsigned_abs(),
+                    radix,
+                )?
+                + fp.unsigned_abs()
+                + 1, /* this is for the shift left on `rem` and for possible `quo` increment
+                      * overflow */
+        );
+        let mut numerator = if i_len > 0 {
+            let mut i_part = ExtAwi::from_bytes_radix(None, &src[..i_len], radix, tmp_bw)?;
+            // multiply by `radix^f_len` here
+            for _ in 0..f_len {
+                i_part.const_as_mut().short_cin_mul(0, usize::from(radix));
+            }
+            i_part
+        } else {
+            ExtAwi::zero(tmp_bw)
+        };
+        let num = numerator.const_as_mut();
+        if i_len < (src.len() - 1) {
+            let mut f_part = ExtAwi::from_bytes_radix(
+                None,
+                // avoids overflow corner case
+                &src[(i_len + (point_exists as usize))..],
+                radix,
+                tmp_bw,
+            )?;
+            num.add_assign(f_part.const_as_mut());
+        }
+        let mut denominator = ExtAwi::uone(tmp_bw);
+        let den = denominator.const_as_mut();
+
+        if exp_sub_f_len < 0 {
+            for _ in 0..exp_sub_f_len.unsigned_abs() {
+                den.short_cin_mul(0, usize::from(radix));
+            }
+        } else {
+            for _ in 0..exp_sub_f_len.unsigned_abs() {
+                num.short_cin_mul(0, usize::from(radix));
+            }
+        }
+        if fp < 0 {
+            den.shl_assign(fp.unsigned_abs()).unwrap();
+        } else {
+            num.shl_assign(fp.unsigned_abs()).unwrap();
+        }
+        let mut quotient = ExtAwi::zero(tmp_bw);
+        let quo = quotient.const_as_mut();
+        let mut remainder = ExtAwi::zero(tmp_bw);
+        let rem = remainder.const_as_mut();
+        Bits::udivide(quo, rem, num, den).unwrap();
+        // The remainder `rem` is in the range `0..den`. We use banker's rounding to
+        // choose when to round up `quo`.
+        rem.shl_assign(1);
+        if den.ult(&rem).unwrap() {
+            // past the halfway point, round up
+            quo.inc_assign(true);
+        } else if den == rem {
+            // round to even
+            let odd = quo.lsb();
+            quo.inc_assign(odd);
+        } // else truncated is correct
+        if let Some(true) = sign {
+            quo.neg_assign();
+        }
+
+        let mut res = ExtAwi::zero(bw);
+        let x = res.const_as_mut();
+        if sign.is_none() {
+            if x.zero_resize_assign(quo) {
+                return Err(Overflow)
+            }
+        } else if x.sign_resize_assign(quo) {
+            return Err(Overflow)
+        }
+        Ok(res)
+    }
+
+    /// Creates an `ExtAwi` representing the given arguments. This does the same
+    /// thing as [ExtAwi::from_bytes_general] except with an `&str`.
+    pub fn from_str_general(
+        sign: Option<bool>,
+        str: &str,
+        exp: isize,
+        radix: u8,
+        bw: NonZeroUsize,
+        fp: isize,
+    ) -> Result<ExtAwi, SerdeError> {
+        ExtAwi::from_bytes_general(sign, str.as_bytes(), exp, radix, bw, fp)
+    }
 }
 
 impl core::str::FromStr for ExtAwi {
