@@ -19,6 +19,7 @@ fn multi_bw_inner(
     x1bw1: &mut Bits,
     x2bw1: &mut Bits,
     x0bw2: &Bits,
+    x1bw2: &mut Bits,
     b: bool,
 ) -> Option<()> {
     let bw0 = x0bw0.bw();
@@ -105,6 +106,19 @@ fn multi_bw_inner(
     x1bw0.mul_add_assign(x2bw0, x3bw0)?;
     x2bw0.copy_assign(x0bw0)?;
     x2bw0.arb_umul_add_assign(x0bw1, x0bw2);
+    eq(x1bw0, x2bw0);
+    // signed version
+    x1bw0.copy_assign(x0bw0)?;
+    x2bw0.sign_resize_assign(x0bw1);
+    x3bw0.sign_resize_assign(x0bw2);
+    x1bw0.mul_add_assign(x2bw0, x3bw0)?;
+    x2bw0.copy_assign(x0bw0)?;
+    x1bw1.copy_assign(x0bw1)?;
+    x1bw2.copy_assign(x0bw2)?;
+    x2bw0.arb_imul_add_assign(x1bw1, x1bw2);
+    // make sure it did not mutate these arguments
+    eq(x1bw1, x0bw1);
+    eq(x1bw2, x0bw2);
     eq(x1bw0, x2bw0);
 
     // no unsafe code being used in these functions, disabling because it is too
@@ -193,7 +207,7 @@ pub fn multi_bw(seed: u64) -> Option<()> {
         let b = (rng.next_u32() & 1) == 0;
 
         multi_bw_inner(
-            rng, x0bw0, x1bw0, x2bw0, x3bw0, x0bw1, x1bw1, x2bw1, x0bw2, b,
+            rng, x0bw0, x1bw0, x2bw0, x3bw0, x0bw1, x1bw1, x2bw1, x0bw2, x1bw2, b,
         )?;
     }
     Some(())

@@ -178,4 +178,20 @@ impl Bits {
         }
         self.clear_unused_bits();
     }
+
+    /// Arbitrarily-signed-multiplies `lhs` by `rhs` and add-assigns the product
+    /// to `self`. `duo` and `div` are marked mutable but their values are
+    /// not changed by this function.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn arb_imul_add_assign(&mut self, lhs: &mut Self, rhs: &mut Self) {
+        let lhs_msb = lhs.msb();
+        let rhs_msb = rhs.msb();
+        lhs.neg_assign(lhs_msb);
+        rhs.neg_assign(rhs_msb);
+        self.neg_assign(lhs_msb != rhs_msb);
+        self.arb_umul_add_assign(lhs, rhs);
+        lhs.neg_assign(lhs_msb);
+        rhs.neg_assign(rhs_msb);
+        self.neg_assign(lhs_msb != rhs_msb);
+    }
 }

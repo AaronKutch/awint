@@ -366,8 +366,7 @@ impl Bits {
     /// Signed-divides `duo` by `div` and assigns the quotient to `quo` and
     /// remainder to `rem`. Returns `None` if any bitwidths are not equal or
     /// `div.is_zero()`. `duo` and `div` are marked mutable but their values are
-    /// not changed by this function. They are mutable in order to prevent
-    /// internal complications.
+    /// not changed by this function.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn idivide(
         quo: &mut Self,

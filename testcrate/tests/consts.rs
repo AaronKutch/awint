@@ -157,6 +157,9 @@ const fn bits_functions() {
     assert!(x1.mul_assign(x0, x2).is_none());
     assert!(x2.mul_assign(x1, x0).is_none());
 
+    x0.arb_umul_add_assign(x1, x2);
+    x0.arb_imul_add_assign(x1, x2);
+
     x0.bool_assign(true);
 
     x0.inc_assign(false);
