@@ -1,0 +1,11 @@
+# Changelog
+
+## [0.2.0] - date TODO
+### Changes
+- Updated to 2021 edition
+- `neg_assign` now takes a boolean that conditionally activates it
+
+### Additions
+- Added `const_nzbw` and `const_bw` to `InlAwi`
+- Added `lut_set`, `mul_assign`, and `arb_umul_add_assign` to `Bits`
+- Added `from_bytes_general` to `ExtAwi`
