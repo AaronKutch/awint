@@ -54,7 +54,7 @@ use crate::Bits;
 ///     let x = awi0.const_as_mut();
 ///     let awi1 = inlawi!(2i100);
 ///     let y = awi1.const_as_ref();
-///     x.neg_assign();
+///     x.neg_assign(true);
 ///     const_fn(x, y);
 ///     awi0
 /// };

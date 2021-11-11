@@ -381,23 +381,13 @@ impl Bits {
         }
         let duo_msb = duo.msb();
         let div_msb = div.msb();
-        if duo_msb {
-            duo.neg_assign();
-        }
-        if div_msb {
-            div.neg_assign();
-        }
+        duo.neg_assign(duo_msb);
+        div.neg_assign(div_msb);
         Bits::udivide(quo, rem, duo, div).unwrap();
-        if duo_msb {
-            duo.neg_assign();
-            rem.neg_assign();
-        }
-        if div_msb {
-            div.neg_assign();
-        }
-        if duo_msb != div_msb {
-            quo.neg_assign();
-        }
+        duo.neg_assign(duo_msb);
+        rem.neg_assign(duo_msb);
+        div.neg_assign(div_msb);
+        quo.neg_assign(duo_msb != div_msb);
         Some(())
     }
 }

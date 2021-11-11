@@ -116,7 +116,7 @@ fn identities_inner(
 
     // Negation
     x2.copy_assign(x0)?;
-    x2.neg_assign();
+    x2.neg_assign(true);
     x3.copy_assign(x0)?;
     x3.not_assign();
     x3.inc_assign(true);
@@ -131,7 +131,7 @@ fn identities_inner(
     }
     if x2.msb() != x0.msb() {
         x3.copy_assign(x0)?;
-        x3.neg_assign();
+        x3.neg_assign(true);
         eq(x3, x2);
     }
 
@@ -141,7 +141,7 @@ fn identities_inner(
     x4.copy_assign(x0)?;
     x5.copy_assign(x1)?;
     x2.sub_assign(x3)?;
-    x2.neg_assign();
+    x2.neg_assign(true);
     x4.rsb_assign(x5)?;
     eq(x2, x4);
 
@@ -289,12 +289,8 @@ fn identities_inner(
     x4.copy_assign(x0)?;
     x5.copy_assign(x1)?;
     if !(x4.is_imin() || x5.is_imin()) {
-        if x0.msb() {
-            x4.neg_assign();
-        }
-        if x1.msb() {
-            x5.neg_assign();
-        }
+        x4.neg_assign(x0.msb());
+        x5.neg_assign(x1.msb());
         let uof = x3.cin_sum_triop(cin, x4, x5)?.0;
         if iof {
             assert!(uof || x3.msb());
@@ -347,8 +343,8 @@ fn identities_inner(
     x2.mul_add_triop(x0, x1)?;
     x3.copy_assign(x0)?;
     x4.copy_assign(x1)?;
-    x3.neg_assign();
-    x4.neg_assign();
+    x3.neg_assign(true);
+    x4.neg_assign(true);
     x5.usize_assign(s0);
     x5.mul_add_triop(x3, x4)?;
     eq(x2, x5);

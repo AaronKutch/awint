@@ -271,7 +271,7 @@ impl ExtAwi {
         // The remainder `rem` is in the range `0..den`. We use banker's rounding to
         // choose when to round up `quo`.
         rem.shl_assign(1);
-        if den.ult(&rem).unwrap() {
+        if den.ult(rem).unwrap() {
             // past the halfway point, round up
             quo.inc_assign(true);
         } else if den == rem {
@@ -280,7 +280,7 @@ impl ExtAwi {
             quo.inc_assign(odd);
         } // else truncated is correct
         if let Some(true) = sign {
-            quo.neg_assign();
+            quo.neg_assign(true);
         }
 
         let mut res = ExtAwi::zero(bw);

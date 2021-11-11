@@ -80,20 +80,25 @@ impl Bits {
         }
     }
 
-    /// Negate-assigns `self`. Note that signed minimum values will overflow.
+    /// Negate-assigns `self` if `neg` is true. Note that signed minimum values
+    /// will overflow.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn neg_assign(&mut self) {
-        self.not_assign();
-        self.inc_assign(true);
+    pub const fn neg_assign(&mut self, neg: bool) {
+        if neg {
+            self.not_assign();
+            // note: do not return overflow from the increment because it only happens if
+            // `self.is_zero()`, not `self.is_imin()` which will certainly lead
+            // to accidents
+            self.inc_assign(true);
+        }
     }
 
     /// Absolute-value-assigns `self`. Note that signed minimum values will
-    /// overflow.
+    /// overflow, unless `self` is interpreted as unsigned after a call to this
+    /// function.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn abs_assign(&mut self) {
-        if self.msb() {
-            self.neg_assign();
-        }
+        self.neg_assign(self.msb());
     }
 
     /// Add-assigns by `rhs`

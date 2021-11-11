@@ -99,7 +99,7 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // handles `imin` correctly
-                pad.neg_assign();
+                pad.neg_assign(true);
             } else if pad.lz() == 0 {
                 // These cannot be represented as positive
                 return Err(Overflow)
@@ -181,7 +181,7 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // handles `imin` correctly
-                pad0.neg_assign();
+                pad0.neg_assign(true);
             } else if pad0.lz() == 0 {
                 // These cannot be represented as positive
                 return Err(Overflow)
@@ -222,10 +222,8 @@ impl Bits {
             return Err(InvalidRadix)
         }
         pad.copy_assign(self);
-        if signed && pad.msb() {
-            // happens to do the right thing to `imin`
-            pad.neg_assign();
-        }
+        // happens to do the right thing to `imin`
+        pad.neg_assign(signed && pad.msb());
         const_for!(i in {0..dst.len()}.rev() {
             let rem = pad.short_udivide_assign(radix as usize).unwrap() as u8;
             if rem < 10 {

@@ -161,6 +161,7 @@ const fn bits_functions() {
 
     x0.inc_assign(false);
     x0.dec_assign(true);
+    x0.neg_assign(false);
     assert!(x0.cin_sum_triop(false, x1, x2).is_none());
 
     x0.usize_or_assign(123, 60);
@@ -238,7 +239,6 @@ const fn bits_functions() {
         to_u128
         to_i128
         to_bool
-        neg_assign
         abs_assign
         ;
         shl_assign

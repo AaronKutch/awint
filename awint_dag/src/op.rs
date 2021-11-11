@@ -45,7 +45,6 @@ pub enum Op {
     // (&mut self)
     Not,
     Rev,
-    Neg,
     Abs,
 
     // (&self) -> bool
@@ -85,6 +84,7 @@ pub enum Op {
 
     Inc,
     Dec,
+    Neg,
     IncCout,
     DecCout,
 
@@ -122,7 +122,6 @@ impl Op {
             SignedOverflow => "signed_overflow",
             Not => "not",
             Rev => "rev",
-            Neg => "neg",
             Abs => "abs",
             IsZero => "is_zero",
             IsUmax => "is_umax",
@@ -155,6 +154,7 @@ impl Op {
             IncCout => "inc_cout",
             Dec => "dec",
             DecCout => "dec_cout",
+            Neg => "neg",
             LutSet => "lut_set",
             Field => "field",
         }
@@ -201,7 +201,7 @@ impl Op {
                 v.push("rhs");
             }
 
-            Not | Rev | Neg | Abs => v.push("x"),
+            Not | Rev | Abs => v.push("x"),
 
             IsZero | IsUmax | IsImax | IsImin | IsUone | Lsb | Msb => v.push("x"),
 
@@ -220,6 +220,10 @@ impl Op {
             Inc | Dec | IncCout | DecCout => {
                 v.push("x");
                 v.push("cin");
+            }
+            Neg => {
+                v.push("x");
+                v.push("neg");
             }
             LutSet => {
                 v.push("lut");
@@ -251,7 +255,6 @@ impl Op {
             | Copy
             | Not
             | Rev
-            | Neg
             | Abs
             | IsZero
             | IsUmax
@@ -266,7 +269,7 @@ impl Op {
 
             Resize(_) | Lut(_) | Funnel | UQuo | URem | IQuo | IRem | CinSum | UnsignedOverflow
             | SignedOverflow | Or | And | Xor | Shl | Lshr | Ashr | Rotl | Rotr | Add | Sub
-            | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile | Inc | IncCout | Dec | DecCout => 2,
+            | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile | Inc | IncCout | Dec | DecCout | Neg => 2,
 
             LutSet | MulAdd => 3,
             Field => 5,
@@ -372,7 +375,6 @@ impl Op {
             | Copy
             | Not
             | Rev
-            | Neg
             | Abs
             | IsZero
             | IsUmax
@@ -412,6 +414,7 @@ impl Op {
             | IncCout
             | Dec
             | DecCout
+            | Neg
             | LutSet => false,
 
             Shl | Lshr | Ashr | Rotl | Rotr => {
@@ -512,11 +515,6 @@ impl Op {
             Rev => {
                 let r = e.copy_assign(v[0]);
                 e.rev_assign();
-                r
-            }
-            Neg => {
-                let r = e.copy_assign(v[0]);
-                e.neg_assign();
                 r
             }
             Abs => {
@@ -705,6 +703,11 @@ impl Op {
                 } else {
                     None
                 }
+            }
+            Neg => {
+                let r = e.copy_assign(v[0]);
+                e.neg_assign(v[1].to_bool());
+                r
             }
             IncCout => {
                 if e.copy_assign(v[0]).is_some() {

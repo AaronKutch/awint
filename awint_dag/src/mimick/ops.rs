@@ -151,7 +151,6 @@ impl Bits {
     unary!(
         not_assign Not,
         rev_assign Rev,
-        neg_assign Neg,
         abs_assign Abs,
     );
 
@@ -396,6 +395,11 @@ impl Bits {
         let out = prim::bool::new(DecCout, vec![self.state(), b.state()]);
         self.state = State::new(self.state_nzbw(), Dec, vec![self.state(), b.state()]);
         out
+    }
+
+    pub fn neg_assign(&mut self, neg: impl Into<prim::bool>) {
+        let b = neg.into();
+        self.state = State::new(self.state_nzbw(), Neg, vec![self.state(), b.state()]);
     }
 
     pub fn cin_sum_triop(
