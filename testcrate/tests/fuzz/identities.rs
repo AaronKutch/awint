@@ -272,7 +272,7 @@ fn identities_inner(
 
     // Summation and Comparison
     let cin = (s0 & 1) != 0;
-    let (uof, iof) = x2.cin_sum_triop(cin, x0, x1)?;
+    let (uof, iof) = x2.cin_sum_assign(cin, x0, x1)?;
     x3.copy_assign(x0)?;
     x3.add_assign(x1)?;
     x3.inc_assign(cin);
@@ -291,7 +291,7 @@ fn identities_inner(
     if !(x4.is_imin() || x5.is_imin()) {
         x4.neg_assign(x0.msb());
         x5.neg_assign(x1.msb());
-        let uof = x3.cin_sum_triop(cin, x4, x5)?.0;
+        let uof = x3.cin_sum_assign(cin, x4, x5)?.0;
         if iof {
             assert!(uof || x3.msb());
         } else {
@@ -332,7 +332,7 @@ fn identities_inner(
     x2.uone_assign();
     x2.shl_assign(s0);
     x4.zero_assign();
-    x4.mul_add_triop(x0, x2)?;
+    x4.mul_add_assign(x0, x2)?;
     x3.copy_assign(x0)?;
     x3.shl_assign(s0);
     // (x3 << s) == (x3 * (1 << s))
@@ -340,13 +340,13 @@ fn identities_inner(
 
     // negation and multiplication
     x2.usize_assign(s0);
-    x2.mul_add_triop(x0, x1)?;
+    x2.mul_add_assign(x0, x1)?;
     x3.copy_assign(x0)?;
     x4.copy_assign(x1)?;
     x3.neg_assign(true);
     x4.neg_assign(true);
     x5.usize_assign(s0);
-    x5.mul_add_triop(x3, x4)?;
+    x5.mul_add_assign(x3, x4)?;
     eq(x2, x5);
 
     // short multiplication and division
@@ -354,7 +354,7 @@ fn identities_inner(
     let div = x1.to_usize();
     if div != 0 {
         x3.usize_assign(div);
-        let rem = x4.short_udivide_triop(x0, div)?;
+        let rem = x4.short_udivide_assign(x0, div)?;
         x5.usize_assign(rem);
         let oflow = x4.short_cin_mul(0, div);
         assert_eq!(oflow, 0);
@@ -364,8 +364,8 @@ fn identities_inner(
 
         // compare the two short divisions
         x2.copy_assign(x0)?;
-        x2.short_udivide_assign(div)?;
-        x3.short_udivide_triop(x0, div)?;
+        x2.short_udivide_inplace_assign(div)?;
+        x3.short_udivide_assign(x0, div)?;
         eq(x2, x3);
     }
 
@@ -375,13 +375,13 @@ fn identities_inner(
     x2.short_cin_mul(0, rhs);
     x3.copy_assign(x0)?;
     x4.copy_assign(x0)?;
-    x3.short_mul_add_triop(x4, rhs)?;
+    x3.short_mul_add_assign(x4, rhs)?;
 
     // alternate multiplication
     x2.copy_assign(x0)?;
     x2.mul_assign(x1, x3)?;
     x4.zero_assign();
-    x4.mul_add_triop(x0, x1)?;
+    x4.mul_add_assign(x0, x1)?;
     eq(x2, x4);
 
     // unsigned division and logical right shift
@@ -402,12 +402,12 @@ fn identities_inner(
         Bits::udivide(x2, x3, x0, x1)?;
         assert!(x3.ult(x1)?);
         x4.copy_assign(x3)?;
-        x4.mul_add_triop(x2, x1)?;
+        x4.mul_add_assign(x2, x1)?;
         eq(x4, x0);
     } else {
         assert!(Bits::udivide(x2, x3, x0, x1).is_none());
         x4.zero_assign();
-        x4.mul_add_triop(x2, x1)?;
+        x4.mul_add_assign(x2, x1)?;
         assert!(x4.is_zero())
     }
     // the signed version is handled in `identities`
@@ -601,7 +601,7 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
                 }
             }
             x4.copy_assign(x3)?;
-            x4.mul_add_triop(x2, x1)?;
+            x4.mul_add_assign(x2, x1)?;
             eq(x4, x0);
         } else {
             assert!(Bits::idivide(x2, x3, x0, x1).is_none());

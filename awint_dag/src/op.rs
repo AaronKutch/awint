@@ -482,17 +482,17 @@ impl Op {
             }
             MulAdd => {
                 e.copy_assign(v[0])?;
-                e.mul_add_triop(v[1], v[2])
+                e.mul_add_assign(v[1], v[2])
             }
             CinSum => {
-                if e.cin_sum_triop(v[0].to_bool(), v[1], v[2]).is_some() {
+                if e.cin_sum_assign(v[0].to_bool(), v[1], v[2]).is_some() {
                     Some(())
                 } else {
                     None
                 }
             }
             UnsignedOverflow => {
-                if let Some((o, _)) = t.cin_sum_triop(v[0].to_bool(), v[1], v[2]) {
+                if let Some((o, _)) = t.cin_sum_assign(v[0].to_bool(), v[1], v[2]) {
                     e.bool_assign(o);
                     Some(())
                 } else {
@@ -500,7 +500,7 @@ impl Op {
                 }
             }
             SignedOverflow => {
-                if let Some((_, o)) = t.cin_sum_triop(v[0].to_bool(), v[1], v[2]) {
+                if let Some((_, o)) = t.cin_sum_assign(v[0].to_bool(), v[1], v[2]) {
                     e.bool_assign(o);
                     Some(())
                 } else {

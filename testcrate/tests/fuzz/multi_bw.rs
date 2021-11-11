@@ -102,7 +102,7 @@ fn multi_bw_inner(
     x1bw0.copy_assign(x0bw0)?;
     x2bw0.zero_resize_assign(x0bw1);
     x3bw0.zero_resize_assign(x0bw2);
-    x1bw0.mul_add_triop(x2bw0, x3bw0)?;
+    x1bw0.mul_add_assign(x2bw0, x3bw0)?;
     x2bw0.copy_assign(x0bw0)?;
     x2bw0.arb_umul_add_assign(x0bw1, x0bw2);
     eq(x1bw0, x2bw0);

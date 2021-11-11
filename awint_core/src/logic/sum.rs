@@ -161,7 +161,7 @@ impl Bits {
     /// returned if any bitwidths do not match. If subtraction is desired,
     /// one of the operands can be negated.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn cin_sum_triop(
+    pub const fn cin_sum_assign(
         &mut self,
         cin: bool,
         lhs: &Self,

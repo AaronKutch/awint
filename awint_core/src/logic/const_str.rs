@@ -158,7 +158,7 @@ impl Bits {
             } else {
                 b.wrapping_sub(b'a').wrapping_add(10)
             } as usize;
-            let o0 = pad0.short_mul_add_triop(pad1, char_digit).unwrap();
+            let o0 = pad0.short_mul_add_assign(pad1, char_digit).unwrap();
             if o0 {
                 return Err(Overflow)
             }
@@ -225,7 +225,7 @@ impl Bits {
         // happens to do the right thing to `imin`
         pad.neg_assign(signed && pad.msb());
         const_for!(i in {0..dst.len()}.rev() {
-            let rem = pad.short_udivide_assign(radix as usize).unwrap() as u8;
+            let rem = pad.short_udivide_inplace_assign(radix as usize).unwrap() as u8;
             if rem < 10 {
                 dst[i] = b'0' + rem;
             } else if upper {

@@ -129,6 +129,6 @@ fn awint_internals_test() {
     let lhs = inlawi_zero!(..,lhs;..256).unwrap();
     let rhs = inlawi_zero!(..,rhs;..256).unwrap();
     let mut add = inlawi_zero!(..,add;..256).unwrap();
-    add[..].mul_add_triop(&lhs[..], &rhs[..]).unwrap();
+    add[..].mul_add_assign(&lhs[..], &rhs[..]).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
 }

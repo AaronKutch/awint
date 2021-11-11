@@ -374,7 +374,7 @@ impl Bits {
         Some(())
     }
 
-    pub fn mul_add_triop(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
+    pub fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         self.state = State::new(self.state_nzbw(), MulAdd, vec![
             self.state(),
             lhs.state(),
@@ -402,7 +402,7 @@ impl Bits {
         self.state = State::new(self.state_nzbw(), Neg, vec![self.state(), b.state()]);
     }
 
-    pub fn cin_sum_triop(
+    pub fn cin_sum_assign(
         &mut self,
         cin: impl Into<prim::bool>,
         lhs: &Self,

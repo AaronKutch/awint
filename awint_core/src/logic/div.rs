@@ -28,10 +28,10 @@ use crate::Bits;
 /// the internal algorithms until it becomes the remainder, so that it serves
 /// two purposes.
 impl Bits {
-    /// Unsigned-divide-assign `self` by `div`, and returns the remainder.
-    /// Returns `None` if `div == 0`.
+    /// Unsigned-divides `self` by `div`, sets `self` to the quotient, and
+    /// returns the remainder. Returns `None` if `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn short_udivide_assign(&mut self, div: usize) -> Option<usize> {
+    pub const fn short_udivide_inplace_assign(&mut self, div: usize) -> Option<usize> {
         if div == 0 {
             return None
         }
@@ -49,11 +49,11 @@ impl Bits {
         Some(rem)
     }
 
-    /// Unsigned-divides `duo` by `div`, sets `self` to the quotient, and
-    /// returns the remainder. Returns `None` if `self.bw() != duo.bw()` or
-    /// `div == 0`.
+    // Unsigned-divides `duo` by `div`, sets `self` to the quotient, and
+    // returns the remainder. Returns `None` if `self.bw() != duo.bw()` or
+    // `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn short_udivide_triop(&mut self, duo: &Self, div: usize) -> Option<usize> {
+    pub const fn short_udivide_assign(&mut self, duo: &Self, div: usize) -> Option<usize> {
         if div == 0 || self.bw() != duo.bw() {
             return None
         }
@@ -169,7 +169,7 @@ impl Bits {
 
         // short division branch
         if bw - div_lz <= BITS {
-            let tmp = quo.short_udivide_triop(duo, div.to_usize()).unwrap();
+            let tmp = quo.short_udivide_assign(duo, div.to_usize()).unwrap();
             rem.usize_assign(tmp);
             return Some(())
         }

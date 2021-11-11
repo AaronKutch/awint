@@ -32,7 +32,7 @@ impl Bits {
 
     /// Add-assigns `lhs * rhs` to `self` and returns if overflow happened
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn short_mul_add_triop(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
+    pub const fn short_mul_add_assign(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
         let mut mul_carry = 0;
         let mut add_carry = 0;
         binop_for_each_mut!(
@@ -55,7 +55,7 @@ impl Bits {
     /// Multiplies `lhs` by `rhs` and add-assigns the product to `self`. Three
     /// operands eliminates the need for an allocating temporary.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn mul_add_triop(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
+    pub const fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
             return None
         }
@@ -119,7 +119,7 @@ impl Bits {
     ///     let mut resized_rhs = ExtAwi::zero(add.nzbw());
     ///     resized_rhs[..].zero_resize_assign(rhs);
     ///     add.const_as_mut()
-    ///         .mul_add_triop(&resized_lhs[..], &resized_rhs[..])
+    ///         .mul_add_assign(&resized_lhs[..], &resized_rhs[..])
     ///         .unwrap();
     /// }
     /// ```

@@ -43,7 +43,7 @@ use crate::Bits;
 ///     // `InlAwi` stored on the stack does no allocation
 ///     let mut tmp_awi = inlawi!(0i100);
 ///     let tmp = tmp_awi.const_as_mut();
-///     tmp.mul_add_triop(lhs, rhs).unwrap();
+///     tmp.mul_add_assign(lhs, rhs).unwrap();
 ///     cc!(tmp; lhs).unwrap();
 /// }
 ///
