@@ -165,6 +165,7 @@ const fn bits_functions() {
     x0.inc_assign(false);
     x0.dec_assign(true);
     x0.neg_assign(false);
+    assert!(x0.neg_add_assign(false, x1).is_none());
     assert!(x0.cin_sum_assign(false, x1, x2).is_none());
 
     x0.usize_or_assign(123, 60);

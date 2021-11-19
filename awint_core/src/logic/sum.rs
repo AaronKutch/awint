@@ -155,6 +155,16 @@ impl Bits {
         )
     }
 
+    /// Negate-add-assigns by `rhs`. Negates conditionally on `neg`.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn neg_add_assign(&mut self, neg: bool, rhs: &Self) -> Option<()> {
+        if neg {
+            self.sub_assign(rhs)
+        } else {
+            self.add_assign(rhs)
+        }
+    }
+
     /// A general summation with carry-in `cin` and two inputs `lhs` and `rhs`.
     /// `self` is set to the sum. The unsigned overflow (equivalent to the
     /// carry-out bit) and the signed overflow is returned as a tuple. `None` is
