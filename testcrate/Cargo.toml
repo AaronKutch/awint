@@ -9,7 +9,7 @@ awint = { path = "../awint", features = ["rand_support", "serde_support"] }
 awint_internals = { path = "../awint_internals" }
 awint_macro_internals = { path = "../awint_macro_internals" }
 rand_xoshiro = "0.6"
-ron = "0.6"
+ron = "0.7"
 
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support"] }

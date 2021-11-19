@@ -20,7 +20,7 @@ serde = { version = "1.0", default-features = false, optional = true }
 # for examples
 [dev-dependencies]
 awint = { path = "../awint" }
-ron = "0.6"
+ron = "0.7"
 
 [features]
 default = ["const_support"]
