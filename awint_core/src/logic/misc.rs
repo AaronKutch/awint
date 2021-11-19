@@ -84,14 +84,12 @@ impl Bits {
     /// // As an example, two hexadecimal digits will be overwritten
     /// // starting with the 12th digit in `y` using a bitfield with
     /// // value 0x42u8 extracted from `x`.
-    /// let x_awi = inlawi!(0x11142111u50);
+    /// let x = inlawi!(0x11142111u50);
     /// // the underscores are just for emphasis
-    /// let mut y_awi = inlawi!(0xfd_ec_ba9876543210u100);
-    /// let x = x_awi.const_as_ref();
-    /// let y = y_awi.const_as_mut();
+    /// let mut y = inlawi!(0xfd_ec_ba9876543210u100);
     /// // from `x` digit place 3, we copy 2 digits to `y` digit place 12.
-    /// y.field(12 * 4, x, 3 * 4, 2 * 4);
-    /// assert_eq!(y_awi, inlawi!(0xfd_42_ba9876543210u100));
+    /// y.field(12 * 4, &x, 3 * 4, 2 * 4);
+    /// assert_eq!(y, inlawi!(0xfd_42_ba9876543210u100));
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn field(&mut self, to: usize, rhs: &Self, from: usize, width: usize) -> Option<()> {
@@ -214,19 +212,16 @@ impl Bits {
     ///
     /// ```
     /// use awint::{inlawi, InlAwi};
-    /// let mut out_awi = inlawi!(0u10);
+    /// let mut out = inlawi!(0u10);
     /// // lookup table consisting of 4 10-bit entries
-    /// let lut_awi = inlawi!(4u10, 3u10, 2u10, 1u10);
+    /// let lut = inlawi!(4u10, 3u10, 2u10, 1u10);
     /// // the indexer has to have a bitwidth of 2 to index 2^2 = 4 entries
-    /// let mut inx_awi = inlawi!(0u2);
-    /// let out = out_awi.const_as_mut();
-    /// let lut = lut_awi.const_as_ref();
-    /// let inx = inx_awi.const_as_mut();
+    /// let mut inx = inlawi!(0u2);
     ///
     /// // get the third entry (this is using zero indexing)
     /// inx.usize_assign(2);
-    /// out.lut(lut, inx).unwrap();
-    /// assert_eq!(out_awi, inlawi!(3u10));
+    /// out.lut(&lut, &inx).unwrap();
+    /// assert_eq!(out, inlawi!(3u10));
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {

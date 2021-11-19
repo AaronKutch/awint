@@ -3,7 +3,7 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     num::NonZeroUsize,
-    ops::{Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
 };
 
 use awint_internals::*;
@@ -42,6 +42,8 @@ use crate::Bits;
 /// const fn const_fn(lhs: &mut Bits, rhs: &Bits) {
 ///     // `InlAwi` stored on the stack does no allocation
 ///     let mut tmp_awi = inlawi!(0i100);
+///     // `InlAwi` implements `Deref`, but if you want to use it in `const`
+///     // contexts, `const_as_ref` or `const_as_mut` should be used
 ///     let tmp = tmp_awi.const_as_mut();
 ///     tmp.mul_add_assign(lhs, rhs).unwrap();
 ///     cc!(tmp; lhs).unwrap();
@@ -228,6 +230,22 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.const_as_ref().hash(state);
+    }
+}
+
+impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
+    type Target = Bits;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
     }
 }
 

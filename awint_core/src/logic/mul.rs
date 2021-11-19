@@ -115,12 +115,10 @@ impl Bits {
     ///     let mut resized_lhs = ExtAwi::zero(add.nzbw());
     ///     // Note that this function is specified as unsigned,
     ///     // because we use `zero_resize_assign`
-    ///     resized_lhs[..].zero_resize_assign(lhs);
+    ///     resized_lhs.zero_resize_assign(lhs);
     ///     let mut resized_rhs = ExtAwi::zero(add.nzbw());
-    ///     resized_rhs[..].zero_resize_assign(rhs);
-    ///     add.const_as_mut()
-    ///         .mul_add_assign(&resized_lhs[..], &resized_rhs[..])
-    ///         .unwrap();
+    ///     resized_rhs.zero_resize_assign(rhs);
+    ///     add.mul_add_assign(&resized_lhs, &resized_rhs).unwrap();
     /// }
     /// ```
     /// except that it avoids allocation and is more efficient overall
