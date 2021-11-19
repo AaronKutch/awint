@@ -9,6 +9,7 @@
 
 ### Additions
 - Implemented `Deref` for `InlAwi` and `ExtAwi`
+- Added `FP` wrapper for fixed-point arithmetic
 - Added `const_nzbw` and `const_bw` to `InlAwi`
 - Added `lut_set`, `neg_add_assign`, `mul_assign`, `arb_umul_add_assign`, and `arb_imul_add_assign`
   to `Bits`

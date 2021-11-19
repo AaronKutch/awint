@@ -2,7 +2,8 @@
 //!
 //! This crate contains another storage type called `ExtAwi` to go along with
 //! `InlAwi` in the `awint_core` crate. This crate is separate because it
-//! requires support for `alloc`.
+//! requires support for `alloc`. Also includes `FP` because it practically
+//! requires allocation to use.
 
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]
@@ -21,12 +22,17 @@
 extern crate alloc;
 
 mod extawi;
+mod fp;
 #[cfg(feature = "serde_support")]
 mod serde;
 mod strings;
 
 pub use extawi::ExtAwi;
+pub use fp::{FPType, FP};
 
 pub mod prelude {
-    pub use crate::ExtAwi;
+    pub use crate::{
+        fp::{FPType, FP},
+        ExtAwi,
+    };
 }
