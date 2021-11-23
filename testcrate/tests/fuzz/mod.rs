@@ -1,5 +1,6 @@
 use awint::Bits;
 use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
+mod fp;
 mod identities;
 mod multi_bw;
 mod one_run;
@@ -42,7 +43,10 @@ fn ne(lhs: &Bits, rhs: &Bits) {
             rhs.bw()
         )
     }) {
-        panic!("lhs and rhs are equal when they shouldn't be")
+        panic!(
+            "lhs and rhs are equal when they should not be:\nlhs:{:?} rhs:{:?}",
+            lhs, rhs
+        );
     }
 }
 
@@ -60,6 +64,7 @@ pub fn fuzz_step(rng: &mut Xoshiro128StarStar, x: &mut Bits, tmp: &mut Bits) {
 }
 
 pub const BITS: usize = usize::BITS as usize;
+pub use fp::fp_identities;
 pub use identities::identities;
 pub use multi_bw::multi_bw;
 pub use one_run::one_run;

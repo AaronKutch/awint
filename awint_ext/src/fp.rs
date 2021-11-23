@@ -19,6 +19,10 @@ pub struct FPType {
 
 /// Fixed-Point wrapper around structs that implement `Borrow<Bits>` and
 /// `BorrowMut<Bits>`. Adds on signedness and fixed-point information.
+///
+/// In order to make many operations infallible, `self.fp().unsigned_abs()` and
+/// `self.bw()` follow an invariant that they are never greater than
+/// `usize::MAX >> 2`.
 #[derive(Debug)]
 pub struct FP<B: BorrowMut<Bits>> {
     signed: bool,
@@ -27,10 +31,17 @@ pub struct FP<B: BorrowMut<Bits>> {
 }
 
 impl<B: BorrowMut<Bits>> FP<B> {
-    /// Creates a fixed-point wrapper `FP<B>` from a specified signedness `signed`, wrapped value `B`, and fixed point `fp`
+    /// Creates a fixed-point wrapper `FP<B>` from a specified signedness
+    /// `signed`, wrapped value `B`, and fixed point `fp`. This returns `None`
+    /// if `bits.bw()` or `fp.unsigned_abs()` are greater than
+    /// `usize::MAX >> 2`.
     #[inline]
-    pub fn new(signed: bool, bits: B, fp: isize) -> Self {
-        Self { signed, fp, bits }
+    pub fn new(signed: bool, bits: B, fp: isize) -> Option<Self> {
+        if (bits.borrow().bw() > (usize::MAX >> 2)) || (fp.unsigned_abs() > (usize::MAX >> 2)) {
+            None
+        } else {
+            Some(Self { signed, fp, bits })
+        }
     }
 
     /// Returns the inner `B` value
@@ -57,7 +68,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
         self.signed
     }
 
-    /// Returns the sign of `self`, returning `Some(self.const_as_ref().msb())` if `self.signed()`, and `None` otherwise.
+    /// Returns the sign of `self`, returning `Some(self.const_as_ref().msb())`
+    /// if `self.signed()`, and `None` otherwise.
     #[inline]
     pub fn sign(&self) -> Option<bool> {
         if self.signed() {
@@ -65,6 +77,12 @@ impl<B: BorrowMut<Bits>> FP<B> {
         } else {
             None
         }
+    }
+
+    /// Returns if `self.signed() && self.const_as_ref().msb()`
+    #[inline]
+    pub fn is_negative(&self) -> bool {
+        self.signed() && self.const_as_ref().msb()
     }
 
     /// Returns the bitwidth of `self` as a `NonZeroUsize`
@@ -77,6 +95,13 @@ impl<B: BorrowMut<Bits>> FP<B> {
     #[inline]
     pub fn bw(&self) -> usize {
         self.const_as_ref().bw()
+    }
+
+    /// Returns the bitwidth of `self` as an `isize`
+    #[inline]
+    pub fn ibw(&self) -> isize {
+        // this is ok because of the guard in `FP::new`
+        self.const_as_ref().bw() as isize
     }
 
     /// Returns the fixed point of `self`

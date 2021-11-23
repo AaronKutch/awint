@@ -23,6 +23,7 @@ extern crate alloc;
 
 mod extawi;
 mod fp;
+mod fp_logic;
 #[cfg(feature = "serde_support")]
 mod serde;
 mod strings;

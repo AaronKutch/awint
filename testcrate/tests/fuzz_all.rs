@@ -117,3 +117,10 @@ fn one_run() {
         fuzz::one_run(array).unwrap();
     }
 }
+
+#[test]
+fn fp_identities() {
+    for seed in 0..cmp::max(N / 4, 16) {
+        fuzz::fp_identities(seed as u64).unwrap();
+    }
+}
