@@ -145,7 +145,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// [FP::truncate_assign], except that a tuple of booleans is returned. The
     /// first indicates if the least significant numerical bit was truncated,
     /// and the second indicates if the most significant numerical bit was
-    /// truncated. Additionally, if `this.signed()` and the signedness changes,
+    /// truncated. Additionally, if `this.is_negative() != rhs.is_negative()`,
     /// the second overflow is set.
     ///
     /// What this means is that if transitive truncations return no overflow,
@@ -163,19 +163,6 @@ impl<B: BorrowMut<Bits>> FP<B> {
         // imin works correctly
         b &= this.signed();
         this.const_as_mut().neg_assign(b);
-        if this.signed() {
-            (
-                o.0,
-                o.1 || if rhs.signed() {
-                    // the sign bit shouldn't change
-                    rhs.msb() != this.msb()
-                } else {
-                    // `rhs` is positive but the output is negative
-                    this.msb()
-                },
-            )
-        } else {
-            o
-        }
+        (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
     }
 }

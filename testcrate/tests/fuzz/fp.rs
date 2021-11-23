@@ -104,16 +104,7 @@ fn fp_identities_inner(
         let lsnb = pad0.tz() as isize;
         assert!(o.0 == ((lsnb < target_bounds.0) || (lsnb > target_bounds.1)));
         let msnb = (pad0.bw() - pad0.lz() - 1) as isize;
-        // signedness overflow conditions
-        let extra = if x2bw1.signed() {
-            if x3bw0.signed() {
-                x2bw1.msb() != x0bw0.msb()
-            } else {
-                x2bw1.msb()
-            }
-        } else {
-            false
-        };
+        let extra = x2bw1.is_negative() != x0bw0.is_negative();
         assert!(o.1 == ((msnb < target_bounds.0) || (msnb > target_bounds.1) || extra));
     } else {
         assert!(!(o.0 || o.1));
@@ -124,9 +115,6 @@ fn fp_identities_inner(
     let o0 = FP::otruncate_assign(x2bw1, x3bw0);
     let o1 = FP::otruncate_assign(x4bw0, x2bw1);
     if !(o0.0 || o0.1 || o1.0 || o1.1) {
-        if x3bw0.signed() && (!x2bw1.signed()) {
-            x3bw0.abs_assign();
-        }
         eq(x3bw0, x4bw0);
     }
 
