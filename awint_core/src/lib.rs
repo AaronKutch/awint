@@ -19,7 +19,6 @@
 #![cfg_attr(feature = "const_support", feature(const_intrinsic_copy))]
 #![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts))]
 #![cfg_attr(feature = "const_support", feature(const_swap))]
-#![cfg_attr(feature = "const_support", feature(const_raw_ptr_deref))]
 #![cfg_attr(feature = "const_support", feature(const_option))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
