@@ -45,7 +45,7 @@ macro_rules! failures {
 fn macro_failures() {
     failures!(
         // TODO This restriction could be lifted in the future
-        "Ω", "concatenation 0 (\"Ω\"): component 0 (\"Ω\"): is not ascii";
+        "\u{03a9}", "concatenation 0 (\"\u{03a9}\"): component 0 (\"\u{03a9}\"): is not ascii";
         "", "input is empty or only whitespace";
         ";", "concatenation 0: is empty or only whitespace";
         ",", "concatenation 0 (\",\"): component 1: is empty or only whitespace";

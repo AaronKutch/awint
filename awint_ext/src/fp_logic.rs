@@ -93,7 +93,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
 
     /// The same as [FP::otruncate_assign] except it always intreprets arguments
     /// as unsigned
-    fn outruncate_assign(this: &mut Self, rhs: &Self) -> (bool, bool) {
+    pub fn outruncate_assign(this: &mut Self, rhs: &Self) -> (bool, bool) {
         this.zero_assign();
         if rhs.is_zero() {
             return (false, false)
