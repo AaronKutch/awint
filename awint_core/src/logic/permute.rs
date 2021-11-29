@@ -284,10 +284,8 @@ impl Bits {
     /// then `None` is returned and the `Bits` are left unchanged.
     ///
     /// Arithmetic right shifts copy the sign bit, and thus can act as a very
-    /// fast floored division by a power of two for the signed interpretation of
-    /// `Bits`. Note that signed division also diverges from this if `s ==
-    /// (self.bw() - 1)` because the corresponding positive value cannot be
-    /// represented.
+    /// fast _floored_ division by a power of two for the signed interpretation
+    /// of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn ashr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
