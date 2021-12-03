@@ -67,9 +67,15 @@ jobs:
         run: |
           rustup set profile minimal
           rustup default stable
+      # In the past I have had problems with features not being orthogonal due to configuration
+      # mistakes, so we test several combinations here
       - name: Run `cargo build`
         run: |
-          cargo build --no-default-features --features=rand_support,serde_support
+          cargo build --no-default-features --features=std,rand_support,serde_support
+          cargo build --no-default-features --features=std
+          cargo build --no-default-features --features=rand_support
+          cargo build --no-default-features --features=serde_support
+          cargo build --no-default-features
 
   rustfmt:
     name: Rustfmt
