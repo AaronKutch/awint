@@ -165,9 +165,9 @@ macro_rules! impl_fmt {
             impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     // TODO what about sign, fp, and `B`?
-                    // `0x1234.5678x-3p16u32`
-                    // `0o1234.567x-3p16u32`
-                    // `0b11010.011x-3p16u32`
+                    // this does not cause parsing issues, the same way normal `e` doesn't
+                    // `0x1234.5678p-3i32f-16`
+                    // `.232u32f32;`
                     fmt::$ty::fmt(self.const_as_ref(), f)
                 }
             }
