@@ -1,6 +1,9 @@
 # Changelog
 
 ## [0.2.0] - date TODO
+### Fixes
+- Fixed that version 0.1 was broken by Rustc 1.59.0-nightly.
+
 ### Changes
 - Updated to 2021 edition
 - `neg_assign` now takes a boolean that conditionally activates it
