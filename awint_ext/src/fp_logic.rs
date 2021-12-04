@@ -23,7 +23,10 @@ fn abs_diff(x: isize, y: isize) -> usize {
     }
 }
 
-/// These functions are associated to avoid name clashes
+/// These functions are associated to avoid name clashes.
+///
+/// Note: Adding new functions to `FP` is a WIP
+// TODO
 impl<B: BorrowMut<Bits>> FP<B> {
     /// One-assigns `this`. Returns `None` if a positive one value is not
     /// representable.
@@ -182,12 +185,16 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// ```
     /// use awint::prelude::*;
     /// // note: a user may want to define their own
-    /// // helper functions for these two parts
+    /// // helper functions to do this in one step
+    /// // and combine the output into one string
+    /// // using the notation they prefer.
     /// let awi = ExtAwi::from_str_general(Some(true), "42.1234", 0, 10, bw(32), 16).unwrap();
     /// let fp_awi = FP::new(true, awi, 16).unwrap();
     /// assert_eq!(
     ///     // note: in many situations users will want at least 1 zero for
-    ///     // both parts so that zero parts result in "0" strings and not "".
+    ///     // both parts so that zero parts result in "0" strings and not "",
+    ///     // so `min_..._chars` will be 1. See also
+    ///     // `FPType::unique_min_fraction_digits`.
     ///     FP::to_str_general(&fp_awi, 10, false, 1, 1),
     ///     Ok(("42".to_owned(), "1234".to_owned()))
     /// );
@@ -226,8 +233,11 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let integer_part = if integer_part_zero {
             alloc::vec![b'0'; min_integer_chars]
         } else {
+            let from = max(this.fp(), 0) as usize;
             // no overflow because of `integer_part_zero` checks
-            let integer_bits = this.ibw().wrapping_sub(tot_lz).wrapping_sub(this.fp()) as usize;
+            let bits = this.ibw().wrapping_sub(tot_lz);
+            let integer_bits = bits.wrapping_sub(this.fp()) as usize;
+            let field_bits = bits.wrapping_sub(from as isize) as usize;
             // if the fixed point mandates more trailing zeroes in the integer part
             let extra_zeros = if this.fp() < 0 {
                 this.fp().unsigned_abs()
@@ -235,13 +245,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
                 0
             };
             let mut tmp = ExtAwi::zero(NonZeroUsize::new(integer_bits).unwrap());
-            tmp.field(
-                extra_zeros,
-                &unsigned,
-                max(this.fp(), 0) as usize,
-                integer_bits,
-            )
-            .unwrap();
+            tmp.field(extra_zeros, &unsigned, from, field_bits).unwrap();
             // note: we do not unwrap here in case of resource exhaustion
             ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, min_integer_chars)?
         };
@@ -260,10 +264,12 @@ impl<B: BorrowMut<Bits>> FP<B> {
             let multiplier_bits = bits_upper_bound(calc_digits, radix)?;
             // avoid needing some calculation by dropping zero bits that have no impact
             let calc_fp = this.fp().wrapping_sub(tot_tz) as usize;
+            let field_bits = min(this.fp(), this.ibw()).wrapping_sub(tot_tz) as usize;
             let mut tmp = ExtAwi::zero(
                 NonZeroUsize::new(multiplier_bits.checked_add(calc_fp).ok_or(Overflow)?).unwrap(),
             );
-            tmp.field(0, &unsigned, tot_tz as usize, calc_fp).unwrap();
+            tmp.field(0, &unsigned, tot_tz as usize, field_bits)
+                .unwrap();
             for _ in 0..calc_digits {
                 tmp.short_cin_mul(0, usize::from(radix));
             }
@@ -280,7 +286,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             tmp.lshr_assign(calc_fp);
             tmp.inc_assign(inc);
             // note: we do not unwrap here in case of resource exhaustion
-            let mut s = ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, 0)?;
+            let mut s = ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, calc_digits)?;
             // trim off zeroes
             while s.len() > min_fraction_chars {
                 // s.len() > 0 so this cannot overflow

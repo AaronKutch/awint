@@ -210,7 +210,7 @@ macro_rules! impl_fmt {
             /// Forwards to the corresponding impl for `Bits`
             impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    let (integer, fraction) = FP::to_str_general(self, $radix, $upper, 0, 0)
+                    let (integer, fraction) = FP::to_str_general(self, $radix, $upper, 1, 1)
                         .ok().ok_or(fmt::Error)?;
                     let sign = if self.is_negative() {
                         "-"
