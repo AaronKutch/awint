@@ -173,7 +173,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     }
 
     /// Creates a tuple of `Vec<u8>`s representing the integer and fraction
-    /// parts `this` (sign indicators, prefixed, and points not included). This
+    /// parts `this` (sign indicators, prefixes, and points not included). This
     /// function performs allocation. This is the inverse of
     /// [ExtAwi::from_bytes_general] and extends the abilities of
     /// [ExtAwi::bits_to_vec_radix]. Signedness and fixed point position
@@ -184,11 +184,14 @@ impl<B: BorrowMut<Bits>> FP<B> {
     ///
     /// ```
     /// use awint::prelude::*;
-    /// // note: a user may want to define their own
-    /// // helper functions to do this in one step
-    /// // and combine the output into one string
-    /// // using the notation they prefer.
-    /// let awi = ExtAwi::from_str_general(Some(true), "42.1234", 0, 10, bw(32), 16).unwrap();
+    /// // note: a user may want to define their own helper functions to do
+    /// // this in one step and combine the output into one string using
+    /// // the notation they prefer.
+    ///
+    /// // This creates a fixed point value of -42.1234_i32f16
+    /// // (`ExtAwi::from_str` will be able to parse this format in the future
+    /// // after more changes to `awint` are made).
+    /// let awi = ExtAwi::from_str_general(Some(true), "42", "1234", 0, 10, bw(32), 16).unwrap();
     /// let fp_awi = FP::new(true, awi, 16).unwrap();
     /// assert_eq!(
     ///     // note: in many situations users will want at least 1 zero for
@@ -244,10 +247,15 @@ impl<B: BorrowMut<Bits>> FP<B> {
             } else {
                 0
             };
-            let mut tmp = ExtAwi::zero(NonZeroUsize::new(integer_bits).unwrap());
-            tmp.field(extra_zeros, &unsigned, from, field_bits).unwrap();
-            // note: we do not unwrap here in case of resource exhaustion
-            ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, min_integer_chars)?
+            match NonZeroUsize::new(integer_bits) {
+                Some(integer_bits) => {
+                    let mut tmp = ExtAwi::zero(integer_bits);
+                    tmp.field(extra_zeros, &unsigned, from, field_bits).unwrap();
+                    // note: we do not unwrap here in case of resource exhaustion
+                    ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, min_integer_chars)?
+                }
+                None => alloc::vec![b'0'; min_integer_chars],
+            }
         };
 
         let tot_tz = unsigned.tz() as isize;

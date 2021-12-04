@@ -1,6 +1,9 @@
 use awint::Bits;
 use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
+#[cfg(not(miri))]
 mod fp;
+#[cfg(not(miri))]
+mod fp_string;
 mod identities;
 mod multi_bw;
 mod one_run;
@@ -64,7 +67,10 @@ pub fn fuzz_step(rng: &mut Xoshiro128StarStar, x: &mut Bits, tmp: &mut Bits) {
 }
 
 pub const BITS: usize = usize::BITS as usize;
+#[cfg(not(miri))]
 pub use fp::fp_identities;
+#[cfg(not(miri))]
+pub use fp_string::fp_string;
 pub use identities::identities;
 pub use multi_bw::multi_bw;
 pub use one_run::one_run;

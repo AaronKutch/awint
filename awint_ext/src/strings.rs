@@ -8,6 +8,9 @@ use crate::ExtAwi;
 
 /// # non-`const` string representation conversion
 impl ExtAwi {
+    // note: we use the name `..._to_vec` instead of `..._to_bytes` to avoid name
+    // collisions and confusion with the literal byte values instead of chars.
+
     /// Creates a `Vec<u8>` representing `bits`. This function performs
     /// allocation. This is a wrapper around [awint_core::Bits::to_bytes_radix]
     /// that truncates leading zeros and possibly adds `-` as a sign
@@ -164,16 +167,18 @@ impl ExtAwi {
         ExtAwi::from_bytes_radix(sign, str.as_bytes(), radix, bw)
     }
 
+    // note: these functions are not under `FP` because `FP` is a wrapper agnostic
+    // to `ExtAwi`
+
     /// Creates an `ExtAwi` representing the given arguments. This function
     /// performs allocation. In addition to the arguments and semantics from
     /// [ExtAwi::from_bytes_radix], this function includes the ability to deal
-    /// with general fixed point integer deserialization. A point `.` can
-    /// now be included in `src` which separates the integer part from the
-    /// fractional part. An exponent `exp` further multiplies the numerical
-    /// value by `radix^exp`. `fp` is the location of the fixed point in the
-    /// output representation of the numerical value (e.x. for a plain
-    /// integer `fp == 0`). `fp` can be negative and greater than the
-    /// bitwidth.
+    /// with general fixed point integer deserialization. `src` is now split
+    /// into separate `integer` and `fraction` parts. An exponent `exp` further
+    /// multiplies the numerical value by `radix^exp`. `fp` is the location
+    /// of the fixed point in the output representation of the numerical
+    /// value (e.x. for a plain integer `fp == 0`). `fp` can be negative or
+    /// greater than the bitwidth.
     ///
     /// This function uses a single rigorous round-to-even that occurs after
     /// the exponent and fixed point multiplier are applied and before any
@@ -186,53 +191,42 @@ impl ExtAwi {
     /// See the error conditions of [ExtAwi::from_bytes_radix]. The precision
     /// can now be arbitrarily large (any overflow in the low numerical
     /// significance direction will be rounded), but overflow can still happen
-    /// in the more significant direction. It is allowed for one of the
-    /// integer or fractional part to be elided, but a single point by itself is
-    /// not allowed.
+    /// in the more significant direction. Empty strings are interpreted as a
+    /// zero value.
     pub fn from_bytes_general(
         sign: Option<bool>,
-        src: &[u8],
+        integer: &[u8],
+        fraction: &[u8],
         exp: isize,
         radix: u8,
         bw: NonZeroUsize,
         fp: isize,
     ) -> Result<ExtAwi, SerdeError> {
-        let mut i_len = src.len();
-        let mut point_exists = false;
-        for i in 0..src.len() {
-            if src[i] == b'.' {
-                if src.len() == 1 {
-                    return Err(Empty)
-                }
-                i_len = i;
-                point_exists = true;
-                break
-            }
-        }
-        let f_len = src
-            .len()
-            .checked_sub(i_len)
-            .ok_or(Overflow)?
-            .checked_sub(point_exists as usize)
-            .ok_or(Overflow)?;
+        let i_len = integer.len();
+        let f_len = fraction.len();
         let exp_sub_f_len = exp
             .checked_sub(isize::try_from(f_len).ok().ok_or(Overflow)?)
             .ok_or(Overflow)?;
 
         // The problem we encounter is that the only way to do the correct banker's
         // rounding in the general case is to consider the integer part, the entire
-        // fractional part (maybe there is some optimization that can be applied here to
-        // truncate), fixed point multiplier, and exponent all at once.
+        // fractional part, fixed point multiplier, and exponent all at once.
         //
         // `((i_part * 2^fp) + (f_part * 2^fp * radix^f_len)) * radix^exp`
         // <=> `((i * radix^f_len) + f) * r^(exp - f_len) * 2^fp`
 
+        // TODO we can optimize away leading and trailing '0's
+
         // this width includes space for everything
-        let tmp_bw = awint_internals::bw(
+        let tmp_bw = NonZeroUsize::new(
             // the +1 is for the shift left on `rem` and for possible `quo` increment overflow
             (sign.is_some() as usize)
-                .checked_add(awint_internals::bits_upper_bound(
-                    i_len + f_len + exp_sub_f_len.unsigned_abs(),
+                .checked_add(bits_upper_bound(
+                    i_len
+                        .checked_add(f_len)
+                        .ok_or(Overflow)?
+                        .checked_add(exp_sub_f_len.unsigned_abs())
+                        .ok_or(Overflow)?,
                     radix,
                 )?)
                 .ok_or(Overflow)?
@@ -240,10 +234,11 @@ impl ExtAwi {
                 .ok_or(Overflow)?
                 .checked_add(1)
                 .ok_or(Overflow)?,
-        );
+        )
+        .unwrap();
         let mut numerator = if i_len > 0 {
             // note: do not unwrap in case of exhaustion
-            let mut i_part = ExtAwi::from_bytes_radix(None, &src[..i_len], radix, tmp_bw)?;
+            let mut i_part = ExtAwi::from_bytes_radix(None, integer, radix, tmp_bw)?;
             // multiply by `radix^f_len` here
             for _ in 0..f_len {
                 i_part.const_as_mut().short_cin_mul(0, usize::from(radix));
@@ -253,13 +248,10 @@ impl ExtAwi {
             ExtAwi::zero(tmp_bw)
         };
         let num = numerator.const_as_mut();
-        if i_len < src.len().wrapping_sub(1) {
+        if f_len > 0 {
             let mut f_part = ExtAwi::from_bytes_radix(
-                None,
-                // avoids overflow corner case
-                &src[i_len.checked_add(point_exists as usize).ok_or(Overflow)?..],
-                radix,
-                tmp_bw,
+                None, // avoids overflow corner case
+                fraction, radix, tmp_bw,
             )?;
             num.add_assign(f_part.const_as_mut());
         }
@@ -313,16 +305,25 @@ impl ExtAwi {
     }
 
     /// Creates an `ExtAwi` representing the given arguments. This does the same
-    /// thing as [ExtAwi::from_bytes_general] but with an `&str`.
+    /// thing as [ExtAwi::from_bytes_general] but with `&str`s.
     pub fn from_str_general(
         sign: Option<bool>,
-        str: &str,
+        integer: &str,
+        fraction: &str,
         exp: isize,
         radix: u8,
         bw: NonZeroUsize,
         fp: isize,
     ) -> Result<ExtAwi, SerdeError> {
-        ExtAwi::from_bytes_general(sign, str.as_bytes(), exp, radix, bw, fp)
+        ExtAwi::from_bytes_general(
+            sign,
+            integer.as_bytes(),
+            fraction.as_bytes(),
+            exp,
+            radix,
+            bw,
+            fp,
+        )
     }
 }
 

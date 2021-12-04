@@ -118,9 +118,20 @@ fn one_run() {
     }
 }
 
+// no unsafe code being used
+#[cfg(not(miri))]
 #[test]
 fn fp_identities() {
     for seed in 0..cmp::max(N / 4, 16) {
         fuzz::fp_identities(seed as u64).unwrap();
+    }
+}
+
+// no unsafe code being used
+#[cfg(not(miri))]
+#[test]
+fn fp_string() {
+    for seed in 0..cmp::max(N / 4, 16) {
+        fuzz::fp_string(seed as u64).unwrap();
     }
 }
