@@ -167,8 +167,8 @@ impl ExtAwi {
         ExtAwi::from_bytes_radix(sign, str.as_bytes(), radix, bw)
     }
 
-    // note: these functions are not under `FP` because `FP` is a wrapper agnostic
-    // to `ExtAwi`
+    // note: these functions are not under `FP` because `FP` is a generic struct
+    // agnostic to `ExtAwi`
 
     /// Creates an `ExtAwi` representing the given arguments. This function
     /// performs allocation. In addition to the arguments and semantics from

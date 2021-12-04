@@ -44,7 +44,7 @@ impl FPType {
     }
 }
 
-/// Fixed-Point wrapper around structs that implement `Borrow<Bits>` and
+/// Fixed-Point generic struct for `B` that implement `Borrow<Bits>` and
 /// `BorrowMut<Bits>`. Adds on signedness and fixed-point information.
 /// Implements many traits if `B` also implements them.
 ///
@@ -63,7 +63,7 @@ pub struct FP<B: BorrowMut<Bits>> {
 }
 
 impl<B: BorrowMut<Bits>> FP<B> {
-    /// Creates a fixed-point wrapper `FP<B>` from a specified signedness
+    /// Creates a fixed-point generic `FP<B>` from a specified signedness
     /// `signed`, wrapped value `B`, and fixed point `fp`. This returns `None`
     /// if `bits.bw()` or `fp.unsigned_abs()` are greater than
     /// `usize::MAX >> 2`.

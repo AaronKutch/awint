@@ -10,10 +10,13 @@ without any allocator at all. `Bits` backed by `ExtAwi` can use dynamic bitwidth
 function is written purely in terms of `Bits`, then any mix of `InlAwi`s and `ExtAwi`s can be used
 as arguments to that function.
 
+A generic `FP` struct for fixed point numbers is also included, adding more functions for it is
+currently a WIP.
+
 `Bits` and `InlAwi` are provided by the `awint_core` crate.
-`ExtAwi` is provided by the `awint_ext` crate. The reason for this split is to provide maximum
-flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within `awint_core` under a
-feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
+`ExtAwi` and `FP` is provided by the `awint_ext` crate. The reason for this split is to provide
+maximum flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within `awint_core` under
+a feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
 (which requires `ExtAwi`), the flag would be activated for the common compilation of `awint_core`.
 The `awint_macros` crate is a proc-macro crate with several construction utilities.
 The `awint_dag` crate is a WIP.
