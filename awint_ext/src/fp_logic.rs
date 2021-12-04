@@ -1,11 +1,14 @@
+use alloc::{string::String, vec::Vec};
 use core::{
     borrow::BorrowMut,
     cmp::{max, min},
+    num::NonZeroUsize,
 };
 
 use awint_core::Bits;
+use awint_internals::{bits_upper_bound, SerdeError, SerdeError::*};
 
-use crate::FP;
+use crate::{ExtAwi, FP};
 
 fn itousize(i: isize) -> Option<usize> {
     usize::try_from(i).ok()
@@ -164,5 +167,145 @@ impl<B: BorrowMut<Bits>> FP<B> {
         b &= this.signed();
         this.const_as_mut().neg_assign(b);
         (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
+    }
+
+    /// Creates a tuple of `Vec<u8>`s representing the integer and fraction
+    /// parts `this` (sign indicators, prefixed, and points not included). This
+    /// function performs allocation. This is the inverse of
+    /// [ExtAwi::from_bytes_general] and extends the abilities of
+    /// [ExtAwi::bits_to_vec_radix]. Signedness and fixed point position
+    /// information is taken from `this`. `min_integer_chars` specifies the
+    /// minimum number of chars in the integer part, inserting leading '0's if
+    /// there are not enough chars. `min_fraction_chars` works likewise for the
+    /// fraction part, inserting trailing '0's.
+    ///
+    /// ```
+    /// use awint::prelude::*;
+    /// // note: a user may want to define their own
+    /// // helper functions for these two parts
+    /// let awi = ExtAwi::from_str_general(Some(true), "42.1234", 0, 10, bw(32), 16).unwrap();
+    /// let fp_awi = FP::new(true, awi, 16).unwrap();
+    /// assert_eq!(
+    ///     // note: in many situations users will want at least 1 zero for
+    ///     // both parts so that zero parts result in "0" strings and not "".
+    ///     FP::to_str_general(&fp_awi, 10, false, 1, 1),
+    ///     Ok(("42".to_owned(), "1234".to_owned()))
+    /// );
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This can only return an error if `radix` is not in the range 2..=36 or
+    /// if resource exhaustion occurs.
+    pub fn to_vec_general(
+        this: &Self,
+        radix: u8,
+        upper: bool,
+        min_integer_chars: usize,
+        min_fraction_chars: usize,
+    ) -> Result<(Vec<u8>, Vec<u8>), SerdeError> {
+        if radix < 2 || radix > 36 {
+            return Err(InvalidRadix)
+        }
+        // I was originally going to include b'-', but it causes insertion performance
+        // problems here, and users have to remove it anyway in the usage cases where a
+        // prefix is added (we want "-0x123" and not "0x-123")
+
+        let is_zero = this.is_zero();
+        let is_negative = this.is_negative();
+        let mut unsigned = ExtAwi::zero(this.nzbw());
+        unsigned.copy_assign(this);
+        // reinterpret as unsigned for `imin`
+        unsigned.neg_assign(is_negative);
+        // safe because of invariants
+        let tot_lz = unsigned.lz() as isize;
+
+        // the order of these `||` is important to avoid overflow
+        let integer_part_zero =
+            is_zero || (this.fp() > this.ibw()) || (tot_lz > (this.ibw() - this.fp()));
+        let integer_part = if integer_part_zero {
+            alloc::vec![b'0'; min_integer_chars]
+        } else {
+            // no overflow because of `integer_part_zero` checks
+            let integer_bits = this.ibw().wrapping_sub(tot_lz).wrapping_sub(this.fp()) as usize;
+            // if the fixed point mandates more trailing zeroes in the integer part
+            let extra_zeros = if this.fp() < 0 {
+                this.fp().unsigned_abs()
+            } else {
+                0
+            };
+            let mut tmp = ExtAwi::zero(NonZeroUsize::new(integer_bits).unwrap());
+            tmp.field(
+                extra_zeros,
+                &unsigned,
+                max(this.fp(), 0) as usize,
+                integer_bits,
+            )
+            .unwrap();
+            // note: we do not unwrap here in case of resource exhaustion
+            ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, min_integer_chars)?
+        };
+
+        let tot_tz = unsigned.tz() as isize;
+        // order is important again
+        let fraction_part_zero = is_zero || (this.fp() <= 0) || (tot_tz >= this.fp());
+        let fraction_part = if fraction_part_zero {
+            alloc::vec![b'0'; min_fraction_chars]
+        } else {
+            let unique_digits = this
+                .fp_ty()
+                .unique_min_fraction_digits(usize::from(radix))
+                .unwrap();
+            let calc_digits = max(unique_digits, min_fraction_chars);
+            let multiplier_bits = bits_upper_bound(calc_digits, radix)?;
+            // avoid needing some calculation by dropping zero bits that have no impact
+            let calc_fp = this.fp().wrapping_sub(tot_tz) as usize;
+            let mut tmp = ExtAwi::zero(
+                NonZeroUsize::new(multiplier_bits.checked_add(calc_fp).ok_or(Overflow)?).unwrap(),
+            );
+            tmp.field(0, &unsigned, tot_tz as usize, calc_fp).unwrap();
+            for _ in 0..calc_digits {
+                tmp.short_cin_mul(0, usize::from(radix));
+            }
+            let inc = if (tmp.get_digit(calc_fp.checked_sub(1).ok_or(Overflow)?) & 1) == 0 {
+                // round down
+                false
+            } else if tmp.tz().checked_add(1).ok_or(Overflow)? == calc_fp {
+                // round to even
+                (tmp.get_digit(calc_fp) & 1) == 0
+            } else {
+                // round up
+                true
+            };
+            tmp.lshr_assign(calc_fp);
+            tmp.inc_assign(inc);
+            // note: we do not unwrap here in case of resource exhaustion
+            let mut s = ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, 0)?;
+            // trim off zeroes
+            while s.len() > min_fraction_chars {
+                // s.len() > 0 so this cannot overflow
+                if s[s.len().wrapping_sub(1)] == b'0' {
+                    let _ = s.pop();
+                } else {
+                    break
+                }
+            }
+            s
+        };
+        Ok((integer_part, fraction_part))
+    }
+
+    /// Creates a tuple of `String`s representing the integer and fraction
+    /// parts of `this`. This does the same thing as `[FP::to_vec_general]`
+    /// but with `String`s.
+    pub fn to_str_general(
+        this: &Self,
+        radix: u8,
+        upper: bool,
+        min_integer_chars: usize,
+        min_fraction_chars: usize,
+    ) -> Result<(String, String), SerdeError> {
+        let (i, f) = FP::to_vec_general(this, radix, upper, min_integer_chars, min_fraction_chars)?;
+        Ok((String::from_utf8(i).unwrap(), String::from_utf8(f).unwrap()))
     }
 }

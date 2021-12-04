@@ -7,7 +7,7 @@ use core::{convert::TryFrom, fmt};
 // `SerdeError` to make them more ergonomic in `awint_ext`.
 
 /// A serialization or deserialization error
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SerdeError {
     /// If an input bitwidth is zero
     ZeroBitwidth,

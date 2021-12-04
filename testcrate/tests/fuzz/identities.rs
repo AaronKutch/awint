@@ -421,22 +421,17 @@ fn identities_inner(
         } else {
             Some(x0.msb())
         };
-        let minimum_chars = if (tmp_rng & 0b10) != 0 {
+        let min_chars = if (tmp_rng & 0b10) != 0 {
             rng.next_u32() as usize % 258
         } else {
             0
         };
-        let string = ExtAwi::bits_to_vec_radix(
-            x0,
-            sign.is_some(),
-            radix,
-            (tmp_rng & 0b100) != 0,
-            minimum_chars,
-        )
-        .unwrap();
+        let string =
+            ExtAwi::bits_to_vec_radix(x0, sign.is_some(), radix, (tmp_rng & 0b100) != 0, min_chars)
+                .unwrap();
 
-        assert!(minimum_chars <= string.len());
-        if minimum_chars < string.len() {
+        assert!(min_chars <= string.len());
+        if min_chars < string.len() {
             // make sure there are no leading zeros
             if string[0] == b'-' {
                 assert!(string[1] != b'0')

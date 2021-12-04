@@ -133,7 +133,7 @@ fn multi_bw_inner(
         } else {
             Some(x0bw0.msb())
         };
-        let minimum_chars = if (tmp_rng & 0b10) != 0 {
+        let min_chars = if (tmp_rng & 0b10) != 0 {
             rng.next_u32() as usize % 258
         } else {
             0
@@ -143,7 +143,7 @@ fn multi_bw_inner(
             sign.is_some(),
             radix,
             (tmp_rng & 0b100) != 0,
-            minimum_chars,
+            min_chars,
         )
         .unwrap();
         let src = if matches!(sign, Some(true)) {

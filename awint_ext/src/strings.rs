@@ -11,9 +11,9 @@ impl ExtAwi {
     /// Creates a `Vec<u8>` representing `bits`. This function performs
     /// allocation. This is a wrapper around [awint_core::Bits::to_bytes_radix]
     /// that truncates leading zeros and possibly adds `-` as a sign
-    /// indicator. An additional `minimum_chars` specifies the minimum
+    /// indicator. An additional `min_chars` specifies the minimum
     /// number of characters that should exist. If the sign indicator plus
-    /// significand length is less than `minimum_chars`, zeros will be
+    /// significand length is less than `min_chars`, zeros will be
     /// filled between the sign indicator and significand, just like Rust's
     /// built in `{:0d}` formatting.
     ///
@@ -26,17 +26,20 @@ impl ExtAwi {
         signed: bool,
         radix: u8,
         upper: bool,
-        minimum_chars: usize,
+        min_chars: usize,
     ) -> Result<Vec<u8>, SerdeError> {
         let needs_indicator = signed && bits.msb();
         let mut dst = alloc::vec![0;
             cmp::max(
-                minimum_chars,
+                min_chars,
                 (needs_indicator as usize)
-                    + chars_upper_bound(bits.bw() - bits.lz(), radix)?
+                    .checked_add(
+                        chars_upper_bound(bits.bw().wrapping_sub(bits.lz()), radix)?
+                    ).ok_or(Overflow)?
             )
         ];
         let mut pad = ExtAwi::zero(bits.nzbw());
+        // note: do not unwrap in case of exhaustion
         bits.to_bytes_radix(signed, &mut dst[..], radix, upper, pad.const_as_mut())?;
         let len = dst.len();
         for i in 0..len {
@@ -45,7 +48,7 @@ impl ExtAwi {
                 let msd;
                 // exclude sign indicator
                 if needs_indicator {
-                    msd = i - 1;
+                    msd = i.wrapping_sub(1);
                     dst[msd] = b'-';
                 } else {
                     msd = i;
@@ -60,7 +63,7 @@ impl ExtAwi {
                 dst.shrink_to_fit();
                 break
             }
-            if i == len - minimum_chars {
+            if i == len.wrapping_sub(min_chars) {
                 // terminate early to keep the minimum number of chars
                 if needs_indicator {
                     // cannot overwrite a nonzero digit because we added `needs_indicator` to
@@ -78,7 +81,7 @@ impl ExtAwi {
             }
             if (i + 1) == len {
                 // all zeros, remove all but one zero
-                for _ in 0..(len - 1) {
+                for _ in 0..len.wrapping_sub(1) {
                     dst.pop();
                 }
                 dst.shrink_to_fit();
@@ -89,23 +92,19 @@ impl ExtAwi {
     }
 
     /// Creates a string representing `bits`. This function performs allocation.
-    /// This does the same thing as [ExtAwi::bits_to_vec_radix] except with a
+    /// This does the same thing as [ExtAwi::bits_to_vec_radix] but with a
     /// `String`.
     pub fn bits_to_string_radix(
         bits: &Bits,
         signed: bool,
         radix: u8,
         upper: bool,
-        minimum_chars: usize,
+        min_chars: usize,
     ) -> Result<String, SerdeError> {
         // It is impossible for the `from_utf8` conversion to panic because
         // `to_vec_radix` sets all chars to valid utf8
         Ok(String::from_utf8(ExtAwi::bits_to_vec_radix(
-            bits,
-            signed,
-            radix,
-            upper,
-            minimum_chars,
+            bits, signed, radix, upper, min_chars,
         )?)
         .unwrap())
     }
@@ -129,13 +128,17 @@ impl ExtAwi {
         radix: u8,
         bw: NonZeroUsize,
     ) -> Result<ExtAwi, SerdeError> {
-        let tmp_bw =
-            awint_internals::bw((sign.is_some() as usize) + bits_upper_bound(src.len(), radix)?);
+        let tmp_bw = awint_internals::bw(
+            (sign.is_some() as usize)
+                .checked_add(bits_upper_bound(src.len(), radix)?)
+                .ok_or(Overflow)?,
+        );
         let mut awi = ExtAwi::zero(tmp_bw);
         let mut pad0 = ExtAwi::zero(tmp_bw);
         let mut pad1 = ExtAwi::zero(tmp_bw);
 
         let tmp = awi.const_as_mut();
+        // note: do not unwrap in case of exhaustion
         tmp.bytes_radix_assign(sign, src, radix, pad0.const_as_mut(), pad1.const_as_mut())?;
 
         let mut final_awi = ExtAwi::zero(bw);
@@ -151,7 +154,7 @@ impl ExtAwi {
     }
 
     /// Creates an `ExtAwi` representing the given arguments. This does the same
-    /// thing as [ExtAwi::from_bytes_radix] except with an `&str`.
+    /// thing as [ExtAwi::from_bytes_radix] but with an `&str`.
     pub fn from_str_radix(
         sign: Option<bool>,
         str: &str,
@@ -172,15 +175,19 @@ impl ExtAwi {
     /// integer `fp == 0`). `fp` can be negative and greater than the
     /// bitwidth.
     ///
-    /// This function uses a single rigorous Banker's rounding that occurs after
+    /// This function uses a single rigorous round-to-even that occurs after
     /// the exponent and fixed point multiplier are applied and before any
     /// numerical information is lost.
     ///
+    /// See [crate::FP::to_vec_general] for the inverse of this function.
+    ///
     /// # Errors
     ///
-    /// See the error conditions of [ExtAwi::from_bytes_radix]. It is allowed
-    /// for there to be no chars before or after the point, in which case the
-    /// respective part is interpreted as 0, but a single point by itself is
+    /// See the error conditions of [ExtAwi::from_bytes_radix]. The precision
+    /// can now be arbitrarily large (any overflow in the low numerical
+    /// significance direction will be rounded), but overflow can still happen
+    /// in the more significant direction. It is allowed for one of the
+    /// integer or fractional part to be elided, but a single point by itself is
     /// not allowed.
     pub fn from_bytes_general(
         sign: Option<bool>,
@@ -202,9 +209,15 @@ impl ExtAwi {
                 break
             }
         }
-        // TODO guard all plain adds in the serialization functions
-        let f_len = src.len() - i_len - (point_exists as usize);
-        let exp_sub_f_len = exp.checked_sub(isize::try_from(f_len).unwrap()).unwrap();
+        let f_len = src
+            .len()
+            .checked_sub(i_len)
+            .ok_or(Overflow)?
+            .checked_sub(point_exists as usize)
+            .ok_or(Overflow)?;
+        let exp_sub_f_len = exp
+            .checked_sub(isize::try_from(f_len).ok().ok_or(Overflow)?)
+            .ok_or(Overflow)?;
 
         // The problem we encounter is that the only way to do the correct banker's
         // rounding in the general case is to consider the integer part, the entire
@@ -216,16 +229,20 @@ impl ExtAwi {
 
         // this width includes space for everything
         let tmp_bw = awint_internals::bw(
+            // the +1 is for the shift left on `rem` and for possible `quo` increment overflow
             (sign.is_some() as usize)
-                + awint_internals::bits_upper_bound(
+                .checked_add(awint_internals::bits_upper_bound(
                     i_len + f_len + exp_sub_f_len.unsigned_abs(),
                     radix,
-                )?
-                + fp.unsigned_abs()
-                + 1, /* this is for the shift left on `rem` and for possible `quo` increment
-                      * overflow */
+                )?)
+                .ok_or(Overflow)?
+                .checked_add(fp.unsigned_abs())
+                .ok_or(Overflow)?
+                .checked_add(1)
+                .ok_or(Overflow)?,
         );
         let mut numerator = if i_len > 0 {
+            // note: do not unwrap in case of exhaustion
             let mut i_part = ExtAwi::from_bytes_radix(None, &src[..i_len], radix, tmp_bw)?;
             // multiply by `radix^f_len` here
             for _ in 0..f_len {
@@ -236,11 +253,11 @@ impl ExtAwi {
             ExtAwi::zero(tmp_bw)
         };
         let num = numerator.const_as_mut();
-        if i_len < (src.len() - 1) {
+        if i_len < src.len().wrapping_sub(1) {
             let mut f_part = ExtAwi::from_bytes_radix(
                 None,
                 // avoids overflow corner case
-                &src[(i_len + (point_exists as usize))..],
+                &src[i_len.checked_add(point_exists as usize).ok_or(Overflow)?..],
                 radix,
                 tmp_bw,
             )?;
@@ -296,7 +313,7 @@ impl ExtAwi {
     }
 
     /// Creates an `ExtAwi` representing the given arguments. This does the same
-    /// thing as [ExtAwi::from_bytes_general] except with an `&str`.
+    /// thing as [ExtAwi::from_bytes_general] but with an `&str`.
     pub fn from_str_general(
         sign: Option<bool>,
         str: &str,
@@ -311,6 +328,8 @@ impl ExtAwi {
 
 impl core::str::FromStr for ExtAwi {
     type Err = SerdeError;
+
+    // TODO extend this `-0x1234.5678p-3i32f-16`
 
     /// Creates an `ExtAwi` described by `s`. There are two modes of operation
     /// which use [ExtAwi::from_str_radix] differently.
@@ -369,8 +388,8 @@ impl core::str::FromStr for ExtAwi {
         };
 
         // find bitwidth
-        let bw = if (i + 1) < s.len() {
-            match String::from_utf8(Vec::from(&s[(i + 1)..]))
+        let bw = if i.checked_add(1).ok_or(Overflow)? < s.len() {
+            match String::from_utf8(Vec::from(&s[i.checked_add(1).ok_or(Overflow)?..]))
                 .unwrap()
                 .parse::<usize>()
             {

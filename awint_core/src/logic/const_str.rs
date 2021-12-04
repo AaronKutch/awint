@@ -20,9 +20,13 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
         if b == b'_' {
             continue;
         }
-        let in_decimal_range = b'0' <= b && b < (b'0' + radix);
-        let in_lower_range = (radix > 10) && (b'a' <= b) && (b < (b'a' + (radix - 10)));
-        let in_upper_range = (radix > 10) && (b'A' <= b) && (b < (b'A' + (radix - 10)));
+        let in_decimal_range = b'0' <= b && b < b'0'.wrapping_add(radix);
+        let in_lower_range = (radix > 10)
+            && (b'a' <= b)
+            && (b < b'a'.wrapping_add(radix).wrapping_sub(10));
+        let in_upper_range = (radix > 10)
+            && (b'A' <= b)
+            && (b < b'A'.wrapping_add(radix).wrapping_sub(10));
         if radix <= 10 {
             if !in_decimal_range {
                 return Err(InvalidChar)
@@ -79,8 +83,18 @@ impl Bits {
             pad.usize_or_assign(char_digit, shl);
             shl += log2;
             if shl >= self.bw() {
+                let tmp = if let Some(tmp) = BITS
+                    .wrapping_sub(char_digit.leading_zeros() as usize).checked_add(shl) {
+                    if let Some(tmp) = tmp.checked_sub(log2) {
+                        tmp
+                    } else {
+                        return Err(Overflow)
+                    }
+                } else {
+                    return Err(Overflow)
+                };
                 // check that the last digit did not cross the end
-                if (BITS - (char_digit.leading_zeros() as usize)) + shl - log2 > self.bw() {
+                if tmp > self.bw() {
                     return Err(Overflow)
                 }
                 // there may be a bunch of leading zeros, so do not return an error yet
@@ -228,11 +242,11 @@ impl Bits {
         const_for!(i in {0..dst.len()}.rev() {
             let rem = pad.short_udivide_inplace_assign(radix as usize).unwrap() as u8;
             if rem < 10 {
-                dst[i] = b'0' + rem;
+                dst[i] = b'0'.wrapping_add(rem);
             } else if upper {
-                dst[i] = b'A' + (rem - 10);
+                dst[i] = b'A'.wrapping_add(rem).wrapping_sub(10);
             } else {
-                dst[i] = b'a' + (rem - 10);
+                dst[i] = b'a'.wrapping_add(rem).wrapping_sub(10);
             }
         });
         if !pad.is_zero() {
@@ -252,17 +266,17 @@ impl Bits {
         upper: bool,
     ) -> fmt::Result {
         f.write_fmt(format_args!("0x"))?;
-        const_for!(j0 in {0..((self.bw() >> 2) + 1)}.rev() {
+        const_for!(j0 in {0..(self.bw() >> 2).wrapping_add(1)}.rev() {
             if (self.get_digit(j0 << 2) & 0b1111) != 0 {
                 // we have reached the first nonzero character
-                const_for!(j1 in {0..(j0 + 1)}.rev() {
+                const_for!(j1 in {0..j0.wrapping_add(1)}.rev() {
                     let mut char_digit = (self.get_digit(j1 << 2) & 0b1111) as u8;
                     if char_digit < 10 {
                         char_digit += b'0';
                     } else if upper {
-                        char_digit += b'A' - 10;
+                        char_digit += b'A'.wrapping_sub(10);
                     } else {
-                        char_digit += b'a' - 10;
+                        char_digit += b'a'.wrapping_sub(10);
                     }
                     // Safety: we strictly capped the range of possible values above with `& 0b1111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
@@ -284,11 +298,11 @@ impl Bits {
     #[inline]
     pub(crate) fn debug_format_octal(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_fmt(format_args!("0o"))?;
-        const_for!(j0 in {0..((self.bw() / 3) + 1)}.rev() {
-            if (self.get_digit(j0 * 3) & 0b111) != 0 {
+        const_for!(j0 in {0..(self.bw() / 3).wrapping_add(1)}.rev() {
+            if (self.get_digit(j0.wrapping_mul(3)) & 0b111) != 0 {
                 // we have reached the first nonzero character
-                const_for!(j1 in {0..(j0 + 1)}.rev() {
-                    let mut char_digit = (self.get_digit(j1 * 3) & 0b111) as u8;
+                const_for!(j1 in {0..j0.wrapping_add(1)}.rev() {
+                    let mut char_digit = (self.get_digit(j1.wrapping_mul(3)) & 0b111) as u8;
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };

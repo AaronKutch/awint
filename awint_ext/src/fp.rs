@@ -9,21 +9,53 @@ use core::{
 
 use awint_core::Bits;
 
+use crate::ExtAwi;
+
 /// Fixed-Point Type, containing signedness, bitwidth, and fixed point
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FPType {
     pub signed: bool,
     pub bw: NonZeroUsize,
     pub fp: isize,
 }
 
+impl FPType {
+    /// Returns the minimum number of digits in a given `radix` needed for
+    /// unique representation of the fraction part of this fixed point type.
+    /// This function performs allocation. Returns `None` if `radix < 2`.
+    pub fn unique_min_fraction_digits(&self, radix: usize) -> Option<usize> {
+        if radix < 2 {
+            return None
+        }
+        if self.fp <= 0 {
+            return Some(0)
+        }
+        let mut test = ExtAwi::uone(NonZeroUsize::new(self.fp.unsigned_abs()).unwrap());
+        let mut digits = 0;
+        loop {
+            digits += 1;
+            if test.short_cin_mul(0, radix) != 0 {
+                // as soon as overflow happens, that means
+                // `(((radix^digits) * 1 ULP) >> this.fp()) > 0`
+                break
+            }
+        }
+        Some(digits)
+    }
+}
+
 /// Fixed-Point wrapper around structs that implement `Borrow<Bits>` and
 /// `BorrowMut<Bits>`. Adds on signedness and fixed-point information.
+/// Implements many traits if `B` also implements them.
 ///
 /// In order to make many operations infallible, `self.fp().unsigned_abs()` and
 /// `self.bw()` follow an invariant that they are never greater than
 /// `usize::MAX >> 2`.
-#[derive(Debug)]
+///
+/// NOTE: `B` should not change the bitwidth of the underlying `Bits` during the
+/// lifetime of the `FP` struct unless the invariants are upheld. Otherwise,
+/// panics and arithmetic errors can occur. Preferably, `into_b` and `FP::new`
+/// should be used to create a fresh struct.
 pub struct FP<B: BorrowMut<Bits>> {
     signed: bool,
     fp: isize,
@@ -44,10 +76,22 @@ impl<B: BorrowMut<Bits>> FP<B> {
         }
     }
 
-    /// Returns the inner `B` value
+    /// Consumes `this`, returning the inner `B`
     #[inline]
-    pub fn into_inner(this: Self) -> B {
-        this.bits
+    pub fn into_b(self) -> B {
+        self.bits
+    }
+
+    /// Returns a reference to the `B` in `self`
+    #[inline]
+    pub fn b(&self) -> &B {
+        &self.bits
+    }
+
+    /// Returns a mutable reference to the `B` in `self`
+    #[inline]
+    pub fn b_mut(&mut self) -> &mut B {
+        &mut self.bits
     }
 
     /// Returns a reference to `self` in the form of `&Bits`
@@ -110,9 +154,11 @@ impl<B: BorrowMut<Bits>> FP<B> {
         self.fp
     }
 
-    /// Returns the `FPType` of `self`
+    /// Returns the `FPType` of `self`. Because `FPType` impls `PartialEq`, this
+    /// is useful for quickly determining if two different `FP`s have the same
+    /// fixed point type.
     #[inline]
-    pub fn fp_type(&self) -> FPType {
+    pub fn fp_ty(&self) -> FPType {
         FPType {
             signed: self.signed(),
             fp: self.fp(),
@@ -159,23 +205,47 @@ impl<B: PartialEq + BorrowMut<Bits>> PartialEq for FP<B> {
 impl<B: PartialEq + Eq + BorrowMut<Bits>> Eq for FP<B> {}
 
 macro_rules! impl_fmt {
-    ($($ty:ident)*) => {
+    ($($ty:ident, $radix_str:expr, $radix:expr, $upper:expr);*;) => {
         $(
             /// Forwards to the corresponding impl for `Bits`
             impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    // TODO what about sign, fp, and `B`?
-                    // this does not cause parsing issues, the same way normal `e` doesn't
-                    // `0x1234.5678p-3i32f-16`
-                    // `.232u32f32;`
-                    fmt::$ty::fmt(self.const_as_ref(), f)
+                    let (integer, fraction) = FP::to_str_general(self, $radix, $upper, 0, 0)
+                        .ok().ok_or(fmt::Error)?;
+                    let sign = if self.is_negative() {
+                        "-"
+                    } else {
+                        ""
+                    };
+                    let signed = if self.signed() {
+                        'i'
+                    } else {
+                        'u'
+                    };
+                    f.write_fmt(format_args!(
+                        "{}{}{}.{}_{}{}f{}",
+                        sign,
+                        $radix_str,
+                        integer,
+                        fraction,
+                        signed,
+                        self.bw(),
+                        self.fp()
+                    ))
                 }
             }
         )*
     };
 }
 
-impl_fmt!(Display LowerHex UpperHex Octal Binary);
+impl_fmt!(
+    Debug, "", 10, false;
+    Display, "", 10, false;
+    LowerHex, "0x", 16, false;
+    UpperHex, "0x", 16, true;
+    Octal, "0o", 8, false;
+    Binary, "0b", 2, false;
+);
 
 impl<B: Hash + BorrowMut<Bits>> Hash for FP<B> {
     /// Uses the hash of `self.signed()`, `self.fp()`, and the `Hash`
