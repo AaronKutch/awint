@@ -20,6 +20,9 @@ pub struct FPType {
 }
 
 impl FPType {
+    // TODO: when adding `unique_min_integer_digits` add a note for the user to
+    // handle the sign indicator by making space for a ' ' character.
+
     /// Returns the minimum number of digits in a given `radix` needed for
     /// unique representation of the fraction part of this fixed point type.
     /// This function performs allocation. Returns `None` if `radix < 2`.

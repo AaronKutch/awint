@@ -433,20 +433,11 @@ fn identities_inner(
         assert!(min_chars <= string.len());
         if min_chars < string.len() {
             // make sure there are no leading zeros
-            if string[0] == b'-' {
-                assert!(string[1] != b'0')
-            } else if string.len() != 1 {
+            if string.len() != 0 {
                 assert!(string[0] != b'0');
             }
         }
-
-        let sub = if sign.is_some() && x0.msb() {
-            // omit the sign
-            &string[1..]
-        } else {
-            &string
-        };
-        x2.bytes_radix_assign(sign, sub, radix, x3, x4).unwrap();
+        x2.bytes_radix_assign(sign, &string, radix, x3, x4).unwrap();
         eq(x0, x2);
     }
 

@@ -7,6 +7,8 @@
 ### Changes
 - Updated to 2021 edition
 - `neg_assign` now takes a boolean that conditionally activates it
+- Some string conversion functions no longer include a sign indicator in their output, and accept
+  empty strings as 0
 - Renamed all `_triop` functions to `_assign` functions. The short divisions are differentiated by
   `_inplace_`.
 

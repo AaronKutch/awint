@@ -11,14 +11,15 @@ impl ExtAwi {
     // note: we use the name `..._to_vec` instead of `..._to_bytes` to avoid name
     // collisions and confusion with the literal byte values instead of chars.
 
-    /// Creates a `Vec<u8>` representing `bits`. This function performs
-    /// allocation. This is a wrapper around [awint_core::Bits::to_bytes_radix]
-    /// that truncates leading zeros and possibly adds `-` as a sign
-    /// indicator. An additional `min_chars` specifies the minimum
-    /// number of characters that should exist. If the sign indicator plus
-    /// significand length is less than `min_chars`, zeros will be
-    /// filled between the sign indicator and significand, just like Rust's
-    /// built in `{:0d}` formatting.
+    /// Creates a `Vec<u8>` representing `bits` (sign indicators, prefixes, and
+    /// postfixes not included). This function performs allocation. This is
+    /// a wrapper around [awint_core::Bits::to_bytes_radix] that truncates
+    /// leading zeros. An additional `min_chars` specifies the minimum
+    /// number of characters that should exist. `min_chars` specifies the
+    /// minimum number of chars in the integer part, inserting leading '0's if
+    /// there are not enough chars, just like Rust's built in `{:0d}`
+    /// formatting. Note that an empty vector will be returned if
+    /// `min_chars == 0 && bits.is_zero()`.
     ///
     /// # Errors
     ///
@@ -31,14 +32,10 @@ impl ExtAwi {
         upper: bool,
         min_chars: usize,
     ) -> Result<Vec<u8>, SerdeError> {
-        let needs_indicator = signed && bits.msb();
         let mut dst = alloc::vec![0;
             cmp::max(
                 min_chars,
-                (needs_indicator as usize)
-                    .checked_add(
-                        chars_upper_bound(bits.bw().wrapping_sub(bits.lz()), radix)?
-                    ).ok_or(Overflow)?
+                chars_upper_bound(bits.bw().wrapping_sub(bits.lz()), radix)?
             )
         ];
         let mut pad = ExtAwi::zero(bits.nzbw());
@@ -48,14 +45,7 @@ impl ExtAwi {
         for i in 0..len {
             if dst[i] != b'0' {
                 // most significant digit
-                let msd;
-                // exclude sign indicator
-                if needs_indicator {
-                    msd = i.wrapping_sub(1);
-                    dst[msd] = b'-';
-                } else {
-                    msd = i;
-                }
+                let msd = i;
                 // move downwards to get rid of leading zeros
                 dst.copy_within(msd..len, 0);
                 // this should be done for the sake of capacity determinism and for memory
@@ -68,11 +58,6 @@ impl ExtAwi {
             }
             if i == len.wrapping_sub(min_chars) {
                 // terminate early to keep the minimum number of chars
-                if needs_indicator {
-                    // cannot overwrite a nonzero digit because we added `needs_indicator` to
-                    // `dst`'s length earlier
-                    dst[i] = b'-';
-                }
                 // move the digits which are written in big endian form downwards to get rid of
                 // leading zeros
                 dst.copy_within(i..len, 0);
@@ -83,8 +68,8 @@ impl ExtAwi {
                 break
             }
             if (i + 1) == len {
-                // all zeros, remove all but one zero
-                for _ in 0..len.wrapping_sub(1) {
+                // all zeros
+                for _ in 0..len {
                     dst.pop();
                 }
                 dst.shrink_to_fit();
@@ -357,6 +342,11 @@ impl core::str::FromStr for ExtAwi {
     /// `ExtAwi` with bitwidth 6 and unsigned value 42. "0000101010" results
     /// in bitwidth 10 and unsigned value 42. "1111_1111" results in bitwidth
     /// 8 and signed value -128 or equivalently unsigned value 255.
+    ///
+    /// A missing significand or suffix will result in `SerdeError::Empty`. Even
+    /// if the value is zero, there must be at least one '0' char in the
+    /// significand (e.x. `0x0u8` not `0xu8`), otherwise `SerdeError::Empty` is
+    /// returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s.is_ascii() {
             return Err(InvalidChar)
@@ -373,6 +363,8 @@ impl core::str::FromStr for ExtAwi {
             (Some(i), None) => (false, i),
             (None, Some(i)) => (true, i),
             (None, None) => {
+                // binary case
+
                 // do not count `_` for the bitwidth
                 let mut bw = 0;
                 for c in s {
@@ -426,6 +418,9 @@ impl core::str::FromStr for ExtAwi {
         } else {
             (src, 10)
         };
+        if src.is_empty() {
+            return Err(Empty)
+        }
 
         match NonZeroUsize::new(bw) {
             None => Err(ZeroBitwidth),

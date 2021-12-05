@@ -146,12 +146,7 @@ fn multi_bw_inner(
             min_chars,
         )
         .unwrap();
-        let src = if matches!(sign, Some(true)) {
-            &string[1..]
-        } else {
-            &string[..]
-        };
-        match ExtAwi::from_str_radix(sign, src, radix, bw(bw1)) {
+        match ExtAwi::from_str_radix(sign, &string, radix, bw(bw1)) {
             Ok(awi) => {
                 if sign.is_none() {
                     x1bw1.zero_resize_assign(x0bw0);

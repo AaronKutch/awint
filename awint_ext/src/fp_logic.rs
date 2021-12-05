@@ -173,8 +173,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
     }
 
     /// Creates a tuple of `Vec<u8>`s representing the integer and fraction
-    /// parts `this` (sign indicators, prefixes, and points not included). This
-    /// function performs allocation. This is the inverse of
+    /// parts `this` (sign indicators, prefixes, points, and postfixes not
+    /// included). This function performs allocation. This is the inverse of
     /// [ExtAwi::from_bytes_general] and extends the abilities of
     /// [ExtAwi::bits_to_vec_radix]. Signedness and fixed point position
     /// information is taken from `this`. `min_integer_chars` specifies the
@@ -233,7 +233,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         // the order of these `||` is important to avoid overflow
         let integer_part_zero =
             is_zero || (this.fp() > this.ibw()) || (tot_lz > (this.ibw() - this.fp()));
-        let integer_part = if integer_part_zero {
+        let mut integer_part = if integer_part_zero {
             alloc::vec![b'0'; min_integer_chars]
         } else {
             let from = max(this.fp(), 0) as usize;
@@ -261,7 +261,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let tot_tz = unsigned.tz() as isize;
         // order is important again
         let fraction_part_zero = is_zero || (this.fp() <= 0) || (tot_tz >= this.fp());
-        let fraction_part = if fraction_part_zero {
+        let mut fraction_part = if fraction_part_zero {
             alloc::vec![b'0'; min_fraction_chars]
         } else {
             let unique_digits = this
@@ -306,6 +306,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
             }
             s
         };
+        integer_part.shrink_to_fit();
+        fraction_part.shrink_to_fit();
         Ok((integer_part, fraction_part))
     }
 

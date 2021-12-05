@@ -12,9 +12,6 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
     if radix < 2 || radix > 36 {
         return Err(InvalidRadix)
     }
-    if src.is_empty() {
-        return Err(Empty)
-    }
     const_for!(i in {0..src.len()} {
         let b = src[i];
         if b == b'_' {
@@ -206,13 +203,14 @@ impl Bits {
         Ok(())
     }
 
-    /// Assigns the `[u8]` representation of `self` to `dst`, not including a
-    /// sign indicator. `signed` specifies if `self` should be interpreted as
-    /// signed. `radix` specifies the radix, and `upper` specifies if letters
-    /// should be uppercase. In order for this function to be `const`, a
-    /// scratchpad `pad` with the same bitwidth as `self` must be supplied. Note
-    /// that if `dst.len()` is more than what is needed to store the
-    /// representation, the leading bytes will all be set to b'0'.
+    /// Assigns the `[u8]` representation of `self` to `dst` (sign indicators,
+    /// prefixes, and postfixes not included). `signed` specifies if `self`
+    /// should be interpreted as signed. `radix` specifies the radix, and
+    /// `upper` specifies if letters should be uppercase. In order for this
+    /// function to be `const`, a scratchpad `pad` with the same bitwidth as
+    /// `self` must be supplied. Note that if `dst.len()` is more than what
+    /// is needed to store the representation, the leading bytes will all be
+    /// set to b'0'.
     ///
     /// # Errors
     ///
