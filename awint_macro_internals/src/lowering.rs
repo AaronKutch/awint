@@ -33,10 +33,9 @@
 // TODO
 // Known issues:
 //
-// Make default initializations be postfixed with '$' to reduce macro
-// duplication. The only thing this will prevent is certain strings and macros.
-// I considered '#', but this would collide with raw identifiers. Don't forbid
-// the single bitwidth value condition.
+// Make default initializations be postfixed with ':' to reduce macro
+// duplication. The only thing this will prevent is certain complicated
+// expressions.
 //
 // There needs to be an initial typeless binding e.x. `let __awint_bind_0 =
 // f(x)` so that complicated expressions are not called twice for their
@@ -56,10 +55,6 @@
 //
 // The range value parser should be able to handle hexadecimal and octal
 // statically (e.x. `x[0x10..0x15]` should have known bitwidth).
-
-// TODO: use the ideas behind these macros to make other operations on Awi's
-// easier and remove the `.const_as_mut()` cruft everywhere. Delete std_ops.rs
-// afterwards.
 
 use std::{
     collections::{BinaryHeap, HashMap, HashSet},

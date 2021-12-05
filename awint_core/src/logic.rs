@@ -10,5 +10,4 @@ mod permute;
 mod primitives;
 #[cfg(feature = "rand_support")]
 mod rand;
-mod std_ops;
 mod sum;
