@@ -1,5 +1,4 @@
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
 #![feature(const_option)]
 
 use awint::prelude::{
@@ -151,11 +150,23 @@ const fn bits_functions() {
 
     x0.short_cin_mul(0, 0);
 
+    assert!(x0.mul_add_assign(x1, x2).is_none());
+    assert!(x1.mul_add_assign(x0, x2).is_none());
+    assert!(x2.mul_add_assign(x1, x0).is_none());
+    assert!(x0.mul_assign(x1, x2).is_none());
+    assert!(x1.mul_assign(x0, x2).is_none());
+    assert!(x2.mul_assign(x1, x0).is_none());
+
+    x0.arb_umul_add_assign(x1, x2);
+    x0.arb_imul_add_assign(x1, x2);
+
     x0.bool_assign(true);
 
     x0.inc_assign(false);
     x0.dec_assign(true);
-    assert!(x0.cin_sum_triop(false, x1, x2).is_none());
+    x0.neg_assign(false);
+    assert!(x0.neg_add_assign(false, x1).is_none());
+    assert!(x0.cin_sum_assign(false, x1, x2).is_none());
 
     x0.usize_or_assign(123, 60);
 
@@ -181,10 +192,10 @@ const fn bits_functions() {
     x3.umax_assign();
     assert!(Bits::idivide(x0, x1, x2, x3).is_none());
     x1.umax_assign();
-    assert!(x4.short_udivide_triop(x1, 0).is_none());
+    assert!(x4.short_udivide_assign(x1, 0).is_none());
     x0.umax_assign();
-    assert!(x4.short_udivide_triop(x0, 1).is_none());
-    assert!(x4.short_udivide_assign(0).is_none());
+    assert!(x4.short_udivide_assign(x0, 1).is_none());
+    assert!(x4.short_udivide_inplace_assign(0).is_none());
 
     // TODO test all const serialization
 
@@ -232,7 +243,6 @@ const fn bits_functions() {
         to_u128
         to_i128
         to_bool
-        neg_assign
         abs_assign
         ;
         shl_assign

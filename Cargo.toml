@@ -5,8 +5,9 @@ members = [
     "awint_core",
     "awint_dag",
     "awint_ext",
-    "awint_macros",
     "awint_internals",
     "awint_macro_internals",
+    "awint_macros",
+    "binaries",
     "testcrate",
 ]

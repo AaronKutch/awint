@@ -1,0 +1,11 @@
+[package]
+name = "binaries"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "common"
+path = "src/lib/common.rs"
+
+[dependencies]

@@ -1,14 +1,15 @@
 [package]
 name = "testcrate"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dev-dependencies]
 awint = { path = "../awint", features = ["rand_support", "serde_support"] }
+awint_internals = { path = "../awint_internals" }
 awint_macro_internals = { path = "../awint_macro_internals" }
 rand_xoshiro = "0.6"
-ron = "0.6"
+ron = "0.7"
 
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support"] }

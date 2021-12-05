@@ -550,7 +550,8 @@ impl<'a> Bits {
     }
 }
 
-/// Forwards to the `LowerHex` impl.
+/// Forwards to the `LowerHex` impl. We cannot use decimal because it would
+/// require allocation.
 impl fmt::Debug for Bits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::LowerHex::fmt(self, f)

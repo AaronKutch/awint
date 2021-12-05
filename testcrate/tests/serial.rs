@@ -1,4 +1,4 @@
-use awint::{inlawi, ExtAwi, InlAwi, SerdeError::*};
+use awint::{extawi, inlawi, ExtAwi, InlAwi, SerdeError::*, FP};
 
 // non-const serialization tests
 #[test]
@@ -61,23 +61,63 @@ fn string_conversion() {
     assert!(matches!("0xu8".parse::<ExtAwi>(), Err(Empty)));
 }
 
+macro_rules! fmt_test_inner {
+    ($($awi:ident, $debug:expr, $display:expr, $bin:expr, $oct:expr, $lohex:expr, $hihex:expr);*;)
+        => {
+        $(
+            assert_eq!(format!("{:?}", $awi), $debug);
+            assert_eq!(format!("{}", $awi), $display);
+            assert_eq!(format!("{:b}", $awi), $bin);
+            assert_eq!(format!("{:o}", $awi), $oct);
+            assert_eq!(format!("{:x}", $awi), $lohex);
+            assert_eq!(format!("{:X}", $awi), $hihex);
+        )*
+    };
+}
+
+macro_rules! fmt_test {
+    ($($awi:ident)*) => {
+        $(
+            fmt_test_inner!(
+                $awi, "0xfedcba98_76543210_u100", "0xfedcba98_76543210_u100",
+                "0b11111110_11011100_10111010_10011000_01110110_01010100_00110010_00010000_u100",
+                "0o177334_56514166_25031020_u100", "0xfedcba98_76543210_u100",
+                "0xFEDCBA98_76543210_u100";
+            );
+        )*
+    }
+}
+
 #[test]
-fn debug_strings() {
-    let awi = inlawi!(0xfedcba9876543210u100);
-    assert_eq!(format!("{:?}", awi), "0xfedcba98_76543210_u100");
+fn fmt_strings() {
+    let inl_awi = inlawi!(0xfedcba9876543210u100);
+    let ext_awi = extawi!(0xfedcba9876543210u100);
+    let bits_awi = inlawi!(0xfedcba9876543210u100);
+    let bits = bits_awi.const_as_ref();
+    fmt_test!(inl_awi ext_awi bits);
+    assert_eq!(format!("{}", inlawi!(0u100)), "0x0_u100");
     assert_eq!(
-        format!("{:?}", awi.const_as_ref()),
-        "0xfedcba98_76543210_u100"
-    );
-    assert_eq!(
-        format!("{:?}", ExtAwi::from(awi)),
-        "0xfedcba98_76543210_u100"
-    );
-    assert_eq!(
-        format!("{:?}", inlawi!(0x1_fedcba98_76543210u100)),
+        format!("{}", inlawi!(0x1_fedcba98_76543210u100)),
         "0x1_fedcba98_76543210_u100"
     );
-    assert_eq!(format!("{:?}", inlawi!(0u100)), "0x0_u100");
+
+    let fpbits = FP::new(true, inlawi!(-0xabcd1234i36), 16).unwrap();
+    assert_eq!(format!("{:x}", fpbits), "-0xabcd.1234_i36f16");
+    assert_eq!(format!("{:X}", fpbits), "-0xABCD.1234_i36f16");
+    assert_eq!(format!("{:o}", fpbits), "-0o125715.04432_i36f16");
+    assert_eq!(
+        format!("{:b}", fpbits),
+        "-0b1010101111001101.00010010001101_i36f16"
+    );
+    assert_eq!(format!("{:?}", fpbits), "-43981.07111_i36f16");
+    assert_eq!(format!("{}", fpbits), "-43981.07111_i36f16");
+
+    let fpbits = FP::new(false, inlawi!(1u11), -16).unwrap();
+    assert_eq!(format!("{}", fpbits), "65536.0_u11f-16");
+    let fpbits = FP::new(false, inlawi!(1u11), 16).unwrap();
+    assert_eq!(format!("{}", fpbits), "0.00002_u11f16");
+    let fpbits = FP::new(false, inlawi!(11111111111), 16).unwrap();
+    assert_eq!(format!("{}", fpbits), "0.03123_u11f16");
 }
 
 // TODO serde conversion

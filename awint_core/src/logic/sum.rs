@@ -80,20 +80,25 @@ impl Bits {
         }
     }
 
-    /// Negate-assigns `self`. Note that signed minimum values will overflow.
+    /// Negate-assigns `self` if `neg` is true. Note that signed minimum values
+    /// will overflow.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn neg_assign(&mut self) {
-        self.not_assign();
-        self.inc_assign(true);
+    pub const fn neg_assign(&mut self, neg: bool) {
+        if neg {
+            self.not_assign();
+            // note: do not return overflow from the increment because it only happens if
+            // `self.is_zero()`, not `self.is_imin()` which will certainly lead
+            // to accidents
+            self.inc_assign(true);
+        }
     }
 
     /// Absolute-value-assigns `self`. Note that signed minimum values will
-    /// overflow.
+    /// overflow, unless `self` is interpreted as unsigned after a call to this
+    /// function.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn abs_assign(&mut self) {
-        if self.msb() {
-            self.neg_assign();
-        }
+        self.neg_assign(self.msb());
     }
 
     /// Add-assigns by `rhs`
@@ -150,13 +155,23 @@ impl Bits {
         )
     }
 
+    /// Negate-add-assigns by `rhs`. Negates conditionally on `neg`.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn neg_add_assign(&mut self, neg: bool, rhs: &Self) -> Option<()> {
+        if neg {
+            self.sub_assign(rhs)
+        } else {
+            self.add_assign(rhs)
+        }
+    }
+
     /// A general summation with carry-in `cin` and two inputs `lhs` and `rhs`.
     /// `self` is set to the sum. The unsigned overflow (equivalent to the
     /// carry-out bit) and the signed overflow is returned as a tuple. `None` is
     /// returned if any bitwidths do not match. If subtraction is desired,
     /// one of the operands can be negated.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn cin_sum_triop(
+    pub const fn cin_sum_assign(
         &mut self,
         cin: bool,
         lhs: &Self,

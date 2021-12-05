@@ -483,6 +483,11 @@
 //!
 //! ### Other Notes
 //!
+//! - If dynamic values are used in ranges, they should not use generator like
+//!   behavior (e.x. using a function that changes its output between calls in
+//!   `x[f()..=f()]`), or else you may get unexpected behavior. The parser and
+//!   code generator treats identical strings like they produce the same value
+//!   every time, and would call `f()` only once.
 //! - In general, the macros use the `Bits::field` operation to copy different
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
@@ -533,9 +538,10 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
         .to_string()
         .parse::<usize>()
         .expect("Input should parse as a `usize`");
-    if bw == 0 {
-        panic!("Tried to make an `InlAwi` type with an invalid bitwidth of 0");
-    }
+    assert!(
+        bw != 0,
+        "Tried to make an `InlAwi` type with an invalid bitwidth of 0"
+    );
     format!("InlAwi<{}, {}>", bw, raw_digits(bw))
         .parse()
         .unwrap()
@@ -629,9 +635,10 @@ macro_rules! inlawi_construction {
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
                 if let Ok(bw) = input.to_string().parse::<usize>() {
-                    if bw == 0 {
-                        panic!("Tried to construct an `InlAwi` with an invalid bitwidth of 0");
-                    }
+                    assert!(
+                        bw != 0,
+                        "Tried to construct an `InlAwi` with an invalid bitwidth of 0"
+                    );
                     format!("InlAwi::<{}, {}>::{}()", bw, raw_digits(bw), $inlawi_fn)
                         .parse()
                         .unwrap()
@@ -663,9 +670,10 @@ macro_rules! extawi_construction {
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
                 if let Ok(bw) = input.to_string().parse::<usize>() {
-                    if bw == 0 {
-                        panic!("Tried to construct an `ExtAwi` with an invalid bitwidth of 0");
-                    }
+                    assert!(
+                        bw != 0,
+                        "Tried to construct an `ExtAwi` with an invalid bitwidth of 0"
+                    );
                     format!("ExtAwi::panicking_{}({})", $extawi_fn, bw)
                         .parse()
                         .unwrap()
@@ -687,3 +695,11 @@ extawi_construction!(
     extawi_imin, "imin", "Signed-minimum-value";
     extawi_uone, "uone", "Unsigned-one-value";
 );
+
+/*
+#[cfg(feature = "dag")]
+#[proc_macro_attribute]
+pub fn create_dag(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // `attr` gets set to the variable name to which the DAG is set
+}
+*/

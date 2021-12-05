@@ -5,7 +5,7 @@ resolver = "2"
 [package]
 name = "no_alloc_test"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 publish = false
 
 # The purpose of this crate is to insure that `awint` without the `alloc` feature has no allocation

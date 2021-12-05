@@ -31,12 +31,30 @@
 //! sink would need to be aware of all dynamic fillers in the source.
 
 // TODO
-// Known issues: in some cases (e.x. `inlawi_imin(5..7)`), certain width values
-// and shift increments are created when they are not needed. However, the known
-// cases are very easily optimized away (I _think_ they are already optimized
-// away at the MIR level before progressing). The code is complicated enough as
-// it is, perhaps this should be fixed in a future refactor.
+// Known issues:
 //
+// Make default initializations be postfixed with ':' to reduce macro
+// duplication. The only thing this will prevent is certain complicated
+// expressions.
+//
+// There needs to be an initial typeless binding e.x. `let __awint_bind_0 =
+// f(x)` so that complicated expressions are not called twice for their
+// bitwidths and getting references from them. This also prevents lifetimes
+// being too short from intermediates.
+//
+// In some cases (e.x. `inlawi_imin(5..7)`), certain width values and shift
+// increments are created when they are not needed. However, the known cases
+// are very easily optimized away (I _think_ they are already optimized away
+// at the MIR level before progressing). The code is complicated enough as it
+// is, perhaps this should be fixed in a future refactor.
+//
+// The static width determination system isn't smart enough to know that
+// "x[pos..=pos]" or "x[pos]" has a bitwidth of 1. The docs say that same
+// string inputs should not be generator like, and the code gen already
+// removes redundant value, so we should handle this in `Usbr` somewhere.
+//
+// The range value parser should be able to handle hexadecimal and octal
+// statically (e.x. `x[0x10..0x15]` should have known bitwidth).
 
 use std::{
     collections::{BinaryHeap, HashMap, HashSet},
@@ -50,7 +68,7 @@ use crate::*;
 
 // TODO when `feature(binary_heap_into_iter_sorted)` is stabilized fix this hack
 #[derive(Clone, Debug)]
-pub struct IntoIterSorted<T> {
+struct IntoIterSorted<T> {
     inner: BinaryHeap<T>,
 }
 

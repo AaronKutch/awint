@@ -1,7 +1,7 @@
 [package]
 name = "awint_macros"
-version = "0.1.0"
-edition = "2018"
+version = "0.2.0"
+edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -15,8 +15,8 @@ categories = ["data-structures", "mathematics", "algorithms"]
 proc-macro = true
 
 [dependencies]
-awint_internals = { version = "0.1.0", path = "../awint_internals", default-features = false }
-awint_macro_internals = { version = "0.1.0", path = "../awint_macro_internals" }
+awint_internals = { version = "0.2.0", path = "../awint_internals", default-features = false }
+awint_macro_internals = { version = "0.2.0", path = "../awint_macro_internals" }
 
 [dev-dependencies]
 # for examples

@@ -1,7 +1,6 @@
 #![feature(const_option)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
 
 mod fuzz;
 use core::cmp;
@@ -116,5 +115,23 @@ fn one_run() {
             &mut ExtAwi::zero(bw)[..],
         ];
         fuzz::one_run(array).unwrap();
+    }
+}
+
+// no unsafe code being used
+#[cfg(not(miri))]
+#[test]
+fn fp_identities() {
+    for seed in 0..cmp::max(N / 4, 16) {
+        fuzz::fp_identities(seed as u64).unwrap();
+    }
+}
+
+// no unsafe code being used
+#[cfg(not(miri))]
+#[test]
+fn fp_string() {
+    for seed in 0..cmp::max(N / 4, 16) {
+        fuzz::fp_string(seed as u64).unwrap();
     }
 }

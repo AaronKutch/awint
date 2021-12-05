@@ -5,7 +5,6 @@
 //! `_internals` crate was made. The safety requirements of these macros may
 //! change over time, so this crate should never be used outside of this system.
 
-#![cfg_attr(feature = "const_support", feature(const_panic))]
 #![no_std]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
@@ -15,7 +14,6 @@ mod serde_common;
 
 use core::num::NonZeroUsize;
 
-use const_fn::const_fn;
 pub use serde_common::*;
 
 /// Maximum bitwidth of an inline `Awi`
@@ -33,7 +31,6 @@ pub const MAX: usize = usize::MAX;
 /// If `bw == 0`, this function will panic.
 #[inline]
 #[track_caller]
-#[const_fn(cfg(feature = "const_support"))]
 pub const fn bw(bw: usize) -> NonZeroUsize {
     match NonZeroUsize::new(bw) {
         None => {
@@ -90,7 +87,6 @@ pub fn raw_digits(bw: usize) -> usize {
 ///
 /// If `BW == 0`, `LEN < 2`, or the bitwidth is outside the range
 /// `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
-#[const_fn(cfg(feature = "const_support"))]
 pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
     if BW == 0 {
         panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
@@ -114,7 +110,6 @@ pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
 ///
 /// If `raw.len() != LEN`, the bitwidth digit is zero, or the bitwidth is
 /// outside the range `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
-#[const_fn(cfg(feature = "const_support"))]
 pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
@@ -131,7 +126,6 @@ pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(r
 ///
 /// If the bitwidth is outside the range `(((LEN - 2)*BITS) + 1)..=((LEN -
 /// 1)*BITS)`
-#[const_fn(cfg(feature = "const_support"))]
 pub const fn assert_inlawi_invariants_2<const BW: usize, const LEN: usize>() {
     if BW == 0 {
         panic!("Tried to create an InlAwi with zero bitwidth")
@@ -163,37 +157,53 @@ macro_rules! widen_mul_add_internal {
     };
 }
 
+pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u128) {
+    //                       [rhs_hi]  [rhs_lo]
+    //                       [lhs_hi]  [lhs_lo]
+    //                     X___________________
+    //                       [------tmp0------]
+    //             [------tmp1------]
+    //             [------tmp2------]
+    //     [------tmp3------]
+    //                       [-------add------]
+    // +_______________________________________
+    //                       [------sum0------]
+    //     [------sum1------]
+
+    let lhs_lo = lhs as u64;
+    let rhs_lo = rhs as u64;
+    let lhs_hi = (lhs.wrapping_shr(64)) as u64;
+    let rhs_hi = (rhs.wrapping_shr(64)) as u64;
+    let tmp0 = (lhs_lo as u128).wrapping_mul(rhs_lo as u128);
+    let tmp1 = (lhs_lo as u128).wrapping_mul(rhs_hi as u128);
+    let tmp2 = (lhs_hi as u128).wrapping_mul(rhs_lo as u128);
+    let tmp3 = (lhs_hi as u128).wrapping_mul(rhs_hi as u128);
+    // tmp1 and tmp2 straddle the boundary. We have to handle three carries
+    let (sum0, carry0) = tmp0.overflowing_add(tmp1.wrapping_shl(64));
+    let (sum0, carry1) = sum0.overflowing_add(tmp2.wrapping_shl(64));
+    let (sum0, carry2) = sum0.overflowing_add(add as u128);
+    let sum1 = tmp3
+        .wrapping_add(tmp1.wrapping_shr(64))
+        .wrapping_add(tmp2.wrapping_shr(64))
+        .wrapping_add(carry0 as u128)
+        .wrapping_add(carry1 as u128)
+        .wrapping_add(carry2 as u128);
+    (sum0, sum1)
+}
+
 /// Computes (x * y) + z. This cannot overflow, because it returns the value
 /// widened into a tuple, where the first element is the least significant part
 /// of the integer and the second is the most significant.
 #[inline]
-#[const_fn(cfg(feature = "const_support"))]
 pub const fn widen_mul_add(x: usize, y: usize, z: usize) -> (usize, usize) {
     widen_mul_add_internal!(
         x, y, z;
         128 => {
             // Hopefully Rust has a built in `widening_mul` or LLVM recognizes this is one
             // big widening multiplication by the time things like 128 bit RISCV are a
-            // thing. TODO verify this
-            let lhs_lo = x as u64;
-            let rhs_lo = y as u64;
-            let lhs_hi = (x.wrapping_shr(64)) as u64;
-            let rhs_hi = (y.wrapping_shr(64)) as u64;
-            let tmp0 = (lhs_lo as u128).wrapping_mul(rhs_lo as u128);
-            let tmp1 = (lhs_lo as u128).wrapping_mul(rhs_hi as u128);
-            let tmp2 = (lhs_hi as u128).wrapping_mul(rhs_lo as u128);
-            let tmp3 = (lhs_hi as u128).wrapping_mul(rhs_hi as u128);
-            // tmp1 and tmp2 straddle the boundary. We have to handle three carries
-            let (mul0, carry0) = tmp0.overflowing_add(tmp1.wrapping_shl(64));
-            let (mul0, carry1) = mul0.overflowing_add(tmp2.wrapping_shl(64));
-            let (mul0, carry2) = mul0.overflowing_add(z as u128);
-            let mul1 = tmp3
-                .wrapping_add(tmp1.wrapping_shr(64))
-                .wrapping_add(tmp2.wrapping_shr(64))
-                .wrapping_add(carry0 as u128)
-                .wrapping_add(carry1 as u128)
-                .wrapping_add(carry2 as u128);
-            (mul0 as usize, mul1 as usize)
+            // thing.
+            let tmp = widening_mul_add_u128(x as u128, y as u128, z as u128);
+            (tmp.0 as usize, tmp.1 as usize)
         }
         8, u16;
         16, u32;
@@ -234,7 +244,6 @@ macro_rules! dd_division_internal {
 ///
 /// If `div == 0`, this function will panic.
 #[inline]
-#[const_fn(cfg(feature = "const_support"))]
 pub const fn dd_division(
     duo: (usize, usize),
     div: (usize, usize),

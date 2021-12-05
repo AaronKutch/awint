@@ -12,17 +12,18 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
     if radix < 2 || radix > 36 {
         return Err(InvalidRadix)
     }
-    if src.is_empty() {
-        return Err(Empty)
-    }
     const_for!(i in {0..src.len()} {
         let b = src[i];
         if b == b'_' {
             continue;
         }
-        let in_decimal_range = b'0' <= b && b < (b'0' + radix);
-        let in_lower_range = (radix > 10) && (b'a' <= b) && (b < (b'a' + (radix - 10)));
-        let in_upper_range = (radix > 10) && (b'A' <= b) && (b < (b'A' + (radix - 10)));
+        let in_decimal_range = b'0' <= b && b < b'0'.wrapping_add(radix);
+        let in_lower_range = (radix > 10)
+            && (b'a' <= b)
+            && (b < b'a'.wrapping_add(radix).wrapping_sub(10));
+        let in_upper_range = (radix > 10)
+            && (b'A' <= b)
+            && (b < b'A'.wrapping_add(radix).wrapping_sub(10));
         if radix <= 10 {
             if !in_decimal_range {
                 return Err(InvalidChar)
@@ -37,7 +38,8 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
 /// # `const` string representation conversion
 ///
 /// Note: the `awint_ext` crate has higher level allocating functions
-/// `ExtAwi::bits_to_string_radix` and `ExtAwi::bits_to_vec_radix`
+/// `ExtAwi::bits_to_string_radix`, `ExtAwi::bits_to_vec_radix`, and
+/// `<ExtAwi as FromStr>::from_str`
 impl Bits {
     /// A version of [Bits::bytes_radix_assign] optimized for power of two
     /// radixes
@@ -78,8 +80,18 @@ impl Bits {
             pad.usize_or_assign(char_digit, shl);
             shl += log2;
             if shl >= self.bw() {
+                let tmp = if let Some(tmp) = BITS
+                    .wrapping_sub(char_digit.leading_zeros() as usize).checked_add(shl) {
+                    if let Some(tmp) = tmp.checked_sub(log2) {
+                        tmp
+                    } else {
+                        return Err(Overflow)
+                    }
+                } else {
+                    return Err(Overflow)
+                };
                 // check that the last digit did not cross the end
-                if (BITS - (char_digit.leading_zeros() as usize)) + shl - log2 > self.bw() {
+                if tmp > self.bw() {
                     return Err(Overflow)
                 }
                 // there may be a bunch of leading zeros, so do not return an error yet
@@ -99,7 +111,7 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // handles `imin` correctly
-                pad.neg_assign();
+                pad.neg_assign(true);
             } else if pad.lz() == 0 {
                 // These cannot be represented as positive
                 return Err(Overflow)
@@ -158,7 +170,7 @@ impl Bits {
             } else {
                 b.wrapping_sub(b'a').wrapping_add(10)
             } as usize;
-            let o0 = pad0.short_mul_add_triop(pad1, char_digit).unwrap();
+            let o0 = pad0.short_mul_add_assign(pad1, char_digit).unwrap();
             if o0 {
                 return Err(Overflow)
             }
@@ -181,7 +193,7 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // handles `imin` correctly
-                pad0.neg_assign();
+                pad0.neg_assign(true);
             } else if pad0.lz() == 0 {
                 // These cannot be represented as positive
                 return Err(Overflow)
@@ -191,13 +203,14 @@ impl Bits {
         Ok(())
     }
 
-    /// Assigns the `[u8]` representation of `self` to `dst`, not including a
-    /// sign indicator. `signed` specifies if `self` should be interpreted as
-    /// signed. `radix` specifies the radix, and `upper` specifies if letters
-    /// should be uppercase. In order for this function to be `const`, a
-    /// scratchpad `pad` with the same bitwidth as `self` must be supplied. Note
-    /// that if `dst.len()` is more than what is needed to store the
-    /// representation, the leading bytes will all be set to b'0'.
+    /// Assigns the `[u8]` representation of `self` to `dst` (sign indicators,
+    /// prefixes, and postfixes not included). `signed` specifies if `self`
+    /// should be interpreted as signed. `radix` specifies the radix, and
+    /// `upper` specifies if letters should be uppercase. In order for this
+    /// function to be `const`, a scratchpad `pad` with the same bitwidth as
+    /// `self` must be supplied. Note that if `dst.len()` is more than what
+    /// is needed to store the representation, the leading bytes will all be
+    /// set to b'0'.
     ///
     /// # Errors
     ///
@@ -222,18 +235,16 @@ impl Bits {
             return Err(InvalidRadix)
         }
         pad.copy_assign(self);
-        if signed && pad.msb() {
-            // happens to do the right thing to `imin`
-            pad.neg_assign();
-        }
+        // happens to do the right thing to `imin`
+        pad.neg_assign(signed && pad.msb());
         const_for!(i in {0..dst.len()}.rev() {
-            let rem = pad.short_udivide_assign(radix as usize).unwrap() as u8;
+            let rem = pad.short_udivide_inplace_assign(radix as usize).unwrap() as u8;
             if rem < 10 {
-                dst[i] = b'0' + rem;
+                dst[i] = b'0'.wrapping_add(rem);
             } else if upper {
-                dst[i] = b'A' + (rem - 10);
+                dst[i] = b'A'.wrapping_add(rem).wrapping_sub(10);
             } else {
-                dst[i] = b'a' + (rem - 10);
+                dst[i] = b'a'.wrapping_add(rem).wrapping_sub(10);
             }
         });
         if !pad.is_zero() {
@@ -253,17 +264,17 @@ impl Bits {
         upper: bool,
     ) -> fmt::Result {
         f.write_fmt(format_args!("0x"))?;
-        const_for!(j0 in {0..((self.bw() >> 2) + 1)}.rev() {
+        const_for!(j0 in {0..(self.bw() >> 2).wrapping_add(1)}.rev() {
             if (self.get_digit(j0 << 2) & 0b1111) != 0 {
                 // we have reached the first nonzero character
-                const_for!(j1 in {0..(j0 + 1)}.rev() {
+                const_for!(j1 in {0..j0.wrapping_add(1)}.rev() {
                     let mut char_digit = (self.get_digit(j1 << 2) & 0b1111) as u8;
                     if char_digit < 10 {
                         char_digit += b'0';
                     } else if upper {
-                        char_digit += b'A' - 10;
+                        char_digit += b'A'.wrapping_sub(10);
                     } else {
-                        char_digit += b'a' - 10;
+                        char_digit += b'a'.wrapping_sub(10);
                     }
                     // Safety: we strictly capped the range of possible values above with `& 0b1111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
@@ -285,11 +296,11 @@ impl Bits {
     #[inline]
     pub(crate) fn debug_format_octal(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_fmt(format_args!("0o"))?;
-        const_for!(j0 in {0..((self.bw() / 3) + 1)}.rev() {
-            if (self.get_digit(j0 * 3) & 0b111) != 0 {
+        const_for!(j0 in {0..(self.bw() / 3).wrapping_add(1)}.rev() {
+            if (self.get_digit(j0.wrapping_mul(3)) & 0b111) != 0 {
                 // we have reached the first nonzero character
-                const_for!(j1 in {0..(j0 + 1)}.rev() {
-                    let mut char_digit = (self.get_digit(j1 * 3) & 0b111) as u8;
+                const_for!(j1 in {0..j0.wrapping_add(1)}.rev() {
+                    let mut char_digit = (self.get_digit(j1.wrapping_mul(3)) & 0b111) as u8;
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };

@@ -5,7 +5,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
     num::NonZeroUsize,
-    ops::{Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
     ptr,
     ptr::NonNull,
 };
@@ -47,7 +47,8 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 /// let mut awi0 = ExtAwi::zero(bw(100));
 /// // constructing an `ExtAwi` from an `InlAwi`
 /// let awi1 = ExtAwi::from(inlawi!(-123i16));
-/// // Getting a mutable `Bits` reference. There are alternate ways such as `&mut awi0[..]`
+/// // `ExtAwi` implements `DerefMut`, but a mutable `Bits` reference can also
+/// // be acquired like this.
 /// let x0: &mut Bits = awi0.const_as_mut();
 /// assert!(x0.is_zero());
 /// example(x0, awi1.const_as_ref());
@@ -297,6 +298,22 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 impl Hash for ExtAwi {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.const_as_ref().hash(state);
+    }
+}
+
+impl Deref for ExtAwi {
+    type Target = Bits;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.const_as_ref()
+    }
+}
+
+impl DerefMut for ExtAwi {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
     }
 }
 

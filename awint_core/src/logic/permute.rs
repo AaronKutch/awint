@@ -11,8 +11,6 @@ use crate::Bits;
 /// it from https://github.com/rust-lang/rust/blob/master/library/core/src/slice/mod.rs
 /// and specialize it to work as `const`.
 ///
-/// This also has a workaround for https://github.com/rust-lang/rust/issues/86236
-///
 /// # Safety
 ///
 /// The range `[mid-left, mid+right)` must be valid for reading and writing
@@ -32,12 +30,12 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
                 let mut gcd = right;
                 loop {
                     let tmp_tmp = x.add(i).read();
-                    *x.add(i) = tmp;
+                    x.add(i).write(tmp);
                     tmp = tmp_tmp;
                     if i >= left {
                         i -= left;
                         if i == 0 {
-                            *x = tmp;
+                            x.write(tmp);
                             break
                         }
                         if i < gcd {
@@ -52,12 +50,12 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
                     i = start + right;
                     loop {
                         let tmp_tmp = x.add(i).read();
-                        *x.add(i) = tmp;
+                        x.add(i).write(tmp);
                         tmp = tmp_tmp;
                         if i >= left {
                             i -= left;
                             if i == start {
-                                *x.add(start) = tmp;
+                                x.add(start).write(tmp);
                                 break;
                             }
                         } else {
@@ -284,10 +282,8 @@ impl Bits {
     /// then `None` is returned and the `Bits` are left unchanged.
     ///
     /// Arithmetic right shifts copy the sign bit, and thus can act as a very
-    /// fast floored division by a power of two for the signed interpretation of
-    /// `Bits`. Note that signed division also diverges from this if `s ==
-    /// (self.bw() - 1)` because the corresponding positive value cannot be
-    /// represented.
+    /// fast _floored_ division by a power of two for the signed interpretation
+    /// of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn ashr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
@@ -307,15 +303,13 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::{inlawi, ExtAwi, InlAwi};
-    /// let mut awi_input = inlawi!(0x4321u16);
-    /// let mut awi_output = inlawi!(0u16);
-    /// let input = awi_input.const_as_ref();
-    /// let output = awi_output.const_as_mut();
+    /// use awint::{extawi, inlawi, ExtAwi, InlAwi};
+    /// let mut input = inlawi!(0x4321u16);
+    /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit
     /// let shift = 4;
     ///
-    /// output.copy_assign(input).unwrap();
+    /// output.copy_assign(&input).unwrap();
     /// // temporary clone of the input
     /// let mut tmp = ExtAwi::from(input);
     /// if shift != 0 {
@@ -323,17 +317,14 @@ impl Bits {
     ///         panic!();
     ///     }
     ///     output.shl_assign(shift).unwrap();
-    ///     tmp[..].lshr_assign(input.bw() - shift).unwrap();
-    ///     output.or_assign(&tmp[..]);
+    ///     tmp.lshr_assign(input.bw() - shift).unwrap();
+    ///     output.or_assign(&tmp);
     /// };
     ///
-    /// assert_eq!(awi_output, inlawi!(0x3214u16));
+    /// assert_eq!(output, inlawi!(0x3214u16));
     /// let mut using_rotate = ExtAwi::from(input);
-    /// using_rotate[..].rotl_assign(shift).unwrap();
-    /// assert_eq!(
-    ///     using_rotate.const_as_ref(),
-    ///     inlawi!(0x3214u16).const_as_ref()
-    /// );
+    /// using_rotate.rotl_assign(shift).unwrap();
+    /// assert_eq!(using_rotate, extawi!(0x3214u16));
     ///
     /// // Note that slices are typed in a little-endian order opposite of
     /// // how integers are typed, but they still visually rotate in the
@@ -344,7 +335,7 @@ impl Bits {
     /// assert_eq!(array, [3, 2, 1, 4]);
     /// assert_eq!(0x4321u16.rotate_left(4), 0x3214);
     /// let mut x = inlawi!(0x4321u16);
-    /// x.const_as_mut().rotl_assign(4);
+    /// x.rotl_assign(4);
     /// // `Bits` has the preferred endianness
     /// assert_eq!(x, inlawi!(0x3214u16));
     /// ```
