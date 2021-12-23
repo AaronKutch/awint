@@ -5,11 +5,11 @@ mod render;
 use std::{num::NonZeroUsize, rc::Rc};
 
 pub use render::render_to_file;
+use triple_arena::prelude::*;
 
-use crate::{
-    arena::{Arena, Ptr},
-    mimick, Op,
-};
+use crate::{mimick, Op};
+
+ptr_trait_struct_with_gen!(P0);
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
@@ -29,9 +29,9 @@ pub struct Node {
     /// Operation
     pub op: Op,
     /// Operands
-    pub ops: Vec<Ptr>,
+    pub ops: Vec<Ptr<P0>>,
     /// Dependent nodes that use this one as a source
-    pub deps: Vec<Ptr>,
+    pub deps: Vec<Ptr<P0>>,
 }
 
 /*
@@ -52,7 +52,7 @@ impl PartialEq for Node {
 
 #[derive(Debug)]
 pub struct Dag {
-    pub dag: Arena<Node>,
+    pub dag: Arena<P0, Node>,
 }
 
 #[derive(Debug)]

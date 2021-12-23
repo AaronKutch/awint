@@ -10,10 +10,10 @@ use std::{
 };
 
 use awint_ext::ExtAwi;
+use triple_arena::Ptr;
 
 use crate::{
-    arena::Ptr,
-    lowering::{Dag, Node},
+    lowering::{Dag, Node, P0},
     Op,
 };
 
@@ -44,24 +44,18 @@ const FONT_ADJUST_Y: i32 = -5;
 const PAD: i32 = 4;
 const NODE_PAD: i32 = 32;
 const RECT_OUTLINE_WIDTH: i32 = 1;
-// This is calculated by using CIELAB colors, taking 4 combinations of 2 of max
-// green, red, blue, and yellow at 50% lightness and 4 single max values at 75%
-// lightness. The ff0000 and 009800 values together are not colorblind friendly,
-// so I replace the red one with ff8080. There are two blue values 00a9ff and
-// 00caff that are too close to each other, so I replace one with the grayscale
-// b9b9b9. This has an interesting symmetry of 4 elements of magenta to yellow,
-// 2 elements of green to cyan, 1 element of blue, and 1 gray element to close
-// off the power of 2.
-const COLORS: [&str; 8] = [
-    "b9b9b9", "e0b500", "00a9ff", "ff8080", "00e6b6", "ff00be", "009800", "b900ff",
+// Quaternion theme colors
+const COLORS: [&str; 7] = [
+    // the green-yellow clash is problematic, so remove green
+    "a0a0a0", "00b2ff", "00cb9d", /* "2ab90f", */ "c49d00", "ff8080", "ff2adc", "a35bff",
 ];
 
 #[derive(Debug, Clone)]
 struct RenderNode {
-    pub ptr: Ptr,
+    pub ptr: Ptr<P0>,
     pub rects: Vec<(i32, i32, i32, i32)>,
     pub text: Vec<((i32, i32), i32, String)>,
-    pub input_points: Vec<((i32, i32), Ptr)>,
+    pub input_points: Vec<((i32, i32), Ptr<P0>)>,
     pub output_point: (i32, i32),
     pub wx: i32,
     pub wy: i32,
@@ -69,7 +63,7 @@ struct RenderNode {
 
 impl RenderNode {
     #[allow(clippy::comparison_chain)]
-    pub fn new(node: &Node, ptr: Ptr) -> Self {
+    pub fn new(node: &Node, ptr: Ptr<P0>) -> Self {
         let mut rects = vec![];
         let mut text = vec![];
         let mut input_points = vec![];
@@ -186,14 +180,14 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     drop(fs::remove_file(&out_file));
 
     // DFS for topological sort
-    let mut sorted: Vec<Ptr> = vec![];
+    let mut sorted: Vec<Ptr<P0>> = vec![];
     // done nodes
-    let mut done_nodes: HashSet<Ptr> = HashSet::new();
+    let mut done_nodes: HashSet<Ptr<P0>> = HashSet::new();
     // frontier
-    let mut node: Vec<Ptr> = vec![];
+    let mut node: Vec<Ptr<P0>> = vec![];
     // path through dependencies
     let mut dep_i: Vec<usize> = vec![];
-    let roots: Vec<Ptr> = dag.roots();
+    let roots: Vec<Ptr<P0>> = dag.roots();
     for root in &roots {
         node.push(*root);
         dep_i.push(0);
@@ -229,7 +223,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     }
 
     // map `Ptr`s to their position in `sorted`
-    let mut sort_map: HashMap<Ptr, usize> = HashMap::new();
+    let mut sort_map: HashMap<Ptr<P0>, usize> = HashMap::new();
     for (i, ptr) in sorted.iter().enumerate() {
         sort_map.insert(*ptr, i);
     }
@@ -242,8 +236,8 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     // lineage are not touched on the first exploration, later explorations through
     // the same lineage will overwrite the lineage number.
     let mut n = 0;
-    let mut lineage_map: HashMap<Ptr, usize> = HashMap::new();
-    let mut lineage_leaves: HashMap<usize, Ptr> = HashMap::new();
+    let mut lineage_map: HashMap<Ptr<P0>, usize> = HashMap::new();
+    let mut lineage_leaves: HashMap<usize, Ptr<P0>> = HashMap::new();
     for ptr in dag.list_ptrs() {
         if !lineage_map.contains_key(&ptr) {
             let mut next = ptr;
@@ -267,7 +261,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     }
 
     // get ordered lineages
-    let mut lineages: Vec<Vec<Ptr>> = vec![];
+    let mut lineages: Vec<Vec<Ptr<P0>>> = vec![];
     for leaf in lineage_leaves {
         let mut next = leaf.1;
         let mut lineage = vec![next];
@@ -281,7 +275,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     // Finally, make a grid such that any dependency must flow one way. The second
     // element in the tuple says how far back from the leaf line the node should be
     // placed.
-    let mut grid: Vec<Vec<(Ptr, usize)>> = vec![];
+    let mut grid: Vec<Vec<(Ptr<P0>, usize)>> = vec![];
     for lineage in &lineages {
         let mut vertical = vec![];
         for ptr in &*lineage {
@@ -314,8 +308,8 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
 
     // Reordering columns to try and minimize dependency line crossings.
     // create some maps first.
-    let mut ptr_to_x_i: HashMap<Ptr, usize> = HashMap::new();
-    let mut x_i_to_ptr: HashMap<usize, Ptr> = HashMap::new();
+    let mut ptr_to_x_i: HashMap<Ptr<P0>, usize> = HashMap::new();
+    let mut x_i_to_ptr: HashMap<usize, Ptr<P0>> = HashMap::new();
     for (x_i, vertical) in grid.iter().enumerate() {
         for slot in vertical {
             ptr_to_x_i.insert(slot.0, x_i);
@@ -326,9 +320,9 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     let mut sorted_lineages: Vec<usize> = vec![];
     // ordered DFS starting from leaves to determine order of lineages
     // done nodes
-    let mut done_nodes: HashSet<Ptr> = HashSet::new();
+    let mut done_nodes: HashSet<Ptr<P0>> = HashSet::new();
     // frontier
-    let mut node: Vec<Ptr> = vec![];
+    let mut node: Vec<Ptr<P0>> = vec![];
     // path through operands
     let mut ops_i: Vec<usize> = vec![];
     for leaf in &dag.leaves() {
@@ -407,7 +401,7 @@ pub fn render_to_file(dag: Dag, out_file: PathBuf) {
     // correct
 
     // create map for positions in grid
-    let mut grid_map: HashMap<Ptr, (usize, usize)> = HashMap::new();
+    let mut grid_map: HashMap<Ptr<P0>, (usize, usize)> = HashMap::new();
     for (i, vert) in rect_grid.iter().enumerate() {
         for (j, node) in vert.iter().enumerate() {
             // do not flatten, it messes up the indexing

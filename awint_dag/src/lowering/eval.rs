@@ -1,14 +1,14 @@
+use triple_arena::Ptr;
 use Op::*;
 
 use crate::{
-    arena::Ptr,
-    lowering::{Dag, EvalError},
+    lowering::{Dag, EvalError, P0},
     Op,
 };
 
 /// I don't expect `deps` to be too long, and some algorithms need `deps` to be
 /// in a vector anyway
-fn remove(v: &mut Vec<Ptr>, target: Ptr) {
+fn remove(v: &mut Vec<Ptr<P0>>, target: Ptr<P0>) {
     for i in 0..v.len() {
         if v[i] == target {
             v.swap_remove(i);
@@ -21,7 +21,7 @@ impl Dag {
     /// Evaluates node, assumed to have an evaluatable operation with all
     /// operands being literals. Note that the DAG may be left in a bad state if
     /// an error is returned.
-    pub fn eval_node(&mut self, ptr: Ptr) -> Result<(), EvalError> {
+    pub fn eval_node(&mut self, ptr: Ptr<P0>) -> Result<(), EvalError> {
         let op = std::mem::replace(&mut self[ptr].op, Op::Invalid);
         if matches!(op, Literal(_) | Invalid | Opaque) {
             return Err(EvalError::Unevaluatable)
@@ -83,7 +83,7 @@ impl Dag {
     pub fn eval(&mut self) {
         // evaluatable values
         let list = self.list_ptrs();
-        let mut eval: Vec<Ptr> = vec![];
+        let mut eval: Vec<Ptr<P0>> = vec![];
         for p in list {
             if matches!(self[p].op, Literal(_) | Invalid | Opaque) {
                 // skip unevaluatable values

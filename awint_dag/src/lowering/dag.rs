@@ -6,36 +6,38 @@ use std::{
     rc::Rc,
 };
 
+use triple_arena::{Arena, Ptr};
+
 use super::EvalError;
 use crate::{
-    lowering::{Arena, Dag, Node, Ptr, PtrEqRc},
+    lowering::{Dag, Node, PtrEqRc, P0},
     mimick,
 };
 
-impl Index<Ptr> for Dag {
+impl Index<Ptr<P0>> for Dag {
     type Output = Node;
 
-    fn index(&self, index: Ptr) -> &Node {
+    fn index(&self, index: Ptr<P0>) -> &Node {
         self.dag.get(index).unwrap()
     }
 }
 
-impl IndexMut<Ptr> for Dag {
-    fn index_mut(&mut self, index: Ptr) -> &mut Node {
+impl IndexMut<Ptr<P0>> for Dag {
+    fn index_mut(&mut self, index: Ptr<P0>) -> &mut Node {
         self.dag.get_mut(index).unwrap()
     }
 }
 
-impl Index<&Ptr> for Dag {
+impl Index<&Ptr<P0>> for Dag {
     type Output = Node;
 
-    fn index(&self, index: &Ptr) -> &Node {
+    fn index(&self, index: &Ptr<P0>) -> &Node {
         self.dag.get(*index).unwrap()
     }
 }
 
-impl IndexMut<&Ptr> for Dag {
-    fn index_mut(&mut self, index: &Ptr) -> &mut Node {
+impl IndexMut<&Ptr<P0>> for Dag {
+    fn index_mut(&mut self, index: &Ptr<P0>) -> &mut Node {
         self.dag.get_mut(*index).unwrap()
     }
 }
@@ -45,16 +47,16 @@ impl Dag {
     /// version
     pub fn new(leaves: Vec<Rc<mimick::State>>) -> Self {
         // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<PtrEqRc, Ptr> = HashMap::new();
+        let mut lowerings: HashMap<PtrEqRc, Ptr<P0>> = HashMap::new();
         // used later for when all nodes are allocated
-        let mut raisings: Vec<(Ptr, PtrEqRc)> = Vec::new();
+        let mut raisings: Vec<(Ptr<P0>, PtrEqRc)> = Vec::new();
         // keep a frontier which will guarantee that the whole mimick DAG is explored,
         // and keep track of dependents
         let mut frontier = leaves;
-        let mut dag: Arena<Node> = Arena::new();
+        let mut dag: Arena<P0, Node> = Arena::new();
         // because some nodes may not be in the arena yet, we have to bootstrap
         // dependencies by looking up the source later (source, sink)
-        let mut deps: Vec<(PtrEqRc, Ptr)> = Vec::new();
+        let mut deps: Vec<(PtrEqRc, Ptr<P0>)> = Vec::new();
         while let Some(next) = frontier.pop() {
             match lowerings.entry(PtrEqRc(Rc::clone(&next))) {
                 Entry::Occupied(_) => (),
@@ -123,12 +125,16 @@ impl Dag {
     }
 
     /// Returns a list of pointers to all nodes in no particular order
-    pub fn list_ptrs(&self) -> Vec<Ptr> {
-        self.dag.list_ptrs()
+    pub fn list_ptrs(&self) -> Vec<Ptr<P0>> {
+        let mut v = vec![];
+        for (p, _) in &self.dag {
+            v.push(p);
+        }
+        v
     }
 
     /// Returns all source roots that have no operands
-    pub fn roots(&self) -> Vec<Ptr> {
+    pub fn roots(&self) -> Vec<Ptr<P0>> {
         let mut v = Vec::new();
         for p in self.list_ptrs() {
             if self[p].ops.is_empty() {
@@ -139,7 +145,7 @@ impl Dag {
     }
 
     /// Returns all sink leaves that have no dependents
-    pub fn leaves(&self) -> Vec<Ptr> {
+    pub fn leaves(&self) -> Vec<Ptr<P0>> {
         let mut v = Vec::new();
         for p in self.list_ptrs() {
             if self[p].deps.is_empty() {
