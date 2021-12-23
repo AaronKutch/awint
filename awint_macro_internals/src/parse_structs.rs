@@ -292,7 +292,7 @@ impl Component {
                 // note: `lit` here is a reference to a clone
                 self.range.attempt_simplify_literal(lit.const_as_ref())?;
                 // static ranges on literals have been verified, attempt to truncate
-                if let Some(x) = self.range.end.clone().map(|x| x.static_val()).flatten() {
+                if let Some(x) = self.range.end.clone().and_then(|x| x.static_val()) {
                     let mut tmp = ExtAwi::zero(NonZeroUsize::new(x).unwrap());
                     tmp[..].zero_resize_assign(&lit[..]);
                     *lit = tmp;
@@ -303,8 +303,7 @@ impl Component {
                 if let Some(ref end) = self.range.end {
                     if end.static_val().is_some() {
                         // attempt to truncate bits below the start
-                        if let Some(x) = self.range.start.clone().map(|x| x.static_val()).flatten()
-                        {
+                        if let Some(x) = self.range.start.clone().and_then(|x| x.static_val()) {
                             let w = lit.bw() - x;
                             let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
                             tmp[..].field(0, &lit[..], x, w);
