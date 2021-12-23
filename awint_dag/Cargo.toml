@@ -15,10 +15,7 @@ categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 awint_core = { version = "0.2.0", path = "../awint_core", default-features = false }
 awint_ext = { version = "0.2.0", path = "../awint_ext", default-features = false }
 awint_internals = { version = "0.2.0", path = "../awint_internals", default-features = false }
-triple_arena = { path = "../../triple_arena" }
-
-[dev-dependencies]
-awint = { path = "../awint" }
+triple_arena = "0.2"
 
 [features]
 # This enables things such as an evaluating `PartialEq` on the mimicking types
