@@ -1,11 +1,10 @@
 mod dag;
 mod eval;
-mod render;
 
 use std::{num::NonZeroUsize, rc::Rc};
 
-pub use render::render_to_file;
 use triple_arena::prelude::*;
+use triple_arena_render::*;
 
 use crate::{mimick, Op};
 
@@ -49,6 +48,31 @@ impl PartialEq for Node {
     }
 }
 */
+
+impl DebugNodeTrait<P0> for Node {
+    fn debug_node(this: &Self) -> DebugNode<P0> {
+        let names = this.op.operand_names();
+        DebugNode {
+            sources: this
+                .ops
+                .iter()
+                .enumerate()
+                .map(|(i, p)| {
+                    (
+                        *p,
+                        if let Some(s) = names.get(i) {
+                            (*s).to_owned()
+                        } else {
+                            String::new()
+                        },
+                    )
+                })
+                .collect(),
+            center: vec![this.op.operation_name().to_owned()],
+            sinks: vec![],
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Dag {
