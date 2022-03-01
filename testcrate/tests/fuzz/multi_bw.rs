@@ -185,20 +185,20 @@ pub fn multi_bw(seed: u64) -> Option<()> {
     let mut awi1_2 = ExtAwi::zero(bw2);
     // only the `x0_`s are being randomized, the `x1_`s however are needed for fuzz
     // step temporaries
-    let mut x0bw0 = awi0_0.const_as_mut();
-    let mut x1bw0 = awi1_0.const_as_mut();
+    let x0bw0 = awi0_0.const_as_mut();
+    let x1bw0 = awi1_0.const_as_mut();
     let x2bw0 = awi2_0.const_as_mut();
     let x3bw0 = awi3_0.const_as_mut();
-    let mut x0bw1 = awi0_1.const_as_mut();
-    let mut x1bw1 = awi1_1.const_as_mut();
+    let x0bw1 = awi0_1.const_as_mut();
+    let x1bw1 = awi1_1.const_as_mut();
     let x2bw1 = awi2_1.const_as_mut();
-    let mut x0bw2 = awi0_2.const_as_mut();
-    let mut x1bw2 = awi1_2.const_as_mut();
+    let x0bw2 = awi0_2.const_as_mut();
+    let x1bw2 = awi1_2.const_as_mut();
 
     for _ in 0..16 {
-        fuzz_step(rng, &mut x0bw0, &mut x1bw0);
-        fuzz_step(rng, &mut x0bw1, &mut x1bw1);
-        fuzz_step(rng, &mut x0bw2, &mut x1bw2);
+        fuzz_step(rng, x0bw0, x1bw0);
+        fuzz_step(rng, x0bw1, x1bw1);
+        fuzz_step(rng, x0bw2, x1bw2);
         let b = (rng.next_u32() & 1) == 0;
 
         multi_bw_inner(

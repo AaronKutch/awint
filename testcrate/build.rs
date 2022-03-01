@@ -2,6 +2,8 @@
 // Here, we try to generate code which tests all successful code generation
 // paths
 
+#![allow(clippy::too_many_arguments)]
+
 use std::{
     cmp::{max, min},
     env, fs,
@@ -262,12 +264,10 @@ impl<'a> Concat<'a> {
                     } else {
                         format!("[0..={}]", end)
                     }
+                } else if self.rand_bool() {
+                    format!("[..{}]", end)
                 } else {
-                    if self.rand_bool() {
-                        format!("[..{}]", end)
-                    } else {
-                        format!("[0..{}]", end)
-                    }
+                    format!("[0..{}]", end)
                 }
             }
             (Some(start), None) => {
@@ -301,12 +301,10 @@ impl<'a> Concat<'a> {
             } else {
                 (Some(diff), None)
             }
+        } else if self.rand_bool() || self.static_width {
+            (None, Some(bitwidth))
         } else {
-            if self.rand_bool() || self.static_width {
-                (None, Some(bitwidth))
-            } else {
-                (None, None)
-            }
+            (None, None)
         };
         let index = self.gen_index(range);
         self.push_comp(format!("{:?}{}", awi, index));
@@ -328,12 +326,10 @@ impl<'a> Concat<'a> {
             } else {
                 (Some(diff), None)
             }
+        } else if self.rand_bool() || self.static_width {
+            (None, Some(bitwidth))
         } else {
-            if self.rand_bool() || self.static_width {
-                (None, Some(bitwidth))
-            } else {
-                (None, None)
-            }
+            (None, None)
         };
         let vnum = self.next_unique();
         let mutability = if source {
@@ -441,15 +437,14 @@ impl<'a> Concat<'a> {
                 let mut awi = ExtAwi::zero(bw(referenced_bw));
                 awi[..].rand_assign_using(self.rng).unwrap();
 
-                let mut range;
                 // 0 is literal, 1 is variable
-                if comp_type == 0 {
-                    range = self.gen_literal(bitwidth, referenced_bw, &awi[..]);
+                let mut range = if comp_type == 0 {
+                    self.gen_literal(bitwidth, referenced_bw, &awi[..])
                 } else {
                     // variable
                     let tmp = self.gen_variable(bitwidth, referenced_bw, &awi[..], true);
-                    range = (tmp.0, tmp.1);
-                }
+                    (tmp.0, tmp.1)
+                };
 
                 if let Some(ref mut start) = range.0 {
                     let mut tmp = ExtAwi::zero(bw(awi.bw() - *start));
@@ -490,11 +485,7 @@ impl<'a> Concat<'a> {
         self.assertions += "let mut _shl = 0;\n";
         for comp_i in 0..self.num_comps {
             let (bitwidth, referenced_bw) = self.gen_comp_bitwidth(comp_i);
-            let b = match self.rand_usize() % 8 {
-                0..=5 => false,
-                _ => true,
-            };
-            if b {
+            if !matches!(self.rand_usize() % 8, 0..=5) {
                 // variable
                 let mut awi = ExtAwi::zero(bw(referenced_bw));
                 awi[..].rand_assign_using(self.rng).unwrap();
@@ -557,7 +548,7 @@ fn main() {
     drop(fs::remove_file(&out_file));
 
     let mut s = "#[test] fn generated_macro_fuzz_test() {\n".to_owned();
-    let mut rng = &mut Xoshiro128StarStar::seed_from_u64(0);
+    let rng = &mut Xoshiro128StarStar::seed_from_u64(0);
     let mut vnum = 0;
     // number of tests generated
     for test_i in 0..NUM_TESTS {
@@ -602,7 +593,7 @@ fn main() {
         let mut prior_sets = String::new();
         let mut c = Concat::new(
             nzbw,
-            &mut rng,
+            rng,
             &mut vnum,
             &mut prior_sets,
             dynamic_width_i == 0,
@@ -625,7 +616,7 @@ fn main() {
             concats += ";\n";
             let mut c = Concat::new(
                 nzbw,
-                &mut rng,
+                rng,
                 &mut vnum,
                 &mut prior_sets,
                 dynamic_width_i == concat_i,

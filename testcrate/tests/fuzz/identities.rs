@@ -296,12 +296,10 @@ fn identities_inner(
             assert!(uof || x3.msb());
         } else {
             assert!(!uof);
-            if x0.msb() == x1.msb() {
-                if x3.msb() {
-                    // There is a corner case where the sum would overflow through signed
-                    // minimum to signed maximum, except `cin` can push it back.
-                    assert!(!x3.is_imax());
-                }
+            if (x0.msb() == x1.msb()) && x3.msb() {
+                // There is a corner case where the sum would overflow through signed
+                // minimum to signed maximum, except `cin` can push it back.
+                assert!(!x3.is_imax());
             }
         }
     }
@@ -433,7 +431,7 @@ fn identities_inner(
         assert!(min_chars <= string.len());
         if min_chars < string.len() {
             // make sure there are no leading zeros
-            if string.len() != 0 {
+            if !string.is_empty() {
                 assert!(string[0] != b'0');
             }
         }
@@ -528,7 +526,7 @@ macro_rules! edge_cases {
 /// interleaved with each other, so that the chance of false positives is
 /// greatly reduced.
 pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
-    let [mut x0, mut x1, mut x2, x3, x4, x5] = tmp;
+    let [x0, x1, x2, x3, x4, x5] = tmp;
     let bw = x0.bw();
     let mut rng = Xoshiro128StarStar::seed_from_u64(seed + (bw as u64));
 
@@ -547,8 +545,8 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
 
     // random fuzzing
     for _ in 0..iters {
-        fuzz_step(&mut rng, &mut x0, &mut x2);
-        fuzz_step(&mut rng, &mut x1, &mut x2);
+        fuzz_step(&mut rng, x0, x2);
+        fuzz_step(&mut rng, x1, x2);
         let s0 = (rng.next_u32() as usize) % bw;
         let s1 = (rng.next_u32() as usize) % bw;
 

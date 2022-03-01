@@ -5,10 +5,10 @@ use awint::{extawi, inlawi, ExtAwi, InlAwi, SerdeError::*, FP};
 fn string_conversion() {
     let x = "0i1".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 1);
-    assert_eq!((x[..]).to_bool(), false);
+    assert!(!(x[..]).to_bool());
     let x = "0u1".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 1);
-    assert_eq!((x[..]).to_bool(), false);
+    assert!(!(x[..]).to_bool());
     let x = "123i64".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 64);
     assert_eq!((x[..]).to_i16(), 123);

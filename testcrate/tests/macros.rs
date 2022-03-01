@@ -36,7 +36,7 @@ fn construction() {
 macro_rules! failures {
     ($($input:expr, $error:expr);*;) => {
         $(
-            assert_eq!(code_gen(&$input, false, "zero", true, true), Err($error.to_owned()));
+            assert_eq!(code_gen($input, false, "zero", true, true), Err($error.to_owned()));
         )*
     };
 }
@@ -76,7 +76,7 @@ fn macro_failures() {
             can be determined statically by the macro";
     );
     assert_eq!(
-        code_gen(&"..".to_string(), true, "zero", false, false),
+        code_gen("..", true, "zero", false, false),
         Err(
             "there is a only a source concatenation that has no statically or dynamically \
              determinable width"
@@ -84,7 +84,7 @@ fn macro_failures() {
         )
     );
     assert_eq!(
-        code_gen(&"a,..;b,..,c".to_string(), true, "zero", false, false),
+        code_gen("a,..;b,..,c", true, "zero", false, false),
         Err(
             "there is an unbounded filler in the middle of a concatenation, and no concatenation \
              has a statically or dynamically determinable width"
@@ -92,7 +92,7 @@ fn macro_failures() {
         )
     );
     assert_eq!(
-        code_gen(&"a,..;..,b".to_string(), true, "zero", false, false),
+        code_gen("a,..;..,b", true, "zero", false, false),
         Err(
             "there are two concatenations with unbounded fillers aligned opposite each other, and \
              no concatenation has a statically or dynamically determinable width"

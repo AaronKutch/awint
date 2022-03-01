@@ -25,8 +25,8 @@ impl Xoshiro {
         let mut awi = inlawi!(0u128);
         let mut tmp_awi = inlawi!(0u8);
         let tmp = tmp_awi.const_as_mut();
-        for i in 0..seed.len() {
-            tmp.u8_assign(seed[i]);
+        for (i, s) in seed.iter().enumerate() {
+            tmp.u8_assign(*s);
             cc!(tmp; awi[(i * 8)..((i + 1) * 8)]).unwrap();
         }
         Self { state: awi }

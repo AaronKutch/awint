@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use awint::Bits;
 use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
 #[cfg(not(miri))]

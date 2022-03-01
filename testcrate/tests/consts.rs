@@ -104,6 +104,7 @@ macro_rules! test_nonequal_bw {
 /// This test checks that all appropriate functions on `Bits` exist, are const,
 /// and checks `None` return cases.
 #[test]
+#[allow(clippy::reversed_empty_ranges)]
 const fn bits_functions() {
     // these macros also test the corresponding `InlAwi` functions
     let mut awi0 = inlawi_zero!(128);
@@ -130,6 +131,7 @@ const fn bits_functions() {
     assert!(x0.range_and_assign(127..0).is_some());
     assert!(x0.range_and_assign(128..128).is_some());
     assert!(x0.range_and_assign(129..129).is_none());
+    // we want to test this reversed range specifically
     assert!(x0.range_and_assign(129..128).is_none());
     assert!(x0.range_and_assign(0..129).is_none());
 
