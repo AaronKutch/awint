@@ -14,7 +14,6 @@ newline_style = "Unix" # prevents `\r\n` being accidentally introduced
 overflow_delimited_expr = true # preferred
 reorder_impl_items = true # better
 group_imports = "StdExternalCrate" # promotes consistency
-report_fixme = "Always" # preferred
 trailing_semicolon = false # the keyword is explicit enough
 unstable_features = true
 use_field_init_shorthand = true # better

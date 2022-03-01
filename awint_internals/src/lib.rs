@@ -8,6 +8,7 @@
 #![no_std]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
+#![allow(clippy::needless_range_loop)]
 
 mod macros;
 mod serde_common;
