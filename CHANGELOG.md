@@ -2,6 +2,8 @@
 
 ## [0.3.0] - 2022-03-01
 ### Fixes
+- Fixed that string deserialization functions with radix higher than 10 could accept chars that they
+  shouldn't
 - Had to remove `Bits::as_bytes` and `Bits::as_bytes_mut` because they were fundamentally broken on
   big endian architectures. Fixed all affected functions (except `Hash` related ones) so that they
   are actually consistent across architectures.
