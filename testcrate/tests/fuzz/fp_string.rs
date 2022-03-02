@@ -56,13 +56,13 @@ fn fp_string_inner(rng: &mut Xoshiro128StarStar, x: &FP<ExtAwi>) -> Option<()> {
     assert!(min_fraction_chars <= fraction.len());
     if min_integer_chars < integer.len() {
         // make sure there are no leading zeros
-        if integer.len() != 0 {
+        if !integer.is_empty() {
             assert!(integer[0] != b'0');
         }
     }
     if min_fraction_chars < fraction.len() {
         // make sure there are no trailing zeros
-        if fraction.len() != 0 {
+        if !fraction.is_empty() {
             assert!(fraction[fraction.len() - 1] != b'0');
         }
     }

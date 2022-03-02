@@ -20,7 +20,6 @@
 pub mod lowering;
 pub mod mimick;
 pub use mimick::primitive;
-pub mod arena;
 mod op;
 
 pub use op::Op;

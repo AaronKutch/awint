@@ -5,10 +5,10 @@ use awint::{extawi, inlawi, ExtAwi, InlAwi, SerdeError::*, FP};
 fn string_conversion() {
     let x = "0i1".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 1);
-    assert_eq!((x[..]).to_bool(), false);
+    assert!(!(x[..]).to_bool());
     let x = "0u1".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 1);
-    assert_eq!((x[..]).to_bool(), false);
+    assert!(!(x[..]).to_bool());
     let x = "123i64".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 64);
     assert_eq!((x[..]).to_i16(), 123);
@@ -59,6 +59,7 @@ fn string_conversion() {
     assert!(matches!("1i1".parse::<ExtAwi>(), Err(Overflow)));
     assert!(matches!("0xgu8".parse::<ExtAwi>(), Err(InvalidChar)));
     assert!(matches!("0xu8".parse::<ExtAwi>(), Err(Empty)));
+    assert!(matches!("0x:u8".parse::<ExtAwi>(), Err(InvalidChar)));
 }
 
 macro_rules! fmt_test_inner {
@@ -118,6 +119,112 @@ fn fmt_strings() {
     assert_eq!(format!("{}", fpbits), "0.00002_u11f16");
     let fpbits = FP::new(false, inlawi!(11111111111), 16).unwrap();
     assert_eq!(format!("{}", fpbits), "0.03123_u11f16");
+}
+
+#[cfg(not(miri))]
+#[test]
+fn all_hex_byte_combos() {
+    // keep at least 4 digits for in the future if we use SWAR
+    let mut s = [b'0'; 67];
+    let mut awi = inlawi!(0u268);
+    let mut pad0 = inlawi!(0u268);
+    let mut pad1 = inlawi!(0u268);
+    let mut tmp = inlawi!(0u268);
+    for i in 0..s.len() {
+        for b in 0..=u8::MAX {
+            s[s.len() - 1 - i] = b;
+            match b {
+                b'0'..=b'9' => {
+                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                        .unwrap();
+                    tmp.u8_assign(b - b'0');
+                    tmp.shl_assign(i * 4).unwrap();
+                    assert!(awi == tmp);
+                }
+                b'a'..=b'f' => {
+                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                        .unwrap();
+                    tmp.u8_assign(b - b'a' + 10);
+                    tmp.shl_assign(i * 4).unwrap();
+                    assert!(awi == tmp);
+                }
+                b'A'..=b'F' => {
+                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                        .unwrap();
+                    tmp.u8_assign(b - b'A' + 10);
+                    tmp.shl_assign(i * 4).unwrap();
+                    assert!(awi == tmp);
+                }
+                b'_' => {
+                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                        .unwrap();
+                    assert!(awi.is_zero());
+                }
+                _ => {
+                    assert!(awi
+                        .bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                        .is_err());
+                }
+            }
+            // set back
+            s[s.len() - 1 - i] = b'0';
+        }
+    }
+}
+
+#[cfg(not(miri))]
+#[test]
+fn all_single_byte_combos() {
+    let mut s = [b'0'; 1];
+    let mut awi = inlawi!(0u8);
+    let mut pad0 = inlawi!(0u8);
+    let mut pad1 = inlawi!(0u8);
+    let mut tmp = inlawi!(0u8);
+    for r in 2..=36 {
+        for b in 0..=u8::MAX {
+            s[0] = b;
+            let res = awi.bytes_radix_assign(None, &s, r, &mut pad0, &mut pad1);
+            match b {
+                b'0'..=b'9' => {
+                    let v = b - b'0';
+                    if v < r {
+                        res.unwrap();
+                        tmp.u8_assign(v);
+                        assert!(awi == tmp);
+                    } else {
+                        assert!(res.is_err());
+                    }
+                }
+                b'a'..=b'z' => {
+                    let v = b - b'a' + 10;
+                    if v < r {
+                        res.unwrap();
+                        tmp.u8_assign(v);
+                        assert!(awi == tmp);
+                    } else {
+                        assert!(res.is_err());
+                    }
+                }
+                b'A'..=b'Z' => {
+                    let v = b - b'A' + 10;
+                    if v < r {
+                        res.unwrap();
+                        tmp.u8_assign(v);
+                        assert!(awi == tmp);
+                    } else {
+                        assert!(res.is_err());
+                    }
+                }
+                b'_' => {
+                    res.unwrap();
+                    assert!(awi.is_zero());
+                }
+                _ => {
+                    assert!(res.is_err());
+                }
+            }
+        }
+    }
 }
 
 // TODO serde conversion

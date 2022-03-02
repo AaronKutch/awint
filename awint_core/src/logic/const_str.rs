@@ -17,7 +17,7 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
         if b == b'_' {
             continue;
         }
-        let in_decimal_range = b'0' <= b && b < b'0'.wrapping_add(radix);
+        let in_decimal_range = b'0' <= b && b < b'0'.wrapping_add(if radix < 10 {radix} else {10});
         let in_lower_range = (radix > 10)
             && (b'a' <= b)
             && (b < b'a'.wrapping_add(radix).wrapping_sub(10));

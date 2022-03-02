@@ -107,4 +107,18 @@ jobs:
       - name: Run `cargo clippy`
         # note: run clippy on no_alloc_test manually
         run: |
-          cargo clippy -- -D clippy::all
+          cargo clippy --all --all-targets --all-features -- -D clippy::all
+
+  # makes sure the tests work on 32 bit and 64 bit big endian targets
+  cross-compile-big-endian:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: cross-compile-mips
+      # FIXME
+      #cross test --target mips-unknown-linux-gnu --all-features
+      run: |
+        rustup set profile minimal
+        rustup default nightly
+        cargo install cross
+        cross test --target mips64-unknown-linux-gnuabi64 --all-features
