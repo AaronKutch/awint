@@ -29,6 +29,8 @@ use core::{
 use awint_internals::*;
 use const_fn::const_fn;
 
+const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
+
 /// A reference to the bits in an `InlAwi`, `ExtAwi`, or other backing
 /// construct. This allows the same functions that operate on a dynamic `ExtAwi`
 /// at runtime to also operate on an `InlAwi` at compile time.
@@ -46,6 +48,10 @@ use const_fn::const_fn;
 /// have been left unchanged if `None` is returned.
 ///
 /// # Portability
+///
+/// The [core::hash::Hash] implementation is not portable across platforms (this
+/// is because of technical problems, and the standard library docs say it is
+/// not intended to be portable anyway).
 ///
 /// There are many functions that depend on `usize` and `NonZeroUsize`. In cases
 /// where the `usize` describes the bitwidth, a bit shift, or a bit position,
@@ -71,17 +77,16 @@ use const_fn::const_fn;
 /// the zeroeth bit or a given bit position like [Bits::short_cin_mul],
 /// [Bits::short_udivide_assign], or [Bits::usize_or_assign], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
-/// `0..u16::MAX`.
+/// `0..=u16::MAX`.
 ///
-/// The `Bits::as_bytes` function and related functions, the serialization impls
-/// enabled by `serde_support`, the strings produced by the `const`
+/// The `Bits::from_u8_slice` function and related functions, the serialization
+/// impls enabled by `serde_support`, the strings produced by the `const`
 /// serialization functions, and the serialization free functions in the
 /// `awint_ext` crate are all portable and should be used when sending
 /// representations of `Bits` between architectures.
 ///
-/// The `Hash` impl and the `rand_assign_using` function enabled by
-/// `rand_support` use a deterministic byte oriented implementation to avoid
-/// portability issues.
+/// The `rand_assign_using` function enabled by `rand_support` use a
+/// deterministic byte oriented implementation to avoid portability issues.
 #[repr(transparent)]
 pub struct Bits {
     /// # Raw Invariants
@@ -425,20 +430,27 @@ impl<'a> Bits {
     }
 
     /// Returns a reference to the underlying bits of `self`, including unused
-    /// bits (which occur if `self.bw()` is not a multiple of 8).
+    /// bits (which occur if `self.bw()` is not a multiple of `usize::BITS`).
     ///
     /// # Note
     ///
     /// If the `Bits` has unused bits, those bits will always be set to zero,
     /// even if the `Bits` are intended to be a sign extended integer.
+    ///
+    /// # Portability
+    ///
+    /// This function is highly non-portable across architectures, see the
+    /// source code of [Bits::rand_assign_using] for how to handle this
+    #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn as_bytes(&'a self) -> &'a [u8] {
-        // This will result in an 8 bit digit analog of unused bits
-        let size_in_u8 = if (self.bw() % 8) == 0 {
-            self.bw() / 8
-        } else {
-            (self.bw() / 8) + 1
-        };
+    pub const fn as_bytes_full_width_nonportable(&'a self) -> &'a [u8] {
+        // Previously, this function used to be called "portable" because it was
+        // intended as a way to get a slice view of `Bits` independent of `usize` width.
+        // It worked with unused bits by making the slice length such that the unused
+        // bits were only in the last byte, which at first glance is portable. However,
+        // I completely forgot about big-endian systems. Not taking a full width of the
+        // byte slice can result in significant bytes being completely disregarded.
+        let size_in_u8 = self.len() * BYTE_RATIO;
         // Safety: Adding on to what is satisfied in `as_slice`, [usize] can always be
         // divided into [u8] and the correct length is calculated above. If the bitwidth
         // is not a multiple of eight, there must be at least enough unused bits to form
@@ -448,7 +460,8 @@ impl<'a> Bits {
     }
 
     /// Returns a mutable reference to the underlying bits of `self`, including
-    /// unused bits (which occur if `self.bw()` is not a multiple of 8).
+    /// unused bits (which occur if `self.bw()` is not a multiple of
+    /// `usize::BITS`).
     ///
     /// # Note
     ///
@@ -456,15 +469,97 @@ impl<'a> Bits {
     /// are used by another function that expects the standard `Bits` invariants
     /// to be upheld. Set unused bits will not cause Rust undefined behavior,
     /// but may cause incorrect arithmetical results or panics.
+    ///
+    /// # Portability
+    ///
+    /// This function is highly non-portable across architectures, see the
+    /// source code of [Bits::rand_assign_using] for how to handle this
+    #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn as_mut_bytes(&'a mut self) -> &'a mut [u8] {
-        let size_in_u8 = if (self.bw() % 8) == 0 {
-            self.bw() / 8
-        } else {
-            (self.bw() / 8) + 1
-        };
+    pub const fn as_mut_bytes_full_width_nonportable(&'a mut self) -> &'a mut [u8] {
+        let size_in_u8 = self.len() * BYTE_RATIO;
         // Safety: Same reasoning as `as_bytes`
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
+    }
+
+    /// Assigns the bits of `buf` to `self`. Any bits beyond `self.bw()` are
+    /// ignored. This function is portable across target architecture pointer
+    /// sizes and endianness.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn u8_slice_assign(&'a mut self, buf: &[u8]) {
+        let self_byte_width = self.len() * BYTE_RATIO;
+        let min_width = if self_byte_width < buf.len() {
+            self_byte_width
+        } else {
+            buf.len()
+        };
+        // start of digits that will not be completely overwritten
+        let start = min_width / BYTE_RATIO;
+        unsafe {
+            // zero out first.
+            self.digit_set(false, start..self.len(), false);
+            // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
+            // for writes at least up to `min_width`, they are aligned, and are
+            // nonoverlapping because `self` is a mutable reference.
+            ptr::copy_nonoverlapping(
+                buf.as_ptr(),
+                self.as_mut_bytes_full_width_nonportable().as_mut_ptr(),
+                min_width,
+            );
+            // `start` can be `self.len()`, so cap it
+            let cap = if start >= self.len() {
+                self.len()
+            } else {
+                start + 1
+            };
+            const_for!(i in {0..cap} {
+                // correct for big endian, otherwise no-op
+                *self.get_unchecked_mut(i) = usize::from_le(self.get_unchecked(i));
+            });
+        }
+        self.clear_unused_bits();
+    }
+
+    /// Assigns the bits of `self` to `buf`. Any corresponding bits beyond
+    /// `self.bw()` are zeroed. This function is portable across target
+    /// architecture pointer sizes and endianness.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn to_u8_slice(&'a self, buf: &mut [u8]) {
+        #[cfg(target_endian = "little")]
+        {
+            let self_byte_width = self.len() * BYTE_RATIO;
+            let min_width = if self_byte_width < buf.len() {
+                self_byte_width
+            } else {
+                buf.len()
+            };
+            unsafe {
+                // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
+                // for writes at least up to `min_width`, they are aligned, and are
+                // nonoverlapping because `buf` is a mutable reference.
+                ptr::copy_nonoverlapping(
+                    self.as_bytes_full_width_nonportable().as_ptr(),
+                    buf.as_mut_ptr(),
+                    min_width,
+                );
+                // zero remaining bytes.
+                // Safety: `min_width` cannot be more than `buf.len()`
+                ptr::write_bytes(buf.as_mut_ptr().add(min_width), 0, buf.len() - min_width);
+            }
+        }
+        #[cfg(target_endian = "big")]
+        {
+            const_for!(i in {0..self.len()} {
+                let x = usize::from_le(self.as_slice()[i]);
+                let start = i * BYTE_RATIO;
+                let end = if (start + BYTE_RATIO) > buf.len() {buf.len()} else {start + BYTE_RATIO};
+                let mut s = 0;
+                const_for!(j in {start..end} {
+                    buf[j] = (x >> s) as u8;
+                    s += 8;
+                });
+            });
+        }
     }
 
     /// # Safety
@@ -621,8 +716,9 @@ impl fmt::Pointer for Bits {
 }
 
 impl Hash for Bits {
+    /// note: this function is not portable across platforms
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.bw().hash(state);
-        self.as_bytes().hash(state);
+        self.as_slice().hash(state);
     }
 }

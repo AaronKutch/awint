@@ -48,6 +48,7 @@ fn identities_inner(
     x3: &mut Bits,
     x4: &mut Bits,
     x5: &mut Bits,
+    bytes: &mut [u8],
     s0: usize,
     s1: usize,
 ) -> Option<()> {
@@ -58,10 +59,29 @@ fn identities_inner(
     let bw = x0.bw();
 
     // bytes check
-    for b in x2.as_mut_bytes().iter_mut().zip(x0.as_bytes()) {
+    for b in x2
+        .as_mut_bytes_full_width_nonportable()
+        .iter_mut()
+        .zip(x0.as_bytes_full_width_nonportable())
+    {
         *b.0 = *b.1;
     }
+    x2.clear_unused_bits();
     eq(x0, x2);
+
+    // test slices larger and smaller than `x0`
+    let inx = (rng.next_u32() as usize) % ((2 * (bw / 8)) + 1);
+    // fill so we can if the later `to_u8_slice` uses bits it should not, and if the
+    // later `u8_slice_assign` does not clear bits that it should
+    if (rng.next_u32() & 1) != 0 {
+        bytes.fill(0xff);
+    }
+    x2.u8_slice_assign(&bytes[..inx]);
+    x0.to_u8_slice(&mut bytes[..inx]);
+    x3.copy_assign(x0)?;
+    x2.u8_slice_assign(&bytes[..inx]);
+    x3.range_and_assign(0..(cmp::min(inx * 8, bw))).unwrap();
+    eq(x3, x2);
 
     // identity and inversion
     x2.copy_assign(x0)?;
@@ -529,6 +549,8 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
     let [x0, x1, x2, x3, x4, x5] = tmp;
     let bw = x0.bw();
     let mut rng = Xoshiro128StarStar::seed_from_u64(seed + (bw as u64));
+    let mut bytes = vec![0u8; (2 * (bw / 8)) + 1];
+    let bytes = &mut bytes;
 
     // edge case fuzzing
     #[cfg(not(debug_assertions))]
@@ -538,7 +560,7 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
             edge_cases!(fl, x1, x3, {
                 let s0 = (rng.next_u32() as usize) % bw;
                 let s1 = (rng.next_u32() as usize) % bw;
-                identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
+                identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, bytes, s0, s1)?;
             })
         })
     }
@@ -550,7 +572,7 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
         let s0 = (rng.next_u32() as usize) % bw;
         let s1 = (rng.next_u32() as usize) % bw;
 
-        identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
+        identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, bytes, s0, s1)?;
 
         // these are handled here because of the requirement that x0 and x1 are mutable
 

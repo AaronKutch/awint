@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0] - 2022-03-01
+### Fixes
+- Had to remove `Bits::as_bytes` and `Bits::as_bytes_mut` because they were fundamentally broken on
+  big endian architectures. Fixed all affected functions (except `Hash` related ones) so that they
+  are actually consistent across architectures.
+
+### Additions
+- Added the portable `Bits::u8_slice_assign` and `Bits::to_u8_slice` functions.
+- The hidden functions `Bits::as_bytes_full_width_nonportable` and its mutable counterpart were
+  added for situations where direct byte slice references are needed, but note that these need a lot
+  of special handling to make them portable.
+
 ## [0.2.0] - 2021-08-20
 ### Fixes
 - Fixed that version 0.1 was broken by Rustc 1.59.0-nightly.

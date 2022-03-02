@@ -1,3 +1,5 @@
+use awint_internals::*;
+
 use crate::Bits;
 
 /// `rand_support` functions
@@ -24,7 +26,24 @@ impl Bits {
     where
         R: rand_core::RngCore,
     {
-        let result = rng.try_fill_bytes(self.as_mut_bytes());
+        // We really want to use `try_fill_bytes` without an intermediate buffer.
+
+        // Here we make it portable with respect to length by emulating a byte sized
+        // unused bits scheme. On big endian systems this will set some unused bytes,
+        // but this will be fixed below.
+        let size_in_u8 = if (self.bw() % 8) == 0 {
+            self.bw() / 8
+        } else {
+            (self.bw() / 8) + 1
+        };
+        let bytes = &mut self.as_mut_bytes_full_width_nonportable()[..size_in_u8];
+        let result = rng.try_fill_bytes(bytes);
+        // this is a no-op on little endian, but on big endian this fixes byte order in
+        // regular digits and rotates out unused bytes
+        const_for!(i in {0..self.len()} {
+            self.as_mut_slice()[i] = usize::from_le(self.as_mut_slice()[i]);
+        });
+        // clean up unused bits in last byte
         self.clear_unused_bits();
         result
     }
