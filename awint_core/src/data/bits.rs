@@ -550,7 +550,7 @@ impl<'a> Bits {
         #[cfg(target_endian = "big")]
         {
             const_for!(i in {0..self.len()} {
-                let x = usize::from_le(self.as_slice()[i]);
+                let x = self.as_slice()[i];
                 let start = i * BYTE_RATIO;
                 let end = if (start + BYTE_RATIO) > buf.len() {buf.len()} else {start + BYTE_RATIO};
                 let mut s = 0;
