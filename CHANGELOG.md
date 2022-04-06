@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.1] - 2022-04-06
+### Fixes
+- Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with
+  `-Zmiri-strict-provenance` to prevent issues like this from being introduced in the future.
+
 ## [0.3.0] - 2022-03-01
 ### Fixes
 - Fixed that string deserialization functions with radix higher than 10 could accept chars that they
