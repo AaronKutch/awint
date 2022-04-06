@@ -4,6 +4,8 @@
 ### Fixes
 - Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with
   `-Zmiri-strict-provenance` to prevent issues like this from being introduced in the future.
+- Fixed the macros in cases where the build architecture pointer size and target architecture
+  pointer size is different
 
 ## [0.3.0] - 2022-03-01
 ### Fixes

@@ -117,10 +117,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: cross-compile-mips
-      # FIXME
-      #cross test --target mips-unknown-linux-gnu --all-features
       run: |
         rustup set profile minimal
         rustup default nightly
         cargo install cross
         cross test --target mips64-unknown-linux-gnuabi64 --all-features
+        cross test --target mips-unknown-linux-gnu --all-features

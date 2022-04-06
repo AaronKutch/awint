@@ -72,10 +72,10 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     #[doc(hidden)]
-    pub fn unstable_from_slice(raw: &[usize]) -> Self {
+    pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
         Self::new(
             Op::Literal(awint_ext::ExtAwi::from_bits(
-                awint_core::InlAwi::<BW, LEN>::unstable_from_slice(raw).const_as_ref(),
+                awint_core::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
             )),
             vec![],
         )

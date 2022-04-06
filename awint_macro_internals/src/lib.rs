@@ -178,18 +178,18 @@ pub fn code_gen(
                 // Return one constant
                 if inlawi {
                     return Ok(format!(
-                        "InlAwi::<{}, {}>::unstable_from_slice(&{:?})",
+                        "InlAwi::<{}, {}>::unstable_from_u8_slice(&{:?})",
                         lit.bw(),
                         lit.raw_len(),
-                        lit[..].as_raw_slice(),
+                        to_u8_vec(lit),
                     ))
                 } else {
                     return Ok(format!(
                         "ExtAwi::from_bits(InlAwi::<{}, \
-                         {}>::unstable_from_slice(&{:?}).const_as_ref())",
+                         {}>::unstable_from_u8_slice(&{:?}).const_as_ref())",
                         lit.bw(),
                         lit.raw_len(),
-                        lit[..].as_raw_slice(),
+                        to_u8_vec(lit),
                     ))
                 }
             }

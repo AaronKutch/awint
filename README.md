@@ -33,10 +33,6 @@ Note: By default, "const_support" and "std" are turned on.
 
 ## Planned Features
 
-Note: it is now known that the macros cause assertion failures when the macro evaluation
-architecture pointer width and runtime architecture pointer widths are different. In the next few
-months there will be a rewrite of the macro code to fix this.
-
 These are currently unimplemented because of other developments and improvements that are being
 prioritized. Please open an issue or PR if you would like these implemented faster.
 

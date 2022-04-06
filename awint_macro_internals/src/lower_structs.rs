@@ -5,9 +5,19 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
+use awint_core::Bits;
 use awint_ext::ExtAwi;
 
 use crate::*;
+
+/// Returns `bits` in `Vec<u8>` form, truncated
+pub(crate) fn to_u8_vec(bits: &Bits) -> Vec<u8> {
+    let sig_bits = bits.bw() - bits.lz();
+    let len = (sig_bits / 8) + (((sig_bits % 8) != 0) as usize);
+    let mut buf = vec![0u8; len];
+    bits.to_u8_slice(&mut buf);
+    buf
+}
 
 /// Exists for ordering `ExtAwi`s first by bitwidth, then by unsigned value
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
