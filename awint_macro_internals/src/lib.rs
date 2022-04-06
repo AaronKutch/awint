@@ -178,11 +178,11 @@ pub fn code_gen(
             if comp.range.static_width().is_some() {
                 // Return one constant
                 if inlawi {
-                    return Ok(unstable_native_inlawi(&lit))
+                    return Ok(unstable_native_inlawi(lit))
                 } else {
                     return Ok(format!(
                         "ExtAwi::from_bits({}.const_as_ref())",
-                        unstable_native_inlawi(&lit)
+                        unstable_native_inlawi(lit)
                     ))
                 }
             }

@@ -109,9 +109,9 @@ pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
 ///
 /// # Panics
 ///
-/// If `raw.len() != LEN`, the bitwidth digit is zero, `BW == 0`, `LEN < 2`, or
-/// the bitwidth is outside the range `(((LEN - 2)*BITS) + 1)..=((LEN -
-/// 1)*BITS)`
+/// If `raw.len() != LEN`, the bitwidth digit is not equal to `BW`, `BW == 0`,
+/// `LEN < 2`, or the bitwidth is outside the range `(((LEN - 2)*BITS) +
+/// 1)..=((LEN - 1)*BITS)`
 pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
     assert_inlawi_invariants::<BW, LEN>();
     if raw.len() != LEN {

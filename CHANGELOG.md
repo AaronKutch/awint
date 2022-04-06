@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.0] - 2022-04-06
+## [0.4.0] - 2022-04-07
 ### Fixes
 - Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with
   `-Zmiri-strict-provenance` to prevent issues like this from being introduced in the future.
