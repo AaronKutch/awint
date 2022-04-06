@@ -18,7 +18,7 @@ fn lut_and_field() {
         for pow in 1..pow_max {
             let mul = 1 << pow;
             let mut awi_lut = ExtAwi::zero(bw(out_bw * mul));
-            awi_lut[..].rand_assign_using(&mut rng).unwrap();
+            awi_lut.rand_assign_using(&mut rng).unwrap();
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let out = awi_out.const_as_mut();
             let lut = awi_lut.const_as_ref();
@@ -91,7 +91,7 @@ fn funnel() {
         let mut awi_rhs = ExtAwi::zero(bw(2 * awi_lhs.bw()));
         let mut awi_alt0 = ExtAwi::zero(bw(awi_rhs.bw()));
         let mut awi_alt1 = ExtAwi::zero(bw(awi_lhs.bw()));
-        awi_rhs[..].rand_assign_using(&mut rng).unwrap();
+        awi_rhs.rand_assign_using(&mut rng).unwrap();
         let shift = awi_shift.const_as_mut();
         let lhs = awi_lhs.const_as_mut();
         let rhs = awi_rhs.const_as_mut();
@@ -114,21 +114,18 @@ fn awint_internals_test() {
     let mut lhs = inlawi_zero!(128);
     let mut rhs = inlawi_zero!(128);
     let mut add = inlawi_zero!(128);
-    lhs[..].rand_assign_using(&mut rng).unwrap();
-    rhs[..].rand_assign_using(&mut rng).unwrap();
-    add[..].rand_assign_using(&mut rng).unwrap();
-    let (lo, hi) = awint_internals::widening_mul_add_u128(
-        lhs[..].to_u128(),
-        rhs[..].to_u128(),
-        add[..].to_u128(),
-    );
+    lhs.rand_assign_using(&mut rng).unwrap();
+    rhs.rand_assign_using(&mut rng).unwrap();
+    add.rand_assign_using(&mut rng).unwrap();
+    let (lo, hi) =
+        awint_internals::widening_mul_add_u128(lhs.to_u128(), rhs.to_u128(), add.to_u128());
     let mut tmp0 = extawi!(0u128);
     let mut tmp1 = extawi!(0u128);
-    tmp0[..].u128_assign(lo);
-    tmp1[..].u128_assign(hi);
+    tmp0.u128_assign(lo);
+    tmp1.u128_assign(hi);
     let lhs = inlawi_zero!(..,lhs;..256).unwrap();
     let rhs = inlawi_zero!(..,rhs;..256).unwrap();
     let mut add = inlawi_zero!(..,add;..256).unwrap();
-    add[..].mul_add_assign(&lhs[..], &rhs[..]).unwrap();
+    add.mul_add_assign(&lhs, &rhs).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
 }

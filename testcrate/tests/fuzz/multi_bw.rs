@@ -153,7 +153,7 @@ fn multi_bw_inner(
                 } else {
                     x1bw1.sign_resize_assign(x0bw0);
                 }
-                eq(x1bw1, &awi[..]);
+                eq(x1bw1, &awi);
             }
             Err(e) => {
                 // this should be the only error we will encounter

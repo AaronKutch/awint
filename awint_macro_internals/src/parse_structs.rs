@@ -294,7 +294,7 @@ impl Component {
                 // static ranges on literals have been verified, attempt to truncate
                 if let Some(x) = self.range.end.clone().and_then(|x| x.static_val()) {
                     let mut tmp = ExtAwi::zero(NonZeroUsize::new(x).unwrap());
-                    tmp[..].zero_resize_assign(&lit[..]);
+                    tmp.zero_resize_assign(lit);
                     *lit = tmp;
                 }
                 // Note: I only truncate the start when the end is a plain static value, because
@@ -306,7 +306,7 @@ impl Component {
                         if let Some(x) = self.range.start.clone().and_then(|x| x.static_val()) {
                             let w = lit.bw() - x;
                             let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
-                            tmp[..].field(0, &lit[..], x, w);
+                            tmp.field(0, lit, x, w);
                             *lit = tmp;
                             self.range.start.as_mut().unwrap().x = 0;
                             self.range.end.as_mut().unwrap().x -= x as i128;

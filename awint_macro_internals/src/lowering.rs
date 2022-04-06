@@ -33,6 +33,38 @@
 // TODO
 // Known issues:
 //
+// Previously, we could not introduce the binding step into the macros, because
+// we could not make two usecases work at the same time:
+//
+// ```
+// // `a` is bound outside of the macro
+// let mut a = inlawi!(0xau4);
+// { // inside macro
+//     let tmp_bind = a.const_as_mut();
+//     // ...
+// }
+// // use a for something later (if we did not call `const_as_mut`,
+// // it would fail because `a` would be moved)
+// ```
+//
+// ```
+// // the macro is called directly with the constructor
+// {
+//     // error[E0716]: temporary value dropped while borrowed
+//     let tmp_bind = inlawi!(0xau4).const_as_mut();
+//     // ...
+// }
+// ```
+//
+// I discovered that for whatever reason, some builtin traits such as `AsRef`
+// and `AsMut` avoid E0716 (be sure to explicitly include the reference type to
+// reduce reference nesting if the bound part is external stuff that already has
+// a layer of reference):
+// ```
+// let __awint_bind_0: &Bits = &inlawi!(0xau4);
+// let __awint_bind_1: &mut Bits = &mut inlawi!(0xau4);
+// ```
+//
 // Make default initializations be postfixed with ':' to reduce macro
 // duplication. The only thing this will prevent is certain complicated
 // expressions.

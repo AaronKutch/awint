@@ -64,7 +64,7 @@ impl PartialEq for Bits {
         let mut dag = Dag::new(vec![eq.state()]);
         dag.eval();
         if let Op::Literal(ref b) = dag[dag.leaves()[0]].op {
-            b[..].to_bool()
+            b.to_bool()
         } else {
             false
         }

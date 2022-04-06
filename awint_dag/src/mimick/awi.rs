@@ -115,7 +115,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 #[cfg(feature = "special_traits")]
 impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
     fn eq(&self, other: &Self) -> bool {
-        self[..].eq(&other[..])
+        self.const_as_ref().eq(other.const_as_ref())
     }
 }
 
@@ -265,7 +265,7 @@ impl ExtAwi {
 #[cfg(feature = "special_traits")]
 impl PartialEq for ExtAwi {
     fn eq(&self, other: &Self) -> bool {
-        self[..].eq(&other[..])
+        self.const_as_ref().eq(other.const_as_ref())
     }
 }
 

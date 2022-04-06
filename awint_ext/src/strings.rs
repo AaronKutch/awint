@@ -40,7 +40,7 @@ impl ExtAwi {
         ];
         let mut pad = ExtAwi::zero(bits.nzbw());
         // note: do not unwrap in case of exhaustion
-        bits.to_bytes_radix(signed, &mut dst[..], radix, upper, pad.const_as_mut())?;
+        bits.to_bytes_radix(signed, &mut dst, radix, upper, pad.const_as_mut())?;
         let len = dst.len();
         for i in 0..len {
             if dst[i] != b'0' {

@@ -212,8 +212,8 @@ pub(crate) fn parse_concatenation(
                 let w1 = components[i].range.static_width().unwrap();
                 let total = w0.checked_add(w1).unwrap();
                 let mut combined = ExtAwi::zero(NonZeroUsize::new(total).unwrap());
-                combined[..].zero_resize_assign(&lit0[..]);
-                combined[..].field(w0, &lit1[..], 0, w1).unwrap();
+                combined.zero_resize_assign(&lit0);
+                combined.field(w0, &lit1, 0, w1).unwrap();
                 components[i - 1].component_type = Literal(combined);
                 components[i - 1].range = Usbr::new_static(0, total);
                 components.remove(i);

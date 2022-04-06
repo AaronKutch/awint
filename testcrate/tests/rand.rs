@@ -92,8 +92,8 @@ impl Xoshiro {
 fn rand_example() {
     let mut rng0 = Xoshiro::from_seed([1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0]);
     let mut rng1 = Xoshiro128StarStar::from_seed([1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0]);
-    assert_eq!(rng0.next_u32()[..].to_u32(), rng1.next_u32());
-    assert_eq!(rng0.next_u32()[..].to_u32(), rng1.next_u32());
-    assert_eq!(rng0.next_u32()[..].to_u32(), rng1.next_u32());
-    assert_eq!(rng0.next_u32()[..].to_u32(), rng1.next_u32());
+    assert_eq!(rng0.next_u32().to_u32(), rng1.next_u32());
+    assert_eq!(rng0.next_u32().to_u32(), rng1.next_u32());
+    assert_eq!(rng0.next_u32().to_u32(), rng1.next_u32());
+    assert_eq!(rng0.next_u32().to_u32(), rng1.next_u32());
 }
