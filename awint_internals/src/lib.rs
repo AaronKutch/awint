@@ -76,7 +76,7 @@ pub const fn regular_digits(bw: NonZeroUsize) -> usize {
 
 /// Returns `regular_digits + 1` to account for the bitwidth digit
 #[inline]
-pub fn raw_digits(bw: usize) -> usize {
+pub const fn raw_digits(bw: usize) -> usize {
     digits_u(bw)
         .wrapping_add((extra_u(bw) != 0) as usize)
         .wrapping_add(1)

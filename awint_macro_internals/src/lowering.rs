@@ -149,12 +149,10 @@ pub(crate) fn lower(
     let mut constants = String::new();
     for (id, lit) in into_iter_sorted(ord_literals).enumerate() {
         constants += &format!(
-            "let {}_{} = InlAwi::<{}, {}>::unstable_from_u8_slice(&{:?});\n",
+            "let {}_{} = {};\n",
             CONSTANT,
             id,
-            lit.0.bw(),
-            lit.0.raw_len(),
-            to_u8_vec(&lit.0),
+            unstable_native_inlawi(&lit.0),
         );
         literal_to_id.insert(lit.0, id);
     }
@@ -312,11 +310,11 @@ pub(crate) fn lower(
 
     let mut constructing = if return_source {
         if inlawi {
-            let bw = total_bw.unwrap();
-            let raw_len = ExtAwi::zero(bw).raw_len();
             format!(
-                "let mut {} = InlAwi::<{}, {}>::{}();\n",
-                AWI, bw, raw_len, construct_fn
+                "let mut {} = {}::{}();\n",
+                AWI,
+                unstable_native_inlawi_ty(total_bw.unwrap().get() as u128),
+                construct_fn
             )
         } else {
             // even if the bitwidth is known statically, we return `ExtAwi` from `extawi!`
@@ -330,10 +328,11 @@ pub(crate) fn lower(
     } else {
         // still need a temporary, `AWI` is not actually returned
         if let Some(bw) = total_bw {
-            let raw_len = ExtAwi::zero(bw).raw_len();
             format!(
-                "let mut {} = InlAwi::<{}, {}>::{}();\n",
-                AWI, bw, raw_len, construct_fn
+                "let mut {} = {}::{}();\n",
+                AWI,
+                unstable_native_inlawi_ty(bw.get() as u128),
+                construct_fn
             )
         } else {
             format!(

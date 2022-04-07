@@ -12,7 +12,7 @@ impl Bits {
     ///
     /// ```
     /// // Example using the `rand_xoshiro` crate.
-    /// use awint::{InlAwi, inlawi, inlawi_zero};
+    /// use awint::{Bits, InlAwi, inlawi, inlawi_zero};
     /// use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
     ///
     /// let mut rng = Xoshiro128StarStar::seed_from_u64(0);

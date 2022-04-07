@@ -1,4 +1,4 @@
-use awint::{extawi, inlawi, ExtAwi, InlAwi, SerdeError::*, FP};
+use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi, SerdeError::*, FP};
 
 // non-const serialization tests
 #[test]

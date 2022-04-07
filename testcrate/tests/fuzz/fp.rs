@@ -130,7 +130,9 @@ fn rand_bw(rng: &mut Xoshiro128StarStar) -> NonZeroUsize {
 }
 
 fn rand_fp(rng: &mut Xoshiro128StarStar) -> isize {
-    (rng.next_u32() as isize) % MAX_FP
+    // tricky bug: if we cast directly to an `isize`, it would always be positive on
+    // platforms with an `isize` larger than 32 bits.
+    (rng.next_u32() as i32 as isize) % MAX_FP
 }
 
 /// For testing operations with multiple bitwidths
@@ -158,7 +160,7 @@ pub fn fp_identities(seed: u64) -> Option<()> {
     let mut x3bw1 = x0bw1.clone();
     //let mut x1bw2 = FP::new(s2, ExtAwi::zero(bw2), fp2).unwrap();
 
-    let mut pad0 = ExtAwi::zero(bw((MAX_FP as usize) * 2));
+    let mut pad0 = ExtAwi::zero(bw((MAX_FP as usize) * 3));
     //let mut pad1 = pad0.clone();
     //let mut pad2 = pad0.clone();
 

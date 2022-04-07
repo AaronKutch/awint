@@ -1,4 +1,4 @@
-use awint::{inlawi, inlawi_ty, InlAwi};
+use awint::{inlawi, inlawi_ty, Bits, InlAwi};
 
 #[test]
 fn serde() {

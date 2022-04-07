@@ -1,11 +1,16 @@
 # Changelog
 
-## [0.3.1] - 2022-04-06
+## [0.4.0] - 2022-04-06
 ### Fixes
 - Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with
   `-Zmiri-strict-provenance` to prevent issues like this from being introduced in the future.
 - Fixed the macros in cases where the build architecture pointer size and target architecture
-  pointer size is different
+  pointer size is different. The CI successfully runs the full test suite on
+  `mips-unknown-linux-gnu` which is a 32 bit big endian architecture.
+
+### Changes
+- A few hidden functions were added and removed, and you may need to import `Bits` in more cases
+  because of the changes to macros.
 
 ## [0.3.0] - 2022-03-01
 ### Fixes
