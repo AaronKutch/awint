@@ -20,7 +20,7 @@ impl Serialize for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{ExtAwi, inlawi, InlAwi};
+    /// use awint::{Bits, ExtAwi, inlawi, InlAwi};
     /// use ron::to_string;
     ///
     /// let awi = ExtAwi::from(inlawi!(0xfedcba9876543210u100));
@@ -177,7 +177,7 @@ impl<'de> Deserialize<'de> for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{ExtAwi, InlAwi, inlawi, inlawi_ty};
+    /// use awint::{Bits, ExtAwi, InlAwi, inlawi, inlawi_ty};
     /// use ron::from_str;
     ///
     /// let awi0 = ExtAwi::from(inlawi!(0xfedcba9876543210u100));

@@ -313,7 +313,7 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::{extawi, inlawi, ExtAwi, InlAwi};
+    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
     /// let mut input = inlawi!(0x4321u16);
     /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit

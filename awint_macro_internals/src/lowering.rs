@@ -149,12 +149,10 @@ pub(crate) fn lower(
     let mut constants = String::new();
     for (id, lit) in into_iter_sorted(ord_literals).enumerate() {
         constants += &format!(
-            "let {}_{} = InlAwi::<{}, {}>::unstable_from_u8_slice(&{:?});\n",
+            "let {}_{} = {};\n",
             CONSTANT,
             id,
-            lit.0.bw(),
-            lit.0.raw_len(),
-            to_u8_vec(&lit.0),
+            unstable_native_inlawi(&lit.0),
         );
         literal_to_id.insert(lit.0, id);
     }
