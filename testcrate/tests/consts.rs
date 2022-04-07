@@ -58,17 +58,19 @@ const fn consts() {
     let mut z0 = inlawi!(0u16);
     let r0 = 0;
     let r1 = 12;
-
+dbg!();
     cc!(
         y3, y2[r0..r1], y1, y0;
         z2, z1, z0;
         ..48;
     )
     .unwrap();
+    dbg!();
 
     eq(z2.const_as_ref(), inlawi!(0xba98u16).const_as_ref());
     eq(z1.const_as_ref(), inlawi!(0x7654u16).const_as_ref());
     eq(z0.const_as_ref(), inlawi!(0x3210u16).const_as_ref());
+    panic!();
 }
 
 #[test]
