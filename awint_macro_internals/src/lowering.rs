@@ -33,6 +33,38 @@
 // TODO
 // Known issues:
 //
+// Previously, we could not introduce the binding step into the macros, because
+// we could not make two usecases work at the same time:
+//
+// ```
+// // `a` is bound outside of the macro
+// let mut a = inlawi!(0xau4);
+// { // inside macro
+//     let tmp_bind = a.const_as_mut();
+//     // ...
+// }
+// // use a for something later (if we did not call `const_as_mut`,
+// // it would fail because `a` would be moved)
+// ```
+//
+// ```
+// // the macro is called directly with the constructor
+// {
+//     // error[E0716]: temporary value dropped while borrowed
+//     let tmp_bind = inlawi!(0xau4).const_as_mut();
+//     // ...
+// }
+// ```
+//
+// I discovered that for whatever reason, some builtin traits such as `AsRef`
+// and `AsMut` avoid E0716 (be sure to explicitly include the reference type to
+// reduce reference nesting if the bound part is external stuff that already has
+// a layer of reference):
+// ```
+// let __awint_bind_0: &Bits = &inlawi!(0xau4);
+// let __awint_bind_1: &mut Bits = &mut inlawi!(0xau4);
+// ```
+//
 // Make default initializations be postfixed with ':' to reduce macro
 // duplication. The only thing this will prevent is certain complicated
 // expressions.
@@ -117,12 +149,10 @@ pub(crate) fn lower(
     let mut constants = String::new();
     for (id, lit) in into_iter_sorted(ord_literals).enumerate() {
         constants += &format!(
-            "let {}_{} = InlAwi::<{}, {}>::unstable_from_slice(&{:?});\n",
+            "let {}_{} = {};\n",
             CONSTANT,
             id,
-            lit.0.bw(),
-            lit.0.raw_len(),
-            lit.0[..].as_raw_slice(),
+            unstable_native_inlawi(&lit.0),
         );
         literal_to_id.insert(lit.0, id);
     }
@@ -280,11 +310,11 @@ pub(crate) fn lower(
 
     let mut constructing = if return_source {
         if inlawi {
-            let bw = total_bw.unwrap();
-            let raw_len = ExtAwi::zero(bw).raw_len();
             format!(
-                "let mut {} = InlAwi::<{}, {}>::{}();\n",
-                AWI, bw, raw_len, construct_fn
+                "let mut {} = {}::{}();\n",
+                AWI,
+                unstable_native_inlawi_ty(total_bw.unwrap().get() as u128),
+                construct_fn
             )
         } else {
             // even if the bitwidth is known statically, we return `ExtAwi` from `extawi!`
@@ -298,10 +328,11 @@ pub(crate) fn lower(
     } else {
         // still need a temporary, `AWI` is not actually returned
         if let Some(bw) = total_bw {
-            let raw_len = ExtAwi::zero(bw).raw_len();
             format!(
-                "let mut {} = InlAwi::<{}, {}>::{}();\n",
-                AWI, bw, raw_len, construct_fn
+                "let mut {} = {}::{}();\n",
+                AWI,
+                unstable_native_inlawi_ty(bw.get() as u128),
+                construct_fn
             )
         } else {
             format!(

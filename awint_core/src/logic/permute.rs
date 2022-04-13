@@ -135,9 +135,14 @@ impl Bits {
             // If this shift overflows, it does not result in UB because it falls back to
             // the more relaxed `ptr:copy`
             if s.wrapping_shl(1) >= self.len() {
-                ptr::copy_nonoverlapping(self.as_ptr(), self.as_mut_ptr().add(s), self.len() - s);
+                // We cannot call multiple `as_ptr` or `as_mut_ptr` at the same time, because
+                // they come from the same allocation. One would invalidate the other, and we
+                // would run into stacked borrow issues.
+                let ptr = self.as_mut_ptr();
+                ptr::copy_nonoverlapping(ptr, ptr.add(s), self.len() - s);
             } else {
-                ptr::copy(self.as_ptr(), self.as_mut_ptr().add(s), self.len() - s);
+                let ptr = self.as_mut_ptr();
+                ptr::copy(ptr, ptr.add(s), self.len() - s);
             }
             self.digit_set(false, 0..s, false);
         }
@@ -188,9 +193,14 @@ impl Bits {
             // If this shift overflows, it does not result in UB because it falls back to
             // the more relaxed `ptr:copy`
             if s.wrapping_shl(1) >= self.len() {
-                ptr::copy_nonoverlapping(self.as_ptr().add(s), self.as_mut_ptr(), self.len() - s);
+                // We cannot call multiple `as_ptr` or `as_mut_ptr` at the same time, because
+                // they come from the same allocation. One would invalidate the other, and we
+                // would run into stacked borrow issues.
+                let ptr = self.as_mut_ptr();
+                ptr::copy_nonoverlapping(ptr.add(s), ptr, self.len() - s);
             } else {
-                ptr::copy(self.as_ptr().add(s), self.as_mut_ptr(), self.len() - s);
+                let ptr = self.as_mut_ptr();
+                ptr::copy(ptr.add(s), ptr, self.len() - s);
             }
             if extension && (self.unused() != 0) {
                 // Safety: There are fewer digit shifts than digits
@@ -303,7 +313,7 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::{extawi, inlawi, ExtAwi, InlAwi};
+    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
     /// let mut input = inlawi!(0x4321u16);
     /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit

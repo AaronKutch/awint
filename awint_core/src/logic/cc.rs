@@ -28,6 +28,16 @@ use crate::Bits;
 /// requiring the user to import more than `Bit`s and `InlAwi`, we have these
 /// functions.
 impl Bits {
+    /// This is for the macros crate to plug into the `LEN` generic in
+    /// `InlAwi<BW, LEN>`, because the build architecture pointer width can be
+    /// different from the target architecture pointer width (and we can't use
+    /// `target_pointer_width` because it corresponds to whatever architecture
+    /// the procedural macro crate is running for).
+    #[doc(hidden)]
+    pub const fn unstable_raw_digits(bw: usize) -> usize {
+        raw_digits(bw)
+    }
+
     #[doc(hidden)]
     #[inline]
     pub const fn unstable_lt_checks<const N: usize>(lt_checks: [(usize, usize); N]) -> Option<()> {

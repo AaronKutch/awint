@@ -27,8 +27,10 @@ jobs:
   miri:
     name: Miri
     runs-on: ubuntu-latest
+    # note: we have turned on this Miri flag
     env:
       RUSTFLAGS: -D warnings
+      MIRIFLAGS: -Zmiri-strict-provenance
     steps:
       - uses: actions/checkout@v2
       - name: Install most recent Miri
@@ -115,10 +117,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: cross-compile-mips
-      # FIXME
-      #cross test --target mips-unknown-linux-gnu --all-features
       run: |
         rustup set profile minimal
         rustup default nightly
         cargo install cross
         cross test --target mips64-unknown-linux-gnuabi64 --all-features
+        cross test --target mips-unknown-linux-gnu --all-features

@@ -527,8 +527,7 @@ extern crate alloc;
 use alloc::{format, string::ToString};
 
 extern crate proc_macro;
-use awint_internals::*;
-use awint_macro_internals::code_gen;
+use awint_macro_internals::*;
 use proc_macro::TokenStream;
 
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
@@ -536,15 +535,13 @@ use proc_macro::TokenStream;
 pub fn inlawi_ty(input: TokenStream) -> TokenStream {
     let bw = input
         .to_string()
-        .parse::<usize>()
-        .expect("Input should parse as a `usize`");
+        .parse::<u128>()
+        .expect("Input should parse as an unsigned integer");
     assert!(
         bw != 0,
         "Tried to make an `InlAwi` type with an invalid bitwidth of 0"
     );
-    format!("InlAwi<{}, {}>", bw, raw_digits(bw))
-        .parse()
-        .unwrap()
+    unstable_native_inlawi_ty(bw).parse().unwrap()
 }
 
 // TODO `0x1234.5678p4i32p16`
@@ -634,12 +631,12 @@ macro_rules! inlawi_construction {
             #[doc = "specified initialization."]
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
-                if let Ok(bw) = input.to_string().parse::<usize>() {
+                if let Ok(bw) = input.to_string().parse::<u128>() {
                     assert!(
                         bw != 0,
                         "Tried to construct an `InlAwi` with an invalid bitwidth of 0"
                     );
-                    format!("InlAwi::<{}, {}>::{}()", bw, raw_digits(bw), $inlawi_fn)
+                    format!("{}::{}()", unstable_native_inlawi_ty(bw as u128), $inlawi_fn)
                         .parse()
                         .unwrap()
                 } else {
@@ -669,7 +666,7 @@ macro_rules! extawi_construction {
             #[doc = "specified initialization."]
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
-                if let Ok(bw) = input.to_string().parse::<usize>() {
+                if let Ok(bw) = input.to_string().parse::<u128>() {
                     assert!(
                         bw != 0,
                         "Tried to construct an `ExtAwi` with an invalid bitwidth of 0"

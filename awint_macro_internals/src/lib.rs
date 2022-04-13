@@ -16,6 +16,7 @@ use std::num::NonZeroUsize;
 
 pub(crate) use lower_fields::*;
 pub(crate) use lower_structs::*;
+pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
 pub(crate) use lowering::*;
 pub(crate) use parse::*;
 pub(crate) use parse_structs::*;
@@ -177,19 +178,11 @@ pub fn code_gen(
             if comp.range.static_width().is_some() {
                 // Return one constant
                 if inlawi {
-                    return Ok(format!(
-                        "InlAwi::<{}, {}>::unstable_from_slice(&{:?})",
-                        lit.bw(),
-                        lit.raw_len(),
-                        lit[..].as_raw_slice(),
-                    ))
+                    return Ok(unstable_native_inlawi(lit))
                 } else {
                     return Ok(format!(
-                        "ExtAwi::from_bits(InlAwi::<{}, \
-                         {}>::unstable_from_slice(&{:?}).const_as_ref())",
-                        lit.bw(),
-                        lit.raw_len(),
-                        lit[..].as_raw_slice(),
+                        "ExtAwi::from_bits({}.const_as_ref())",
+                        unstable_native_inlawi(lit)
                     ))
                 }
             }

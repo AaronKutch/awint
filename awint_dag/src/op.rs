@@ -727,12 +727,12 @@ impl Op {
             }
             ZeroResizeOverflow(nzbw) => {
                 let mut tmp_awi3 = ExtAwi::zero(*nzbw);
-                e.bool_assign(tmp_awi3[..].zero_resize_assign(v[0]));
+                e.bool_assign(tmp_awi3.zero_resize_assign(v[0]));
                 Some(())
             }
             SignResizeOverflow(nzbw) => {
                 let mut tmp_awi3 = ExtAwi::zero(*nzbw);
-                e.bool_assign(tmp_awi3[..].sign_resize_assign(v[0]));
+                e.bool_assign(tmp_awi3.sign_resize_assign(v[0]));
                 Some(())
             }
             LutSet => {

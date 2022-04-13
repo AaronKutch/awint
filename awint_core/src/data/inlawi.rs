@@ -88,7 +88,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
-        // Safety: Only functions like `unstable_from_slice` can construct the `raw`
+        // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
         // to insure the raw invariants. The explicit lifetimes make sure they do not
         // become unbounded.
@@ -99,7 +99,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
-        // Safety: Only functions like `unstable_from_slice` can construct the `raw`
+        // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
         // to insure the raw invariants. The explicit lifetimes make sure they do not
         // become unbounded.
@@ -142,23 +142,29 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// This is not intended for direct use, use `awint_macros::inlawi`
-    /// or some other constructor instead.
+    /// or some other constructor instead. The purpose of this function is to
+    /// allow for a `usize::BITS` difference between a target architecture and
+    /// the build architecture. Uses `u8_slice_assign`.
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn unstable_from_slice(raw: &[usize]) -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
-        assert_inlawi_invariants_slice::<BW, LEN>(raw);
-        let mut copy = [0; LEN];
-        const_for!(i in {0..raw.len()} {
-            copy[i] = raw[i];
-        });
-        InlAwi { raw: copy }
+    pub const fn unstable_from_u8_slice(buf: &[u8]) -> Self {
+        if LEN < 2 {
+            panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
+        }
+        let mut raw = [0; LEN];
+        raw[raw.len() - 1] = BW;
+        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
+        let mut awi = InlAwi { raw };
+        awi.const_as_mut().u8_slice_assign(buf);
+        awi
     }
 
     /// Zero-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn zero() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        if LEN < 2 {
+            panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
+        }
         let mut raw = [0; LEN];
         raw[raw.len() - 1] = BW;
         assert_inlawi_invariants_slice::<BW, LEN>(&raw);
@@ -168,7 +174,9 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Unsigned-maximum-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn umax() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        if LEN < 2 {
+            panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
+        }
         let mut raw = [MAX; LEN];
         raw[raw.len() - 1] = BW;
         assert_inlawi_invariants_slice::<BW, LEN>(&raw);

@@ -1,11 +1,10 @@
 #![feature(const_option)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_mut_refs)]
 
 mod fuzz;
 use core::cmp;
 
-use awint::{bw, inlawi_zero, ExtAwi, InlAwi};
+use awint::{bw, inlawi_zero, Bits, ExtAwi, InlAwi};
 
 const N: u32 = if cfg!(miri) {
     32

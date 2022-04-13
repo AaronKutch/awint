@@ -76,7 +76,7 @@ pub const fn regular_digits(bw: NonZeroUsize) -> usize {
 
 /// Returns `regular_digits + 1` to account for the bitwidth digit
 #[inline]
-pub fn raw_digits(bw: usize) -> usize {
+pub const fn raw_digits(bw: usize) -> usize {
     digits_u(bw)
         .wrapping_add((extra_u(bw) != 0) as usize)
         .wrapping_add(1)
@@ -103,33 +103,23 @@ pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
     }
 }
 
-/// Checks that a raw slice for `InlAwi` construction is correct. Assumes that
-/// `assert_inlawi_invariants` has already been run to check the correctness of
-/// the `BW` and `LEN` values.
+/// Checks that a raw slice for `InlAwi` construction is correct. Also runs
+/// `assert_inlawi_invariants` to check the correctness of the `BW` and `LEN`
+/// values.
 ///
 /// # Panics
 ///
-/// If `raw.len() != LEN`, the bitwidth digit is zero, or the bitwidth is
-/// outside the range `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+/// If `raw.len() != LEN`, the bitwidth digit is not equal to `BW`, `BW == 0`,
+/// `LEN < 2`, or the bitwidth is outside the range `(((LEN - 2)*BITS) +
+/// 1)..=((LEN - 1)*BITS)`
 pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
+    assert_inlawi_invariants::<BW, LEN>();
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
     }
     let bw = raw[raw.len() - 1];
     if bw != BW {
         panic!("bitwidth digit does not equal BW")
-    }
-}
-
-/// Alternate check for `InlAwi` invariants
-///
-/// # Panics
-///
-/// If the bitwidth is outside the range `(((LEN - 2)*BITS) + 1)..=((LEN -
-/// 1)*BITS)`
-pub const fn assert_inlawi_invariants_2<const BW: usize, const LEN: usize>() {
-    if BW == 0 {
-        panic!("Tried to create an InlAwi with zero bitwidth")
     }
 }
 

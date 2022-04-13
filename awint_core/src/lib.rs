@@ -11,7 +11,6 @@
 
 #![cfg_attr(feature = "const_support", feature(const_maybe_uninit_as_mut_ptr))]
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
-#![cfg_attr(feature = "const_support", feature(const_ptr_offset))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_read))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_write))]
 #![cfg_attr(feature = "const_support", feature(const_intrinsic_copy))]

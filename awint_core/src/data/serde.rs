@@ -22,7 +22,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "InlAwi".
-    /// use awint::{InlAwi, inlawi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// use ron::to_string;
     ///
     /// let awi = inlawi!(0xfedcba9876543210u100);
@@ -213,7 +213,7 @@ impl<'de, const BW: usize, const LEN: usize> Deserialize<'de> for InlAwi<BW, LEN
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "InlAwi".
-    /// use awint::{InlAwi, inlawi, inlawi_ty};
+    /// use awint::{Bits, InlAwi, inlawi, inlawi_ty};
     /// use ron::from_str;
     ///
     /// let awi0 = inlawi!(0xfedcba9876543210u100);
