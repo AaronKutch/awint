@@ -6,6 +6,8 @@
 // TODO need a refactor
 #![allow(clippy::too_many_arguments)]
 
+mod bimap;
+mod lower;
 mod lower_fields;
 mod lower_structs;
 mod lowering;
@@ -14,7 +16,8 @@ mod parse_structs;
 
 use std::num::NonZeroUsize;
 
-pub(crate) use lower_fields::*;
+pub(crate) use bimap::*;
+pub(crate) use lower::*;
 pub(crate) use lower_structs::*;
 pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
 pub(crate) use lowering::*;
@@ -24,6 +27,8 @@ use ComponentType::*;
 
 /// Prefix used for constants
 pub(crate) const CONSTANT: &str = "__awint_constant";
+/// Prefix used for initial bindings
+pub(crate) const BINDING: &str = "__awint_bind";
 /// Prefix used for values
 pub(crate) const VALUE: &str = "__awint_val";
 /// Prefix used for widths

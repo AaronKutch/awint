@@ -196,6 +196,8 @@ impl<B: Clone + BorrowMut<Bits>> Clone for FP<B> {
     }
 }
 
+impl<B: Copy + BorrowMut<Bits>> Copy for FP<B> {}
+
 impl<B: PartialEq + BorrowMut<Bits>> PartialEq for FP<B> {
     /// The signedness, fixed point, and `PartialEq` implementation on
     /// `FP::into_inner(self)` must all be `true` in order for this to return

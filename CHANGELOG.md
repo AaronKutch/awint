@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.0] - TODO
+### Changes
+- Implemented `Copy` for `FP<B>` if `B: Copy`
+
 ## [0.4.0] - 2022-04-07
 ### Fixes
 - Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with

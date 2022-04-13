@@ -79,9 +79,9 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// portable as long as the digit inputs and/or outputs are restricted to
 /// `0..=u16::MAX`.
 ///
-/// The `Bits::from_u8_slice` function and related functions, the serialization
-/// impls enabled by `serde_support`, the strings produced by the `const`
-/// serialization functions, and the serialization free functions in the
+/// The `Bits::u8_slice_assign` function and related functions, the
+/// serialization impls enabled by `serde_support`, the strings produced by the
+/// `const` serialization functions, and the serialization free functions in the
 /// `awint_ext` crate are all portable and should be used when sending
 /// representations of `Bits` between architectures.
 ///

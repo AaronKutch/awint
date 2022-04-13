@@ -300,3 +300,23 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
         self.const_as_mut()
     }
 }
+
+// FIXME
+
+/*impl InlAwi<8, 2> {
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn from_u8(x: u8) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().u8_assign(x);
+        awi
+    }
+}
+
+impl InlAwi<64, 2> {
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn from_u64(x: u64) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().u64_assign(x);
+        awi
+    }
+}*/
