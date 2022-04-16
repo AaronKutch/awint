@@ -49,9 +49,22 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 ///
 /// # Portability
 ///
-/// The [core::hash::Hash] implementation is not portable across platforms (this
+/// This crate strives to maintain deterministic outputs across architectures
+/// with different `usize::BITS` and different endiannesses. The
+/// [Bits::u8_slice_assign] function, the [Bits::to_u8_slice] functions, the
+/// serialization impls enabled by `serde_support`, the strings produced by the
+/// `const` serialization functions, and functions like `bits_to_string_radix`
+/// in the `awint_ext` crate are all portable and should be used when sending
+/// representations of `Bits` between architectures.
+///
+/// The `rand_assign_using` function enabled by `rand_support` uses a
+/// deterministic byte oriented implementation to avoid portability issues as
+/// long as the rng itself is portable.
+///
+/// The [core::hash::Hash] implementation is _not_ deterministic across
+/// platforms and may not even be deterministic across compiler versions. This
 /// is because of technical problems, and the standard library docs say it is
-/// not intended to be portable anyway).
+/// not intended to be portable anyway.
 ///
 /// There are many functions that depend on `usize` and `NonZeroUsize`. In cases
 /// where the `usize` describes the bitwidth, a bit shift, or a bit position,
@@ -77,16 +90,7 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// the zeroeth bit or a given bit position like [Bits::short_cin_mul],
 /// [Bits::short_udivide_assign], or [Bits::usize_or_assign], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
-/// `0..=u16::MAX`.
-///
-/// The `Bits::u8_slice_assign` function and related functions, the
-/// serialization impls enabled by `serde_support`, the strings produced by the
-/// `const` serialization functions, and the serialization free functions in the
-/// `awint_ext` crate are all portable and should be used when sending
-/// representations of `Bits` between architectures.
-///
-/// The `rand_assign_using` function enabled by `rand_support` use a
-/// deterministic byte oriented implementation to avoid portability issues.
+/// `0..=u16::MAX`, or special care is taken.
 #[repr(transparent)]
 pub struct Bits {
     /// # Raw Invariants
