@@ -6,6 +6,44 @@ pub fn usize_to_i128(x: usize) -> Result<i128, String> {
     i128::try_from(x).map_err(|_| "i128::try_from overflow".to_owned())
 }
 
+/// Tries parsing as hexadecimal, octal, binary, and decimal
+pub fn i128_try_parse(s: &[char]) -> Option<i128> {
+    let mut s = s;
+    if s.is_empty() {
+        return None
+    }
+    let mut neg = false;
+    if s[0] == '-' {
+        neg = true;
+        s = &s[1..];
+        if s.is_empty() {
+            return None
+        }
+    }
+    let val = if (s.len() > 2) && (s[0] == '0') {
+        if s[1] == 'x' {
+            i128::from_str_radix(&chars_to_string(&s[2..]), 16).ok()
+        } else if s[1] == 'o' {
+            i128::from_str_radix(&chars_to_string(&s[2..]), 8).ok()
+        } else if s[1] == 'b' {
+            i128::from_str_radix(&chars_to_string(&s[2..]), 2).ok()
+        } else {
+            None
+        }
+    } else {
+        i128::from_str_radix(&chars_to_string(&s), 10).ok()
+    };
+    if let Some(val) = val {
+        if neg {
+            val.checked_neg()
+        } else {
+            Some(val)
+        }
+    } else {
+        None
+    }
+}
+
 /// Usize and/or String Bound. If `s.is_empty()`, then there is no arbitrary
 /// string in the bound and the base value is 0. `x` is added on to the value.
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -34,23 +72,37 @@ impl Usb {
         Self { s: vec![], x }
     }
 
+    /// Avoids infinite loops involving [crate::usb_common_case]
+    pub fn basic_simplify(&mut self) -> Result<(), String> {
+        if !self.s.is_empty() {
+            if let Some(x) = i128_try_parse(&self.s) {
+                self.s.clear();
+                self.x = self
+                    .x
+                    .checked_add(x)
+                    .ok_or_else(|| "i128 overflow".to_owned())?;
+            }
+        }
+        Ok(())
+    }
+
     /// Tries to parse the `s` part of `self` as an integer and adds it to `x`.
+    /// Performs advanced simplifications such as interpreting
+    /// `({+/-}{string/i128} {+/-} {+/-}{string/i128})
     pub fn simplify(&mut self) -> Result<(), String> {
         if !self.s.is_empty() {
-            if let Ok(x) = chars_to_string(&self.s).parse::<i128>() {
+            if let Some(x) = i128_try_parse(&self.s) {
                 self.s.clear();
-                self.x = self.x.checked_add(x).unwrap();
+                self.x = self
+                    .x
+                    .checked_add(x)
+                    .ok_or_else(|| "i128 overflow".to_owned())?;
             } else {
                 *self = usb_common_case(&self.s)?;
             }
         }
-        // we could determine that value is negative, but for better error reporting I
-        // want it at the range level
-        /*if self.s.is_empty() {
-            if self.x < 0 {
-                return Err("determined statically that this is negative")
-            }
-        }*/
+        // note: we could determine now that value is negative, but for better error
+        // reporting I want it at the range level
         Ok(())
     }
 
