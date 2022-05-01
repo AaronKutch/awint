@@ -2,7 +2,7 @@ use std::{collections::VecDeque, fmt::Write, mem, str::FromStr};
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 
-use crate::parse_structs::Usb;
+use crate::ranges::Usb;
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings

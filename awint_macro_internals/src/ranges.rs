@@ -31,7 +31,7 @@ pub fn i128_try_parse(s: &[char]) -> Option<i128> {
             None
         }
     } else {
-        i128::from_str_radix(&chars_to_string(&s), 10).ok()
+        chars_to_string(s).parse().ok()
     };
     if let Some(val) = val {
         if neg {
