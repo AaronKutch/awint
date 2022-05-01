@@ -85,6 +85,12 @@
 //! // The bounds checks succeed, so the macro returns `Some(())`.
 //! assert!(cc!(x[r0..r1]).is_some());
 //!
+//! // Inclusive ranges and single bit indexes are also recognized.
+//! // this range is equivalent to `r0..(r1 + 1)`
+//! assert!(cc!(x[r0..=r1]).is_some());
+//! // this range is equivalent to `r0..(r0 + 1)`
+//! assert!(cc!(x[r0]).is_some());
+//!
 //! // We could also use a static range. We call it "static" because the macro
 //! // is able to know the value of the range at compile time.
 //! assert!(cc!(x[2..8]).is_some());
@@ -97,6 +103,17 @@
 //! // reversed
 //! //cc!(x[8..2]); // error: ... has a reversed range
 //!
+//! // The macros are able to perform some limited recognition of bounds of the
+//! // form `(arbitrary + statically_known)` or
+//! // `(-statically_known - -arbitrary)`, etc.
+//! // FIXME
+//! cc!(x[(r0 + 5)..(-5 + r0)]); // error: ... statically determined
+//! // This recognition is usually not externally visible because the macro
+//! // still has to check that the arbitrary variable input does not cause the
+//! // bound to go out of range (and thus the macro is still fallible and needs
+//! // to return an `Option`), but it does eliminate some checks and improves
+//! // performance.
+//!
 //! // The second kind of invalid bound is a range that extends beyond the
 //! // width of the variable or literal. Earlier, the values of 2 and 8 were
 //! // less than or equal to `x.bw()`, so the check succeeded. Here the value
@@ -107,7 +124,7 @@
 //! // Static zero width ranges will cause a compile-time panic as a warning
 //! // about components that do nothing, but they are achievable with dynamic
 //! // ranges.
-//! let r = 5;
+//! let r = 5; // FIXME use r3 = 5 and a constant
 //! assert!(cc!(x[r..r]).is_some());
 //! let r = 10;
 //! assert!(cc!(x[r..r]).is_some());
@@ -124,6 +141,31 @@
 //! // error: determined statically that this has zero bitwidth
 //! //let _ = inlawi!(x[5..5]);
 //!
+//! // The macros are parsed by using `proc-macro2` token trees and looking
+//! // only at punctuation in top level delimited groups. It will separate by
+//! // ',' and ';' to get components, and then each component will be parsed
+//! // again for top level delimited groups, and if the last token tree in
+//! // the component is "[]" delimited it will treat that as a bit indexer.
+//! // This allows for almost every conceivable Rust expression being used:
+//! assert!(
+//!     cc!([inlawi!(01); 4][3][
+//!         || {let _ = (7..9, 2..=3); let _ = "'\".,;"; 1}
+//!     ]).is_some()
+//! );
+//! // the middle `[3]` indexes the array of `InlAwi`s, and the right
+//! // "[]" delimited group is interpreted as a single bit index.
+//! // The parsing is able to ignore inner puncutation and just use the `1`
+//! // result of the closure as the index.
+//! // Of course, you wouldn't want to use expressions this complex in a single
+//! // line, most of the time you should use external bindings.
+//!
+//! let awis = [extawi!(0); 4];
+//! // If you are using normal indexing but do not want the macro to interpret
+//! // it as a bit indexing, wrap the component in parenthesis, and then the
+//! // macro will ignore everything inside (since it is not a top level "[]"
+//! // group) and treat the thing as a single variable with no range applied.
+//! assert_eq!(cc!( (&awis[3]) ), ());
+//!
 //! // The third error condition occurs when concatenation bitwidths are
 //! // unequal, but first we need to go into more detail on the component
 //! // types.
@@ -131,16 +173,19 @@
 //!
 //! ### Literals
 //!
-//! When the parser sees that the first character of a component is '-' or
-//! '0'..='9', and it isn't part of a lone range, it will assume the component
-//! is a literal and pass it to the `FromStr` implementation of `ExtAwi`. See
-//! that documentation for more details.
+//! After differentiating components and ranges, the parser will try to parse
+//! range values as hexadecimal, octal, binary, or decimal `i128` values.
+//! Later in codgen it will be converted to `usize`, and the compiler will
+//! complain if literals are too large for the target architecture. The parser
+//! will also attempt to parse components with the `FromStr` implementation of
+//! `ExtAwi`. See that documentation for more details.
 //!
 //! Note: The `FromStr` implementation allows for signed and unsigned values,
 //! binary, octal, decimal, and hexadecimal bases, but for the remainder of this
-//! documentation we will mainly be using unsigned hexadecimal. This is because
-//! it neatly divides along bit multiples of 4, and the large base allows one to
-//! easily see where different groups of 4 bits are being copied.
+//! documentation we will mainly be using unsigned hexadecimal for literals and
+//! decimal for range bounds. This is because hexadecimal neatly divides along
+//! bit multiples of 4, and the large base allows one to easily see where
+//! different groups of 4 bits are being copied.
 //!
 //! ```
 //! use awint::prelude::*;
@@ -153,11 +198,14 @@
 //! assert_eq!(awi, inlawi!(1111_0000010100111001_00101010));
 //!
 //! // Literals can have static ranges applied to them, which might be useful
-//! // in some circumstances for readability.
-//! assert_eq!(inlawi!(0x654321_u24[4..16]), inlawi!(0x432_u12));
+//! // in some circumstances for readability. The macros automatically truncate
+//! // and concatenate constants with statically known bounds together for best
+//! // runtime performance.
+//! assert_eq!(inlawi!(0x654321_u24[0b100..0x10]), inlawi!(0x432_u12));
 //!
 //! // Arbitrary dynamic ranges using things from outside the macro can also
-//! // be applied. The macros will assume the range bounds to result in `usize`.
+//! // be applied. The macros will assume the range bounds to result in
+//! // `usize`, and the compiler will typecheck this.
 //! let x: usize = 8;
 //! let awi = ExtAwi::zero(bw(12));
 //! // At runtime, `x` evaluates to 8 and `x + awi.bw()` evaluates to 20
@@ -171,9 +219,9 @@
 //!
 //! Anything that has well defined `bw() -> usize`, `const_as_ref() -> &Bits`,
 //! and `const_as_mut() -> &mut Bits` functions can be used as a variable.
-//! Arbitrary `Bits` references (`Bits` itself has these functions, they are
-//! just hidden from the documentation), `ExtAwi`, `InlAwi`, and other well
-//! defined arbitrary width integer types can thus be used as variables.
+//! Arbitrary `Bits` references (`Bits` itself has these functions as no-ops,
+//! they are just hidden from the documentation), `ExtAwi`, `InlAwi`, and other
+//! well defined arbitrary width integer types can thus be used as variables.
 //!
 //! ```
 //! use awint::prelude::*;
@@ -506,19 +554,6 @@
 //!   way to overflow is to exceed `usize::MAX` in concatenation widths, or the
 //!   individual arbitrary expressions entered into the macro overflow (e.x.
 //!   `..(usize::MAX + 1)`).
-//! - Under some conditions, warnings about unused `Option<()>`s are not
-//!   produced from procedural macros. If a fallible macro is called without
-//!   appending `.unwrap()` or otherwise handling the `Option`, it will silently
-//!   do nothing if `None` is returned.
-//! - The macros have to be unsanitized to support using arbitrary variables and
-//!   ranges. It is still very hard to escape the scoping by some kind of
-//!   injection, because all arbitrary values are individually assigned to a
-//!   `let _: usize = ...;` statement, all variable names are individually
-//!   referenced like `let _: &Bits = (...).const_as_ref();`, and all semicolons
-//!   are eliminated early in the parsing process. Only obviously bad inputs
-//!   using things such as multiple unmatched parenthesis, other specially
-//!   designed macros, or fake structs could cause compiling broken checks or
-//!   problems that extend beyond the immediate scope of the macro.
 //! - In case you want to see the code generated by a macro, you can use the
 //!   `awint_macro_internals::code_gen` function and call it with the same
 //!   arguments as the respective macro in `awint_macros/src/lib.rs`.
