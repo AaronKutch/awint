@@ -38,12 +38,7 @@
 // Known issues:
 //
 // Wrap fallible return values e.x.
-// ```
-// #[must_use]
-// const fn must_use_extawi(x: Option<ExtAwi>) -> Option<ExtAwi> {
-//     x
-// }
-// ```
+// FIXME it is implemented as generic `Bits::must_use`
 // so the compiler produces warnings
 //
 // Previously, we could not introduce the binding step into the macros, because

@@ -1,6 +1,7 @@
 //! This crate exists because of limitations with `proc-macro` crates. We need
 //! to be able to test errors returned from the code generation function while
-//! also being able to test the macros themselves.
+//! also being able to test the macros themselves. This might also be reused by
+//! people who have new storage types.
 
 #![allow(clippy::needless_range_loop)]
 // TODO need a refactor
@@ -14,7 +15,7 @@ mod lowering;
 mod names;
 mod old_parse;
 mod parse;
-mod parse_structs;
+mod old_parse_structs;
 mod token_stream;
 
 use std::num::NonZeroUsize;
@@ -27,7 +28,7 @@ pub(crate) use lowering::*;
 pub use names::*;
 pub(crate) use old_parse::*;
 pub(crate) use parse::*;
-pub(crate) use parse_structs::*;
+pub(crate) use old_parse_structs::*;
 pub use token_stream::*;
 use ComponentType::*;
 

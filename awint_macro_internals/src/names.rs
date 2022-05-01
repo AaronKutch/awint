@@ -1,4 +1,5 @@
-/// Prefixes used for codegen names and functions
+/// Prefixes used for codegen names and functions. Most of these should be
+/// prefixed with two underscores and the crate name to prevent collisions.
 pub struct Names<'a> {
     /// The equivalent of `Bits`
     pub bits: &'a str,
@@ -34,6 +35,7 @@ const AWI: &str = "__awint_awi";
 const AWI_REF: &str = "__awint_awi_ref";
 const SHL: &str = "__awint_shl";
 
+/// Default names for `awint`
 pub const AWINT_NAMES: Names = Names {
     bits: BITS,
     constant: CONSTANT,
