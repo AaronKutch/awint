@@ -28,6 +28,14 @@ use crate::Bits;
 /// requiring the user to import more than `Bit`s and `InlAwi`, we have these
 /// functions.
 impl Bits {
+    /// Used by the macros to enforce compiler warnings
+    #[doc(hidden)]
+    #[must_use]
+    #[inline]
+    pub const fn must_use<T>(t: T) -> T {
+        t
+    }
+
     /// This is for the macros crate to plug into the `LEN` generic in
     /// `InlAwi<BW, LEN>`, because the build architecture pointer width can be
     /// different from the target architecture pointer width (and we can't use

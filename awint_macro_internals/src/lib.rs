@@ -11,8 +11,11 @@ mod lower;
 mod lower_fields;
 mod lower_structs;
 mod lowering;
+mod names;
+mod old_parse;
 mod parse;
 mod parse_structs;
+mod token_stream;
 
 use std::num::NonZeroUsize;
 
@@ -21,8 +24,11 @@ pub(crate) use lower::*;
 pub(crate) use lower_structs::*;
 pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
 pub(crate) use lowering::*;
+pub use names::*;
+pub(crate) use old_parse::*;
 pub(crate) use parse::*;
 pub(crate) use parse_structs::*;
+pub use token_stream::*;
 use ComponentType::*;
 
 /// Prefix used for constants
