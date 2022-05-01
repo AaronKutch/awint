@@ -16,6 +16,7 @@ mod names;
 mod old_parse;
 mod old_parse_structs;
 mod parse;
+pub mod parse_structs;
 mod token_stream;
 
 use std::num::NonZeroUsize;
