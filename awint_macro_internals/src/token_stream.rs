@@ -1,10 +1,10 @@
-use std::{collections::VecDeque, mem};
+use std::{collections::VecDeque, fmt::Write, mem};
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 
-/// Parses `input` `TokenStream` a concatenations of components in `Vec<char>`
-/// strings
-pub fn token_stream_to_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
+/// Parses `input` `TokenStream` into "raw" concatenations of components in
+/// `Vec<char>` strings
+pub fn token_stream_to_raw_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
     // The `ToString` implementation on `TokenStream`s does not recover the
     // original spacings despite that information being included in spans.
     // Frustratingly, `Span`s (as of Rust 1.61) provide no stable information about
@@ -81,4 +81,31 @@ pub fn token_stream_to_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
     components.push(string);
     concatenations.push(components);
     concatenations
+}
+
+pub fn raw_cc_to_string(cc: &[Vec<Vec<char>>]) -> String {
+    let mut s = String::new();
+    let mut concat_s = String::new();
+    let mut comp_s = String::new();
+    let concats_w = cc.len();
+    for (j, concatenation) in cc.iter().enumerate() {
+        let concat_w = concatenation.len();
+        for (i, component) in concatenation.iter().enumerate() {
+            for c in component {
+                comp_s.push(*c);
+            }
+            dbg!(&comp_s);
+            write!(concat_s, "{}", comp_s).unwrap();
+            if (i + 1) < concat_w {
+                write!(concat_s, ", ").unwrap();
+            }
+            comp_s.clear();
+        }
+        write!(s, "{}", concat_s).unwrap();
+        if (j + 1) < concats_w {
+            writeln!(s, ";").unwrap();
+        }
+        concat_s.clear();
+    }
+    s
 }

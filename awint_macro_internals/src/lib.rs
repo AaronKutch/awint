@@ -14,8 +14,8 @@ mod lower_structs;
 mod lowering;
 mod names;
 mod old_parse;
-mod parse;
 mod old_parse_structs;
+mod parse;
 mod token_stream;
 
 use std::num::NonZeroUsize;
@@ -27,8 +27,8 @@ pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
 pub(crate) use lowering::*;
 pub use names::*;
 pub(crate) use old_parse::*;
-pub(crate) use parse::*;
 pub(crate) use old_parse_structs::*;
+pub(crate) use parse::*;
 pub use token_stream::*;
 use ComponentType::*;
 
