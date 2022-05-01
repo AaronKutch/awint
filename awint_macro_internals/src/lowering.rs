@@ -101,6 +101,11 @@
 //
 // The range value parser should be able to handle hexadecimal and octal
 // statically (e.x. `x[0x10..0x15]` should have known bitwidth).
+//
+// TODO: document new hexadecimal, octal, binary, and decimal parsing,
+// some things optimization can do (but nesting still works),
+// that an extra index like x[i][..], x[i][12..42] can coexist,
+// that nested invocations and most Rust syntax should be able to work,
 
 use std::{collections::HashSet, num::NonZeroUsize};
 

@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
 
-use crate::{ComponentType::*, *};
+use crate::{old_parse_structs::ComponentType::*, *};
 
 fn remove_whitespace(s: &str) -> String {
     s.chars().filter(|c| !c.is_whitespace()).collect()

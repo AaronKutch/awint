@@ -15,7 +15,7 @@ mod lowering;
 mod names;
 mod old_parse;
 mod old_parse_structs;
-mod parse;
+pub mod parse;
 pub mod ranges;
 mod token_stream;
 
@@ -28,10 +28,10 @@ pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
 pub(crate) use lowering::*;
 pub use names::*;
 pub(crate) use old_parse::*;
+use old_parse_structs::ComponentType::*;
 pub(crate) use old_parse_structs::*;
 pub(crate) use parse::*;
 pub use token_stream::*;
-use ComponentType::*;
 
 /// Prefix used for constants
 pub(crate) const CONSTANT: &str = "__awint_constant";

@@ -3,7 +3,7 @@ use awint_core::Bits;
 use crate::{chars_to_string, usb_common_case};
 
 pub fn usize_to_i128(x: usize) -> Result<i128, String> {
-    i128::try_from(x).map_err(|_| "i128::try_from overflow".to_owned())
+    i128::try_from(x).map_err(|_| "`i128::try_from` overflow".to_owned())
 }
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
@@ -201,8 +201,7 @@ impl Usbr {
                 return Err("determined statically that this is a reversed range".to_owned())
             }
             if r0 == r1 {
-                // I *think* this actually might be required in some usages of the range, and is
-                // not just a warning
+                // this is required for literals that would take up a concatenation
                 return Err("determined statically that this range has zero bitwidth".to_owned())
             }
         }
