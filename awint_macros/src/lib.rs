@@ -586,12 +586,12 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 // C4D
 /// Copy Corresponding Concatenations of Components Dynamically. Takes
 /// concatenations of components as an input, and copies bits of the source to
-/// corresponding bits of the sinks. Returns nothing if the operation is
+/// corresponding bits of the sinks. Returns `()` if the operation is
 /// infallible, otherwise returns `Option<()>`. Returns `None` if component
 /// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
 /// allocation in general, but will try to avoid allocation if the common
 /// bitwdith can be determined statically, or if concatenations are all of
-/// single components. See the documentation of `awint_macros` for more.
+/// single components. See the lib documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn cc(input: TokenStream) -> TokenStream {
     match code_gen(&input.to_string(), false, "zero", false, false) {
@@ -600,15 +600,8 @@ pub fn cc(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Takes concatenations of components as an input, and copies bits of the
-/// source to corresponding bits of the sinks. The source value is also used to
-/// construct an `InlAwi`. The common width must be statically determinable by
-/// the macro (e.g. at least one concatenation must have only literal ranges),
-/// and the source cannot contain fillers. Returns a plain `InlAwi` if
-/// infallible from what the macro can statically determine, otherwise returns
-/// `Option<InlAwi>`. Returns `None` if component indexes are invalid or if
-/// concatenation bitwidths mismatch. See the documentation of `awint_macros`
-/// for more.
+/// A concatenations of components macro, additionally using the source value to
+/// construct an `InlAwi`. See the lib documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
     match code_gen(&input.to_string(), false, "zero", true, true) {
@@ -617,14 +610,8 @@ pub fn inlawi(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Takes concatenations of components as an input, and copies bits of the
-/// source to corresponding bits of the sinks. The source value is also used to
-/// construct an `ExtAwi`. The common width must be dynamically determinable by
-/// the macro (e.g. not all concatenations can have unbounded fillers), and the
-/// source cannot contain fillers. Returns a plain `ExtAwi` if infallible from
-/// what the macro can statically determine, otherwise returns `Option<ExtAwi>`.
-/// Returns `None` if component indexes are invalid or if concatenation
-/// bitwidths mismatch. See the documentation of `awint_macros` for more.
+/// A concatenations of components macro, additionally using the source value to
+/// construct an `ExtAwi`. See the lib documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
     match code_gen(&input.to_string(), false, "zero", false, true) {
