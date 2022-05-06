@@ -69,6 +69,7 @@ fn identities_inner(
     x2.clear_unused_bits();
     eq(x0, x2);
 
+    // FIXME this needs to be its own test
     // test slices larger and smaller than `x0`
     let inx = (rng.next_u32() as usize) % ((2 * (bw / 8)) + 1);
     // fill so we can if the later `to_u8_slice` uses bits it should not, and if the
@@ -78,6 +79,9 @@ fn identities_inner(
     }
     x2.u8_slice_assign(&bytes[..inx]);
     x0.to_u8_slice(&mut bytes[..inx]);
+    for i in inx..bytes.len() {
+        assert!(bytes[i] == 0);
+    }
     x3.copy_assign(x0)?;
     x2.u8_slice_assign(&bytes[..inx]);
     x3.range_and_assign(0..(cmp::min(inx * 8, bw))).unwrap();

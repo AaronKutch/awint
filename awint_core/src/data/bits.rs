@@ -486,8 +486,10 @@ impl<'a> Bits {
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
     }
 
-    /// Assigns the bits of `buf` to `self`. Any bits beyond `self.bw()` are
-    /// ignored. This function is portable across target architecture pointer
+    /// Assigns the bits of `buf` to `self`. If `(buf.len() * 8) > self.bw()`
+    /// then the corresponding bits in `buf` beyond `self.bw()` are ignored. If
+    /// `(buf.len() * 8) < self.bw()` then the rest of the bits in `self` are
+    /// zeroed. This function is portable across target architecture pointer
     /// sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn u8_slice_assign(&'a mut self, buf: &[u8]) {
@@ -524,19 +526,21 @@ impl<'a> Bits {
         self.clear_unused_bits();
     }
 
-    /// Assigns the bits of `self` to `buf`. Any corresponding bits beyond
-    /// `self.bw()` are zeroed. This function is portable across target
-    /// architecture pointer sizes and endianness.
+    /// Assigns the bits of `self` to `buf`. If `(buf.len() * 8) > self.bw()`
+    /// then the corresponding bits in `buf` beyond `self.bw()` are zeroed. If
+    /// `(buf.len() * 8) < self.bw()` then the bits of `self` beyond the buffer
+    /// do nothing. This function is portable across target architecture
+    /// pointer sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_u8_slice(&'a self, buf: &mut [u8]) {
+        let self_byte_width = self.len() * BYTE_RATIO;
+        let min_width = if self_byte_width < buf.len() {
+            self_byte_width
+        } else {
+            buf.len()
+        };
         #[cfg(target_endian = "little")]
         {
-            let self_byte_width = self.len() * BYTE_RATIO;
-            let min_width = if self_byte_width < buf.len() {
-                self_byte_width
-            } else {
-                buf.len()
-            };
             unsafe {
                 // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
                 // for writes at least up to `min_width`, they are aligned, and are
@@ -546,9 +550,6 @@ impl<'a> Bits {
                     buf.as_mut_ptr(),
                     min_width,
                 );
-                // zero remaining bytes.
-                // Safety: `min_width` cannot be more than `buf.len()`
-                ptr::write_bytes(buf.as_mut_ptr().add(min_width), 0, buf.len() - min_width);
             }
         }
         #[cfg(target_endian = "big")]
@@ -563,6 +564,11 @@ impl<'a> Bits {
                     s += 8;
                 });
             });
+        }
+        unsafe {
+            // zero remaining bytes.
+            // Safety: `min_width` cannot be more than `buf.len()`
+            ptr::write_bytes(buf.as_mut_ptr().add(min_width), 0, buf.len() - min_width);
         }
     }
 

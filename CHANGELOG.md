@@ -1,6 +1,10 @@
 # Changelog
 
 ## [0.5.0] - TODO
+### Fixes
+- Fixed that `to_u8_slice` on big endian platforms did not zero bytes beyond `self.bw()`. There was
+  a blind spot in the testing that has been fixed.
+
 ### Changes
 - Implemented `Copy` for `FP<B>` if `B: Copy`
 
