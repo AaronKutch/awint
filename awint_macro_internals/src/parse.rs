@@ -1,4 +1,4 @@
-use std::num::NonZeroUsize;
+use std::{num::NonZeroUsize, str::FromStr};
 
 use awint_ext::ExtAwi;
 use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr, PtrTrait};
@@ -14,13 +14,16 @@ pub fn i128_to_nonzerousize(x: i128) -> Result<NonZeroUsize, String> {
 #[derive(Debug, Clone)]
 pub enum ComponentType {
     Literal(ExtAwi),
-    Variable(String),
+    Variable(Vec<char>),
     Filler,
 }
 
 use ComponentType::*;
 
-use crate::ranges::{usize_to_i128, Usbr};
+use crate::{
+    chars_to_string,
+    ranges::{usize_to_i128, Usbr},
+};
 
 #[derive(Debug, Clone)]
 pub struct Component {
@@ -33,12 +36,10 @@ impl Component {
         Self { c_type, range }
     }
 
-    /// An error is returned only if some statically determined bound is
-    /// violated, not if the simplify attempt fails
     pub fn simplify(&mut self) -> Result<(), String> {
-        self.range.simplify()?;
         match self.c_type.clone() {
             Literal(ref mut lit) => {
+                self.range.simplify()?;
                 // note: `lit` here is a reference to a clone
                 self.range.simplify_literal(lit.const_as_ref())?;
                 // static ranges on literals have been verified, attempt to truncate
@@ -66,8 +67,31 @@ impl Component {
                 }
                 self.c_type = Literal(lit.clone());
             }
-            Variable(_) => (),
-            Filler => self.range.simplify_filler()?,
+            Variable(s) => {
+                if matches!(s[0], '-' | '0'..='9') {
+                    let s = chars_to_string(&s);
+                    match ExtAwi::from_str(&s) {
+                        Ok(awi) => {
+                            self.c_type = Literal(awi);
+                            // does not recurse again
+                            self.simplify()?;
+                        }
+                        Err(e) => {
+                            return Err(format!(
+                                "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` which \
+                                 returned SerdeError::{:?}",
+                                s, e
+                            ))
+                        }
+                    }
+                } else {
+                    self.range.simplify()?;
+                }
+            }
+            Filler => {
+                self.range.simplify()?;
+                self.range.simplify_filler()?
+            }
         }
         Ok(())
     }
@@ -102,9 +126,6 @@ impl Component {
         }
     }
 }
-
-// FIXME: idea: make one more token_stream function that looks for the last "[]"
-// delimited group, it allows for normal Rust indexing to coexist
 
 pub struct Concatenation {
     pub concatenation: Vec<Component>,

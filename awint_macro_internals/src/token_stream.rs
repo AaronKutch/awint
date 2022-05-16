@@ -1,8 +1,19 @@
 use std::{collections::VecDeque, fmt::Write, mem, str::FromStr};
 
-use proc_macro2::{Delimiter, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 
-use crate::ranges::Usb;
+use crate::{
+    parse::{Component, ComponentType},
+    ranges::{Usb, Usbr},
+};
+
+pub fn chars_to_string(chars: &[char]) -> String {
+    let mut s = String::new();
+    for c in chars {
+        s.push(*c);
+    }
+    s
+}
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings
@@ -111,12 +122,254 @@ pub fn raw_cc_to_string(cc: &[Vec<Vec<char>>]) -> String {
     s
 }
 
-pub fn chars_to_string(chars: &[char]) -> String {
-    let mut s = String::new();
-    for c in chars {
-        s.push(*c);
+/// Parses a raw component using token trees. Looks for the existence of a top
+/// level "[]" delimited group and uses the last one as a bit range. If
+/// `check_for_init` is set also breaks up at top level ":" and returns left
+/// part in the first part of the tuple. Note: `Component::simplify` needs to be
+/// run.
+pub fn parse_component(
+    input: &[char],
+    check_for_init: bool,
+) -> Result<(Option<Vec<char>>, Component), String> {
+    let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
+        ts
+    } else {
+        // something is certainly wrong that will continue to be wrong in the code gen
+        return Err("failed to tokenize".to_owned())
+    };
+    // traverse the tree
+    let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
+        vec![(input.into_iter().collect(), Delimiter::None)];
+    let mut string: Vec<char> = vec![];
+    let mut initialization: Option<Vec<char>> = None;
+    let mut component_middle: Option<Vec<char>> = None;
+    let mut component_range: Option<Vec<char>> = None;
+    loop {
+        let last = stack.len() - 1;
+        let current_lvl_len = stack[last].0.len();
+        if let Some(tt) = stack[last].0.front() {
+            match tt {
+                TokenTree::Group(g) => {
+                    let d = g.delimiter();
+                    match d {
+                        Delimiter::Parenthesis => string.push('('),
+                        Delimiter::Brace => string.push('{'),
+                        Delimiter::Bracket => {
+                            if (last == 0) && (current_lvl_len == 1) {
+                                // top level and last group
+                                assert!(component_middle.is_none());
+                                component_middle = Some(mem::take(&mut string));
+                            } else {
+                                string.push('[');
+                            }
+                        }
+                        Delimiter::None => {
+                            if last != 0 {
+                                string.push(' ')
+                            }
+                        }
+                    };
+                    let trees = g.stream().into_iter().collect();
+                    stack[last].0.pop_front().unwrap();
+                    stack.push((trees, d));
+                    continue
+                }
+                TokenTree::Ident(i) => {
+                    string.extend(i.to_string().chars());
+                }
+                TokenTree::Punct(p) => {
+                    // the spacing check is to exclude semicolons in "::" separators
+                    if check_for_init
+                        && (last == 0)
+                        && initialization.is_none()
+                        && (p.as_char() == ':')
+                        && matches!(p.spacing(), Spacing::Alone)
+                    {
+                        initialization = Some(mem::take(&mut string));
+                    } else {
+                        string.push(p.as_char());
+                    }
+                }
+                TokenTree::Literal(l) => string.extend(l.to_string().chars()),
+            }
+            stack[last].0.pop_front().unwrap();
+        } else {
+            match stack[last].1 {
+                Delimiter::Parenthesis => string.push(')'),
+                Delimiter::Brace => string.push('}'),
+                Delimiter::Bracket => {
+                    if (last == 0) && component_range.is_some() {
+                        component_range = Some(mem::take(&mut string));
+                    } else {
+                        string.push(']')
+                    }
+                }
+                Delimiter::None => {
+                    if last != 0 {
+                        string.push(' ')
+                    }
+                }
+            };
+            if last == 0 {
+                break
+            }
+            stack.pop().unwrap();
+        }
     }
-    s
+    if component_range.is_some() {
+        assert!(string.is_empty());
+    } else {
+        component_middle = Some(string);
+    }
+    match (component_middle, component_range) {
+        (None, None) => {
+            if initialization.is_some() {
+                // specialize this case to prevent confusion
+                Err("specified initialization is followed by empty component".to_owned())
+            } else {
+                Err("empty component".to_owned())
+            }
+        }
+        (Some(middle), Some(range)) => {
+            if let Some(range) = parse_range(&range) {
+                Ok((
+                    initialization,
+                    Component::new(ComponentType::Variable(middle), range),
+                ))
+            } else {
+                Err("could not parse range".to_owned())
+            }
+        }
+        (Some(middle), None) => {
+            // possibly a filler
+            if let Some(range) = parse_range(&middle) {
+                Ok((initialization, Component::new(ComponentType::Filler, range)))
+            } else {
+                Ok((
+                    initialization,
+                    Component::new(ComponentType::Variable(middle), Usbr::unbounded()),
+                ))
+            }
+        }
+        _ => unreachable!(),
+    }
+}
+
+/// Tries to parse raw `input` as a range. Looks for the existence of top
+/// level ".." or "..=" punctuation.
+pub fn parse_range(input: &[char]) -> Option<Usbr> {
+    let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
+        ts
+    } else {
+        return None
+    };
+    // traverse the tree
+    let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
+        vec![(input.into_iter().collect(), Delimiter::None)];
+    let mut string: Vec<char> = vec![];
+    let mut range = None;
+    let mut is_range = false;
+    let mut inclusive = false;
+    loop {
+        let last = stack.len() - 1;
+        if let Some(tt) = stack[last].0.front() {
+            match tt {
+                TokenTree::Group(g) => {
+                    let d = g.delimiter();
+                    match d {
+                        Delimiter::Parenthesis => string.push('('),
+                        Delimiter::Brace => string.push('{'),
+                        Delimiter::Bracket => string.push('['),
+                        Delimiter::None => {
+                            if last != 0 {
+                                string.push(' ')
+                            }
+                        }
+                    };
+                    let trees = g.stream().into_iter().collect();
+                    stack[last].0.pop_front().unwrap();
+                    stack.push((trees, d));
+                    continue
+                }
+                TokenTree::Ident(i) => {
+                    string.extend(i.to_string().chars());
+                }
+                TokenTree::Punct(p) => {
+                    let p0 = p.as_char();
+                    let len = stack[0].0.len();
+                    if (last == 0) && (p0 == '.') && (len >= 2) {
+                        if let TokenTree::Punct(ref p1) = stack[0].0[1] {
+                            if p1.as_char() == '.' {
+                                is_range = true;
+                                if len >= 3 {
+                                    if let TokenTree::Punct(ref p2) = stack[0].0[2] {
+                                        if p2.as_char() == '=' {
+                                            // inclusive range
+                                            inclusive = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if is_range {
+                        if range.is_some() {
+                            return None
+                        }
+                        range = Some(Usbr {
+                            start: Some(Usb {
+                                s: mem::take(&mut string),
+                                x: 0,
+                            }),
+                            end: None,
+                        });
+                    } else {
+                        string.push(p0);
+                    }
+                }
+                TokenTree::Literal(l) => string.extend(l.to_string().chars()),
+            }
+            stack[last].0.pop_front().unwrap();
+            if is_range {
+                stack[last].0.pop_front().unwrap();
+                if inclusive {
+                    stack[last].0.pop_front().unwrap();
+                }
+                is_range = false;
+            }
+        } else {
+            match stack[last].1 {
+                Delimiter::Parenthesis => string.push(')'),
+                Delimiter::Brace => string.push('}'),
+                Delimiter::Bracket => string.push(']'),
+                Delimiter::None => {
+                    if last != 0 {
+                        string.push(' ')
+                    }
+                }
+            };
+            if last == 0 {
+                break
+            }
+            stack.pop().unwrap();
+        }
+    }
+    if !string.is_empty() {
+        if let Some(ref mut range) = range {
+            if inclusive {
+                range.end = Some(Usb {
+                    s: mem::take(&mut string),
+                    x: 1,
+                });
+            } else {
+                range.end = Some(Usb {
+                    s: mem::take(&mut string),
+                    x: 0,
+                });
+            }
+        }
+    }
+    range
 }
 
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
