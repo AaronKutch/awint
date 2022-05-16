@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fmt::Write, mem, str::FromStr};
+use std::{collections::VecDeque, mem, str::FromStr};
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 
@@ -94,32 +94,6 @@ pub fn token_stream_to_raw_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
     components.push(string);
     concatenations.push(components);
     concatenations
-}
-
-pub fn raw_cc_to_string(cc: &[Vec<Vec<char>>]) -> String {
-    let mut s = String::new();
-    let mut concat_s = String::new();
-    let mut comp_s = String::new();
-    let concats_w = cc.len();
-    for (j, concatenation) in cc.iter().enumerate() {
-        let concat_w = concatenation.len();
-        for (i, component) in concatenation.iter().enumerate() {
-            for c in component {
-                comp_s.push(*c);
-            }
-            write!(concat_s, "{}", comp_s).unwrap();
-            if (i + 1) < concat_w {
-                write!(concat_s, ", ").unwrap();
-            }
-            comp_s.clear();
-        }
-        write!(s, "{}", concat_s).unwrap();
-        if (j + 1) < concats_w {
-            writeln!(s, ";").unwrap();
-        }
-        concat_s.clear();
-    }
-    s
 }
 
 /// Parses a raw component using token trees. Looks for the existence of a top
@@ -374,9 +348,7 @@ pub fn parse_range(input: &[char]) -> Option<Usbr> {
 
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
 /// being a contant we can parse, which passes upward the `Usb` and `Usbr` chain
-/// to get calculated into a static width. This function needs to use
-/// `TokenStream`s to preven breaking stuff involving nested parenthesis and
-/// other stuff.
+/// to get calculated into a static width
 pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
     let original_input = input;
     let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {

@@ -1,7 +1,6 @@
 use std::{num::NonZeroUsize, str::FromStr};
 
 use awint_ext::ExtAwi;
-use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr, PtrTrait};
 
 pub fn i128_to_usize(x: i128) -> Result<usize, String> {
     usize::try_from(x).map_err(|_| "`usize::try_from` overflow".to_owned())
@@ -21,8 +20,9 @@ pub enum ComponentType {
 use ComponentType::*;
 
 use crate::{
-    chars_to_string,
+    chars_to_string, parse_component,
     ranges::{usize_to_i128, Usbr},
+    CCMacroError,
 };
 
 #[derive(Debug, Clone)]
@@ -128,12 +128,31 @@ impl Component {
 }
 
 pub struct Concatenation {
-    pub concatenation: Vec<Component>,
+    pub comps: Vec<Component>,
     pub total_bw: Option<NonZeroUsize>,
 }
 
-ptr_trait_struct_with_gen!(P0);
-
-pub struct ParseNode {
-    pub s: Vec<char>,
+pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<Vec<Concatenation>, CCMacroError> {
+    let mut cc = vec![];
+    for (concat_i, concat) in raw_cc.iter().enumerate() {
+        let mut comps = vec![];
+        for (comp_i, comp) in concat.iter().enumerate() {
+            match parse_component(comp, false) {
+                Ok((Some(_), _)) => todo!(),
+                Ok((None, comp)) => comps.push(comp),
+                Err(e) => {
+                    return Err(CCMacroError {
+                        concat_i: Some(concat_i),
+                        comp_i: Some(comp_i),
+                        error: e,
+                    })
+                }
+            }
+        }
+        cc.push(Concatenation {
+            comps,
+            total_bw: None,
+        });
+    }
+    Ok(cc)
 }

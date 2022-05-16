@@ -8,6 +8,8 @@
 #![allow(clippy::too_many_arguments)]
 
 mod bimap;
+mod cc_macro;
+pub mod errors;
 mod lower;
 mod lower_fields;
 mod lower_structs;
@@ -17,11 +19,13 @@ mod old_parse;
 mod old_parse_structs;
 pub mod parse;
 pub mod ranges;
-mod token_stream;
+pub mod token_stream;
 
 use std::num::NonZeroUsize;
 
 pub(crate) use bimap::*;
+pub use cc_macro::*;
+pub use errors::*;
 pub(crate) use lower::*;
 pub(crate) use lower_structs::*;
 pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
@@ -30,7 +34,7 @@ pub use names::*;
 pub(crate) use old_parse::*;
 use old_parse_structs::ComponentType::*;
 pub(crate) use old_parse_structs::*;
-pub(crate) use parse::*;
+pub use parse::*;
 pub use token_stream::*;
 
 /// Prefix used for constants
