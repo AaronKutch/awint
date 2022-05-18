@@ -55,10 +55,15 @@ impl CCMacroError {
                             advance = false;
                         }
                     }
-                    let parallel_c = if mark { '^' } else { ' ' };
-                    for _ in 0..component.len() {
-                        color_line.push(parallel_c);
-                    }
+                    if mark {
+                        for _ in 0..component.len() {
+                            color_line.push('^');
+                        }
+                    } else {
+                        for _ in 0..(component.len() + 2) {
+                            color_line.push(' ');
+                        }
+                    };
                     if self.comp_i.is_some() {
                         mark = false;
                     }

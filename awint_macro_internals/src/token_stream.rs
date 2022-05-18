@@ -388,17 +388,10 @@ pub fn usb_common_case(original: &Usb) -> Result<Option<Usb>, String> {
     // hack to extract from single group of parenthesis
     if stack[0].0.len() == 1 {
         let tt = stack[0].0.front().unwrap();
-        match tt {
-            TokenTree::Group(g) => {
-                let d = g.delimiter();
-                match d {
-                    Delimiter::Parenthesis => {
-                        stack[0] = (g.stream().into_iter().collect(), Delimiter::None);
-                    }
-                    _ => (),
-                };
-            }
-            _ => (),
+        if let TokenTree::Group(g) = tt {
+            if g.delimiter() == Delimiter::Parenthesis {
+                stack[0] = (g.stream().into_iter().collect(), Delimiter::None);
+            };
         }
     }
     loop {

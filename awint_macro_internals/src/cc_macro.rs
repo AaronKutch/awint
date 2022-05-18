@@ -43,7 +43,7 @@ pub fn cc_macro(
         }
     };
     let empty: Vec<Vec<char>> = vec![vec![]];
-    if raw_cc[0] == empty {
+    if (raw_cc.len() == 1) && (raw_cc[0] == empty) {
         return Err(error_and_help("empty input", "for further information see the \
         library documentation of `awint_macros` https://docs.rs/awint_macros/"))
     }
