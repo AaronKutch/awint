@@ -98,7 +98,7 @@ impl Usb {
                     .checked_add(x)
                     .ok_or_else(|| "i128 overflow".to_owned())?;
             } else {
-                *self = usb_common_case(&self.s)?;
+                *self = usb_common_case(self.clone())?;
             }
         }
         // note: we could determine now that value is negative, but for better error

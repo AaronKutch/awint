@@ -80,8 +80,8 @@ impl Component {
                         }
                         Err(e) => {
                             return Err(format!(
-                                r#"was parsed with `<ExtAwi as FromStr>::from_str("{}")` which \
-                                 returned SerdeError::{:?}"#,
+                                "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` which \
+                                 returned SerdeError::{:?}",
                                 s, e
                             ))
                         }

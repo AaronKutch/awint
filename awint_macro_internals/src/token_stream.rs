@@ -15,6 +15,9 @@ pub fn chars_to_string(chars: &[char]) -> String {
     s
 }
 
+// TODO we could probably keep around the token tree in some custom structure
+// rather than call `TokenStream::from_str` repeatedly on the same chars
+
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings
 pub fn token_stream_to_raw_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
@@ -328,7 +331,7 @@ pub fn parse_range(input: &[char], allow_single_bit_range: bool) -> Result<Usbr,
                 Delimiter::Brace => string.push('}'),
                 Delimiter::Bracket => string.push(']'),
                 Delimiter::None => {
-                    if last != 1 {
+                    if last != 0 {
                         string.push(' ')
                     }
                 }
@@ -365,9 +368,8 @@ pub fn parse_range(input: &[char], allow_single_bit_range: bool) -> Result<Usbr,
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
 /// being a contant we can parse, which passes upward the `Usb` and `Usbr` chain
 /// to get calculated into a static width
-pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
-    let original_input = input;
-    let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
+pub fn usb_common_case(original: Usb) -> Result<Usb, String> {
+    let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(&original.s)) {
         ts
     } else {
         // shouldn't be reachable
@@ -428,7 +430,7 @@ pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
                 Delimiter::Brace => string.push('}'),
                 Delimiter::Bracket => string.push(']'),
                 Delimiter::None => {
-                    if last != 1 {
+                    if last != 0 {
                         string.push(' ')
                     }
                 }
@@ -439,12 +441,13 @@ pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
             stack.pop().unwrap();
         }
     }
+    dbg!(&seen_minus, &seen_plus, &string);
     let mut lhs = None;
     let mut rhs = None;
     let mut neg = false;
     if !seen_plus.is_empty() {
         if seen_plus.len() != 1 {
-            return Ok(Usb::new(original_input, 0))
+            return Ok(original)
         } else {
             lhs = Some(Usb::new_s(&string[..seen_plus[0]]));
             rhs = Some(Usb::new_s(&string[(seen_plus[0] + 1)..]));
@@ -470,7 +473,7 @@ pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
         if (lhs.simplify().is_err() || rhs.simplify().is_err())
             || (lhs.static_val().is_none() && rhs.static_val().is_none())
         {
-            Ok(Usb::new(original_input, 0))
+            Ok(original)
         } else if let Some(rhs) = rhs.static_val() {
             if neg {
                 lhs.x = lhs
@@ -483,19 +486,28 @@ pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
                     .checked_add(rhs)
                     .ok_or_else(|| "i128 overflow".to_owned())?;
             }
+            lhs.x = lhs
+                .x
+                .checked_add(original.x)
+                .ok_or_else(|| "i128 overflow".to_owned())?;
             Ok(lhs)
         } else {
             let lhs = lhs.static_val().unwrap();
-            rhs.x
+            rhs.x = rhs
+                .x
                 .checked_add(lhs)
                 .ok_or_else(|| "i128 overflow".to_owned())?;
             if neg {
                 // compiler will handle the '-' later
                 rhs.s.insert(0, '-');
             }
+            rhs.x = rhs
+                .x
+                .checked_add(original.x)
+                .ok_or_else(|| "i128 overflow".to_owned())?;
             Ok(rhs)
         }
     } else {
-        Ok(Usb::new(original_input, 0))
+        Ok(original)
     }
 }
