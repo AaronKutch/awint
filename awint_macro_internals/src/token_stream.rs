@@ -385,6 +385,22 @@ pub fn usb_common_case(original: &Usb) -> Result<Option<Usb>, String> {
     // traverse the tree
     let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
         vec![(input.into_iter().collect(), Delimiter::None)];
+    // hack to extract from single group of parenthesis
+    if stack[0].0.len() == 1 {
+        let tt = stack[0].0.front().unwrap();
+        match tt {
+            TokenTree::Group(g) => {
+                let d = g.delimiter();
+                match d {
+                    Delimiter::Parenthesis => {
+                        stack[0] = (g.stream().into_iter().collect(), Delimiter::None);
+                    }
+                    _ => (),
+                };
+            }
+            _ => (),
+        }
+    }
     loop {
         let last = stack.len() - 1;
         if let Some(tt) = stack[last].0.front() {
