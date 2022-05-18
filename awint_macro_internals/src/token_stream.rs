@@ -172,7 +172,7 @@ pub fn parse_component(
                 Delimiter::Parenthesis => string.push(')'),
                 Delimiter::Brace => string.push('}'),
                 Delimiter::Bracket => {
-                    if (last == 0) && component_range.is_some() {
+                    if (last == 1) && stack[0].0.is_empty() {
                         component_range = Some(mem::take(&mut string));
                     } else {
                         string.push(']')
@@ -328,7 +328,7 @@ pub fn parse_range(input: &[char], allow_single_bit_range: bool) -> Result<Usbr,
                 Delimiter::Brace => string.push('}'),
                 Delimiter::Bracket => string.push(']'),
                 Delimiter::None => {
-                    if last != 0 {
+                    if last != 1 {
                         string.push(' ')
                     }
                 }
@@ -428,7 +428,7 @@ pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
                 Delimiter::Brace => string.push('}'),
                 Delimiter::Bracket => string.push(']'),
                 Delimiter::None => {
-                    if last != 0 {
+                    if last != 1 {
                         string.push(' ')
                     }
                 }
