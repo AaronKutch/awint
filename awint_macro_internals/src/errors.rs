@@ -13,6 +13,14 @@ pub struct CCMacroError {
 }
 
 impl CCMacroError {
+    pub fn new(error: String) -> Self {
+        Self {
+            concat_i: None,
+            comp_i: None,
+            error,
+        }
+    }
+
     /// Creates a formatted block of the cc optionally with red colored pointers
     /// to a specific concatenation or component, then `error` is appended
     /// inline.
@@ -25,7 +33,6 @@ impl CCMacroError {
         let mut comp_s = String::new();
         let mut color_line = String::new();
         for (j, concatenation) in cc.iter().enumerate() {
-            let concat_w = concatenation.len();
             let mut this_concat = false;
             let mut mark = false;
             if let Some(concat_i) = self.concat_i {
@@ -37,7 +44,7 @@ impl CCMacroError {
                 }
             }
             let mut advance = this_concat;
-            for (i, component) in concatenation.iter().enumerate() {
+            for (i, component) in concatenation.iter().enumerate().rev() {
                 if this_concat && advance {
                     if let Some(comp_i) = self.comp_i {
                         if i == comp_i {
@@ -57,7 +64,7 @@ impl CCMacroError {
                     comp_s.push(*c);
                 }
                 write!(concat_s, "{}", comp_s).unwrap();
-                if (i + 1) < concat_w {
+                if i > 0 {
                     write!(concat_s, "{} ", comma).unwrap();
                 }
                 comp_s.clear();

@@ -277,7 +277,7 @@ impl Usbr {
             if !start.is_guaranteed_zero() && self.end.is_none() {
                 // is a useless case anyway and prevents edge cases
                 return Err(
-                    "A filler with a bounded start should also have a bounded end".to_owned(),
+                    "a filler with a bounded start should also have a bounded end".to_owned(),
                 )
             }
         }

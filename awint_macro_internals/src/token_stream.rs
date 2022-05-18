@@ -205,18 +205,25 @@ pub fn parse_component(
             }
         }
         (Some(middle), Some(range)) => {
-            if let Some(range) = parse_range(&range) {
-                Ok((
-                    initialization,
-                    Component::new(ComponentType::Variable(middle), range),
-                ))
+            if range.is_empty() {
+                Err("has an empty index".to_owned())
             } else {
-                Err("could not parse range".to_owned())
+                match parse_range(&range) {
+                    Ok(range) => Ok((
+                        initialization,
+                        Component::new(ComponentType::Variable(middle), range),
+                    )),
+                    Err(e) => Err(format!(
+                        r#"could not parse range "{}": {}"#,
+                        chars_to_string(&range),
+                        e
+                    )),
+                }
             }
         }
         (Some(middle), None) => {
-            // possibly a filler
-            if let Some(range) = parse_range(&middle) {
+            // possibly a filler, check if is a range
+            if let Ok(range) = parse_range(&middle) {
                 Ok((initialization, Component::new(ComponentType::Filler, range)))
             } else {
                 Ok((
@@ -231,17 +238,18 @@ pub fn parse_component(
 
 /// Tries to parse raw `input` as a range. Looks for the existence of top
 /// level ".." or "..=" punctuation.
-pub fn parse_range(input: &[char]) -> Option<Usbr> {
+pub fn parse_range(input: &[char]) -> Result<Usbr, String> {
     let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
         ts
     } else {
-        return None
+        return Err("failed to tokenize range".to_owned())
     };
     // traverse the tree
     let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
         vec![(input.into_iter().collect(), Delimiter::None)];
     let mut string: Vec<char> = vec![];
     let mut range = None;
+    // this is toggled for char lookahead logic
     let mut is_range = false;
     let mut inclusive = false;
     loop {
@@ -274,6 +282,9 @@ pub fn parse_range(input: &[char]) -> Option<Usbr> {
                     if (last == 0) && (p0 == '.') && (len >= 2) {
                         if let TokenTree::Punct(ref p1) = stack[0].0[1] {
                             if p1.as_char() == '.' {
+                                if range.is_some() {
+                                    return Err("encountered two ranges".to_owned())
+                                }
                                 is_range = true;
                                 if len >= 3 {
                                     if let TokenTree::Punct(ref p2) = stack[0].0[2] {
@@ -287,9 +298,6 @@ pub fn parse_range(input: &[char]) -> Option<Usbr> {
                         }
                     }
                     if is_range {
-                        if range.is_some() {
-                            return None
-                        }
                         range = Some(Usbr {
                             start: Some(Usb {
                                 s: mem::take(&mut string),
@@ -328,22 +336,23 @@ pub fn parse_range(input: &[char]) -> Option<Usbr> {
             stack.pop().unwrap();
         }
     }
-    if !string.is_empty() {
-        if let Some(ref mut range) = range {
-            if inclusive {
-                range.end = Some(Usb {
-                    s: mem::take(&mut string),
-                    x: 1,
-                });
-            } else {
-                range.end = Some(Usb {
-                    s: mem::take(&mut string),
-                    x: 0,
-                });
-            }
+    if let Some(mut range) = range {
+        if inclusive {
+            range.end = Some(Usb {
+                s: mem::take(&mut string),
+                x: 1,
+            });
+        } else {
+            range.end = Some(Usb {
+                s: mem::take(&mut string),
+                x: 0,
+            });
         }
+        Ok(range)
+    } else {
+        // single bit range
+        Ok(Usbr::single_bit(&string))
     }
-    range
 }
 
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
@@ -354,8 +363,8 @@ pub fn usb_common_case(input: &[char]) -> Result<Usb, String> {
     let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
         ts
     } else {
-        // something is certainly wrong that will continue to be wrong in the code gen
-        return Err("failed to tokenize".to_owned())
+        // shouldn't be reachable
+        return Err("failed to tokenize in `usb_common_case`".to_owned())
     };
     // we want to handle (r + -8), (-8 + r), (-a + -5), (-x - -y).
     // what we do is keep all chars but track all leaf '-' and '+' occurances,
