@@ -88,8 +88,9 @@ impl Usb {
 
     /// Tries to parse the `s` part of `self` as an integer and adds it to `x`.
     /// Performs advanced simplifications such as interpreting
-    /// `({+/-}{string/i128} {+/-} {+/-}{string/i128})
-    pub fn simplify(&mut self) -> Result<(), String> {
+    /// `({+/-}{string/i128} {+/-} {+/-}{string/i128})`.
+    /// Returns `true` if simplification happened
+    pub fn simplify(&mut self) -> Result<bool, String> {
         if !self.s.is_empty() {
             if let Some(x) = i128_try_parse(&self.s) {
                 self.s.clear();
@@ -97,13 +98,22 @@ impl Usb {
                     .x
                     .checked_add(x)
                     .ok_or_else(|| "i128 overflow".to_owned())?;
+                Ok(true)
             } else {
-                *self = usb_common_case(self.clone())?;
+                match usb_common_case(self) {
+                    Ok(Some(simplified)) => {
+                        *self = simplified;
+                        Ok(true)
+                    }
+                    Ok(None) => Ok(false),
+                    Err(e) => Err(e),
+                }
             }
+        } else {
+            Ok(false)
         }
-        // note: we could determine now that value is negative, but for better error
-        // reporting I want it at the range level
-        Ok(())
+        // note: we could determine now that value is negative, but for better
+        // error reporting I want it at the range level
     }
 
     pub fn static_val(&self) -> Option<i128> {

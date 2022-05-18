@@ -83,7 +83,7 @@ impl CCMacroError {
                 } else {
                     color_line = format!(" concatenation {}\n{} {}", j, color_line, self.error);
                 }
-                writeln!(s, "{}", color_text(&color_line, 91)).unwrap();
+                write!(s, "{}", color_text(&color_line, 91)).unwrap();
             }
             writeln!(s).unwrap();
         }

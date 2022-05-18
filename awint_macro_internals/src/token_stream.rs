@@ -367,8 +367,9 @@ pub fn parse_range(input: &[char], allow_single_bit_range: bool) -> Result<Usbr,
 
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
 /// being a contant we can parse, which passes upward the `Usb` and `Usbr` chain
-/// to get calculated into a static width
-pub fn usb_common_case(original: Usb) -> Result<Usb, String> {
+/// to get calculated into a static width. Returns `Ok(None)` if no
+/// optimizations happened
+pub fn usb_common_case(original: &Usb) -> Result<Option<Usb>, String> {
     let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(&original.s)) {
         ts
     } else {
@@ -441,25 +442,21 @@ pub fn usb_common_case(original: Usb) -> Result<Usb, String> {
             stack.pop().unwrap();
         }
     }
-    dbg!(&seen_minus, &seen_plus, &string);
     let mut lhs = None;
     let mut rhs = None;
     let mut neg = false;
     if !seen_plus.is_empty() {
-        if seen_plus.len() != 1 {
-            return Ok(original)
-        } else {
-            lhs = Some(Usb::new_s(&string[..seen_plus[0]]));
-            rhs = Some(Usb::new_s(&string[(seen_plus[0] + 1)..]));
-        }
+        lhs = Some(Usb::new_s(&string[..*seen_plus.last().unwrap()]));
+        rhs = Some(Usb::new_s(&string[(*seen_plus.last().unwrap() + 1)..]));
     } else if !seen_minus.is_empty() {
         let mut mid = None;
         // search for rightmost adjacent '-'s, (a - -8) which got compressed
         for i in (0..(seen_minus.len() - 1)).rev() {
             if (seen_minus[i] + 1) == seen_minus[i + 1] {
-                mid = Some(i);
+                mid = Some(seen_minus[i]);
             }
         }
+        // else just use last minus
         if mid.is_none() {
             mid = Some(*seen_minus.last().unwrap());
         }
@@ -470,11 +467,9 @@ pub fn usb_common_case(original: Usb) -> Result<Usb, String> {
         }
     }
     if let (Some(mut lhs), Some(mut rhs)) = (lhs, rhs) {
-        if (lhs.simplify().is_err() || rhs.simplify().is_err())
-            || (lhs.static_val().is_none() && rhs.static_val().is_none())
-        {
-            Ok(original)
-        } else if let Some(rhs) = rhs.static_val() {
+        lhs.simplify()?;
+        rhs.simplify()?;
+        if let Some(rhs) = rhs.static_val() {
             if neg {
                 lhs.x = lhs
                     .x
@@ -490,9 +485,8 @@ pub fn usb_common_case(original: Usb) -> Result<Usb, String> {
                 .x
                 .checked_add(original.x)
                 .ok_or_else(|| "i128 overflow".to_owned())?;
-            Ok(lhs)
-        } else {
-            let lhs = lhs.static_val().unwrap();
+            Ok(Some(lhs))
+        } else if let Some(lhs) = lhs.static_val() {
             rhs.x = rhs
                 .x
                 .checked_add(lhs)
@@ -505,9 +499,11 @@ pub fn usb_common_case(original: Usb) -> Result<Usb, String> {
                 .x
                 .checked_add(original.x)
                 .ok_or_else(|| "i128 overflow".to_owned())?;
-            Ok(rhs)
+            Ok(Some(rhs))
+        } else {
+            Ok(None)
         }
     } else {
-        Ok(original)
+        Ok(None)
     }
 }
