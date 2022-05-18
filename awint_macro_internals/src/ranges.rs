@@ -224,9 +224,10 @@ impl Usbr {
     ///
     /// Assumes `simplify` has already been called
     pub fn simplify_literal(&mut self, bits: &Bits) -> Result<(), String> {
+        let bits_bw = usize_to_i128(bits.bw())?;
         if let Some(ref start) = self.start {
             if let Some(x) = start.static_val() {
-                if x >= usize_to_i128(bits.bw())? {
+                if x >= bits_bw {
                     return Err(format!(
                         "start of range ({}) statically determined to be greater than or equal to \
                          the bitwidth of the literal ({})",
@@ -240,7 +241,7 @@ impl Usbr {
         }
         if let Some(ref end) = self.end {
             if let Some(x) = end.static_val() {
-                if x > usize_to_i128(bits.bw())? {
+                if x > bits_bw {
                     return Err(format!(
                         "end of range ({}) statically determined to be greater than the bitwidth \
                          of the literal ({})",
@@ -250,7 +251,17 @@ impl Usbr {
                 }
             }
         } else {
-            self.end = Some(Usb::val(usize_to_i128(bits.bw())?));
+            self.end = Some(Usb::val(bits_bw));
+        }
+        if let Some(w) = self.static_width() {
+            if w > bits_bw {
+                return Err(format!(
+                    "width of range ({}) statically determined to be greater than the bitwidth \
+                     of the literal ({})",
+                    w,
+                    bits.bw()
+                ))
+            }
         }
         Ok(())
     }

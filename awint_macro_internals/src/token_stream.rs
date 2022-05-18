@@ -467,6 +467,7 @@ pub fn usb_common_case(original: &Usb) -> Result<Option<Usb>, String> {
         }
     }
     if let (Some(mut lhs), Some(mut rhs)) = (lhs, rhs) {
+        // TODO need to fix quadratic terms involved
         lhs.simplify()?;
         rhs.simplify()?;
         if let Some(rhs) = rhs.static_val() {
