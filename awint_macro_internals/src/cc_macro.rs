@@ -71,9 +71,9 @@ pub fn cc_macro(
         (Some(concat_i), None) => {
             return Err(CCMacroError {
                 concat_i: Some(concat_i),
-                comp_i: None,
                 error: "Empty concatenation, at most a single trailing semicolon is allowed"
                     .to_owned(),
+                ..Default::default()
             }
             .raw_cc_error(&raw_cc))
         }
@@ -83,6 +83,7 @@ pub fn cc_macro(
                 comp_i: Some(comp_i),
                 error: "Empty component at the end, at most a single trailing comma is allowed"
                     .to_owned(),
+                ..Default::default()
             }
             .raw_cc_error(&raw_cc))
         }

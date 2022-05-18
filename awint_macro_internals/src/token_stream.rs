@@ -283,7 +283,9 @@ pub fn parse_range(input: &[char]) -> Result<Usbr, String> {
                         if let TokenTree::Punct(ref p1) = stack[0].0[1] {
                             if p1.as_char() == '.' {
                                 if range.is_some() {
-                                    return Err("encountered two ranges".to_owned())
+                                    return Err("encountered two top level \"..\" strings in same \
+                                                range"
+                                        .to_owned())
                                 }
                                 is_range = true;
                                 if len >= 3 {

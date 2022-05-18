@@ -6,10 +6,12 @@ pub fn color_text(s: &str, c: u8) -> String {
     format!("\x1b[{}m{}\x1b[0m", c, s)
 }
 
+#[derive(Debug, Default, Clone)]
 pub struct CCMacroError {
     pub concat_i: Option<usize>,
     pub comp_i: Option<usize>,
     pub error: String,
+    pub help: Option<String>,
 }
 
 impl CCMacroError {
@@ -18,6 +20,7 @@ impl CCMacroError {
             concat_i: None,
             comp_i: None,
             error,
+            help: None,
         }
     }
 
@@ -84,6 +87,10 @@ impl CCMacroError {
             }
             writeln!(s).unwrap();
         }
-        format!("{}\n{}", self.error, s)
+        if let Some(ref help) = self.help {
+            format!("{}\n{}{} {}", self.error, s, color_text("help:", 93), help)
+        } else {
+            format!("{}\n{}", self.error, s)
+        }
     }
 }

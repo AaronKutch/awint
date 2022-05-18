@@ -174,6 +174,11 @@ impl Concatenation {
                             concat_i: Some(concat_i),
                             comp_i: Some(comp_i),
                             error: "sink concatenations cannot have literals".to_owned(),
+                            help: Some(
+                                "if the space taken up by the component is necessary, use a \
+                                 filler equivalent to its width or range instead"
+                                    .to_owned(),
+                            ),
                         })
                     }
                 }
@@ -184,10 +189,10 @@ impl Concatenation {
                         if (concat_i != 0) && (concat_len == 0) {
                             return Err(CCMacroError {
                                 concat_i: Some(concat_i),
-                                comp_i: None,
                                 error: "sink concatenations that consist of only an unbounded \
                                         filler are no-ops"
                                     .to_owned(),
+                                ..Default::default()
                             })
                         }
                         if !matches!(self.filler_alignment, FillerAlign::None) {
@@ -200,6 +205,11 @@ impl Concatenation {
                                 error: "there is more than one unbounded filler in this \
                                         concatenation"
                                     .to_owned(),
+                                help: Some(
+                                    "it is ambiguous how components between the fillers should be \
+                                     aligned, remove one or break apart the macro into more macros"
+                                        .to_owned(),
+                                ),
                             })
                         }
                         if comp_i == 0 {
@@ -220,9 +230,14 @@ impl Concatenation {
                 // in the case of `cc!` this isn't a logical error, but it is a useless no-op
                 return Err(CCMacroError {
                     concat_i: Some(concat_i),
-                    comp_i: None,
                     error: "determined statically that this concatenation has zero width"
                         .to_owned(),
+                    help: Some(
+                        "if this is a construction macro then it would result in a zero bitwidth \
+                         `awint` integer which would panic, else it is still a useless no-op"
+                            .to_owned(),
+                    ),
+                    ..Default::default()
                 })
             }
         }
@@ -283,6 +298,7 @@ pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<Vec<Concatenation>, CCMacro
                         concat_i: Some(concat_i),
                         comp_i: Some(comp_i),
                         error: e,
+                        ..Default::default()
                     })
                 }
             }
@@ -307,6 +323,7 @@ pub fn stage2(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
                         concat_i: Some(concat_i),
                         comp_i: Some(comp_i),
                         error: e,
+                        ..Default::default()
                     })
                 }
             }
@@ -352,12 +369,12 @@ pub fn stage4(
                 if this_bw != prev_bw {
                     return Err(CCMacroError {
                         concat_i: Some(concat_i),
-                        comp_i: None,
                         error: format!(
                             "determined statically that concatenations {} and {} have unequal \
                              bitwidths {} and {}",
                             original_common_i, concat_i, prev_bw, this_bw
                         ),
+                        ..Default::default()
                     })
                 }
             } else {
@@ -374,25 +391,43 @@ pub fn stage4(
                         error: "a construction macro with unspecified initialization cannot have \
                                 a filler in the source concatenation"
                             .to_owned(),
+                        help: Some(
+                            "prefix the first concatenation with the desired initialization \
+                             function followed by a colon, such as \"zero: \" or \"umax: \""
+                                .to_owned(),
+                        ),
                     })
                 }
             }
         }
     }
     if static_width && common_bw.is_none() {
-        return Err(CCMacroError::new(format!(
-            "`{}` construction macros need at least one concatenation to have a width that can be \
-             determined statically by the macro",
-            construction_fn.unwrap()
-        )))
+        return Err(CCMacroError {
+            error: format!(
+                "`{}` construction macros need at least one concatenation to have a width that \
+                 can be determined statically by the macro",
+                construction_fn.unwrap()
+            ),
+            help: Some(
+                "use constant ranges on all the components of any concatenation, or append a \
+                 filler-only concatenation such as \"; ..64 ;\" that gives the macro needed \
+                 information"
+                    .to_owned(),
+            ),
+            ..Default::default()
+        })
     }
     if (!all_deterministic) && (cc.len() == 1) {
         // this case shouldn't have a use
-        return Err(CCMacroError::new(
-            "there is a only a source concatenation that has no statically or dynamically \
-             determinable width"
+        return Err(CCMacroError {
+            error: "there is a only a source concatenation that has no statically or dynamically \
+                    determinable width"
                 .to_owned(),
-        ))
+            help: Some(
+                "unbounded fillers have no effects if there is only one concatenation".to_owned(),
+            ),
+            ..Default::default()
+        })
     }
     if !all_deterministic {
         for (concat_i, concat) in cc.iter().enumerate() {
@@ -406,6 +441,11 @@ pub fn stage4(
                                     concatenation, and no concatenation has a statically or \
                                     dynamically determinable width"
                                 .to_owned(),
+                            help: Some(
+                                "append a filler-only concatenation such as \"; ..64 ;\" or \"; \
+                                 ..var ;\" that gives the macro needed information"
+                                    .to_owned(),
+                            ),
                         })
                     }
                 }
@@ -419,13 +459,18 @@ pub fn stage4(
             if !matches!(concat.filler_alignment, FillerAlign::None) {
                 return Err(CCMacroError {
                     concat_i: Some(alignment_change_i),
-                    comp_i: None,
                     error: format!(
                         "concatenations {} and {} have unbounded fillers aligned opposite each \
                          other, and no concatenation has a statically or dynamically determinable \
                          width",
                         concat_i, alignment_change_i
                     ),
+                    help: Some(
+                        "append a filler-only concatenation such as \"; ..64 ;\" or \"; ..var ;\" \
+                         that gives the macro needed information"
+                            .to_owned(),
+                    ),
+                    ..Default::default()
                 })
             }
         }
