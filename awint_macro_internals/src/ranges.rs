@@ -192,7 +192,7 @@ impl Usbr {
                 if val < 0 {
                     // make it generic because the simplification can move things around
                     return Err(
-                        "determined statically that this range has a negative bound".to_owned()
+                        "determined statically that this has a range with a negative bound".to_owned()
                     )
                 }
             }
@@ -201,18 +201,24 @@ impl Usbr {
             if let Some(val) = end.static_val() {
                 if val < 0 {
                     return Err(
-                        "determined statically that this range has a negative bound".to_owned()
+                        "determined statically that this has a range with a negative bound".to_owned()
                     )
                 }
             }
         }
         if let Some((r0, r1)) = self.static_range() {
             if r0 > r1 {
-                return Err("determined statically that this is a reversed range".to_owned())
+                return Err("determined statically that this has a reversed range".to_owned())
             }
             if r0 == r1 {
                 // this is required for literals that would take up a concatenation
-                return Err("determined statically that this range has zero bitwidth".to_owned())
+                return Err("determined statically that this has a zero bitwidth range".to_owned())
+            }
+        }
+        // `static_width` does the equal string check
+        if let Some(w) = self.static_width() {
+            if w < 0 {
+                return Err("determined statically that this has a reversed range".to_owned())
             }
         }
         Ok(())
