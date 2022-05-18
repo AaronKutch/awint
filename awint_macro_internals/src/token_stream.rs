@@ -208,7 +208,7 @@ pub fn parse_component(
             if range.is_empty() {
                 Err("has an empty index".to_owned())
             } else {
-                match parse_range(&range) {
+                match parse_range(&range, true) {
                     Ok(range) => Ok((
                         initialization,
                         Component::new(ComponentType::Variable(middle), range),
@@ -223,7 +223,7 @@ pub fn parse_component(
         }
         (Some(middle), None) => {
             // possibly a filler, check if is a range
-            if let Ok(range) = parse_range(&middle) {
+            if let Ok(range) = parse_range(&middle, false) {
                 Ok((initialization, Component::new(ComponentType::Filler, range)))
             } else {
                 Ok((
@@ -237,8 +237,9 @@ pub fn parse_component(
 }
 
 /// Tries to parse raw `input` as a range. Looks for the existence of top
-/// level ".." or "..=" punctuation.
-pub fn parse_range(input: &[char]) -> Result<Usbr, String> {
+/// level ".." or "..=" punctuation. If `allow_single_bit_range` is set, will
+/// return a single bit range if ".." or "..=" does not exist.
+pub fn parse_range(input: &[char], allow_single_bit_range: bool) -> Result<Usbr, String> {
     let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
         ts
     } else {
@@ -353,7 +354,11 @@ pub fn parse_range(input: &[char]) -> Result<Usbr, String> {
         Ok(range)
     } else {
         // single bit range
-        Ok(Usbr::single_bit(&string))
+        if allow_single_bit_range {
+            Ok(Usbr::single_bit(&string))
+        } else {
+            Err(r#"did not find ".." or "..=""#.to_owned())
+        }
     }
 }
 

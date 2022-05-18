@@ -55,13 +55,15 @@ impl Component {
                     if end.static_val().is_some() {
                         // attempt to truncate bits below the start
                         if let Some(x) = self.range.start.clone().and_then(|x| x.static_val()) {
-                            let nz_x = i128_to_nonzerousize(x)?;
-                            let w = lit.bw() - nz_x.get();
-                            let mut tmp = ExtAwi::zero(nz_x);
-                            tmp.field(0, lit, nz_x.get(), w);
-                            *lit = tmp;
-                            self.range.start.as_mut().unwrap().x = 0;
-                            self.range.end.as_mut().unwrap().x -= x;
+                            if x > 0 {
+                                let nz_x = i128_to_nonzerousize(x)?;
+                                let w = lit.bw() - nz_x.get();
+                                let mut tmp = ExtAwi::zero(nz_x);
+                                tmp.field(0, lit, nz_x.get(), w);
+                                *lit = tmp;
+                                self.range.start.as_mut().unwrap().x = 0;
+                                self.range.end.as_mut().unwrap().x -= x;
+                            }
                         }
                     }
                 }
@@ -141,6 +143,7 @@ pub enum FillerAlign {
     Multiple,
 }
 
+#[derive(Debug, Clone)]
 pub struct Concatenation {
     pub comps: Vec<Component>,
     pub total_bw: Option<NonZeroUsize>,
