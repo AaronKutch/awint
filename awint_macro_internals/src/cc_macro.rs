@@ -3,7 +3,8 @@ use std::str::FromStr;
 use proc_macro2::TokenStream;
 
 use crate::{
-    parse_cc, stage2, stage3, stage4, stage5, token_stream_to_raw_cc, CCMacroError, Names,
+    error_and_help, parse_cc, stage2, stage3, stage4, stage5, token_stream_to_raw_cc, CCMacroError,
+    Names,
 };
 
 /// Input parsing and code generation function for corresponding concatenations
@@ -33,10 +34,18 @@ pub fn cc_macro(
         Ok(ts) => token_stream_to_raw_cc(ts),
         // this shouldn't be possible if the input has run through a macro already, but we keep this
         // for plain `cc_macro` uses
-        Err(e) => return Err(format!("input failed to tokenize:\n{}", e)),
+        Err(e) => {
+            // lex error displays as "cannot parse string into token stream" which is not
+            // good enough, try to determine if there is a mismatched delimiter TODO
+            return Err(error_and_help(&format!("input failed to tokenize: {}", e),
+                "for further information see the library documentation of `awint_macros` \
+                https://docs.rs/awint_macros/"))
+        }
     };
-    if raw_cc.is_empty() {
-        return Err("empty input".to_owned())
+    let empty: Vec<Vec<Vec<char>>> = vec![vec![vec![]]];
+    if raw_cc == empty {
+        return Err(error_and_help("empty input", "for further information see the \
+        library documentation of `awint_macros` https://docs.rs/awint_macros/"))
     }
     // trailing punctuation handling and reversing concatenations
     let mut trailing_semicolon = false;

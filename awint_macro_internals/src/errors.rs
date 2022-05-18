@@ -94,3 +94,7 @@ impl CCMacroError {
         }
     }
 }
+
+pub fn error_and_help(error: &str, help: &str) -> String {
+    format!("{}\n{} {}", error, color_text("help:", 93), help)
+}
