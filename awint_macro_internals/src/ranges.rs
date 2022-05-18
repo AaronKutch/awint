@@ -192,7 +192,8 @@ impl Usbr {
                 if val < 0 {
                     // make it generic because the simplification can move things around
                     return Err(
-                        "determined statically that this has a range with a negative bound".to_owned()
+                        "determined statically that this has a range with a negative bound"
+                            .to_owned(),
                     )
                 }
             }
@@ -201,7 +202,8 @@ impl Usbr {
             if let Some(val) = end.static_val() {
                 if val < 0 {
                     return Err(
-                        "determined statically that this has a range with a negative bound".to_owned()
+                        "determined statically that this has a range with a negative bound"
+                            .to_owned(),
                     )
                 }
             }
@@ -262,8 +264,8 @@ impl Usbr {
         if let Some(w) = self.static_width() {
             if w > bits_bw {
                 return Err(format!(
-                    "width of range ({}) statically determined to be greater than the bitwidth \
-                     of the literal ({})",
+                    "width of range ({}) statically determined to be greater than the bitwidth of \
+                     the literal ({})",
                     w,
                     bits.bw()
                 ))

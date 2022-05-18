@@ -42,8 +42,8 @@ pub fn cc_macro(
                 https://docs.rs/awint_macros/"))
         }
     };
-    let empty: Vec<Vec<Vec<char>>> = vec![vec![vec![]]];
-    if raw_cc == empty {
+    let empty: Vec<Vec<char>> = vec![vec![]];
+    if raw_cc[0] == empty {
         return Err(error_and_help("empty input", "for further information see the \
         library documentation of `awint_macros` https://docs.rs/awint_macros/"))
     }
@@ -51,10 +51,11 @@ pub fn cc_macro(
     let mut trailing_semicolon = false;
     let mut trailing_commas = vec![];
     let mut error = (None, None);
+    let raw_cc_len = raw_cc.len();
     for (concat_i, concat) in raw_cc.iter().enumerate() {
         let concat_len = concat.len();
-        if concat_len == 0 {
-            if (concat_i + 1) != concat_len {
+        if *concat == empty {
+            if (concat_i + 1) != raw_cc_len {
                 error = (Some(concat_i), None);
             }
             trailing_semicolon = true;
