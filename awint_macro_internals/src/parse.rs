@@ -4,8 +4,9 @@ use awint_ext::ExtAwi;
 
 use crate::{
     component::{Component, ComponentType::*},
-    i128_to_nonzerousize, i128_to_usize, parse_component,
+    i128_to_nonzerousize, i128_to_usize,
     ranges::Usbr,
+    token_tree::PComp,
     CCMacroError,
 };
 
@@ -51,6 +52,7 @@ impl Concatenation {
                 self.deterministic_width = false;
             }
             match comp.c_type {
+                Unparsed => unreachable!(),
                 Literal(_) => {
                     if concat_i > 0 {
                         return Err(CCMacroError {
@@ -173,7 +175,7 @@ pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<Vec<Concatenation>, CCMacro
     for (concat_i, concat) in raw_cc.iter().enumerate() {
         let mut comps = vec![];
         for (comp_i, comp) in concat.iter().enumerate() {
-            match parse_component(comp, false) {
+            /*match parse_component(comp, false) {
                 Ok((Some(_), _)) => todo!(),
                 Ok((None, comp)) => comps.push(comp),
                 Err(e) => {
@@ -184,7 +186,7 @@ pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<Vec<Concatenation>, CCMacro
                         ..Default::default()
                     })
                 }
-            }
+            }*/
         }
         cc.push(Concatenation {
             comps,

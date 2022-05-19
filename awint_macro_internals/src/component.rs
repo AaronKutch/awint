@@ -1,13 +1,16 @@
 use std::str::FromStr;
 
 use awint_ext::ExtAwi;
+use triple_arena::Ptr;
 use ComponentType::*;
 
-use crate::{chars_to_string, i128_to_nonzerousize, ranges::Usbr, usize_to_i128};
+use crate::{
+    chars_to_string, i128_to_nonzerousize, ranges::Usbr, token_tree::PText, usize_to_i128,
+};
 
 #[derive(Debug, Clone)]
 pub enum ComponentType {
-    //Unparsed(Vec<char>),
+    Unparsed,
     Literal(ExtAwi),
     Variable(Vec<char>),
     Filler,
@@ -15,17 +18,15 @@ pub enum ComponentType {
 
 #[derive(Debug, Clone)]
 pub struct Component {
+    pub text: Ptr<PText>,
     pub c_type: ComponentType,
     pub range: Usbr,
 }
 
 impl Component {
-    pub fn new(c_type: ComponentType, range: Usbr) -> Self {
-        Self { c_type, range }
-    }
-
     pub fn simplify(&mut self) -> Result<(), String> {
         match self.c_type.clone() {
+            Unparsed => todo!(),
             Literal(ref mut lit) => {
                 self.range.simplify()?;
                 // note: `lit` here is a reference to a clone
@@ -103,6 +104,7 @@ impl Component {
             }
         }
         match self.c_type {
+            Unparsed => todo!(),
             Literal(ref lit) => {
                 if let Some(ref end) = self.range.end {
                     if !end.s.is_empty() || (end.x != usize_to_i128(lit.bw()).unwrap()) {

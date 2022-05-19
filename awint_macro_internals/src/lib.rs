@@ -24,6 +24,7 @@ mod old_parse_structs;
 pub mod parse;
 pub mod ranges;
 pub mod token_stream;
+mod token_tree;
 
 use std::num::NonZeroUsize;
 
@@ -40,6 +41,7 @@ use old_parse_structs::ComponentType::*;
 pub(crate) use old_parse_structs::*;
 pub use parse::*;
 pub use token_stream::*;
+pub use token_tree::*;
 
 /// Prefix used for constants
 pub(crate) const CONSTANT: &str = "__awint_constant";

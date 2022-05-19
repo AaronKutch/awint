@@ -1,11 +1,13 @@
 use std::{collections::VecDeque, mem, str::FromStr};
 
-use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, TokenStream, TokenTree};
+use triple_arena::{Arena, PtrTrait};
 
 use crate::{
     chars_to_string,
-    component::{Component, ComponentType},
     ranges::{Usb, Usbr},
+    token_tree::Ast,
+    Text,
 };
 
 // TODO we could probably keep around the token tree in some custom structure
@@ -13,34 +15,49 @@ use crate::{
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings
-pub fn token_stream_to_raw_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
+pub fn token_stream_to_ast(input: TokenStream) -> Ast {
     // The `ToString` implementation on `TokenStream`s does not recover the
     // original spacings despite that information being included in spans.
     // Frustratingly, `Span`s (as of Rust 1.61) provide no stable information about
     // their exact byte or char relative locations (despite it being in their
     // `Debug` representations, but I can't use that without a major breakage
     // risk).
-    let mut concatenations = Vec::<Vec<Vec<char>>>::new();
-    let mut components = Vec::<Vec<char>>::new();
-    let mut string = Vec::<char>::new();
+
+    let mut ast = Ast {
+        text: Arena::new(),
+        comps: Arena::new(),
+    };
+    let mut s = Vec::<char>::new();
     // traverse the tree
-    let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
-        vec![(input.into_iter().collect(), Delimiter::None)];
+    let mut stack: Vec<(VecDeque<TokenTree>, proc_macro2::Delimiter)> =
+        vec![(input.into_iter().collect(), proc_macro2::Delimiter::None)];
+    // converting into a new tree, these first three levels always have the same
+    // three delimiters
+    let mut ast_stack: Vec<(Vec<Text>, crate::Delimiter)> = vec![
+        (vec![], crate::Delimiter::None),
+        (vec![], crate::Delimiter::Concatenation),
+        (vec![], crate::Delimiter::Component),
+    ];
     loop {
         let last = stack.len() - 1;
+        let ast_last = ast_stack.len() - 1;
         if let Some(tt) = stack[last].0.front() {
             match tt {
                 TokenTree::Group(g) => {
                     let d = g.delimiter();
                     match d {
-                        Delimiter::Parenthesis => string.push('('),
-                        Delimiter::Brace => string.push('{'),
-                        Delimiter::Bracket => string.push('['),
+                        proc_macro2::Delimiter::Parenthesis => {
+                            ast_stack.push((vec![], crate::Delimiter::Parenthesis))
+                        }
+                        proc_macro2::Delimiter::Brace => {
+                            ast_stack.push((vec![], crate::Delimiter::Brace))
+                        }
+                        proc_macro2::Delimiter::Bracket => {
+                            ast_stack.push((vec![], crate::Delimiter::Bracket))
+                        }
                         // these are important in certain situations with `macro_rules`
-                        Delimiter::None => {
-                            if last != 0 {
-                                string.push(' ')
-                            }
+                        proc_macro2::Delimiter::None => {
+                            ast_stack.push((vec![], crate::Delimiter::Space))
                         }
                     };
                     let trees = g.stream().into_iter().collect();
@@ -49,56 +66,79 @@ pub fn token_stream_to_raw_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
                     continue
                 }
                 TokenTree::Ident(i) => {
-                    string.extend(i.to_string().chars());
+                    s.extend(i.to_string().chars());
+                    let mut another_ident = false;
                     if stack[last].0.len() > 1 {
                         if let TokenTree::Ident(_) = stack[last].0[1] {
                             // special case to prevent things like "as usize" from getting squashed
                             // together as "asusize"
-                            string.push(' ');
+                            s.push(' ');
+                            another_ident = true;
                         }
+                    }
+                    if !another_ident {
+                        ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
                     }
                 }
                 TokenTree::Punct(p) => {
                     let p = p.as_char();
                     if (last == 0) && (p == ',') {
-                        components.push(mem::take(&mut string));
+                        assert_eq!(ast_last, 2);
+                        let comp = ast.text.insert(ast_stack.pop().unwrap().0);
+                        ast_stack
+                            .last_mut()
+                            .unwrap()
+                            .0
+                            .push(Text::Group(crate::Delimiter::Component, comp));
+                        ast_stack.push((vec![], crate::Delimiter::Component));
                     } else if (last == 0) && (p == ';') {
-                        components.push(mem::take(&mut string));
-                        concatenations.push(mem::take(&mut components));
+                        assert_eq!(ast_last, 2);
+                        let comp = ast.text.insert(ast_stack.pop().unwrap().0);
+                        ast_stack
+                            .last_mut()
+                            .unwrap()
+                            .0
+                            .push(Text::Group(crate::Delimiter::Component, comp));
+                        let concat = ast.text.insert(ast_stack.pop().unwrap().0);
+                        ast_stack
+                            .last_mut()
+                            .unwrap()
+                            .0
+                            .push(Text::Group(crate::Delimiter::Concatenation, concat));
+                        ast_stack.push((vec![], crate::Delimiter::Component));
+                        ast_stack.push((vec![], crate::Delimiter::Concatenation));
                     } else {
-                        string.push(p);
+                        ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
+                        s.push(p);
                     }
                 }
                 TokenTree::Literal(l) => {
                     // one of the main points of going through `TokenTree` interfaces is to let the
                     // parser handle all the complexity of the possible string and char literal
                     // delimiting
-                    string.extend(l.to_string().chars())
+                    s.extend(l.to_string().chars());
+                    ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
                 }
             }
             stack[last].0.pop_front().unwrap();
         } else {
-            match stack[last].1 {
-                Delimiter::Parenthesis => string.push(')'),
-                Delimiter::Brace => string.push('}'),
-                Delimiter::Bracket => string.push(']'),
-                Delimiter::None => {
-                    if last != 0 {
-                        string.push(' ')
-                    }
-                }
-            };
+            let (group, delimiter) = ast_stack.pop().unwrap();
+            let text = ast.text.insert(group);
+            ast_stack
+                .last_mut()
+                .unwrap()
+                .0
+                .push(Text::Group(delimiter, text));
             if last == 0 {
                 break
             }
             stack.pop().unwrap();
         }
     }
-    components.push(string);
-    concatenations.push(components);
-    concatenations
+    ast
 }
 
+/*
 /// Parses a raw component using token trees. Looks for the existence of a top
 /// level "[]" delimited group and uses the last one as a bit range. If
 /// `check_for_init` is set also breaks up at top level ":" and returns left
@@ -237,7 +277,7 @@ pub fn parse_component(
         }
         _ => unreachable!(),
     }
-}
+}*/
 
 /// Tries to parse raw `input` as a range. Looks for the existence of top
 /// level ".." or "..=" punctuation. If `allow_single_bit_range` is set, will

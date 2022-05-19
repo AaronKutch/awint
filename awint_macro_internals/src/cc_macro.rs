@@ -4,10 +4,7 @@ use awint_ext::ExtAwi;
 use proc_macro2::TokenStream;
 use ComponentType::*;
 
-use crate::{
-    component::ComponentType, error_and_help, parse_cc, stage2, stage3, stage4, stage5,
-    token_stream_to_raw_cc, CCMacroError, Names,
-};
+use crate::{component::ComponentType, error_and_help, token_stream_to_ast, Names};
 
 /// Input parsing and code generation function for corresponding concatenations
 /// of components macros.
@@ -34,8 +31,8 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
     // encountered
 
     // stage 0: separation into raw concatenations of components
-    let mut raw_cc = match TokenStream::from_str(input) {
-        Ok(ts) => token_stream_to_raw_cc(ts),
+    let mut ast = match TokenStream::from_str(input) {
+        Ok(ts) => token_stream_to_ast(ts),
         // this shouldn't be possible if the input has run through a macro already, but we keep this
         // for plain `cc_macro` uses
         Err(e) => {
@@ -46,6 +43,15 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
                 https://docs.rs/awint_macros/"))
         }
     };
+    dbg!(&ast);
+    #[cfg(feature = "dbg")]
+    triple_arena_render::render_to_svg_file(
+        &ast.text,
+        false,
+        std::path::PathBuf::from("./example.svg"),
+    )
+    .unwrap();
+    /*
     let empty: Vec<Vec<char>> = vec![vec![]];
     if (raw_cc.len() == 1) && (raw_cc[0] == empty) {
         return Err(error_and_help("empty input", "for further information see the \
@@ -149,6 +155,7 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
             }
         }
     }
+    */
 
     Ok("todo!()".to_owned())
 }

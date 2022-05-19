@@ -13,7 +13,12 @@ awint_core = { version = "0.4.0", path = "../awint_core", default-features = fal
 awint_ext = { version = "0.4.0", path = "../awint_ext", default-features = false }
 proc-macro2 = "1.0"
 triple_arena = "0.4.1"
+triple_arena_render = { version = "0.4.1", optional = true }
 
 # for examples
 [dev-dependencies]
 awint = { path = "../awint" }
+
+[features]
+# enables impls for debugging purposes
+dbg = ["triple_arena_render"]
