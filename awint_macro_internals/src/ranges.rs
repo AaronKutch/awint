@@ -1,10 +1,6 @@
 use awint_core::Bits;
 
-use crate::{chars_to_string, usb_common_case};
-
-pub fn usize_to_i128(x: usize) -> Result<i128, String> {
-    i128::try_from(x).map_err(|_| "`i128::try_from` overflow".to_owned())
-}
+use crate::{chars_to_string, usb_common_case, usize_to_i128};
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {

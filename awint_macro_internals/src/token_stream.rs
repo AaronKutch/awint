@@ -3,17 +3,10 @@ use std::{collections::VecDeque, mem, str::FromStr};
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 
 use crate::{
-    parse::{Component, ComponentType},
+    chars_to_string,
+    component::{Component, ComponentType},
     ranges::{Usb, Usbr},
 };
-
-pub fn chars_to_string(chars: &[char]) -> String {
-    let mut s = String::new();
-    for c in chars {
-        s.push(*c);
-    }
-    s
-}
 
 // TODO we could probably keep around the token tree in some custom structure
 // rather than call `TokenStream::from_str` repeatedly on the same chars

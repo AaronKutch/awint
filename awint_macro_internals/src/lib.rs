@@ -7,13 +7,17 @@
 // TODO need a refactor
 #![allow(clippy::too_many_arguments)]
 
+// TODO after refactor make everything private and find unused functions
+
 mod bimap;
 mod cc_macro;
+pub mod component;
 pub mod errors;
 mod lower;
 mod lower_fields;
 mod lower_structs;
 mod lowering;
+mod misc;
 mod names;
 mod old_parse;
 mod old_parse_structs;
@@ -28,8 +32,8 @@ pub use cc_macro::*;
 pub use errors::*;
 pub(crate) use lower::*;
 pub(crate) use lower_structs::*;
-pub use lower_structs::{unstable_native_inlawi, unstable_native_inlawi_ty};
 pub(crate) use lowering::*;
+pub use misc::*;
 pub use names::*;
 pub(crate) use old_parse::*;
 use old_parse_structs::ComponentType::*;

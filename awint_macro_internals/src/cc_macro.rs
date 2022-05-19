@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use ComponentType::*;
 
 use crate::{
-    error_and_help, parse::ComponentType, parse_cc, stage2, stage3, stage4, stage5,
+    component::ComponentType, error_and_help, parse_cc, stage2, stage3, stage4, stage5,
     token_stream_to_raw_cc, CCMacroError, Names,
 };
 
