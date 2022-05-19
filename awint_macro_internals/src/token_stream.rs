@@ -70,8 +70,8 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     let mut another_ident = false;
                     if stack[last].0.len() > 1 {
                         if let TokenTree::Ident(_) = stack[last].0[1] {
-                            // special case to prevent things like "as usize" from getting squashed
-                            // together as "asusize"
+                            // Special case to prevent things like "as usize" from getting squashed
+                            // together as "asusize".
                             s.push(' ');
                             another_ident = true;
                         }
@@ -108,20 +108,24 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                         ast_stack.push((vec![], crate::Delimiter::Component));
                         ast_stack.push((vec![], crate::Delimiter::Concatenation));
                     } else {
-                        ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
                         s.push(p);
+                        ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
                     }
                 }
                 TokenTree::Literal(l) => {
-                    // one of the main points of going through `TokenTree` interfaces is to let the
+                    // One of the main points of going through `TokenTree` interfaces is to let the
                     // parser handle all the complexity of the possible string and char literal
-                    // delimiting
+                    // delimiting. Note: do not add spaces like for identifiers, there are various
+                    // combinations that would break input.
                     s.extend(l.to_string().chars());
                     ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
                 }
             }
             stack[last].0.pop_front().unwrap();
         } else {
+            if last == 0 {
+                break
+            }
             let (group, delimiter) = ast_stack.pop().unwrap();
             let text = ast.text.insert(group);
             ast_stack
@@ -129,12 +133,13 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                 .unwrap()
                 .0
                 .push(Text::Group(delimiter, text));
-            if last == 0 {
-                break
-            }
             stack.pop().unwrap();
         }
     }
+    assert_eq!(ast_stack.len(), 3);
+    ast_stack.pop().unwrap();
+    ast_stack.pop().unwrap();
+    ast.text.insert(ast_stack.pop().unwrap().0);
     ast
 }
 
