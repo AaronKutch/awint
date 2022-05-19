@@ -124,6 +124,20 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
             stack[last].0.pop_front().unwrap();
         } else {
             if last == 0 {
+                assert_eq!(ast_stack.len(), 3);
+                let comp = ast.text.insert(ast_stack.pop().unwrap().0);
+                ast_stack
+                    .last_mut()
+                    .unwrap()
+                    .0
+                    .push(Text::Group(crate::Delimiter::Component, comp));
+                let concat = ast.text.insert(ast_stack.pop().unwrap().0);
+                ast_stack
+                    .last_mut()
+                    .unwrap()
+                    .0
+                    .push(Text::Group(crate::Delimiter::Concatenation, concat));
+                ast.text.insert(ast_stack.pop().unwrap().0);
                 break
             }
             let (group, delimiter) = ast_stack.pop().unwrap();
@@ -136,10 +150,6 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
             stack.pop().unwrap();
         }
     }
-    assert_eq!(ast_stack.len(), 3);
-    ast_stack.pop().unwrap();
-    ast_stack.pop().unwrap();
-    ast.text.insert(ast_stack.pop().unwrap().0);
     ast
 }
 
