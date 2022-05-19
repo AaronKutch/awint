@@ -37,8 +37,40 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
         // for plain `cc_macro` uses
         Err(e) => {
             // lex error displays as "cannot parse string into token stream" which is not
-            // good enough, try to determine if there is a mismatched delimiter TODO
-            return Err(error_and_help(&format!("input failed to tokenize: {}", e),
+            // good enough, try to determine if there is a mismatched delimiter
+            let mut parenthesis = (0, 0);
+            let mut brackets = (0, 0);
+            let mut braces = (0, 0);
+            for c in input.chars() {
+                match c {
+                    '(' => parenthesis.0 += 1,
+                    ')' => parenthesis.1 += 1,
+                    '[' => brackets.0 += 1,
+                    ']' => brackets.1 += 1,
+                    '{' => braces.0 += 1,
+                    '}' => braces.1 += 1,
+                    _ => (),
+                }
+            }
+            let note = if parenthesis.0 != parenthesis.1 {
+                format!(
+                    "\nnote: there are {} '(' chars and {} ')' chars",
+                    parenthesis.0, parenthesis.1
+                )
+            } else if brackets.0 != brackets.1 {
+                format!(
+                    "\nnote: there are {} '[' chars and {} ']' chars",
+                    brackets.0, brackets.1
+                )
+            } else if braces.0 != braces.1 {
+                format!(
+                    "\nnote: there are {} '{{' chars and {} '}}' chars",
+                    braces.0, braces.1
+                )
+            } else {
+                "".to_owned()
+            };
+            return Err(error_and_help(&format!("input failed to tokenize: {}{}", e, note),
                 "for further information see the library documentation of `awint_macros` \
                 https://docs.rs/awint_macros/"))
         }
