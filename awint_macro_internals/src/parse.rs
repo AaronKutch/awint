@@ -345,7 +345,7 @@ pub fn stage3(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
 pub fn stage4(
     cc: &mut [Concatenation],
     specified_init: bool,
-    construction_fn: Option<&str>,
+    return_type: Option<&str>,
     static_width: bool,
 ) -> Result<(), CCMacroError> {
     let mut overall_alignment = cc[0].filler_alignment;
@@ -409,7 +409,7 @@ pub fn stage4(
             error: format!(
                 "`{}` construction macros need at least one concatenation to have a width that \
                  can be determined statically by the macro",
-                construction_fn.unwrap()
+                return_type.unwrap()
             ),
             help: Some(
                 "use constant ranges on all the components of any concatenation, or append a \

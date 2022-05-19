@@ -1,23 +1,27 @@
 use std::str::FromStr;
 
+use awint_ext::ExtAwi;
 use proc_macro2::TokenStream;
+use ComponentType::*;
 
 use crate::{
-    error_and_help, parse_cc, stage2, stage3, stage4, stage5, token_stream_to_raw_cc, CCMacroError,
-    Names,
+    error_and_help, parse::ComponentType, parse_cc, stage2, stage3, stage4, stage5,
+    token_stream_to_raw_cc, CCMacroError, Names,
 };
 
 /// Input parsing and code generation function for corresponding concatenations
 /// of components macros.
-pub fn cc_macro(
+pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
+    // TODO bring out documentation once finished
     input: &str,
     // if initialization is specified
     specified_init: bool,
     // e.x. "ExtAwi"
-    construction_type: Option<&str>,
-    // TODO `construction_fn` will be from colon separated part
-    // e.x. "umax" or "custom_fn_from_trait"
-    _construction_fn: Option<&str>,
+    return_type: Option<&str>,
+    // literal construction function. Note: should include `Bits::must_use` or similar
+    lit_construction_fn: Option<F>,
+    // TODO remove this
+    _unstable_construction_fn: Option<&str>,
     // if a type like `InlAwi` needs statically known width
     static_width: bool,
     _names: Names,
@@ -125,13 +129,26 @@ pub fn cc_macro(
     };
 
     // stage 4: cc pass accounting for macro type
-    match stage4(&mut cc, specified_init, construction_type, static_width) {
+    match stage4(&mut cc, specified_init, return_type, static_width) {
         Ok(()) => (),
         Err(e) => return Err(e.raw_cc_error(&raw_cc)),
     };
 
     // stage 5: concatenation simplification
     stage5(&mut cc);
+
+    // code gen
+
+    // first check for simple infallible constant return
+    if return_type.is_some() && (cc.len() == 1) && (cc[0].comps.len() == 1) {
+        let comp = &cc[0].comps[0];
+        if let Literal(ref lit) = comp.c_type {
+            // constants have been normalized and combined by now
+            if comp.range.static_range().is_some() {
+                return Ok(lit_construction_fn.unwrap()(ExtAwi::from_bits(lit)))
+            }
+        }
+    }
 
     Ok("todo!()".to_owned())
 }

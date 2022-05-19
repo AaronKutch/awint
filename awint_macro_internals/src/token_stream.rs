@@ -57,6 +57,13 @@ pub fn token_stream_to_raw_cc(input: TokenStream) -> Vec<Vec<Vec<char>>> {
                 }
                 TokenTree::Ident(i) => {
                     string.extend(i.to_string().chars());
+                    if stack[last].0.len() > 1 {
+                        if let TokenTree::Ident(_) = stack[last].0[1] {
+                            // special case to prevent things like "as usize" from getting squashed
+                            // together as "asusize"
+                            string.push(' ');
+                        }
+                    }
                 }
                 TokenTree::Punct(p) => {
                     let p = p.as_char();
