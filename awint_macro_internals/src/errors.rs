@@ -1,4 +1,8 @@
-use std::{fmt::Write, num::NonZeroUsize};
+use std::{collections::HashSet, iter, num::NonZeroUsize};
+
+use triple_arena::Ptr;
+
+use crate::{Ast, Delimiter, PText, Text};
 
 /// Wrap `s` in ANSI delimiters for terminal colors.
 /// {90..=97} => {grey, red, green, yellow, blue, purple, cyan, white}
@@ -8,8 +12,7 @@ pub fn color_text(s: &str, c: u8) -> String {
 
 #[derive(Debug, Default, Clone)]
 pub struct CCMacroError {
-    pub concat_i: Option<usize>,
-    pub comp_i: Option<usize>,
+    pub red_text: Vec<Ptr<PText>>,
     pub error: String,
     pub help: Option<String>,
 }
@@ -17,8 +20,15 @@ pub struct CCMacroError {
 impl CCMacroError {
     pub fn new(error: String) -> Self {
         Self {
-            concat_i: None,
-            comp_i: None,
+            red_text: vec![],
+            error,
+            help: None,
+        }
+    }
+
+    pub fn new_with_text(error: String, red_text: Ptr<PText>) -> Self {
+        Self {
+            red_text: vec![red_text],
             error,
             help: None,
         }
@@ -27,70 +37,87 @@ impl CCMacroError {
     /// Creates a formatted block of the cc optionally with red colored pointers
     /// to a specific concatenation or component, then `error` is appended
     /// inline.
-    pub fn raw_cc_error(&self, cc: &[Vec<Vec<char>>]) -> String {
+    pub fn ast_error(&self, ast: &Ast) -> String {
         // enhance cc level punctuation
-        let comma = &color_text(",", 97);
-        let semicolon = &color_text(";", 97);
+        let comma = &color_text(", ", 97);
+        let semicolon = &color_text("; ", 97);
         let mut s = String::new();
         let mut concat_s = String::new();
         let mut comp_s = String::new();
         let mut color_line = String::new();
-        for (j, concatenation) in cc.iter().enumerate() {
-            let mut this_concat = false;
-            let mut mark = false;
-            if let Some(concat_i) = self.concat_i {
-                if j == concat_i {
-                    this_concat = true;
-                    if self.comp_i.is_none() {
-                        mark = true;
+        let red_text: HashSet<Ptr<PText>> = self.red_text.iter().map(|p| *p).collect();
+
+        let mut color_lvl = None;
+        let mut use_color_line = false;
+        let mut activated = false;
+        let mut stack: Vec<(Ptr<PText>, usize)> = vec![(ast.text_root, 0)];
+        loop {
+            let last = stack.len() - 1;
+            if let Some(text) = ast.text[stack[last].0].get(stack[last].1) {
+                match text {
+                    Text::Group(d, p) => {
+                        if activated {
+                            color_line.extend(
+                                iter::repeat(if color_lvl.is_some() { '^' } else { ' ' })
+                                    .take(d.lhs_text().len()),
+                            );
+                        }
+                        s += d.lhs_text();
+                        stack.push((*p, 0));
+                        if red_text.contains(p) {
+                            color_lvl = Some(last);
+                        }
+                        continue
+                    }
+                    Text::Chars(chars) => {
+                        if activated {
+                            color_line.extend(
+                                iter::repeat(if color_lvl.is_some() { '^' } else { ' ' })
+                                    .take(chars.len()),
+                            );
+                        }
+                        for c in chars {
+                            s.push(*c);
+                        }
+                        stack[last].1 += 1;
                     }
                 }
-            }
-            let mut advance = this_concat;
-            for (i, component) in concatenation.iter().enumerate().rev() {
-                if this_concat && advance {
-                    if let Some(comp_i) = self.comp_i {
-                        if i == comp_i {
-                            mark = true;
-                            advance = false;
+            } else {
+                if last == 0 {
+                    break
+                }
+                stack.pop();
+                let last = stack.len() - 1;
+                let mut unset_color = false;
+                if red_text.contains(&stack[last].0) {
+                    color_lvl = None;
+                    use_color_line = true;
+                    unset_color = true;
+                }
+                match ast.text[stack[last].0][stack[last].1] {
+                    Text::Group(d, _) => match d {
+                        Delimiter::Component => {
+                            s += comma;
+                            if unset_color {
+                                if red_text.len() == 1 {
+                                    color_line += &format!(" component {}: {}", stack[last].1, self.error);
+                                    activated = true;
+                                }
+                            }
                         }
-                    }
-                    if mark {
-                        for _ in 0..component.len() {
-                            color_line.push('^');
+                        Delimiter::Concatenation => {
+                            s += semicolon;
+                            if use_color_line {
+                                s += &color_text(&format!("concatenation {}\n{}", stack[last].1, color_line), 91);
+                            }
+                            s.push('\n');
                         }
-                    } else {
-                        for _ in 0..(component.len() + 2) {
-                            color_line.push(' ');
-                        }
-                    };
-                    if self.comp_i.is_some() {
-                        mark = false;
-                    }
+                        _ => s += d.rhs_text(),
+                    },
+                    _ => unreachable!(),
                 }
-                for c in component {
-                    comp_s.push(*c);
-                }
-                write!(concat_s, "{}", comp_s).unwrap();
-                if i > 0 {
-                    write!(concat_s, "{} ", comma).unwrap();
-                }
-                comp_s.clear();
+                stack[last].1 += 1;
             }
-            write!(s, "{}{}", concat_s, semicolon).unwrap();
-            concat_s.clear();
-            if this_concat {
-                if let Some(comp_i) = self.comp_i {
-                    color_line = format!(
-                        " concatenation {}\n{} component {}: {}",
-                        j, color_line, comp_i, self.error
-                    );
-                } else {
-                    color_line = format!(" concatenation {}\n{} {}", j, color_line, self.error);
-                }
-                write!(s, "{}", color_text(&color_line, 91)).unwrap();
-            }
-            writeln!(s).unwrap();
         }
         if let Some(ref help) = self.help {
             format!("{}\n{}{} {}", self.error, s, color_text("help:", 93), help)

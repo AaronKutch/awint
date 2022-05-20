@@ -6,8 +6,7 @@ use crate::{
     component::{Component, ComponentType::*},
     i128_to_nonzerousize, i128_to_usize,
     ranges::Usbr,
-    token_tree::PComp,
-    CCMacroError,
+    Ast, CCMacroError,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +34,10 @@ pub struct Concatenation {
 }
 
 impl Concatenation {
+    pub fn is_empty(&self, ast: &Ast) -> bool {
+        (self.comps.len() == 1) && ast.text[self.comps[0].text].is_empty()
+    }
+
     pub fn check(&mut self, concat_i: usize) -> Result<(), CCMacroError> {
         let concat_len = self.comps.len();
         let mut cumulative_bw = Some(0usize);

@@ -1,17 +1,16 @@
 use std::{collections::VecDeque, mem, str::FromStr};
 
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
-use triple_arena::{Arena, PtrTrait};
+use triple_arena::{Arena, Ptr, PtrTrait};
 
 use crate::{
     chars_to_string,
+    component::Component,
+    parse::Concatenation,
     ranges::{Usb, Usbr},
     token_tree::Ast,
     Text,
 };
-
-// TODO we could probably keep around the token tree in some custom structure
-// rather than call `TokenStream::from_str` repeatedly on the same chars
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings
@@ -25,7 +24,8 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
 
     let mut ast = Ast {
         text: Arena::new(),
-        comps: Arena::new(),
+        text_root: Ptr::invalid(),
+        cc: vec![],
     };
     let mut s = Vec::<char>::new();
     // traverse the tree
@@ -137,7 +137,8 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     .unwrap()
                     .0
                     .push(Text::Group(crate::Delimiter::Concatenation, concat));
-                ast.text.insert(ast_stack.pop().unwrap().0);
+                let root = ast.text.insert(ast_stack.pop().unwrap().0);
+                ast.text_root = root;
                 break
             }
             let (group, delimiter) = ast_stack.pop().unwrap();
@@ -148,6 +149,37 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                 .0
                 .push(Text::Group(delimiter, text));
             stack.pop().unwrap();
+        }
+    }
+    // TODO do this above
+    // iteration over the ast is cumbersome, the cc level at least is linear and
+    // should be in some structs
+    let root = ast.text_root;
+    let cc_len = ast.text[root].len();
+    for concat_i in 0..cc_len {
+        let mut concat = Concatenation {
+            comps: vec![],
+            total_bw: None,
+            filler_alignment: crate::FillerAlign::None,
+            deterministic_width: false,
+        };
+        match ast.text[root][concat_i] {
+            Text::Group(crate::Delimiter::Concatenation, p_concat) => {
+                let c_len = ast.text[p_concat].len();
+                for comp_i in 0..c_len {
+                    match ast.text[p_concat][comp_i] {
+                        Text::Group(crate::Delimiter::Component, p_comp) => {
+                            concat.comps.push(Component {
+                                text: p_comp,
+                                c_type: crate::component::ComponentType::Unparsed,
+                                range: Usbr::unbounded(),
+                            });
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            _ => unreachable!(),
         }
     }
     ast

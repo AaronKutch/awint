@@ -6,6 +6,9 @@
   a blind spot in the testing that has been fixed.
 
 ### Changes
+- Overhaul of the macros. Uses proper token tree parsing that fixes many long standing issues.
+  Nested macros and complex inner expressions with brackets, commas, and semicolons not belonging to
+  the outside macro are now possible. Trailing commas and semicolons are allowed.
 - Implemented `Copy` for `FP<B>` if `B: Copy`
 
 ## [0.4.0] - 2022-04-07

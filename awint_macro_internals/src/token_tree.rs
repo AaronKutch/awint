@@ -1,11 +1,13 @@
 use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr};
 
+use crate::parse::Concatenation;
+
 // Previous implementation attempts all resulted in having to parse the same
 // things multiple times. We must use a custom tree, and different structs can
 // point at which part of the tree they correspond to. This also improves
 // errors.
 
-ptr_trait_struct_with_gen!(PText; PComp);
+ptr_trait_struct_with_gen!(PText);
 
 #[derive(Debug, Clone, Copy)]
 pub enum Delimiter {
@@ -58,7 +60,8 @@ pub enum Text {
 #[derive(Debug)]
 pub struct Ast {
     pub text: Arena<PText, Vec<Text>>,
-    pub comps: Arena<PComp, Ptr<PText>>,
+    pub text_root: Ptr<PText>,
+    pub cc: Vec<Concatenation>,
 }
 
 #[cfg(feature = "dbg")]
