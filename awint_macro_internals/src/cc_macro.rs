@@ -4,7 +4,10 @@ use awint_ext::ExtAwi;
 use proc_macro2::TokenStream;
 use ComponentType::*;
 
-use crate::{component::ComponentType, error_and_help, token_stream_to_ast, Names};
+use crate::{
+    component::{Component, ComponentType},
+    error_and_help, token_stream_to_ast, CCMacroError, Delimiter, Names, Text,
+};
 
 /// Input parsing and code generation function for corresponding concatenations
 /// of components macros.
@@ -75,78 +78,66 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
                 https://docs.rs/awint_macros/"))
         }
     };
-    dbg!(&ast);
-    #[cfg(feature = "dbg")]
-    triple_arena_render::render_to_svg_file(
-        &ast.text,
-        false,
-        std::path::PathBuf::from("./example.svg"),
-    )
-    .unwrap();
-    /*
-    let empty: Vec<Vec<char>> = vec![vec![]];
-    if (raw_cc.len() == 1) && (raw_cc[0] == empty) {
-        return Err(error_and_help("empty input", "for further information see the \
-        library documentation of `awint_macros` https://docs.rs/awint_macros/"))
-    }
+
     // trailing punctuation handling and reversing concatenations
     let mut trailing_semicolon = false;
     let mut trailing_commas = vec![];
-    let mut error = (None, None);
-    let raw_cc_len = raw_cc.len();
-    for (concat_i, concat) in raw_cc.iter().enumerate() {
-        let concat_len = concat.len();
-        if *concat == empty {
+    let raw_cc_len = ast.cc.len();
+    for (concat_i, concat) in ast.cc.iter().enumerate() {
+        let concat_len = concat.comps.len();
+        if (concat.comps.len() == 1) && ast.txt[concat.comps[0].txt].is_empty() {
             if (concat_i + 1) != raw_cc_len {
-                error = (Some(concat_i), None);
+                return Err(CCMacroError::new(
+                    "Empty concatenation, at most a single trailing semicolon is allowed"
+                        .to_owned(),
+                    concat.txt,
+                )
+                .ast_error(&ast))
             }
             trailing_semicolon = true;
         }
-        for (comp_i, comp) in concat.iter().enumerate() {
-            if comp.is_empty() {
+        for (comp_i, comp) in concat.comps.iter().enumerate() {
+            if ast.txt[comp.txt].is_empty() {
                 if (comp_i + 1) != concat_len {
-                    error = (Some(concat_i), Some(concat_len - 1 - comp_i));
+                    return Err(CCMacroError::new(
+                        "Empty component before end of concatenation, at most a single trailing \
+                         comma is allowed"
+                            .to_owned(),
+                        comp.txt,
+                    )
+                    .ast_error(&ast))
                 }
                 trailing_commas.push(concat_i);
             }
         }
     }
-    // Components are written like `component N, component N - 1`, this makes logic
-    // easier. I ultimately made this decision so that literals next to each
-    // other would concatenate visually
-    for concat in &mut raw_cc {
-        concat.reverse();
-    }
-    // do this after reversal and before removal so that the errors display
-    // correctly
-    match error {
-        (Some(concat_i), None) => {
-            return Err(CCMacroError {
-                concat_i: Some(concat_i),
-                error: "Empty concatenation, at most a single trailing semicolon is allowed"
-                    .to_owned(),
-                ..Default::default()
-            }
-            .raw_cc_error(&raw_cc))
-        }
-        (Some(concat_i), Some(comp_i)) => {
-            return Err(CCMacroError {
-                concat_i: Some(concat_i),
-                comp_i: Some(comp_i),
-                error: "Empty component at the end, at most a single trailing comma is allowed"
-                    .to_owned(),
-                ..Default::default()
-            }
-            .raw_cc_error(&raw_cc))
-        }
-        _ => {}
-    }
-    while let Some(concat_i) = trailing_commas.pop() {
-        raw_cc[concat_i].remove(0);
+    for comma_i in trailing_commas {
+        ast.cc[comma_i].comps.pop().unwrap();
     }
     if trailing_semicolon {
-        raw_cc.pop().unwrap();
+        ast.cc.pop().unwrap();
     }
+    if ast.cc.is_empty() {
+        return Err(error_and_help("empty input", "for further information see the \
+        library documentation of `awint_macros` https://docs.rs/awint_macros/"))
+    }
+    // Components are written like `component N, component N - 1`, I ultimately made
+    // this decision so that literals next to each other would concatenate
+    // visually
+    for concat in &mut ast.cc {
+        concat.comps.reverse();
+    }
+
+    panic!();
+    /*dbg!(&ast);
+    #[cfg(feature = "debug")]
+    triple_arena_render::render_to_svg_file(
+        &ast.txt,
+        false,
+        std::path::PathBuf::from("./example.svg"),
+    )
+    .unwrap();*/
+    /*
 
     // stage 1: basic parsing of components
     let mut cc = match parse_cc(&raw_cc) {

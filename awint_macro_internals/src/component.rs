@@ -18,7 +18,7 @@ pub enum ComponentType {
 
 #[derive(Debug, Clone)]
 pub struct Component {
-    pub text: Ptr<PText>,
+    pub txt: Ptr<PText>,
     pub c_type: ComponentType,
     pub range: Usbr,
 }

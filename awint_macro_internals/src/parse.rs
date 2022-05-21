@@ -1,12 +1,13 @@
 use std::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
+use triple_arena::Ptr;
 
 use crate::{
     component::{Component, ComponentType::*},
     i128_to_nonzerousize, i128_to_usize,
     ranges::Usbr,
-    Ast, CCMacroError,
+    Ast, CCMacroError, PText,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +26,7 @@ pub enum FillerAlign {
 
 #[derive(Debug, Clone)]
 pub struct Concatenation {
+    pub txt: Ptr<PText>,
     pub comps: Vec<Component>,
     pub total_bw: Option<NonZeroUsize>,
     pub filler_alignment: FillerAlign,
@@ -34,11 +36,7 @@ pub struct Concatenation {
 }
 
 impl Concatenation {
-    pub fn is_empty(&self, ast: &Ast) -> bool {
-        (self.comps.len() == 1) && ast.text[self.comps[0].text].is_empty()
-    }
-
-    pub fn check(&mut self, concat_i: usize) -> Result<(), CCMacroError> {
+    pub fn check(&mut self, concat_i: usize, concat_text: Ptr<PText>) -> Result<(), CCMacroError> {
         let concat_len = self.comps.len();
         let mut cumulative_bw = Some(0usize);
         // start by assuming yes
@@ -59,8 +57,7 @@ impl Concatenation {
                 Literal(_) => {
                     if concat_i > 0 {
                         return Err(CCMacroError {
-                            concat_i: Some(concat_i),
-                            comp_i: Some(comp_i),
+                            red_text: vec![comp.txt],
                             error: "sink concatenations cannot have literals".to_owned(),
                             help: Some(
                                 "if the space taken up by the component is necessary, use a \
@@ -75,20 +72,18 @@ impl Concatenation {
                     // unbounded filler handling
                     if comp.range.end.is_none() {
                         if (concat_i != 0) && (concat_len == 0) {
-                            return Err(CCMacroError {
-                                concat_i: Some(concat_i),
-                                error: "sink concatenations that consist of only an unbounded \
-                                        filler are no-ops"
+                            return Err(CCMacroError::new(
+                                "sink concatenations that consist of only an unbounded filler are \
+                                 no-ops"
                                     .to_owned(),
-                                ..Default::default()
-                            })
+                                concat_text,
+                            ))
                         }
                         if !matches!(self.filler_alignment, FillerAlign::None) {
                             // filler already set
                             return Err(CCMacroError {
-                                concat_i: Some(concat_i),
                                 // lets point to one
-                                comp_i: Some(comp_i),
+                                red_text: vec![comp.txt],
                                 // be explicit
                                 error: "there is more than one unbounded filler in this \
                                         concatenation"
@@ -117,7 +112,7 @@ impl Concatenation {
             } else {
                 // in the case of `cc!` this isn't a logical error, but it is a useless no-op
                 return Err(CCMacroError {
-                    concat_i: Some(concat_i),
+                    red_text: vec![concat_text],
                     error: "determined statically that this concatenation has zero width"
                         .to_owned(),
                     help: Some(
@@ -125,7 +120,6 @@ impl Concatenation {
                          `awint` integer which would panic, else it is still a useless no-op"
                             .to_owned(),
                     ),
-                    ..Default::default()
                 })
             }
         }
@@ -173,10 +167,8 @@ impl Concatenation {
     }
 }
 
-pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<Vec<Concatenation>, CCMacroError> {
-    let mut cc = vec![];
+pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<(), CCMacroError> {
     for (concat_i, concat) in raw_cc.iter().enumerate() {
-        let mut comps = vec![];
         for (comp_i, comp) in concat.iter().enumerate() {
             /*match parse_component(comp, false) {
                 Ok((Some(_), _)) => todo!(),
@@ -191,14 +183,8 @@ pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<Vec<Concatenation>, CCMacro
                 }
             }*/
         }
-        cc.push(Concatenation {
-            comps,
-            total_bw: None,
-            filler_alignment: FillerAlign::None,
-            deterministic_width: false,
-        });
     }
-    Ok(cc)
+    Ok(())
 }
 
 pub fn stage2(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
@@ -206,14 +192,7 @@ pub fn stage2(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
         for (comp_i, comp) in concat.comps.iter_mut().enumerate() {
             match comp.simplify() {
                 Ok(()) => (),
-                Err(e) => {
-                    return Err(CCMacroError {
-                        concat_i: Some(concat_i),
-                        comp_i: Some(comp_i),
-                        error: e,
-                        ..Default::default()
-                    })
-                }
+                Err(e) => return Err(CCMacroError::new(e, comp.txt)),
             }
         }
     }
@@ -222,7 +201,7 @@ pub fn stage2(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
 
 pub fn stage3(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
     for (concat_i, concat) in cc.iter_mut().enumerate() {
-        concat.check(concat_i)?;
+        concat.check(concat_i, concat.txt)?;
     }
     Ok(())
 }
@@ -255,15 +234,14 @@ pub fn stage4(
         if let Some(this_bw) = concat.total_bw {
             if let Some(prev_bw) = common_bw {
                 if this_bw != prev_bw {
-                    return Err(CCMacroError {
-                        concat_i: Some(concat_i),
-                        error: format!(
+                    return Err(CCMacroError::new(
+                        format!(
                             "determined statically that concatenations {} and {} have unequal \
                              bitwidths {} and {}",
                             original_common_i, concat_i, prev_bw, this_bw
                         ),
-                        ..Default::default()
-                    })
+                        concat.txt,
+                    ))
                 }
             } else {
                 common_bw = Some(this_bw);
@@ -274,8 +252,7 @@ pub fn stage4(
             for (comp_i, comp) in concat.comps.iter().enumerate() {
                 if matches!(comp.c_type, Filler) {
                     return Err(CCMacroError {
-                        concat_i: Some(concat_i),
-                        comp_i: Some(comp_i),
+                        red_text: vec![comp.txt],
                         error: "a construction macro with unspecified initialization cannot have \
                                 a filler in the source concatenation"
                             .to_owned(),
@@ -323,8 +300,7 @@ pub fn stage4(
                 for (comp_i, comp) in concat.comps.iter().enumerate() {
                     if matches!(comp.c_type, Filler) && comp.range.end.is_none() {
                         return Err(CCMacroError {
-                            concat_i: Some(concat_i),
-                            comp_i: Some(comp_i),
+                            red_text: vec![comp.txt],
                             error: "there is an unbounded filler in the middle of a \
                                     concatenation, and no concatenation has a statically or \
                                     dynamically determinable width"
@@ -346,7 +322,7 @@ pub fn stage4(
         for (concat_i, concat) in cc.iter().enumerate() {
             if !matches!(concat.filler_alignment, FillerAlign::None) {
                 return Err(CCMacroError {
-                    concat_i: Some(alignment_change_i),
+                    red_text: vec![],
                     error: format!(
                         "concatenations {} and {} have unbounded fillers aligned opposite each \
                          other, and no concatenation has a statically or dynamically determinable \
@@ -358,7 +334,6 @@ pub fn stage4(
                          that gives the macro needed information"
                             .to_owned(),
                     ),
-                    ..Default::default()
                 })
             }
         }

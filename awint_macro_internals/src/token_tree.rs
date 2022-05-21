@@ -59,13 +59,13 @@ pub enum Text {
 
 #[derive(Debug)]
 pub struct Ast {
-    pub text: Arena<PText, Vec<Text>>,
+    pub txt: Arena<PText, Vec<Text>>,
     pub text_root: Ptr<PText>,
     pub cc: Vec<Concatenation>,
 }
 
-#[cfg(feature = "dbg")]
-mod dbg {
+#[cfg(feature = "debug")]
+mod debug {
     use triple_arena_render::{DebugNode, DebugNodeTrait};
 
     use super::*;
@@ -77,8 +77,8 @@ mod dbg {
                 center: vec![],
                 sinks: vec![],
             };
-            for text in this {
-                match text {
+            for txt in this {
+                match txt {
                     Text::Chars(s) => {
                         if node.center.is_empty() {
                             node.center.push(chars_to_string(s));

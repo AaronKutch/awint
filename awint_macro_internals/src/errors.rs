@@ -18,15 +18,7 @@ pub struct CCMacroError {
 }
 
 impl CCMacroError {
-    pub fn new(error: String) -> Self {
-        Self {
-            red_text: vec![],
-            error,
-            help: None,
-        }
-    }
-
-    pub fn new_with_text(error: String, red_text: Ptr<PText>) -> Self {
+    pub fn new(error: String, red_text: Ptr<PText>) -> Self {
         Self {
             red_text: vec![red_text],
             error,
@@ -42,40 +34,32 @@ impl CCMacroError {
         let comma = &color_text(", ", 97);
         let semicolon = &color_text("; ", 97);
         let mut s = String::new();
-        let mut concat_s = String::new();
-        let mut comp_s = String::new();
         let mut color_line = String::new();
-        let red_text: HashSet<Ptr<PText>> = self.red_text.iter().map(|p| *p).collect();
+        // efficiency is not going to matter on terminal errors
+        let red_text: HashSet<Ptr<PText>> = self.red_text.iter().copied().collect();
 
+        // if some, color carets are active
         let mut color_lvl = None;
         let mut use_color_line = false;
-        let mut activated = false;
+        let extend = |color_line: &mut String, color_lvl: &Option<usize>, len: usize| {
+            color_line.extend(iter::repeat(if color_lvl.is_some() { '^' } else { ' ' }).take(len))
+        };
         let mut stack: Vec<(Ptr<PText>, usize)> = vec![(ast.text_root, 0)];
         loop {
             let last = stack.len() - 1;
-            if let Some(text) = ast.text[stack[last].0].get(stack[last].1) {
-                match text {
+            if let Some(txt) = ast.txt[stack[last].0].get(stack[last].1) {
+                match txt {
                     Text::Group(d, p) => {
-                        if activated {
-                            color_line.extend(
-                                iter::repeat(if color_lvl.is_some() { '^' } else { ' ' })
-                                    .take(d.lhs_text().len()),
-                            );
-                        }
-                        s += d.lhs_text();
-                        stack.push((*p, 0));
-                        if red_text.contains(p) {
+                        if color_lvl.is_none() && red_text.contains(p) {
                             color_lvl = Some(last);
                         }
+                        extend(&mut color_line, &color_lvl, d.lhs_text().len());
+                        s += d.lhs_text();
+                        stack.push((*p, 0));
                         continue
                     }
                     Text::Chars(chars) => {
-                        if activated {
-                            color_line.extend(
-                                iter::repeat(if color_lvl.is_some() { '^' } else { ' ' })
-                                    .take(chars.len()),
-                            );
-                        }
+                        extend(&mut color_line, &color_lvl, chars.len());
                         for c in chars {
                             s.push(*c);
                         }
@@ -89,27 +73,43 @@ impl CCMacroError {
                 stack.pop();
                 let last = stack.len() - 1;
                 let mut unset_color = false;
-                if red_text.contains(&stack[last].0) {
-                    color_lvl = None;
-                    use_color_line = true;
-                    unset_color = true;
+                if let Some(prev_last) = color_lvl {
+                    if last == prev_last {
+                        use_color_line = true;
+                        unset_color = true;
+                    }
                 }
-                match ast.text[stack[last].0][stack[last].1] {
+                match ast.txt[stack[last].0][stack[last].1] {
                     Text::Group(d, _) => match d {
                         Delimiter::Component => {
-                            s += comma;
+                            if (stack[last].1 + 1) != ast.txt[stack[last].0].len() {
+                                s += comma;
+                                extend(&mut color_line, &color_lvl, 1);
+                            }
                             if unset_color {
                                 if red_text.len() == 1 {
-                                    color_line += &format!(" component {}: {}", stack[last].1, self.error);
-                                    activated = true;
+                                    color_line +=
+                                        &format!(" component {}: {}", stack[last].1, self.error);
                                 }
+                                color_lvl = None;
+                            } else if (stack[last].1 + 1) != ast.txt[stack[last].0].len() {
+                                extend(&mut color_line, &color_lvl, 1);
                             }
                         }
                         Delimiter::Concatenation => {
                             s += semicolon;
+                            extend(&mut color_line, &color_lvl, 1);
                             if use_color_line {
-                                s += &color_text(&format!("concatenation {}\n{}", stack[last].1, color_line), 91);
+                                s += &color_text(
+                                    &format!("concatenation {}\n{}", stack[last].1, color_line),
+                                    91,
+                                );
+                                use_color_line = false;
+                                color_lvl = None;
+                            } else {
+                                extend(&mut color_line, &color_lvl, 1);
                             }
+                            color_line.clear();
                             s.push('\n');
                         }
                         _ => s += d.rhs_text(),
