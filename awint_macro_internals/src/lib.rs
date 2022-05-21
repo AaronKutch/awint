@@ -12,6 +12,7 @@
 mod bimap;
 mod cc_macro;
 pub mod component;
+pub mod concatenation;
 pub mod errors;
 mod lower;
 mod lower_fields;
@@ -21,7 +22,6 @@ mod misc;
 mod names;
 mod old_parse;
 mod old_parse_structs;
-pub mod parse;
 pub mod ranges;
 pub mod token_stream;
 mod token_tree;
@@ -30,6 +30,7 @@ use std::num::NonZeroUsize;
 
 pub(crate) use bimap::*;
 pub use cc_macro::*;
+pub use concatenation::*;
 pub use errors::*;
 pub(crate) use lower::*;
 pub(crate) use lower_structs::*;
@@ -39,7 +40,6 @@ pub use names::*;
 pub(crate) use old_parse::*;
 use old_parse_structs::ComponentType::*;
 pub(crate) use old_parse_structs::*;
-pub use parse::*;
 pub use token_stream::*;
 pub use token_tree::*;
 

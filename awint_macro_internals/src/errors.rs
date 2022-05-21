@@ -33,6 +33,8 @@ impl CCMacroError {
         // enhance cc level punctuation
         let comma = &color_text(", ", 97);
         let semicolon = &color_text("; ", 97);
+        let lbracket = &color_text("[", 97);
+        let rbracket = &color_text("]", 97);
         let mut s = String::new();
         let mut color_line = String::new();
         // efficiency is not going to matter on terminal errors
@@ -53,8 +55,12 @@ impl CCMacroError {
                         if color_lvl.is_none() && red_text.contains(p) {
                             color_lvl = Some(last);
                         }
-                        extend(&mut color_line, &color_lvl, d.lhs_text().len());
-                        s += d.lhs_text();
+                        extend(&mut color_line, &color_lvl, d.lhs_chars().len());
+                        if *d == Delimiter::RangeBracket {
+                            s += lbracket;
+                        } else {
+                            s += d.lhs_str();
+                        }
                         stack.push((*p, 0));
                         continue
                     }
@@ -112,7 +118,14 @@ impl CCMacroError {
                             color_line.clear();
                             s.push('\n');
                         }
-                        _ => s += d.rhs_text(),
+                        Delimiter::RangeBracket => {
+                            s += rbracket;
+                            extend(&mut color_line, &color_lvl, 1);
+                        }
+                        _ => {
+                            s += d.rhs_str();
+                            extend(&mut color_line, &color_lvl, 1);
+                        }
                     },
                     _ => unreachable!(),
                 }

@@ -5,7 +5,8 @@ use triple_arena::Ptr;
 use ComponentType::*;
 
 use crate::{
-    chars_to_string, i128_to_nonzerousize, ranges::Usbr, token_tree::PText, usize_to_i128,
+    chars_to_string, i128_to_nonzerousize, ranges::Usbr, token_tree::PText, usize_to_i128, Ast,
+    CCMacroError, Delimiter, Text,
 };
 
 #[derive(Debug, Clone)]
@@ -19,6 +20,8 @@ pub enum ComponentType {
 #[derive(Debug, Clone)]
 pub struct Component {
     pub txt: Ptr<PText>,
+    pub bits_txt: Option<Ptr<PText>>,
+    pub range_txt: Option<Ptr<PText>>,
     pub c_type: ComponentType,
     pub range: Usbr,
 }
@@ -117,4 +120,88 @@ impl Component {
             Filler => self.range.end.is_some(),
         }
     }
+}
+
+/// Looks for the existence of a top level "[]" delimited group and uses the
+/// last one as a bit range.
+pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
+    // first, assign `val_txt` and `range_txt`
+    for concat_i in 0..ast.cc.len() {
+        for comp_i in 0..ast.cc[concat_i].comps.len() {
+            let comp_txt = ast.cc[concat_i].comps[comp_i].txt;
+            let len = ast.txt[comp_txt].len();
+            let mut bits_len = len;
+            // get top level last group
+            if let Text::Group(ref mut d, p) = ast.txt[comp_txt][len - 1] {
+                if let Delimiter::Bracket = d {
+                    *d = Delimiter::RangeBracket;
+                    ast.cc[concat_i].comps[comp_i].range_txt = Some(p);
+                    bits_len -= 1;
+                }
+            }
+            // group together for variable
+            ast.cc[concat_i].comps[comp_i].bits_txt =
+                Some(ast.combine_subtree(comp_txt, 0..bits_len));
+        }
+    }
+
+    //"component with a bitrange that indexes nothing".to_owned(),
+    //
+    // the spacing check is to exclude semicolons in "::" separators
+    /*if check_for_init
+        && (last == 0)
+        && initialization.is_none()
+        && (p.as_char() == ':')
+        && matches!(p.spacing(), Spacing::Alone)
+    {
+        initialization = Some(mem::take(&mut string));
+    } else {
+        string.push(p.as_char());
+    }
+    // specialize this case to prevent confusion
+    Err("specified initialization is followed by empty component".to_owned())
+    */
+    /*
+    if component_range.is_some() {
+        assert!(string.is_empty());
+    } else {
+        component_middle = Some(string);
+    }
+    match (component_middle, component_range) {
+        (None, None) => {
+            if initialization.is_some() {
+            } else {
+            }
+        }
+        (Some(middle), Some(range)) => {
+            if range.is_empty() {
+                Err("has an empty index".to_owned())
+            } else {
+                match parse_range(&range, true) {
+                    Ok(range) => Ok((
+                        initialization,
+                        Component::new(ComponentType::Variable(middle), range),
+                    )),
+                    Err(e) => Err(format!(
+                        r#"could not parse range "{}": {}"#,
+                        chars_to_string(&range),
+                        e
+                    )),
+                }
+            }
+        }
+        (Some(middle), None) => {
+            // possibly a filler, check if is a range
+            if let Ok(range) = parse_range(&middle, false) {
+                Ok((initialization, Component::new(ComponentType::Filler, range)))
+            } else {
+                Ok((
+                    initialization,
+                    Component::new(ComponentType::Variable(middle), Usbr::unbounded()),
+                ))
+            }
+        }
+        _ => unreachable!(),
+    }*/
+    Ok(())
 }

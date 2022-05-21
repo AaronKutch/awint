@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use ComponentType::*;
 
 use crate::{
-    component::{Component, ComponentType},
+    component::{stage1, Component, ComponentType},
     error_and_help, token_stream_to_ast, CCMacroError, Delimiter, Names, Text,
 };
 
@@ -128,7 +128,6 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
         concat.comps.reverse();
     }
 
-    panic!();
     /*dbg!(&ast);
     #[cfg(feature = "debug")]
     triple_arena_render::render_to_svg_file(
@@ -137,13 +136,13 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
         std::path::PathBuf::from("./example.svg"),
     )
     .unwrap();*/
-    /*
 
     // stage 1: basic parsing of components
-    let mut cc = match parse_cc(&raw_cc) {
+    let mut cc = match stage1(&mut ast) {
         Ok(cc) => cc,
-        Err(e) => return Err(e.raw_cc_error(&raw_cc)),
+        Err(e) => return Err(e.ast_error(&ast)),
     };
+    /*
 
     // stage 2: individual component pass
     match stage2(&mut cc) {

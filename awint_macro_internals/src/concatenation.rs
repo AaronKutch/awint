@@ -167,26 +167,6 @@ impl Concatenation {
     }
 }
 
-pub fn parse_cc(raw_cc: &[Vec<Vec<char>>]) -> Result<(), CCMacroError> {
-    for (concat_i, concat) in raw_cc.iter().enumerate() {
-        for (comp_i, comp) in concat.iter().enumerate() {
-            /*match parse_component(comp, false) {
-                Ok((Some(_), _)) => todo!(),
-                Ok((None, comp)) => comps.push(comp),
-                Err(e) => {
-                    return Err(CCMacroError {
-                        concat_i: Some(concat_i),
-                        comp_i: Some(comp_i),
-                        error: e,
-                        ..Default::default()
-                    })
-                }
-            }*/
-        }
-    }
-    Ok(())
-}
-
 pub fn stage2(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
     for (concat_i, concat) in cc.iter_mut().enumerate() {
         for (comp_i, comp) in concat.comps.iter_mut().enumerate() {
