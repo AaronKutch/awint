@@ -5,8 +5,10 @@ use triple_arena::Ptr;
 use ComponentType::*;
 
 use crate::{
-    chars_to_string, i128_to_nonzerousize, ranges::Usbr, token_tree::PText, usize_to_i128, Ast,
-    CCMacroError, Delimiter, Text,
+    chars_to_string, i128_to_nonzerousize,
+    ranges::{parse_range, Usbr},
+    token_tree::PText,
+    usize_to_i128, Ast, CCMacroError, Delimiter, Text,
 };
 
 #[derive(Debug, Clone)]
@@ -144,7 +146,6 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                 Some(ast.combine_subtree(comp_txt, 0..bits_len));
         }
     }
-
     //"component with a bitrange that indexes nothing".to_owned(),
     //
     // the spacing check is to exclude semicolons in "::" separators
@@ -161,6 +162,32 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
     // specialize this case to prevent confusion
     Err("specified initialization is followed by empty component".to_owned())
     */
+    for concat_i in 0..ast.cc.len() {
+        for comp_i in 0..ast.cc[concat_i].comps.len() {
+            // do this check after the range brackets have all been set
+            let bits_txt = ast.cc[concat_i].comps[comp_i].bits_txt.unwrap();
+            let mut empty = false;
+            if let Text::Chars(ref s) = ast.txt[bits_txt][0] {
+                if s.is_empty() {
+                    empty = true;
+                }
+            }
+            if empty {
+                return Err(CCMacroError::new(
+                    "there is a range but no preceeding bits".to_owned(),
+                    ast.cc[concat_i].comps[comp_i].txt,
+                ))
+            }
+            if let Some(range_txt) = ast.cc[concat_i].comps[comp_i].range_txt {
+                match parse_range(ast, range_txt, true) {
+                    Ok(range) => ast.cc[concat_i].comps[comp_i].range = range,
+                    Err(Some(e)) => return Err(e),
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+
     /*
     if component_range.is_some() {
         assert!(string.is_empty());

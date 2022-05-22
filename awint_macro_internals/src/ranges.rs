@@ -1,6 +1,9 @@
-use awint_core::Bits;
+use std::mem;
 
-use crate::{chars_to_string, usb_common_case, usize_to_i128};
+use awint_core::Bits;
+use triple_arena::Ptr;
+
+use crate::{chars_to_string, usb_common_case, usize_to_i128, Ast, CCMacroError, PText};
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {
@@ -307,5 +310,117 @@ impl Usbr {
             }
         }
         Ok(())
+    }
+}
+
+/// Tries to parse raw `input` as a range. Looks for the existence of top
+/// level ".." or "..=" punctuation. If `allow_single_bit_range` is set, will
+/// return a single bit range if ".." or "..=" does not exist.
+pub fn parse_range(
+    ast: &mut Ast,
+    range_txt: Ptr<PText>,
+    allow_single_bit_range: bool,
+) -> Result<Usbr, Option<CCMacroError>> {
+    let mut range = None;
+    let mut dotdot = false;
+    let mut inclusive = false;
+    let range_len = ast.txt[range_txt].len();
+    let mut string = vec![];
+    let mut out_of_group_dots = 0;
+    for i in 0..range_len {
+        match ast.txt[range_txt][i] {
+            crate::Text::Chars(ref s) => {
+                for c in s {
+                    let c = *c;
+                    if dotdot {
+                        dotdot = false;
+                        out_of_group_dots = 0;
+                        if c == '=' {
+                            inclusive = true;
+                            range = Some(Usbr {
+                                start: Some(Usb {
+                                    s: mem::take(&mut string),
+                                    x: 0,
+                                }),
+                                end: None,
+                            });
+                        } else if c == '.' {
+                            return Err(Some(CCMacroError::new(
+                                "encountered top level deprecated \"...\" string in range"
+                                    .to_owned(),
+                                range_txt,
+                            )))
+                        } else {
+                            range = Some(Usbr {
+                                start: Some(Usb {
+                                    s: mem::take(&mut string),
+                                    x: 0,
+                                }),
+                                end: None,
+                            });
+                            string.push(c);
+                        }
+                    } else {
+                        if c == '.' {
+                            out_of_group_dots += 1;
+                            if out_of_group_dots == 2 {
+                                if range.is_some() {
+                                    return Err(Some(CCMacroError::new(
+                                        "encountered two top level \"..\" strings in same range"
+                                            .to_owned(),
+                                        range_txt,
+                                    )))
+                                }
+                                // we have ".." must we must check for '='
+                                dotdot = true;
+                                // get rid of last '.'
+                                string.pop().unwrap();
+                            }
+                        }
+                        if !dotdot {
+                            string.push(c);
+                        }
+                    }
+                }
+            }
+            crate::Text::Group(ref d, ref p) => {
+                out_of_group_dots = 0;
+                string.extend(d.lhs_chars());
+                ast.chars_assign_subtree(&mut string, *p);
+                string.extend(d.rhs_chars());
+            }
+        }
+    }
+    if dotdot {
+        // the range ended with ".."
+        Ok(Usbr {
+            start: Some(Usb {
+                s: mem::take(&mut string),
+                x: 0,
+            }),
+            end: None,
+        })
+    } else if let Some(mut range) = range {
+        if inclusive {
+            range.end = Some(Usb {
+                s: mem::take(&mut string),
+                x: 1,
+            });
+        } else {
+            range.end = Some(Usb {
+                s: mem::take(&mut string),
+                x: 0,
+            });
+        }
+        Ok(range)
+    } else {
+        // single bit range
+        if allow_single_bit_range {
+            Ok(Usbr::single_bit(&string))
+        } else {
+            // this is encountered every time a component does not have a range, we want
+            // `None` for better perf
+            Err(None)
+        }
     }
 }

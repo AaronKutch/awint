@@ -91,7 +91,7 @@ pub enum Text {
 #[derive(Debug)]
 pub struct Ast {
     pub txt: Arena<PText, Vec<Text>>,
-    pub text_root: Ptr<PText>,
+    pub txt_root: Ptr<PText>,
     pub cc: Vec<Concatenation>,
 }
 

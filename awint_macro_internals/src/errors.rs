@@ -46,7 +46,7 @@ impl CCMacroError {
         let extend = |color_line: &mut String, color_lvl: &Option<usize>, len: usize| {
             color_line.extend(iter::repeat(if color_lvl.is_some() { '^' } else { ' ' }).take(len))
         };
-        let mut stack: Vec<(Ptr<PText>, usize)> = vec![(ast.text_root, 0)];
+        let mut stack: Vec<(Ptr<PText>, usize)> = vec![(ast.txt_root, 0)];
         loop {
             let last = stack.len() - 1;
             if let Some(txt) = ast.txt[stack[last].0].get(stack[last].1) {

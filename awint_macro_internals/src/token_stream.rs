@@ -24,7 +24,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
 
     let mut ast = Ast {
         txt: Arena::new(),
-        text_root: Ptr::invalid(),
+        txt_root: Ptr::invalid(),
         cc: vec![],
     };
     let mut s = Vec::<char>::new();
@@ -138,7 +138,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     .0
                     .push(Text::Group(crate::Delimiter::Concatenation, concat));
                 let root = ast.txt.insert(ast_stack.pop().unwrap().0);
-                ast.text_root = root;
+                ast.txt_root = root;
                 break
             }
             let (group, delimiter) = ast_stack.pop().unwrap();
@@ -153,7 +153,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
     }
     // iteration over the ast is cumbersome, the cc level at least is linear and
     // should be in some structs
-    let root = ast.text_root;
+    let root = ast.txt_root;
     let cc_len = ast.txt[root].len();
     for concat_i in 0..cc_len {
         match ast.txt[root][concat_i] {
@@ -186,132 +186,6 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
         }
     }
     ast
-}
-
-/// Tries to parse raw `input` as a range. Looks for the existence of top
-/// level ".." or "..=" punctuation. If `allow_single_bit_range` is set, will
-/// return a single bit range if ".." or "..=" does not exist.
-pub fn parse_range(input: &[char], allow_single_bit_range: bool) -> Result<Usbr, String> {
-    let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(input)) {
-        ts
-    } else {
-        return Err("failed to tokenize range".to_owned())
-    };
-    // traverse the tree
-    let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
-        vec![(input.into_iter().collect(), Delimiter::None)];
-    let mut string: Vec<char> = vec![];
-    let mut range = None;
-    // this is toggled for char lookahead logic
-    let mut is_range = false;
-    let mut inclusive = false;
-    loop {
-        let last = stack.len() - 1;
-        if let Some(tt) = stack[last].0.front() {
-            match tt {
-                TokenTree::Group(g) => {
-                    let d = g.delimiter();
-                    match d {
-                        Delimiter::Parenthesis => string.push('('),
-                        Delimiter::Brace => string.push('{'),
-                        Delimiter::Bracket => string.push('['),
-                        Delimiter::None => {
-                            if last != 0 {
-                                string.push(' ')
-                            }
-                        }
-                    };
-                    let trees = g.stream().into_iter().collect();
-                    stack[last].0.pop_front().unwrap();
-                    stack.push((trees, d));
-                    continue
-                }
-                TokenTree::Ident(i) => {
-                    string.extend(i.to_string().chars());
-                }
-                TokenTree::Punct(p) => {
-                    let p0 = p.as_char();
-                    let len = stack[0].0.len();
-                    if (last == 0) && (p0 == '.') && (len >= 2) {
-                        if let TokenTree::Punct(ref p1) = stack[0].0[1] {
-                            if p1.as_char() == '.' {
-                                if range.is_some() {
-                                    return Err("encountered two top level \"..\" strings in same \
-                                                range"
-                                        .to_owned())
-                                }
-                                is_range = true;
-                                if len >= 3 {
-                                    if let TokenTree::Punct(ref p2) = stack[0].0[2] {
-                                        if p2.as_char() == '=' {
-                                            // inclusive range
-                                            inclusive = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if is_range {
-                        range = Some(Usbr {
-                            start: Some(Usb {
-                                s: mem::take(&mut string),
-                                x: 0,
-                            }),
-                            end: None,
-                        });
-                    } else {
-                        string.push(p0);
-                    }
-                }
-                TokenTree::Literal(l) => string.extend(l.to_string().chars()),
-            }
-            stack[last].0.pop_front().unwrap();
-            if is_range {
-                stack[last].0.pop_front().unwrap();
-                if inclusive {
-                    stack[last].0.pop_front().unwrap();
-                }
-                is_range = false;
-            }
-        } else {
-            match stack[last].1 {
-                Delimiter::Parenthesis => string.push(')'),
-                Delimiter::Brace => string.push('}'),
-                Delimiter::Bracket => string.push(']'),
-                Delimiter::None => {
-                    if last != 0 {
-                        string.push(' ')
-                    }
-                }
-            };
-            if last == 0 {
-                break
-            }
-            stack.pop().unwrap();
-        }
-    }
-    if let Some(mut range) = range {
-        if inclusive {
-            range.end = Some(Usb {
-                s: mem::take(&mut string),
-                x: 1,
-            });
-        } else {
-            range.end = Some(Usb {
-                s: mem::take(&mut string),
-                x: 0,
-            });
-        }
-        Ok(range)
-    } else {
-        // single bit range
-        if allow_single_bit_range {
-            Ok(Usbr::single_bit(&string))
-        } else {
-            Err(r#"did not find ".." or "..=""#.to_owned())
-        }
-    }
 }
 
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
