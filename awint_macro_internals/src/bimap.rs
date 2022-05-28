@@ -7,98 +7,80 @@ use std::{
 use triple_arena::{Arena, Ptr, PtrTrait};
 
 /// This is a special purpose structure that can efficiently handle forwards and
-/// backwards lookups, associates a unique id with each entry, associates a used
-/// boolean with each entry, and maintains the set property (if multiple `T` are
-/// inserted, only the first is retained).
+/// backwards lookups and maintains the set property. `A` is associated data
+/// that is not hashed or used in equality comparisons.
 ///
 /// Iteration over the arena is deterministic.
 #[derive(Debug)]
-pub struct BiMap<P: PtrTrait, T: Clone + Eq + Hash> {
-    // TODO we need a more unified structure that can eliminate the extra `T`. There should be
-    // another generic so that one of the generic types has the hashing and PartialEq applied to
-    // it, while the other generic is for associated data
+pub struct BiMap<P: PtrTrait, T: Clone + Eq + Hash, A> {
+    // TODO we need a more unified structure that can eliminate the extra `T` with internal
+    // memoization. In particular `insert_with` needs better optimization, maybe there needs to be
+    // a "staged entry" for progressively inserting at different steps (start with &T to check for
+    // uniqueness and avoid allocations, then move to T, then A). Probably need an evolution of
+    // BTrees with higher radix trees and caches and quick defragmentation.
 
     // forwards lookup and set property
     map: HashMap<T, Ptr<P>>,
     // backwards lookup and determinism
-    arena: Arena<P, (u64, T, bool)>,
-    id: u64,
+    arena: Arena<P, (T, A)>,
 }
 
-impl<P: PtrTrait, T: Clone + Eq + Hash> BiMap<P, T> {
+impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
             arena: Arena::new(),
-            id: 0,
         }
     }
 
-    /// If `t` is already contained, it is not inserted
-    pub fn insert(&mut self, t: T) -> Ptr<P> {
-        match self.map.entry(t.clone()) {
-            Entry::Occupied(o) => *o.get(),
-            Entry::Vacant(v) => {
-                let p = self.arena.insert((self.id, t, false));
-                self.id += 1;
-                v.insert(p);
-                p
-            }
-        }
-    }
-
-    pub fn insert_get_ptr_and_id(&mut self, t: T) -> (Ptr<P>, u64) {
-        match self.map.entry(t.clone()) {
-            Entry::Occupied(o) => {
-                let p = *o.get();
-                (p, self.arena[p].0)
-            }
-            Entry::Vacant(v) => {
-                let p = self.arena.insert((self.id, t, false));
-                let res = self.id;
-                self.id += 1;
-                (*v.insert(p), res)
-            }
-        }
-    }
-
-    pub fn arena(&self) -> &Arena<P, (u64, T, bool)> {
+    pub fn arena(&self) -> &Arena<P, (T, A)> {
         &self.arena
     }
 
-    pub fn get_id<B: Borrow<T>>(&self, t: B) -> u64 {
-        self.arena[self.map[t.borrow()]].0
-    }
-
-    pub fn get<B: Borrow<T>>(&self, t: B) -> (u64, Ptr<P>, bool) {
-        let p = self.map[t.borrow()];
-        let tmp = &self.arena[p];
-        (tmp.0, p, tmp.2)
-    }
-
-    pub fn get_and_set_used<B: Borrow<T>>(&mut self, t: B) -> (u64, Ptr<P>) {
-        let p = self.map[t.borrow()];
-        self.arena[p].2 = true;
-        let tmp = &self.arena[p];
-        (tmp.0, p)
-    }
-
-    pub fn set_used<B: Borrow<Ptr<P>>>(&mut self, p: B) {
-        self.arena[p].2 = true;
-    }
-
-    pub fn ptr_get_and_set_used<B: Borrow<Ptr<P>>>(&mut self, p: B) -> u64 {
-        self.arena[*p.borrow()].2 = true;
-        let tmp = &self.arena[*p.borrow()];
-        tmp.0
-    }
-
-    /*pub fn get_p<B: Borrow<T>>(&self, t: B) -> Ptr<P> {
-        self.map[t.borrow()]
-    }
-
-    pub fn get_t<B: Borrow<Ptr<P>>>(&self, p: B) -> (u64, &T) {
-        let tmp = &self.arena[p];
-        (tmp.0, &tmp.1)
+    /*pub fn insert_with<F0: FnOnce(Ptr<P>) -> T, F1: FnOnce() -> A>
+      (&mut self, create: F0, associate: F1) -> Ptr<P> {
+        self.arena.insert_with(|p| {
+            let t = create(p);
+            // need &T
+            match self.map.entry(t.clone()) {
+                Entry::Occupied(o) => *o.get(),
+                Entry::Vacant(v) => {
+                    let p = self.arena.insert((t, associate()));
+                    v.insert(p);
+                    p
+                }
+            }
+        });
     }*/
+
+    /// If `t` is already contained, it and `a` are not inserted. Returns `None`
+    /// if inserted a new entry (use `F` to get the new `Ptr<P>`), else returns
+    /// the `Ptr<P>` to an already existing `t`.
+    pub fn insert_with<F: FnOnce(Ptr<P>) -> A>(
+        &mut self,
+        t: T,
+        associate: F,
+    ) -> Result<Ptr<P>, Ptr<P>> {
+        match self.map.entry(t.clone()) {
+            Entry::Occupied(o) => Err(*o.get()),
+            Entry::Vacant(v) => {
+                let p = self.arena.insert_with(|p| (t, associate(p)));
+                v.insert(p);
+                Ok(p)
+            }
+        }
+    }
+
+    pub fn insert(&mut self, t: T, a: A) -> Result<Ptr<P>, Ptr<P>> {
+        self.insert_with(t, |_| a)
+    }
+
+    pub fn t_get<B: Borrow<T>>(&self, t: B) -> (Ptr<P>, &(T, A)) {
+        let p = self.map[t.borrow()];
+        (p, &self.arena[p])
+    }
+
+    pub fn p_get<B: Borrow<Ptr<P>>>(&self, p: B) -> &(T, A) {
+        &self.arena[p]
+    }
 }

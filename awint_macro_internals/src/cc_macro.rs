@@ -5,8 +5,8 @@ use proc_macro2::TokenStream;
 use ComponentType::*;
 
 use crate::{
-    stage1, stage2, ComponentType,
-    error_and_help, stage3, stage4, stage5, token_stream_to_ast, CCMacroError, Names,
+    error_and_help, stage1, stage2, stage3, stage4, stage5, token_stream_to_ast, CCMacroError,
+    ComponentType, Names,
 };
 
 /// Input parsing and code generation function for corresponding concatenations

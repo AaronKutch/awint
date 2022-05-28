@@ -4,10 +4,8 @@ use awint_ext::ExtAwi;
 use triple_arena::Ptr;
 
 use crate::{
-    Component, ComponentType::*,
-    i128_to_nonzerousize, i128_to_usize,
+    i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PText,
     Usbr,
-    Ast, CCMacroError, PText,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +65,7 @@ impl Concatenation {
                         })
                     }
                 }
-                Variable => (),
+                Variable(_) => (),
                 Filler => {
                     // unbounded filler handling
                     if comp.range.end.is_none() {

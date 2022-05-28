@@ -3,9 +3,7 @@ use std::{collections::VecDeque, mem};
 use proc_macro2::{TokenStream, TokenTree};
 use triple_arena::{Arena, Ptr};
 
-use crate::{
-    Component, Concatenation, Usbr, Ast, Text,
-};
+use crate::{Ast, Component, Concatenation, Text, Usbr};
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings

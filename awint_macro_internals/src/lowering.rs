@@ -108,8 +108,11 @@
 // that nested invocations and most Rust syntax should be able to work,
 
 use awint_ext::ExtAwi;
+use triple_arena::{ptr_trait_struct_with_gen, Ptr};
 
-use crate::{Ast, Names, ComponentType::*};
+use crate::{Ast, BiMap, ComponentType::*, Names};
+
+ptr_trait_struct_with_gen!(PBind);
 
 /// Lowering of the parsed structs into Rust code.
 pub fn code_gen<F: FnMut(ExtAwi) -> String>(
@@ -125,23 +128,50 @@ pub fn code_gen<F: FnMut(ExtAwi) -> String>(
     let mut code = String::new();
     let cc = &ast.cc;
 
+    let mut bindings: BiMap<PBind, Vec<char>, ()> = BiMap::new();
+    let mut bindings_ptrs: Vec<Ptr<PBind>> = vec![];
+    // get unique variables used in sinks
+    for concat in &cc[1..] {
+        for comp in &concat.comps {
+            if let Variable(ref s) = comp.c_type {
+                bindings
+                    .insert_with(s.clone(), |p| {
+                        bindings_ptrs.push(p);
+                    })
+                    .unwrap();
+            }
+        }
+    }
+
+    let mut need_buffer = false;
+
+    for comp in &cc[0].comps {
+        if let Variable(ref s) = comp.c_type {
+            match bindings.insert(s.clone(), ()) {
+                Ok(p) => bindings_ptrs.push(p),
+                // the same variable is in the source concatenation and a sink concatenation
+                Err(_) => need_buffer = true,
+            }
+        }
+    }
+
     // check for simplest copy `a[..]; b[..]; c[..]; ...` cases
-    let mut all_copy_assign = true;
+    /*let mut all_copy_assign = true;
     for concat in cc {
         if (concat.comps.len() != 1) || !concat.comps[0].has_full_range() {
             all_copy_assign = false;
             break
         }
-    }
+    }*/
 
     // true if the input is of the form
     // `constant; a[..]; b[..]; c[..]; ...` or
     // `single full range var; a[..]; b[..]; c[..]; ...`
-    let no_buffer = return_type.is_none()
-        && all_copy_assign
-        && (cc[0].comps.len() == 1)
-        && cc[0].comps[0].has_full_range()
-        && !matches!(cc[0].comps[0].c_type, Filler);
+    // let no_buffer = return_type.is_none()
+    //     && all_copy_assign
+    //     && (cc[0].comps.len() == 1)
+    //     && cc[0].comps[0].has_full_range()
+    //     && !matches!(cc[0].comps[0].c_type, Filler);
     /*let mut constructing = if return_type.is_some() {
         if static_width {
             format!(

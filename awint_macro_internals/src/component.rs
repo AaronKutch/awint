@@ -5,17 +5,15 @@ use triple_arena::Ptr;
 use ComponentType::*;
 
 use crate::{
-    chars_to_string, i128_to_nonzerousize,
-    parse_range, Usbr,
-    PText,
-    usize_to_i128, Ast, CCMacroError, Delimiter, Text,
+    chars_to_string, i128_to_nonzerousize, parse_range, usize_to_i128, Ast, CCMacroError,
+    Delimiter, PText, Text, Usbr,
 };
 
 #[derive(Debug, Clone)]
 pub enum ComponentType {
     Unparsed,
     Literal(ExtAwi),
-    Variable,
+    Variable(Vec<char>),
     Filler,
 }
 
@@ -63,7 +61,7 @@ impl Component {
                 }
                 self.c_type = Literal(lit.clone());
             }
-            Variable => {
+            Variable(_) => {
                 self.range.simplify()?;
             }
             Filler => {
@@ -100,7 +98,7 @@ impl Component {
                 }
                 true
             }
-            Variable => self.range.end.is_none(),
+            Variable(_) => self.range.end.is_none(),
             Filler => self.range.end.is_some(),
         }
     }
@@ -206,7 +204,12 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                     }
                 }
                 if needs_parsing {
-                    ast.cc[concat_i].comps[comp_i].c_type = Variable;
+                    let mut s = vec![];
+                    ast.chars_assign_subtree(
+                        &mut s,
+                        ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
+                    );
+                    ast.cc[concat_i].comps[comp_i].c_type = Variable(s);
                 }
             }
         }
