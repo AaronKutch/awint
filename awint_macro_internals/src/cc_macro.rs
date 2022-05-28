@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use ComponentType::*;
 
 use crate::{
-    component::{stage1, Component, ComponentType},
+    component::{stage1, stage2, Component, ComponentType},
     error_and_help, token_stream_to_ast, CCMacroError, Delimiter, Names, Text,
 };
 
@@ -130,7 +130,13 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
 
     // stage 1: basic parsing of components
     match stage1(&mut ast) {
-        Ok(cc) => cc,
+        Ok(()) => (),
+        Err(e) => return Err(e.ast_error(&ast)),
+    };
+
+    // stage 2: individual component pass
+    match stage2(&mut ast) {
+        Ok(()) => (),
         Err(e) => return Err(e.ast_error(&ast)),
     };
 
@@ -143,12 +149,6 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
     )
     .unwrap();
     /*
-    // stage 2: individual component pass
-    match stage2(&mut cc) {
-        Ok(()) => (),
-        Err(e) => return Err(e.raw_cc_error(&raw_cc)),
-    };
-
     // stage 3: individual concatenation pass
     match stage3(&mut cc) {
         Ok(()) => (),

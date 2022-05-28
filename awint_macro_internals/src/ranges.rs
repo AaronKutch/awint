@@ -1,5 +1,3 @@
-use std::mem;
-
 use awint_core::Bits;
 use triple_arena::Ptr;
 
@@ -71,20 +69,6 @@ impl Usb {
         Self { s: vec![], x }
     }
 
-    /// Avoids infinite loops involving [crate::usb_common_case]
-    pub fn basic_simplify(&mut self) -> Result<(), String> {
-        if !self.s.is_empty() {
-            if let Some(x) = i128_try_parse(&self.s) {
-                self.s.clear();
-                self.x = self
-                    .x
-                    .checked_add(x)
-                    .ok_or_else(|| "i128 overflow".to_owned())?;
-            }
-        }
-        Ok(())
-    }
-
     /// Tries to parse the `s` part of `self` as an integer and adds it to `x`.
     /// Performs advanced simplifications such as interpreting
     /// `({+/-}{string/i128} {+/-} {+/-}{string/i128})`.
@@ -99,7 +83,7 @@ impl Usb {
                     .ok_or_else(|| "i128 overflow".to_owned())?;
             }
         }
-        // note: we could determine now that value is negative, but for better
+        // note: we could determine now if the value is negative, but for better
         // error reporting I want it at the range level
         Ok(())
     }
@@ -424,12 +408,15 @@ pub fn parse_range(
     ast: &mut Ast,
     range_txt: Ptr<PText>,
     allow_single_bit_range: bool,
-) -> Result<Usbr, CCMacroError> {
+) -> Result<Usbr, Option<CCMacroError>> {
     // We want to do the ".."/"..=" separation followed by "+"/"-" optimization, so
     // we need to preserve group boundaries one more time.
 
     if ast.txt[range_txt].is_empty() {
-        return Err(CCMacroError::new("range is empty".to_owned(), range_txt))
+        return Err(Some(CCMacroError::new(
+            "range is empty".to_owned(),
+            range_txt,
+        )))
     }
 
     // inclusive index of the first and exclusive index of the last char
@@ -438,10 +425,10 @@ pub fn parse_range(
     let range_len = ast.txt[range_txt].len();
     let mut dots = 0;
     let double_err = || {
-        Err(CCMacroError::new(
+        Err(Some(CCMacroError::new(
             "encountered two top level \"..\" strings in same range".to_owned(),
             range_txt,
-        ))
+        )))
     };
     for i in 0..range_len {
         let next_dots;
@@ -464,11 +451,11 @@ pub fn parse_range(
                     } else if c == '.' {
                         next_dots = dots + 1;
                         if next_dots == 3 {
-                            return Err(CCMacroError::new(
+                            return Err(Some(CCMacroError::new(
                                 "encountered top level deprecated \"...\" string in range"
                                     .to_owned(),
                                 range_txt,
-                            ))
+                            )))
                         }
                     } else {
                         next_dots = 0;
@@ -546,6 +533,6 @@ pub fn parse_range(
         })
     } else {
         // don't put anything, this error is dropped
-        Err(CCMacroError::new(String::new(), range_txt))
+        Err(None)
     }
 }

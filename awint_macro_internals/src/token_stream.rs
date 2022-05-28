@@ -148,7 +148,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
     }
     // iteration over the ast is cumbersome, the cc level at least is linear and
     // should be in some structs
-    let root = ast.txt_root; // FIXME txt_root is broken
+    let root = ast.txt_root;
     let cc_len = ast.txt[root].len();
     for concat_i in 0..cc_len {
         match ast.txt[root][concat_i] {

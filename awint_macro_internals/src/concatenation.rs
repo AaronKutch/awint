@@ -67,7 +67,7 @@ impl Concatenation {
                         })
                     }
                 }
-                Variable(_) => {}
+                Variable => (),
                 Filler => {
                     // unbounded filler handling
                     if comp.range.end.is_none() {
@@ -165,18 +165,6 @@ impl Concatenation {
             i -= 1;
         }
     }
-}
-
-pub fn stage2(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
-    for (concat_i, concat) in cc.iter_mut().enumerate() {
-        for (comp_i, comp) in concat.comps.iter_mut().enumerate() {
-            match comp.simplify() {
-                Ok(()) => (),
-                Err(e) => return Err(CCMacroError::new(e, comp.txt)),
-            }
-        }
-    }
-    Ok(())
 }
 
 pub fn stage3(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {

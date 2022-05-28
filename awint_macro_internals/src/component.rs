@@ -15,7 +15,7 @@ use crate::{
 pub enum ComponentType {
     Unparsed,
     Literal(ExtAwi),
-    Variable(Vec<char>),
+    Variable,
     Filler,
 }
 
@@ -31,7 +31,7 @@ pub struct Component {
 impl Component {
     pub fn simplify(&mut self) -> Result<(), String> {
         match self.c_type.clone() {
-            Unparsed => todo!(),
+            Unparsed => unreachable!(),
             Literal(ref mut lit) => {
                 self.range.simplify()?;
                 // note: `lit` here is a reference to a clone
@@ -63,7 +63,7 @@ impl Component {
                 }
                 self.c_type = Literal(lit.clone());
             }
-            Variable(_) => {
+            Variable => {
                 self.range.simplify()?;
             }
             Filler => {
@@ -100,7 +100,7 @@ impl Component {
                 }
                 true
             }
-            Variable(_) => self.range.end.is_none(),
+            Variable => self.range.end.is_none(),
             Filler => self.range.end.is_some(),
         }
     }
@@ -167,7 +167,8 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
             if let Some(range_txt) = ast.cc[concat_i].comps[comp_i].range_txt {
                 match parse_range(ast, range_txt, true) {
                     Ok(range) => ast.cc[concat_i].comps[comp_i].range = range,
-                    Err(e) => return Err(e),
+                    Err(Some(e)) => return Err(e),
+                    Err(None) => unreachable!(),
                 }
             } else {
                 // possibly a filler, check if a non-single bit range
@@ -176,16 +177,19 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                         ast.cc[concat_i].comps[comp_i].range = range;
                         ast.cc[concat_i].comps[comp_i].c_type = Filler;
                     }
-                    _ => (),
+                    Err(Some(e)) => return Err(e),
+                    Err(None) => (),
                 }
             }
             if let Unparsed = ast.cc[concat_i].comps[comp_i].c_type {
+                let mut needs_parsing = true;
                 if let Text::Chars(ref s) = ast.txt[mid_txt][0] {
                     if matches!(s[0], '-' | '0'..='9') {
                         let s = chars_to_string(s);
                         match ExtAwi::from_str(&s) {
                             Ok(awi) => {
                                 ast.cc[concat_i].comps[comp_i].c_type = Literal(awi);
+                                needs_parsing = false;
                             }
                             Err(e) => {
                                 return Err(CCMacroError::new(
@@ -200,6 +204,21 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                         }
                     }
                 }
+                if needs_parsing {
+                    ast.cc[concat_i].comps[comp_i].c_type = Variable;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn stage2(ast: &mut Ast) -> Result<(), CCMacroError> {
+    for concat in &mut ast.cc {
+        for comp in &mut concat.comps {
+            match comp.simplify() {
+                Ok(()) => (),
+                Err(e) => return Err(CCMacroError::new(e, comp.txt)),
             }
         }
     }
