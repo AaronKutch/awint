@@ -1,8 +1,6 @@
 /// Prefixes used for codegen names and functions. Most of these should be
 /// prefixed with two underscores and the crate name to prevent collisions.
 pub struct Names<'a> {
-    /// The equivalent of `Bits`
-    pub bits: &'a str,
     /// Prefix used for constants
     pub constant: &'a str,
     /// Prefix used for initial bindings
@@ -24,7 +22,6 @@ pub struct Names<'a> {
     pub shl: &'a str,
 }
 
-const BITS: &str = "Bits";
 const CONSTANT: &str = "__awint_constant";
 const BINDING: &str = "__awint_bind";
 const VALUE: &str = "__awint_val";
@@ -37,7 +34,6 @@ const SHL: &str = "__awint_shl";
 
 /// Default names for `awint`
 pub const AWINT_NAMES: Names = Names {
-    bits: BITS,
     constant: CONSTANT,
     binding: BINDING,
     value: VALUE,

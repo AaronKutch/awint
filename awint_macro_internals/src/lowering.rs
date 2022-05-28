@@ -107,6 +107,8 @@
 // that an extra index like x[i][..], x[i][12..42] can coexist,
 // that nested invocations and most Rust syntax should be able to work,
 
+use std::num::NonZeroUsize;
+
 use awint_ext::ExtAwi;
 use triple_arena::{ptr_trait_struct_with_gen, Ptr};
 
@@ -114,38 +116,54 @@ use crate::{Ast, BiMap, ComponentType::*, Names};
 
 ptr_trait_struct_with_gen!(PBind);
 
-/// Note: `Bits::must_use` or analogous should wrap some of these
+/// Note: the type must be unambiguous for the construction functions
 ///
-/// `static_width` - if the type needs a statically known width
-/// `return_type` - if the bits need to be returned
-/// `lit_construction_fn` - construction function for known literals
-pub struct CodeGen<'a, F0: FnMut(ExtAwi) -> String> {
+/// - `static_width`: if the type needs a statically known width
+/// - `return_type`: if the bits need to be returned
+/// - `must_use`: wraps return values in a function for insuring `#[must_use]`
+/// - `lit_construction_fn`: construction function for known literals
+/// - `construction_fn`: is input the specified initialization, width if it is
+///   statically known, and dynamic width if known. As a special case, the
+///   initialization is empty for when initialization doesn't matter
+pub struct CodeGen<
+    'a,
+    F0: FnMut(&str) -> String,
+    F1: FnMut(ExtAwi) -> String,
+    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+> {
     pub static_width: bool,
+    pub buffer_type: &'a str,
     pub return_type: Option<&'a str>,
-    pub lit_construction_fn: Option<F0>,
+    pub must_use: F0,
+    pub lit_construction_fn: Option<F1>,
+    pub construction_fn: F2,
 }
 
 /// Lowering of the parsed structs into Rust code.
-pub fn cc_macro_code_gen<'a, F0: FnMut(ExtAwi) -> String>(
+pub fn cc_macro_code_gen<
+    'a,
+    F0: FnMut(&str) -> String,
+    F1: FnMut(ExtAwi) -> String,
+    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+>(
     ast: &Ast,
     specified_init: bool,
-    code_gen: CodeGen<'a, F0>,
+    mut code_gen: CodeGen<'a, F0, F1, F2>,
     names: Names,
 ) -> String {
+    let cc = &ast.cc;
     // first check for simple infallible constant return
-    if code_gen.return_type.is_some() && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
+    if code_gen.return_type.is_some() && (cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
         let comp = &ast.cc[0].comps[0];
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
-                return code_gen.lit_construction_fn.unwrap()(ExtAwi::from_bits(lit))
+                return (code_gen.must_use)(&code_gen.lit_construction_fn.unwrap()(
+                    ExtAwi::from_bits(lit),
+                ))
             }
         }
     }
-
-    let mut code = String::new();
-
-    let cc = &ast.cc;
 
     let mut bindings: BiMap<PBind, Vec<char>, ()> = BiMap::new();
     let mut bindings_ptrs: Vec<Ptr<PBind>> = vec![];
@@ -163,83 +181,39 @@ pub fn cc_macro_code_gen<'a, F0: FnMut(ExtAwi) -> String>(
     }
 
     let mut need_buffer = false;
+    let mut source_has_filler = false;
 
     for comp in &cc[0].comps {
-        if let Variable(ref s) = comp.c_type {
-            match bindings.insert(s.clone(), ()) {
+        match comp.c_type {
+            Variable(ref s) => match bindings.insert(s.clone(), ()) {
                 Ok(p) => bindings_ptrs.push(p),
                 // the same variable is in the source concatenation and a sink concatenation
                 Err(_) => need_buffer = true,
-            }
+            },
+            Filler => source_has_filler = true,
+            _ => (),
         }
     }
 
-    if let Some(return_type) = code_gen.return_type {
-        //
-    }
-
-    // check for simplest copy `a[..]; b[..]; c[..]; ...` cases
-    /*let mut all_copy_assign = true;
-    for concat in cc {
-        if (concat.comps.len() != 1) || !concat.comps[0].has_full_range() {
-            all_copy_assign = false;
-            break
-        }
-    }*/
-
-    // true if the input is of the form
-    // `constant; a[..]; b[..]; c[..]; ...` or
-    // `single full range var; a[..]; b[..]; c[..]; ...`
-    // let no_buffer = return_type.is_none()
-    //     && all_copy_assign
-    //     && (cc[0].comps.len() == 1)
-    //     && cc[0].comps[0].has_full_range()
-    //     && !matches!(cc[0].comps[0].c_type, Filler);
-    /*let mut constructing = if return_type.is_some() {
-        if static_width {
-            format!(
-                "let mut {} = {}::{}();\n",
-                AWI,
-                unstable_native_inlawi_ty(total_bw.unwrap().get() as u128),
-                construct_fn
-            )
-        } else {
-            // even if the bitwidth is known statically, we return `ExtAwi` from `extawi!`
-            format!(
-                "let mut {} = ExtAwi::panicking_{}({});\n",
-                AWI, construct_fn, BW
-            )
-        }
-    } else if no_buffer {
-        String::new()
+    let constructing = if let Some(return_type) = code_gen.return_type {
+        format!(
+            "let mut {}: {} = {};\n",
+            names.awi,
+            return_type,
+            (code_gen.construction_fn)("", ast.common_bw, Some(names.bw))
+        )
+    } else if need_buffer {
+        format!(
+            "let mut {}: {} = {};\n",
+            names.awi,
+            code_gen.buffer_type,
+            (code_gen.construction_fn)("", ast.common_bw, Some(names.bw))
+        )
     } else {
-        // still need a temporary, `AWI` is not actually returned
-        if let Some(bw) = total_bw {
-            format!(
-                "let mut {} = {}::{}();\n",
-                AWI,
-                unstable_native_inlawi_ty(bw.get() as u128),
-                construct_fn
-            )
-        } else {
-            format!(
-                "let mut {} = ExtAwi::panicking_{}({});\n",
-                AWI, construct_fn, BW
-            )
-        }
+        String::new()
     };
-    if !no_buffer {
-        constructing += &format!("let {}: &mut Bits = {}.const_as_mut();\n", AWI_REF, AWI);
-    }
 
-    let mut filler_in_source = false;
-    for comp in &concats[0].concatenation {
-        if let Filler = comp.component_type {
-            filler_in_source = true;
-            break
-        }
-    }
-
+    /*
     let mut fielding = String::new();
 
     if filler_in_source && !specified_initialization {
@@ -493,5 +467,5 @@ pub fn cc_macro_code_gen<'a, F0: FnMut(ExtAwi) -> String>(
         "{{\n{}\n{}\n{}\n{}\n}}",
         l.s_literals, s_bindings, s_values, output
     );*/
-    code
+    String::new()
 }

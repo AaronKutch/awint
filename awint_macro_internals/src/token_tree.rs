@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{num::NonZeroUsize, ops::Range};
 
 use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr};
 
@@ -93,6 +93,7 @@ pub struct Ast {
     pub txt: Arena<PText, Vec<Text>>,
     pub txt_root: Ptr<PText>,
     pub cc: Vec<Concatenation>,
+    pub common_bw: Option<NonZeroUsize>,
 }
 
 impl Ast {

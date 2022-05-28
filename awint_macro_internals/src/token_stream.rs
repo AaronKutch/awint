@@ -19,6 +19,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
         txt: Arena::new(),
         txt_root: Ptr::invalid(),
         cc: vec![],
+        common_bw: None,
     };
     let mut s = Vec::<char>::new();
     // traverse the tree

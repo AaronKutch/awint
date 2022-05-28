@@ -304,6 +304,7 @@ pub fn stage4(
             }
         }
     }
+    ast.common_bw = common_bw;
     Ok(())
 }
 

@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{num::NonZeroUsize, str::FromStr};
 
 use awint_ext::ExtAwi;
 use proc_macro2::TokenStream;
@@ -10,13 +10,18 @@ use crate::{
 
 /// Input parsing and code generation function for corresponding concatenations
 /// of components macros.
-pub fn cc_macro<'a, F0: FnMut(ExtAwi) -> String>(
+pub fn cc_macro<
+    'a,
+    F0: FnMut(&str) -> String,
+    F1: FnMut(ExtAwi) -> String,
+    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+>(
     // TODO bring out documentation once finished
     input: &str,
     // FIXME remove
     specified_init: bool,
     names: Names,
-    code_gen: CodeGen<'a, F0>,
+    code_gen: CodeGen<'a, F0, F1, F2>,
 ) -> Result<String, String> {
     // we process in stages to handle more fundamental errors first, reducing bugs
     // and confusion
