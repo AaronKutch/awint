@@ -6,8 +6,8 @@ use ComponentType::*;
 
 use crate::{
     chars_to_string, i128_to_nonzerousize,
-    ranges::{parse_range, Usbr},
-    token_tree::PText,
+    parse_range, Usbr,
+    PText,
     usize_to_i128, Ast, CCMacroError, Delimiter, Text,
 };
 
@@ -138,6 +138,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
             ast.cc[concat_i].comps[comp_i].mid_txt = Some(mid_p);
         }
     }
+    // FIXME
     //"component with a bitrange that indexes nothing".to_owned(),
     //
     // the spacing check is to exclude semicolons in "::" separators

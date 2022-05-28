@@ -4,7 +4,7 @@ use proc_macro2::{TokenStream, TokenTree};
 use triple_arena::{Arena, Ptr};
 
 use crate::{
-    component::Component, concatenation::Concatenation, ranges::Usbr, token_tree::Ast, Text,
+    Component, Concatenation, Usbr, Ast, Text,
 };
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in

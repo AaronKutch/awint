@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr};
 
-use crate::concatenation::Concatenation;
+use crate::Concatenation;
 
 // Previous implementation attempts all resulted in having to parse the same
 // things multiple times. We must use a custom tree, and different structs can

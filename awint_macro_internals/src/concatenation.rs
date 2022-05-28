@@ -4,9 +4,9 @@ use awint_ext::ExtAwi;
 use triple_arena::Ptr;
 
 use crate::{
-    component::{Component, ComponentType::*},
+    Component, ComponentType::*,
     i128_to_nonzerousize, i128_to_usize,
-    ranges::Usbr,
+    Usbr,
     Ast, CCMacroError, PText,
 };
 

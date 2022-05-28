@@ -107,28 +107,28 @@
 // that an extra index like x[i][..], x[i][12..42] can coexist,
 // that nested invocations and most Rust syntax should be able to work,
 
-use std::{collections::HashSet, num::NonZeroUsize};
+use awint_ext::ExtAwi;
 
-use ComponentType::*;
-
-use crate::*;
+use crate::{Ast, Names, ComponentType::*};
 
 /// Lowering of the parsed structs into Rust code.
-pub(crate) fn lower(
-    concats: &[Concatenation],
-    dynamic_width_i: Option<usize>,
-    total_bw: Option<NonZeroUsize>,
-    specified_initialization: bool,
-    construct_fn: &str,
-    inlawi: bool,
-    return_source: bool,
+pub fn code_gen<F: FnMut(ExtAwi) -> String>(
+    ast: &Ast,
+    specified_init: bool,
+    return_type: Option<&str>,
+    lit_construction_fn: Option<F>,
+    _unstable_construction_fn: Option<&str>,
+    static_width: bool,
+    // FIXME put construction fn in `Names`
+    _names: Names,
 ) -> String {
-    let mut l = Lower::new(concats, dynamic_width_i, total_bw);
+    let mut code = String::new();
+    let cc = &ast.cc;
 
     // check for simplest copy `a[..]; b[..]; c[..]; ...` cases
     let mut all_copy_assign = true;
-    for concat in concats {
-        if (concat.concatenation.len() != 1) || !concat.concatenation[0].has_full_range() {
+    for concat in cc {
+        if (concat.comps.len() != 1) || !concat.comps[0].has_full_range() {
             all_copy_assign = false;
             break
         }
@@ -137,14 +137,13 @@ pub(crate) fn lower(
     // true if the input is of the form
     // `constant; a[..]; b[..]; c[..]; ...` or
     // `single full range var; a[..]; b[..]; c[..]; ...`
-    let no_buffer = !return_source
+    let no_buffer = return_type.is_none()
         && all_copy_assign
-        && (concats[0].concatenation.len() == 1)
-        && concats[0].concatenation[0].has_full_range()
-        && !matches!(concats[0].concatenation[0].component_type, Filler);
-
-    let mut constructing = if return_source {
-        if inlawi {
+        && (cc[0].comps.len() == 1)
+        && cc[0].comps[0].has_full_range()
+        && !matches!(cc[0].comps[0].c_type, Filler);
+    /*let mut constructing = if return_type.is_some() {
+        if static_width {
             format!(
                 "let mut {} = {}::{}();\n",
                 AWI,
@@ -440,6 +439,6 @@ pub(crate) fn lower(
     output = format!(
         "{{\n{}\n{}\n{}\n{}\n}}",
         l.s_literals, s_bindings, s_values, output
-    );
-    output
+    );*/
+    code
 }
