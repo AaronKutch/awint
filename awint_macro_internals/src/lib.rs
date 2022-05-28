@@ -9,6 +9,9 @@
 
 // TODO after refactor make everything private and find unused functions
 
+// TODO eliminate buffer if source component variables do not have same text as
+// any sink variable
+
 mod bimap;
 mod cc_macro;
 pub mod component;

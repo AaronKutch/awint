@@ -3,7 +3,7 @@ use std::mem;
 use awint_core::Bits;
 use triple_arena::Ptr;
 
-use crate::{chars_to_string, usb_common_case, usize_to_i128, Ast, CCMacroError, PText};
+use crate::{chars_to_string, usize_to_i128, Ast, CCMacroError, Delimiter, PText, Text};
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {
@@ -89,7 +89,7 @@ impl Usb {
     /// Performs advanced simplifications such as interpreting
     /// `({+/-}{string/i128} {+/-} {+/-}{string/i128})`.
     /// Returns `true` if simplification happened
-    pub fn simplify(&mut self) -> Result<bool, String> {
+    pub fn simplify(&mut self) -> Result<(), String> {
         if !self.s.is_empty() {
             if let Some(x) = i128_try_parse(&self.s) {
                 self.s.clear();
@@ -97,22 +97,11 @@ impl Usb {
                     .x
                     .checked_add(x)
                     .ok_or_else(|| "i128 overflow".to_owned())?;
-                Ok(true)
-            } else {
-                match usb_common_case(self) {
-                    Ok(Some(simplified)) => {
-                        *self = simplified;
-                        Ok(true)
-                    }
-                    Ok(None) => Ok(false),
-                    Err(e) => Err(e),
-                }
             }
-        } else {
-            Ok(false)
         }
         // note: we could determine now that value is negative, but for better
         // error reporting I want it at the range level
+        Ok(())
     }
 
     pub fn static_val(&self) -> Option<i128> {
@@ -155,13 +144,6 @@ impl Usbr {
         Self {
             start: None,
             end: None,
-        }
-    }
-
-    pub fn single_bit(s: &[char]) -> Self {
-        Self {
-            start: Some(Usb::new(s, 0)),
-            end: Some(Usb::new(s, 1)),
         }
     }
 
@@ -313,6 +295,99 @@ impl Usbr {
     }
 }
 
+/// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
+/// being a constant we can parse, which passes upward the `Usb` and `Usbr`
+/// chain to get calculated into a static width.
+pub fn parse_usb(ast: &mut Ast, usb_txt: Ptr<PText>) -> Result<Usb, CCMacroError> {
+    let mut seen_plus = Vec::<usize>::new();
+    let mut seen_minus = Vec::<usize>::new();
+    let usb_len = ast.txt[usb_txt].len();
+    let mut string = vec![];
+    for i in 0..usb_len {
+        match ast.txt[usb_txt][i] {
+            crate::Text::Chars(ref s) => {
+                if s.len() == 1 {
+                    // must be punctuation
+                    let c = s[0];
+                    if c == '+' {
+                        seen_plus.push(string.len());
+                    } else if c == '-' {
+                        seen_minus.push(string.len());
+                    }
+                    string.push(c);
+                } else {
+                    string.extend(s);
+                }
+            }
+            crate::Text::Group(ref d, ref p) => {
+                string.extend(d.lhs_chars());
+                ast.chars_assign_subtree(&mut string, *p);
+                string.extend(d.rhs_chars());
+            }
+        }
+    }
+    // fallback
+    let original = Usb::new_s(&string);
+    let mut lhs_rhs = None;
+    let mut neg = false;
+    if !seen_plus.is_empty() {
+        lhs_rhs = Some((
+            Usb::new_s(&string[..*seen_plus.last().unwrap()]),
+            Usb::new_s(&string[(*seen_plus.last().unwrap() + 1)..]),
+        ));
+    } else if !seen_minus.is_empty() {
+        let mut mid = None;
+        // search for rightmost adjacent '-'s, e.x. (a - -8) which got compressed
+        for i in (0..(seen_minus.len() - 1)).rev() {
+            if (seen_minus[i] + 1) == seen_minus[i + 1] {
+                mid = Some(seen_minus[i]);
+            }
+        }
+        // else just use last minus
+        if mid.is_none() {
+            mid = Some(*seen_minus.last().unwrap());
+        }
+        if let Some(mid) = mid {
+            lhs_rhs = Some((Usb::new_s(&string[..mid]), Usb::new_s(&string[(mid + 1)..])));
+            neg = true;
+        }
+    }
+    if let Some((mut lhs, mut rhs)) = lhs_rhs {
+        lhs.simplify().map_err(|e| {
+            CCMacroError::new(
+                format!("failed simplifying left side of subexpression: {}", e),
+                usb_txt,
+            )
+        })?;
+        rhs.simplify().map_err(|e| {
+            CCMacroError::new(
+                format!("failed simplifying right side of subexpression: {}", e),
+                usb_txt,
+            )
+        })?;
+        let overflow = || CCMacroError::new("i128 overflow".to_owned(), usb_txt);
+        if let Some(rhs) = rhs.static_val() {
+            if neg {
+                lhs.x = lhs.x.checked_sub(rhs).ok_or_else(overflow)?;
+            } else {
+                lhs.x = lhs.x.checked_add(rhs).ok_or_else(overflow)?;
+            }
+            Ok(lhs)
+        } else if let Some(lhs) = lhs.static_val() {
+            rhs.x = rhs.x.checked_add(lhs).ok_or_else(overflow)?;
+            if neg {
+                // compiler will handle the '-' later
+                rhs.s.insert(0, '-');
+            }
+            Ok(rhs)
+        } else {
+            Ok(original)
+        }
+    } else {
+        Ok(original)
+    }
+}
+
 /// Tries to parse raw `input` as a range. Looks for the existence of top
 /// level ".." or "..=" punctuation. If `allow_single_bit_range` is set, will
 /// return a single bit range if ".." or "..=" does not exist.
@@ -320,107 +395,130 @@ pub fn parse_range(
     ast: &mut Ast,
     range_txt: Ptr<PText>,
     allow_single_bit_range: bool,
-) -> Result<Usbr, Option<CCMacroError>> {
+) -> Result<Usbr, CCMacroError> {
+    // We want to do the ".."/"..=" separation followed by "+"/"-" optimization, so
+    // we need to preserve group boundaries one more time.
+
+    if ast.txt[range_txt].is_empty() {
+        return Err(CCMacroError::new("range is empty".to_owned(), range_txt))
+    }
+
+    // inclusive index of the first and exclusive index of the last char
     let mut range = None;
-    let mut dotdot = false;
     let mut inclusive = false;
     let range_len = ast.txt[range_txt].len();
-    let mut string = vec![];
-    let mut out_of_group_dots = 0;
+    let mut dots = 0;
+    let double_err = || {
+        Err(CCMacroError::new(
+            "encountered two top level \"..\" strings in same range".to_owned(),
+            range_txt,
+        ))
+    };
     for i in 0..range_len {
         match ast.txt[range_txt][i] {
-            crate::Text::Chars(ref s) => {
-                for c in s {
-                    let c = *c;
-                    if dotdot {
-                        dotdot = false;
-                        out_of_group_dots = 0;
-                        if c == '=' {
+            Text::Chars(ref s) => {
+                if s.len() == 1 {
+                    // must be punctuation
+                    let c = s[0];
+                    if c == '=' {
+                        if dots == 2 {
+                            // inclusive range
                             inclusive = true;
-                            range = Some(Usbr {
-                                start: Some(Usb {
-                                    s: mem::take(&mut string),
-                                    x: 0,
-                                }),
-                                end: None,
-                            });
-                        } else if c == '.' {
-                            return Err(Some(CCMacroError::new(
+                            if range.is_some() {
+                                return double_err()
+                            }
+                            range = Some((i - 2, i + 1));
+                        }
+                        dots = 0;
+                    } else if c == '.' {
+                        dots += 1;
+                        if dots == 3 {
+                            return Err(CCMacroError::new(
                                 "encountered top level deprecated \"...\" string in range"
                                     .to_owned(),
                                 range_txt,
-                            )))
-                        } else {
-                            range = Some(Usbr {
-                                start: Some(Usb {
-                                    s: mem::take(&mut string),
-                                    x: 0,
-                                }),
-                                end: None,
-                            });
-                            string.push(c);
+                            ))
                         }
+                    } else if dots == 2 {
+                        // exclusive range
+                        if range.is_some() {
+                            return double_err()
+                        }
+                        range = Some((i - 2, i));
+                        dots = 0;
                     } else {
-                        if c == '.' {
-                            out_of_group_dots += 1;
-                            if out_of_group_dots == 2 {
-                                if range.is_some() {
-                                    return Err(Some(CCMacroError::new(
-                                        "encountered two top level \"..\" strings in same range"
-                                            .to_owned(),
-                                        range_txt,
-                                    )))
-                                }
-                                // we have ".." must we must check for '='
-                                dotdot = true;
-                                // get rid of last '.'
-                                string.pop().unwrap();
-                            }
-                        }
-                        if !dotdot {
-                            string.push(c);
-                        }
+                        dots = 0;
                     }
+                } else if dots == 2 {
+                    // exclusive range
+                    if range.is_some() {
+                        return double_err()
+                    }
+                    range = Some((i - 2, i));
+                    dots = 0;
+                } else {
+                    dots = 0;
                 }
             }
-            crate::Text::Group(ref d, ref p) => {
-                out_of_group_dots = 0;
-                string.extend(d.lhs_chars());
-                ast.chars_assign_subtree(&mut string, *p);
-                string.extend(d.rhs_chars());
-            }
+            Text::Group(..) => dots = 0,
         }
     }
-    if dotdot {
+    if dots == 2 {
+        if range.is_some() {
+            return double_err()
+        }
         // the range ended with ".."
-        Ok(Usbr {
-            start: Some(Usb {
-                s: mem::take(&mut string),
-                x: 0,
-            }),
-            end: None,
-        })
-    } else if let Some(mut range) = range {
+        range = Some((range_len - 2, range_len));
+    }
+    if let Some((lo, hi)) = range {
+        // Subdivide `range_txt`. note if we did the pop strategy we would also have to
+        // `reverse` the arrays.
+        let lhs_txt: Vec<Text> = ast.txt[range_txt][..lo].to_vec();
+        let mid_txt: Vec<Text> = ast.txt[range_txt][lo..hi].to_vec();
+        let rhs_txt: Vec<Text> = ast.txt[range_txt][hi..].to_vec();
+        ast.txt[range_txt].clear();
+        let lhs_empty = lhs_txt.is_empty();
+        let rhs_empty = rhs_txt.is_empty();
+        let rhs_p = ast.txt.insert(rhs_txt);
+        let mid_p = ast.txt.insert(mid_txt);
+        let lhs_p = ast.txt.insert(lhs_txt);
+        ast.txt[range_txt].push(Text::Group(Delimiter::None, lhs_p));
+        ast.txt[range_txt].push(Text::Group(Delimiter::None, mid_p));
+        ast.txt[range_txt].push(Text::Group(Delimiter::None, rhs_p));
+        let start = if lhs_empty {
+            Usb::zero()
+        } else {
+            parse_usb(ast, lhs_p)?
+        };
+        let mut end = if rhs_empty {
+            None
+        } else {
+            Some(parse_usb(ast, rhs_p)?)
+        };
         if inclusive {
-            range.end = Some(Usb {
-                s: mem::take(&mut string),
-                x: 1,
-            });
-        } else {
-            range.end = Some(Usb {
-                s: mem::take(&mut string),
-                x: 0,
-            });
+            if let Some(ref mut end) = end {
+                end.x = end
+                    .x
+                    .checked_add(1)
+                    .ok_or_else(|| CCMacroError::new("i128 overflow".to_owned(), rhs_p))?;
+            }
         }
-        Ok(range)
-    } else {
+        Ok(Usbr {
+            start: Some(start),
+            end,
+        })
+    } else if allow_single_bit_range {
         // single bit range
-        if allow_single_bit_range {
-            Ok(Usbr::single_bit(&string))
-        } else {
-            // this is encountered every time a component does not have a range, we want
-            // `None` for better perf
-            Err(None)
-        }
+        let mut start = Usb::zero();
+        ast.chars_assign_subtree(&mut start.s, range_txt);
+        let mut end = start.clone();
+        end.x = 1;
+        Ok(Usbr {
+            start: Some(start),
+            end: Some(end),
+        })
+    } else {
+        // don't put anything, this error is dropped
+        Err(CCMacroError::new(String::new(), range_txt))
     }
 }

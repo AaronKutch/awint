@@ -128,22 +128,21 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
         concat.comps.reverse();
     }
 
-    /*dbg!(&ast);
+    // stage 1: basic parsing of components
+    match stage1(&mut ast) {
+        Ok(cc) => cc,
+        Err(e) => return Err(e.ast_error(&ast)),
+    };
+
+    dbg!(&ast);
     #[cfg(feature = "debug")]
     triple_arena_render::render_to_svg_file(
         &ast.txt,
         false,
         std::path::PathBuf::from("./example.svg"),
     )
-    .unwrap();*/
-
-    // stage 1: basic parsing of components
-    let mut cc = match stage1(&mut ast) {
-        Ok(cc) => cc,
-        Err(e) => return Err(e.ast_error(&ast)),
-    };
+    .unwrap();
     /*
-
     // stage 2: individual component pass
     match stage2(&mut cc) {
         Ok(()) => (),

@@ -124,10 +124,13 @@ impl CCMacroError {
                         }
                         _ => {
                             s += d.rhs_str();
-                            extend(&mut color_line, &color_lvl, 1);
+                            extend(&mut color_line, &color_lvl, d.rhs_str().len());
                         }
                     },
                     _ => unreachable!(),
+                }
+                if unset_color {
+                    color_lvl = None;
                 }
                 stack[last].1 += 1;
             }

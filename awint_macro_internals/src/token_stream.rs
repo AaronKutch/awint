@@ -1,15 +1,10 @@
-use std::{collections::VecDeque, mem, str::FromStr};
+use std::{collections::VecDeque, mem};
 
-use proc_macro2::{Delimiter, TokenStream, TokenTree};
+use proc_macro2::{TokenStream, TokenTree};
 use triple_arena::{Arena, Ptr};
 
 use crate::{
-    chars_to_string,
-    component::Component,
-    concatenation::Concatenation,
-    ranges::{Usb, Usbr},
-    token_tree::Ast,
-    Text,
+    component::Component, concatenation::Concatenation, ranges::Usbr, token_tree::Ast, Text,
 };
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
@@ -153,7 +148,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
     }
     // iteration over the ast is cumbersome, the cc level at least is linear and
     // should be in some structs
-    let root = ast.txt_root;
+    let root = ast.txt_root; // FIXME txt_root is broken
     let cc_len = ast.txt[root].len();
     for concat_i in 0..cc_len {
         match ast.txt[root][concat_i] {
@@ -171,7 +166,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                         Text::Group(crate::Delimiter::Component, p_comp) => {
                             concat.comps.push(Component {
                                 txt: p_comp,
-                                bits_txt: None,
+                                mid_txt: None,
                                 range_txt: None,
                                 c_type: crate::component::ComponentType::Unparsed,
                                 range: Usbr::unbounded(),
@@ -186,157 +181,4 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
         }
     }
     ast
-}
-
-/// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
-/// being a contant we can parse, which passes upward the `Usb` and `Usbr` chain
-/// to get calculated into a static width. Returns `Ok(None)` if no
-/// optimizations happened
-pub fn usb_common_case(original: &Usb) -> Result<Option<Usb>, String> {
-    let input = if let Ok(ts) = TokenStream::from_str(&chars_to_string(&original.s)) {
-        ts
-    } else {
-        // shouldn't be reachable
-        return Err("failed to tokenize in `usb_common_case`".to_owned())
-    };
-    // we want to handle (r + -8), (-8 + r), (-a + -5), (-x - -y).
-    // what we do is keep all chars but track all leaf '-' and '+' occurances,
-    // separating when '-' are immediately adjacent.
-    let mut seen_plus = Vec::<usize>::new();
-    let mut seen_minus = Vec::<usize>::new();
-    let mut string = Vec::<char>::new();
-    // traverse the tree
-    let mut stack: Vec<(VecDeque<TokenTree>, Delimiter)> =
-        vec![(input.into_iter().collect(), Delimiter::None)];
-    // hack to extract from single group of parenthesis
-    if stack[0].0.len() == 1 {
-        let tt = stack[0].0.front().unwrap();
-        if let TokenTree::Group(g) = tt {
-            if g.delimiter() == Delimiter::Parenthesis {
-                stack[0] = (g.stream().into_iter().collect(), Delimiter::None);
-            };
-        }
-    }
-    loop {
-        let last = stack.len() - 1;
-        if let Some(tt) = stack[last].0.front() {
-            match tt {
-                TokenTree::Group(g) => {
-                    let d = g.delimiter();
-                    match d {
-                        Delimiter::Parenthesis => string.push('('),
-                        Delimiter::Brace => string.push('{'),
-                        Delimiter::Bracket => string.push('['),
-                        // these are important in certain situations with `macro_rules`
-                        Delimiter::None => {
-                            if last != 0 {
-                                string.push(' ')
-                            }
-                        }
-                    };
-                    let trees = g.stream().into_iter().collect();
-                    stack[last].0.pop_front().unwrap();
-                    stack.push((trees, d));
-                    continue
-                }
-                TokenTree::Ident(i) => {
-                    string.extend(i.to_string().chars());
-                }
-                TokenTree::Punct(p) => {
-                    let p = p.as_char();
-                    if (last == 0) && (p == '+') {
-                        seen_plus.push(string.len());
-                        string.push('+');
-                    } else if (last == 0) && (p == '-') {
-                        seen_minus.push(string.len());
-                        string.push('-');
-                    } else {
-                        string.push(p);
-                    }
-                }
-                TokenTree::Literal(l) => string.extend(l.to_string().chars()),
-            }
-            stack[last].0.pop_front().unwrap();
-        } else {
-            match stack[last].1 {
-                Delimiter::Parenthesis => string.push(')'),
-                Delimiter::Brace => string.push('}'),
-                Delimiter::Bracket => string.push(']'),
-                Delimiter::None => {
-                    if last != 0 {
-                        string.push(' ')
-                    }
-                }
-            };
-            if last == 0 {
-                break
-            }
-            stack.pop().unwrap();
-        }
-    }
-    let mut lhs = None;
-    let mut rhs = None;
-    let mut neg = false;
-    if !seen_plus.is_empty() {
-        lhs = Some(Usb::new_s(&string[..*seen_plus.last().unwrap()]));
-        rhs = Some(Usb::new_s(&string[(*seen_plus.last().unwrap() + 1)..]));
-    } else if !seen_minus.is_empty() {
-        let mut mid = None;
-        // search for rightmost adjacent '-'s, (a - -8) which got compressed
-        for i in (0..(seen_minus.len() - 1)).rev() {
-            if (seen_minus[i] + 1) == seen_minus[i + 1] {
-                mid = Some(seen_minus[i]);
-            }
-        }
-        // else just use last minus
-        if mid.is_none() {
-            mid = Some(*seen_minus.last().unwrap());
-        }
-        if let Some(mid) = mid {
-            lhs = Some(Usb::new_s(&string[..mid]));
-            rhs = Some(Usb::new_s(&string[(mid + 1)..]));
-            neg = true;
-        }
-    }
-    if let (Some(mut lhs), Some(mut rhs)) = (lhs, rhs) {
-        // TODO need to fix quadratic terms involved
-        lhs.simplify()?;
-        rhs.simplify()?;
-        if let Some(rhs) = rhs.static_val() {
-            if neg {
-                lhs.x = lhs
-                    .x
-                    .checked_sub(rhs)
-                    .ok_or_else(|| "i128 overflow".to_owned())?;
-            } else {
-                lhs.x = lhs
-                    .x
-                    .checked_add(rhs)
-                    .ok_or_else(|| "i128 overflow".to_owned())?;
-            }
-            lhs.x = lhs
-                .x
-                .checked_add(original.x)
-                .ok_or_else(|| "i128 overflow".to_owned())?;
-            Ok(Some(lhs))
-        } else if let Some(lhs) = lhs.static_val() {
-            rhs.x = rhs
-                .x
-                .checked_add(lhs)
-                .ok_or_else(|| "i128 overflow".to_owned())?;
-            if neg {
-                // compiler will handle the '-' later
-                rhs.s.insert(0, '-');
-            }
-            rhs.x = rhs
-                .x
-                .checked_add(original.x)
-                .ok_or_else(|| "i128 overflow".to_owned())?;
-            Ok(Some(rhs))
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(None)
-    }
 }

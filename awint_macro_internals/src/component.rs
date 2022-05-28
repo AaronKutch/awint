@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{mem, str::FromStr};
 
 use awint_ext::ExtAwi;
 use triple_arena::Ptr;
@@ -22,7 +22,7 @@ pub enum ComponentType {
 #[derive(Debug, Clone)]
 pub struct Component {
     pub txt: Ptr<PText>,
-    pub bits_txt: Option<Ptr<PText>>,
+    pub mid_txt: Option<Ptr<PText>>,
     pub range_txt: Option<Ptr<PText>>,
     pub c_type: ComponentType,
     pub range: Usbr,
@@ -63,26 +63,8 @@ impl Component {
                 }
                 self.c_type = Literal(lit.clone());
             }
-            Variable(s) => {
-                if matches!(s[0], '-' | '0'..='9') {
-                    let s = chars_to_string(&s);
-                    match ExtAwi::from_str(&s) {
-                        Ok(awi) => {
-                            self.c_type = Literal(awi);
-                            // does not recurse again
-                            self.simplify()?;
-                        }
-                        Err(e) => {
-                            return Err(format!(
-                                "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` which \
-                                 returned SerdeError::{:?}",
-                                s, e
-                            ))
-                        }
-                    }
-                } else {
-                    self.range.simplify()?;
-                }
+            Variable(_) => {
+                self.range.simplify()?;
             }
             Filler => {
                 self.range.simplify()?;
@@ -132,18 +114,28 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
         for comp_i in 0..ast.cc[concat_i].comps.len() {
             let comp_txt = ast.cc[concat_i].comps[comp_i].txt;
             let len = ast.txt[comp_txt].len();
-            let mut bits_len = len;
+            let mut has_range = false;
             // get top level last group
             if let Text::Group(ref mut d, p) = ast.txt[comp_txt][len - 1] {
                 if let Delimiter::Bracket = d {
                     *d = Delimiter::RangeBracket;
                     ast.cc[concat_i].comps[comp_i].range_txt = Some(p);
-                    bits_len -= 1;
+                    has_range = true;
                 }
             }
-            // group together for variable
-            ast.cc[concat_i].comps[comp_i].bits_txt =
-                Some(ast.combine_subtree(comp_txt, 0..bits_len));
+            let range_txt = if has_range {
+                Some(ast.txt[comp_txt].pop().unwrap())
+            } else {
+                None
+            };
+            // group together what isn't a range
+            let mid_txt = mem::take(&mut ast.txt[comp_txt]);
+            let mid_p = ast.txt.insert(mid_txt);
+            ast.txt[comp_txt].push(Text::Group(Delimiter::None, mid_p));
+            if has_range {
+                ast.txt[comp_txt].push(range_txt.unwrap());
+            }
+            ast.cc[concat_i].comps[comp_i].mid_txt = Some(mid_p);
         }
     }
     //"component with a bitrange that indexes nothing".to_owned(),
@@ -162,12 +154,12 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
     // specialize this case to prevent confusion
     Err("specified initialization is followed by empty component".to_owned())
     */
+    // do these checks after the range brackets have all been set
     for concat_i in 0..ast.cc.len() {
         for comp_i in 0..ast.cc[concat_i].comps.len() {
-            // do this check after the range brackets have all been set
-            let bits_txt = ast.cc[concat_i].comps[comp_i].bits_txt.unwrap();
+            let mid_txt = ast.cc[concat_i].comps[comp_i].mid_txt.unwrap();
             let mut empty = false;
-            if let Text::Chars(ref s) = ast.txt[bits_txt][0] {
+            if let Text::Chars(ref s) = ast.txt[mid_txt][0] {
                 if s.is_empty() {
                     empty = true;
                 }
@@ -181,54 +173,41 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
             if let Some(range_txt) = ast.cc[concat_i].comps[comp_i].range_txt {
                 match parse_range(ast, range_txt, true) {
                     Ok(range) => ast.cc[concat_i].comps[comp_i].range = range,
-                    Err(Some(e)) => return Err(e),
-                    _ => unreachable!(),
+                    Err(e) => return Err(e),
+                }
+            } else {
+                // possibly a filler, check if a non-single bit range
+                match parse_range(ast, mid_txt, false) {
+                    Ok(range) => {
+                        ast.cc[concat_i].comps[comp_i].range = range;
+                        ast.cc[concat_i].comps[comp_i].c_type = Filler;
+                    }
+                    _ => (),
+                }
+            }
+            if let Unparsed = ast.cc[concat_i].comps[comp_i].c_type {
+                if let Text::Chars(ref s) = ast.txt[mid_txt][0] {
+                    if matches!(s[0], '-' | '0'..='9') {
+                        let s = chars_to_string(s);
+                        match ExtAwi::from_str(&s) {
+                            Ok(awi) => {
+                                ast.cc[concat_i].comps[comp_i].c_type = Literal(awi);
+                            }
+                            Err(e) => {
+                                return Err(CCMacroError::new(
+                                    format!(
+                                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` \
+                                         which returned SerdeError::{:?}",
+                                        s, e
+                                    ),
+                                    mid_txt,
+                                ))
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-
-    /*
-    if component_range.is_some() {
-        assert!(string.is_empty());
-    } else {
-        component_middle = Some(string);
-    }
-    match (component_middle, component_range) {
-        (None, None) => {
-            if initialization.is_some() {
-            } else {
-            }
-        }
-        (Some(middle), Some(range)) => {
-            if range.is_empty() {
-                Err("has an empty index".to_owned())
-            } else {
-                match parse_range(&range, true) {
-                    Ok(range) => Ok((
-                        initialization,
-                        Component::new(ComponentType::Variable(middle), range),
-                    )),
-                    Err(e) => Err(format!(
-                        r#"could not parse range "{}": {}"#,
-                        chars_to_string(&range),
-                        e
-                    )),
-                }
-            }
-        }
-        (Some(middle), None) => {
-            // possibly a filler, check if is a range
-            if let Ok(range) = parse_range(&middle, false) {
-                Ok((initialization, Component::new(ComponentType::Filler, range)))
-            } else {
-                Ok((
-                    initialization,
-                    Component::new(ComponentType::Variable(middle), Usbr::unbounded()),
-                ))
-            }
-        }
-        _ => unreachable!(),
-    }*/
     Ok(())
 }
