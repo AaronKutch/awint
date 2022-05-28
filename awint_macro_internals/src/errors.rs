@@ -1,4 +1,4 @@
-use std::{collections::HashSet, iter, num::NonZeroUsize};
+use std::{collections::HashSet, fmt::Write, iter, num::NonZeroUsize};
 
 use triple_arena::Ptr;
 
@@ -88,14 +88,20 @@ impl CCMacroError {
                 match ast.txt[stack[last].0][stack[last].1] {
                     Text::Group(d, _) => match d {
                         Delimiter::Component => {
-                            if (stack[last].1 + 1) != ast.txt[stack[last].0].len() {
+                            let len = ast.txt[stack[last].0].len();
+                            if (stack[last].1 + 1) != len {
                                 s += comma;
                                 extend(&mut color_line, &color_lvl, 1);
                             }
                             if unset_color {
                                 if red_text.len() == 1 {
-                                    color_line +=
-                                        &format!(" component {}: {}", stack[last].1, self.error);
+                                    write!(
+                                        color_line,
+                                        " component {}: {}",
+                                        len - 1 - stack[last].1,
+                                        self.error
+                                    )
+                                    .unwrap();
                                 }
                                 color_lvl = None;
                             } else if (stack[last].1 + 1) != ast.txt[stack[last].0].len() {

@@ -5,8 +5,8 @@ use proc_macro2::TokenStream;
 use ComponentType::*;
 
 use crate::{
-    component::{stage1, stage2, Component, ComponentType},
-    error_and_help, token_stream_to_ast, CCMacroError, Delimiter, Names, Text,
+    component::{stage1, stage2, ComponentType},
+    error_and_help, stage3, stage4, stage5, token_stream_to_ast, CCMacroError, Names,
 };
 
 /// Input parsing and code generation function for corresponding concatenations
@@ -140,35 +140,35 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
         Err(e) => return Err(e.ast_error(&ast)),
     };
 
-    dbg!(&ast);
+    // stage 3: individual concatenation pass
+    match stage3(&mut ast) {
+        Ok(()) => (),
+        Err(e) => return Err(e.ast_error(&ast)),
+    };
+
+    // stage 4: cc pass accounting for macro type
+    match stage4(&mut ast, specified_init, return_type, static_width) {
+        Ok(()) => (),
+        Err(e) => return Err(e.ast_error(&ast)),
+    };
+
+    // stage 5: concatenation simplification
+    stage5(&mut ast);
+
+    /*dbg!(&ast);
     #[cfg(feature = "debug")]
     triple_arena_render::render_to_svg_file(
         &ast.txt,
         false,
         std::path::PathBuf::from("./example.svg"),
     )
-    .unwrap();
-    /*
-    // stage 3: individual concatenation pass
-    match stage3(&mut cc) {
-        Ok(()) => (),
-        Err(e) => return Err(e.raw_cc_error(&raw_cc)),
-    };
-
-    // stage 4: cc pass accounting for macro type
-    match stage4(&mut cc, specified_init, return_type, static_width) {
-        Ok(()) => (),
-        Err(e) => return Err(e.raw_cc_error(&raw_cc)),
-    };
-
-    // stage 5: concatenation simplification
-    stage5(&mut cc);
+    .unwrap();*/
 
     // code gen
 
     // first check for simple infallible constant return
-    if return_type.is_some() && (cc.len() == 1) && (cc[0].comps.len() == 1) {
-        let comp = &cc[0].comps[0];
+    if return_type.is_some() && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
+        let comp = &ast.cc[0].comps[0];
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
@@ -176,7 +176,6 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
             }
         }
     }
-    */
 
     Ok("todo!()".to_owned())
 }

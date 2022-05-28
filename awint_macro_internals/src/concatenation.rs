@@ -36,7 +36,7 @@ pub struct Concatenation {
 }
 
 impl Concatenation {
-    pub fn check(&mut self, concat_i: usize, concat_text: Ptr<PText>) -> Result<(), CCMacroError> {
+    pub fn check(&mut self, concat_i: usize, concat_txt: Ptr<PText>) -> Result<(), CCMacroError> {
         let concat_len = self.comps.len();
         let mut cumulative_bw = Some(0usize);
         // start by assuming yes
@@ -61,7 +61,7 @@ impl Concatenation {
                             error: "sink concatenations cannot have literals".to_owned(),
                             help: Some(
                                 "if the space taken up by the component is necessary, use a \
-                                 filler equivalent to its width or range instead"
+                                 filler equivalent to its width instead"
                                     .to_owned(),
                             ),
                         })
@@ -76,7 +76,7 @@ impl Concatenation {
                                 "sink concatenations that consist of only an unbounded filler are \
                                  no-ops"
                                     .to_owned(),
-                                concat_text,
+                                concat_txt,
                             ))
                         }
                         if !matches!(self.filler_alignment, FillerAlign::None) {
@@ -112,7 +112,7 @@ impl Concatenation {
             } else {
                 // in the case of `cc!` this isn't a logical error, but it is a useless no-op
                 return Err(CCMacroError {
-                    red_text: vec![concat_text],
+                    red_text: vec![concat_txt],
                     error: "determined statically that this concatenation has zero width"
                         .to_owned(),
                     help: Some(
@@ -167,25 +167,25 @@ impl Concatenation {
     }
 }
 
-pub fn stage3(cc: &mut [Concatenation]) -> Result<(), CCMacroError> {
-    for (concat_i, concat) in cc.iter_mut().enumerate() {
+pub fn stage3(ast: &mut Ast) -> Result<(), CCMacroError> {
+    for (concat_i, concat) in ast.cc.iter_mut().enumerate() {
         concat.check(concat_i, concat.txt)?;
     }
     Ok(())
 }
 
 pub fn stage4(
-    cc: &mut [Concatenation],
+    ast: &mut Ast,
     specified_init: bool,
     return_type: Option<&str>,
     static_width: bool,
 ) -> Result<(), CCMacroError> {
-    let mut overall_alignment = cc[0].filler_alignment;
+    let mut overall_alignment = ast.cc[0].filler_alignment;
     let mut alignment_change_i = 0;
-    let mut all_deterministic = cc[0].deterministic_width;
-    let mut common_bw = cc[0].total_bw;
+    let mut all_deterministic = ast.cc[0].deterministic_width;
+    let mut common_bw = ast.cc[0].total_bw;
     let mut original_common_i = 0;
-    for (concat_i, concat) in cc.iter().enumerate() {
+    for (concat_i, concat) in ast.cc.iter().enumerate() {
         let this_align = concat.filler_alignment;
         match this_align {
             FillerAlign::None | FillerAlign::Multiple => (),
@@ -217,7 +217,7 @@ pub fn stage4(
             }
         }
         if (!specified_init) && (concat_i == 0) {
-            for (comp_i, comp) in concat.comps.iter().enumerate() {
+            for comp in &concat.comps {
                 if matches!(comp.c_type, Filler) {
                     return Err(CCMacroError {
                         red_text: vec![comp.txt],
@@ -250,7 +250,7 @@ pub fn stage4(
             ..Default::default()
         })
     }
-    if (!all_deterministic) && (cc.len() == 1) {
+    if (!all_deterministic) && (ast.cc.len() == 1) {
         // this case shouldn't have a use
         return Err(CCMacroError {
             error: "there is a only a source concatenation that has no statically or dynamically \
@@ -263,9 +263,9 @@ pub fn stage4(
         })
     }
     if !all_deterministic {
-        for (concat_i, concat) in cc.iter().enumerate() {
+        for concat in &ast.cc {
             if matches!(concat.filler_alignment, FillerAlign::Mid) {
-                for (comp_i, comp) in concat.comps.iter().enumerate() {
+                for comp in &concat.comps {
                     if matches!(comp.c_type, Filler) && comp.range.end.is_none() {
                         return Err(CCMacroError {
                             red_text: vec![comp.txt],
@@ -287,7 +287,7 @@ pub fn stage4(
     if (!all_deterministic) && matches!(overall_alignment, FillerAlign::Multiple) {
         // note: middle fillers have been accounted for, only opposite alignment
         // possible at this point
-        for (concat_i, concat) in cc.iter().enumerate() {
+        for (concat_i, concat) in ast.cc.iter().enumerate() {
             if !matches!(concat.filler_alignment, FillerAlign::None) {
                 return Err(CCMacroError {
                     red_text: vec![],
@@ -309,8 +309,8 @@ pub fn stage4(
     Ok(())
 }
 
-pub fn stage5(cc: &mut [Concatenation]) {
-    for concat in cc {
+pub fn stage5(ast: &mut Ast) {
+    for concat in &mut ast.cc {
         concat.simplify();
     }
 }
