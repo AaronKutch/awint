@@ -299,12 +299,41 @@ impl Usbr {
 /// being a constant we can parse, which passes upward the `Usb` and `Usbr`
 /// chain to get calculated into a static width.
 pub fn parse_usb(ast: &mut Ast, usb_txt: Ptr<PText>) -> Result<Usb, CCMacroError> {
+    assert!(!ast.txt[usb_txt].is_empty());
+    let mut usb_inner = usb_txt;
+    let mut invalid = false;
+    if ast.txt[usb_txt].len() != 1 {
+        invalid = true;
+    }
+    if let Text::Group(d, p) = ast.txt[usb_txt][0] {
+        usb_inner = p;
+        if d != Delimiter::Parenthesis {
+            invalid = true;
+        }
+    }
+    if invalid {
+        // prevents the syntax of cc ranges from diverging from normal ranges, prevents
+        // confusion
+        let mut s = vec![];
+        ast.chars_assign_subtree(&mut s, usb_txt);
+        return Err(CCMacroError {
+            error: "bounds of ranges need to be a single Rust literal, identifier, or parenthesis \
+                    delimited group"
+                .to_owned(),
+            red_text: vec![usb_txt],
+            help: Some(format!(
+                "wrap the bound in parenthesis like `({})`",
+                chars_to_string(&s)
+            )),
+        })
+    }
+
     let mut seen_plus = Vec::<usize>::new();
     let mut seen_minus = Vec::<usize>::new();
-    let usb_len = ast.txt[usb_txt].len();
     let mut string = vec![];
+    let usb_len = ast.txt[usb_inner].len();
     for i in 0..usb_len {
-        match ast.txt[usb_txt][i] {
+        match ast.txt[usb_inner][i] {
             crate::Text::Chars(ref s) => {
                 if s.len() == 1 {
                     // must be punctuation
@@ -415,6 +444,7 @@ pub fn parse_range(
         ))
     };
     for i in 0..range_len {
+        let next_dots;
         match ast.txt[range_txt][i] {
             Text::Chars(ref s) => {
                 if s.len() == 1 {
@@ -428,39 +458,36 @@ pub fn parse_range(
                                 return double_err()
                             }
                             range = Some((i - 2, i + 1));
+                            dots = 0;
                         }
-                        dots = 0;
+                        next_dots = 0;
                     } else if c == '.' {
-                        dots += 1;
-                        if dots == 3 {
+                        next_dots = dots + 1;
+                        if next_dots == 3 {
                             return Err(CCMacroError::new(
                                 "encountered top level deprecated \"...\" string in range"
                                     .to_owned(),
                                 range_txt,
                             ))
                         }
-                    } else if dots == 2 {
-                        // exclusive range
-                        if range.is_some() {
-                            return double_err()
-                        }
-                        range = Some((i - 2, i));
-                        dots = 0;
                     } else {
-                        dots = 0;
+                        next_dots = 0;
                     }
-                } else if dots == 2 {
-                    // exclusive range
-                    if range.is_some() {
-                        return double_err()
-                    }
-                    range = Some((i - 2, i));
-                    dots = 0;
                 } else {
-                    dots = 0;
+                    next_dots = 0;
                 }
             }
-            Text::Group(..) => dots = 0,
+            Text::Group(..) => next_dots = 0,
+        }
+        if next_dots == 0 && dots == 2 {
+            // exclusive range
+            if range.is_some() {
+                return double_err()
+            }
+            range = Some((i - 2, i));
+            dots = 0;
+        } else {
+            dots = next_dots;
         }
     }
     if dots == 2 {

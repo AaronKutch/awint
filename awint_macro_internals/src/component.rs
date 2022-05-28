@@ -158,13 +158,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
     for concat_i in 0..ast.cc.len() {
         for comp_i in 0..ast.cc[concat_i].comps.len() {
             let mid_txt = ast.cc[concat_i].comps[comp_i].mid_txt.unwrap();
-            let mut empty = false;
-            if let Text::Chars(ref s) = ast.txt[mid_txt][0] {
-                if s.is_empty() {
-                    empty = true;
-                }
-            }
-            if empty {
+            if ast.txt[mid_txt].is_empty() {
                 return Err(CCMacroError::new(
                     "there is a range but no preceeding bits".to_owned(),
                     ast.cc[concat_i].comps[comp_i].txt,
