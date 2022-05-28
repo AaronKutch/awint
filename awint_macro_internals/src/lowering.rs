@@ -132,11 +132,13 @@ pub struct CodeGen<
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 > {
     pub static_width: bool,
-    pub buffer_type: &'a str,
     pub return_type: Option<&'a str>,
     pub must_use: F0,
     pub lit_construction_fn: Option<F1>,
     pub construction_fn: F2,
+    pub lt_fn: &'a str,
+    pub le_fn: &'a str,
+    pub max_fn: &'a str,
 }
 
 /// Lowering of the parsed structs into Rust code.
@@ -195,18 +197,30 @@ pub fn cc_macro_code_gen<
         }
     }
 
-    let constructing = if let Some(return_type) = code_gen.return_type {
+    // create the common bitwidth
+    let common_bw = if let Some(bw) = ast.common_bw {
+        format!("let {} = {}usize;\n", names.bw, bw)
+    } else if ast.deterministic {
+        // for dynamic bitwidths, we recorded the index of one concatenation
+        // which we know has a runtime deterministic bitwidth.
+        let s = format!("let {}: usize = {}_{};\n", names.bw, names.bw, todo!());
+        s
+    } else {
+        // for the case with all unbounded fillers, find the max bitwidth for the buffer
+        // to use.
+        format!("let {} = Bits::unstable_max({});\n", names.bw, todo!())
+    };
+
+    let construction = if let Some(return_type) = code_gen.return_type {
         format!(
-            "let mut {}: {} = {};\n",
+            "let mut {} = {};\n",
             names.awi,
-            return_type,
             (code_gen.construction_fn)("", ast.common_bw, Some(names.bw))
         )
     } else if need_buffer {
         format!(
-            "let mut {}: {} = {};\n",
+            "let mut {} = {};\n",
             names.awi,
-            code_gen.buffer_type,
             (code_gen.construction_fn)("", ast.common_bw, Some(names.bw))
         )
     } else {

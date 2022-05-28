@@ -23,6 +23,7 @@ mod names;
 mod ranges;
 mod token_stream;
 mod token_tree;
+mod lower_structs;
 
 pub use bimap::*;
 pub use cc_macro::*;
@@ -35,6 +36,7 @@ pub use names::*;
 pub use ranges::*;
 pub use token_stream::*;
 pub use token_tree::*;
+pub use lower_structs::*;
 
 // FIXME remove
 pub fn code_gen(

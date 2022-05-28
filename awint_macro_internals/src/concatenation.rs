@@ -180,7 +180,7 @@ pub fn stage4(
 ) -> Result<(), CCMacroError> {
     let mut overall_alignment = ast.cc[0].filler_alignment;
     let mut alignment_change_i = 0;
-    let mut all_deterministic = ast.cc[0].deterministic_width;
+    let mut deterministic = ast.cc[0].deterministic_width;
     let mut common_bw = ast.cc[0].total_bw;
     let mut original_common_i = 0;
     for (concat_i, concat) in ast.cc.iter().enumerate() {
@@ -196,7 +196,7 @@ pub fn stage4(
                 }
             }
         }
-        all_deterministic |= concat.deterministic_width;
+        deterministic |= concat.deterministic_width;
         if let Some(this_bw) = concat.total_bw {
             if let Some(prev_bw) = common_bw {
                 if this_bw != prev_bw {
@@ -248,7 +248,7 @@ pub fn stage4(
             ..Default::default()
         })
     }
-    if (!all_deterministic) && (ast.cc.len() == 1) {
+    if (!deterministic) && (ast.cc.len() == 1) {
         // this case shouldn't have a use
         return Err(CCMacroError {
             error: "there is a only a source concatenation that has no statically or dynamically \
@@ -260,7 +260,7 @@ pub fn stage4(
             ..Default::default()
         })
     }
-    if !all_deterministic {
+    if !deterministic {
         for concat in &ast.cc {
             if matches!(concat.filler_alignment, FillerAlign::Mid) {
                 for comp in &concat.comps {
@@ -282,7 +282,7 @@ pub fn stage4(
             }
         }
     }
-    if (!all_deterministic) && matches!(overall_alignment, FillerAlign::Multiple) {
+    if (!deterministic) && matches!(overall_alignment, FillerAlign::Multiple) {
         // note: middle fillers have been accounted for, only opposite alignment
         // possible at this point
         for (concat_i, concat) in ast.cc.iter().enumerate() {
@@ -305,6 +305,7 @@ pub fn stage4(
         }
     }
     ast.common_bw = common_bw;
+    ast.deterministic = deterministic;
     Ok(())
 }
 

@@ -20,8 +20,8 @@ pub fn cc_macro<
     input: &str,
     // FIXME remove
     specified_init: bool,
-    names: Names,
     code_gen: CodeGen<'a, F0, F1, F2>,
+    names: Names,
 ) -> Result<String, String> {
     // we process in stages to handle more fundamental errors first, reducing bugs
     // and confusion

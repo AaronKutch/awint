@@ -94,6 +94,7 @@ pub struct Ast {
     pub txt_root: Ptr<PText>,
     pub cc: Vec<Concatenation>,
     pub common_bw: Option<NonZeroUsize>,
+    pub deterministic: bool,
 }
 
 impl Ast {
