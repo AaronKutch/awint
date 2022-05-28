@@ -84,3 +84,9 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
         &self.arena[p]
     }
 }
+
+impl<P: PtrTrait, T: Clone + Eq + Hash, A> Default for BiMap<P, T, A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -2,29 +2,21 @@ use std::str::FromStr;
 
 use awint_ext::ExtAwi;
 use proc_macro2::TokenStream;
-use ComponentType::*;
 
 use crate::{
-    error_and_help, stage1, stage2, stage3, stage4, stage5, token_stream_to_ast, CCMacroError,
-    ComponentType, Names,
+    cc_macro_code_gen, error_and_help, stage1, stage2, stage3, stage4, stage5, token_stream_to_ast,
+    CCMacroError, CodeGen, Names,
 };
 
 /// Input parsing and code generation function for corresponding concatenations
 /// of components macros.
-pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
+pub fn cc_macro<'a, F0: FnMut(ExtAwi) -> String>(
     // TODO bring out documentation once finished
     input: &str,
-    // if initialization is specified
+    // FIXME remove
     specified_init: bool,
-    // e.x. "ExtAwi"
-    return_type: Option<&str>,
-    // literal construction function. Note: should include `Bits::must_use` or similar
-    lit_construction_fn: Option<F>,
-    // TODO remove this
-    _unstable_construction_fn: Option<&str>,
-    // if a type like `InlAwi` needs statically known width
-    static_width: bool,
-    _names: Names,
+    names: Names,
+    code_gen: CodeGen<'a, F0>,
 ) -> Result<String, String> {
     // we process in stages to handle more fundamental errors first, reducing bugs
     // and confusion
@@ -147,7 +139,13 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
     };
 
     // stage 4: cc pass accounting for macro type
-    match stage4(&mut ast, specified_init, return_type, static_width) {
+    let static_width = code_gen.static_width;
+    match stage4(
+        &mut ast,
+        specified_init,
+        &code_gen.return_type,
+        static_width,
+    ) {
         Ok(()) => (),
         Err(e) => return Err(e.ast_error(&ast)),
     };
@@ -164,18 +162,5 @@ pub fn cc_macro<F: FnMut(ExtAwi) -> String>(
     )
     .unwrap();*/
 
-    // code gen
-
-    // first check for simple infallible constant return
-    if return_type.is_some() && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
-        let comp = &ast.cc[0].comps[0];
-        if let Literal(ref lit) = comp.c_type {
-            // constants have been normalized and combined by now
-            if comp.range.static_range().is_some() {
-                return Ok(lit_construction_fn.unwrap()(ExtAwi::from_bits(lit)))
-            }
-        }
-    }
-
-    Ok("todo!()".to_owned())
+    Ok(cc_macro_code_gen(&ast, specified_init, code_gen, names))
 }

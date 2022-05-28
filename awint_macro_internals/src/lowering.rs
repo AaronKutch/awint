@@ -114,18 +114,37 @@ use crate::{Ast, BiMap, ComponentType::*, Names};
 
 ptr_trait_struct_with_gen!(PBind);
 
+/// Note: `Bits::must_use` or analogous should wrap some of these
+///
+/// `static_width` - if the type needs a statically known width
+/// `return_type` - if the bits need to be returned
+/// `lit_construction_fn` - construction function for known literals
+pub struct CodeGen<'a, F0: FnMut(ExtAwi) -> String> {
+    pub static_width: bool,
+    pub return_type: Option<&'a str>,
+    pub lit_construction_fn: Option<F0>,
+}
+
 /// Lowering of the parsed structs into Rust code.
-pub fn code_gen<F: FnMut(ExtAwi) -> String>(
+pub fn cc_macro_code_gen<'a, F0: FnMut(ExtAwi) -> String>(
     ast: &Ast,
     specified_init: bool,
-    return_type: Option<&str>,
-    lit_construction_fn: Option<F>,
-    _unstable_construction_fn: Option<&str>,
-    static_width: bool,
-    // FIXME put construction fn in `Names`
-    _names: Names,
+    code_gen: CodeGen<'a, F0>,
+    names: Names,
 ) -> String {
+    // first check for simple infallible constant return
+    if code_gen.return_type.is_some() && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
+        let comp = &ast.cc[0].comps[0];
+        if let Literal(ref lit) = comp.c_type {
+            // constants have been normalized and combined by now
+            if comp.range.static_range().is_some() {
+                return code_gen.lit_construction_fn.unwrap()(ExtAwi::from_bits(lit))
+            }
+        }
+    }
+
     let mut code = String::new();
+
     let cc = &ast.cc;
 
     let mut bindings: BiMap<PBind, Vec<char>, ()> = BiMap::new();
@@ -153,6 +172,10 @@ pub fn code_gen<F: FnMut(ExtAwi) -> String>(
                 Err(_) => need_buffer = true,
             }
         }
+    }
+
+    if let Some(return_type) = code_gen.return_type {
+        //
     }
 
     // check for simplest copy `a[..]; b[..]; c[..]; ...` cases

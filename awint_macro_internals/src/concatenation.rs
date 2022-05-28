@@ -175,7 +175,7 @@ pub fn stage3(ast: &mut Ast) -> Result<(), CCMacroError> {
 pub fn stage4(
     ast: &mut Ast,
     specified_init: bool,
-    return_type: Option<&str>,
+    return_type: &Option<&str>,
     static_width: bool,
 ) -> Result<(), CCMacroError> {
     let mut overall_alignment = ast.cc[0].filler_alignment;
