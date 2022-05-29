@@ -20,7 +20,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
         txt_root: Ptr::invalid(),
         cc: vec![],
         common_bw: None,
-        deterministic: false,
+        deterministic_width: false,
     };
     let mut s = Vec::<char>::new();
     // traverse the tree
@@ -170,6 +170,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                                 range_txt: None,
                                 c_type: crate::component::ComponentType::Unparsed,
                                 range: Usbr::unbounded(),
+                                binding: None,
                             });
                         }
                         _ => unreachable!(),

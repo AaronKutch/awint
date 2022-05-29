@@ -167,5 +167,5 @@ pub fn cc_macro<
     )
     .unwrap();*/
 
-    Ok(cc_macro_code_gen(&ast, specified_init, code_gen, names))
+    Ok(cc_macro_code_gen(ast, specified_init, code_gen, names))
 }

@@ -6,7 +6,7 @@ use ComponentType::*;
 
 use crate::{
     chars_to_string, i128_to_nonzerousize, parse_range, usize_to_i128, Ast, CCMacroError,
-    Delimiter, PText, Text, Usbr,
+    Delimiter, PBind, PText, Text, Usbr,
 };
 
 #[derive(Debug, Clone)]
@@ -24,6 +24,7 @@ pub struct Component {
     pub range_txt: Option<Ptr<PText>>,
     pub c_type: ComponentType,
     pub range: Usbr,
+    pub binding: Option<Ptr<PBind>>,
 }
 
 impl Component {
@@ -89,7 +90,7 @@ impl Component {
             }
         }
         match self.c_type {
-            Unparsed => todo!(),
+            Unparsed => unreachable!(),
             Literal(ref lit) => {
                 if let Some(ref end) = self.range.end {
                     if !end.s.is_empty() || (end.x != usize_to_i128(lit.bw()).unwrap()) {

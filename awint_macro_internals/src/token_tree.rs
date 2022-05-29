@@ -1,15 +1,13 @@
 use std::{num::NonZeroUsize, ops::Range};
 
-use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr};
+use triple_arena::{Arena, Ptr};
 
-use crate::Concatenation;
+use crate::{Concatenation, PText};
 
 // Previous implementation attempts all resulted in having to parse the same
 // things multiple times. We must use a custom tree, and different structs can
 // point at which part of the tree they correspond to. This also improves
 // errors.
-
-ptr_trait_struct_with_gen!(PText);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Delimiter {
@@ -94,7 +92,7 @@ pub struct Ast {
     pub txt_root: Ptr<PText>,
     pub cc: Vec<Concatenation>,
     pub common_bw: Option<NonZeroUsize>,
-    pub deterministic: bool,
+    pub deterministic_width: bool,
 }
 
 impl Ast {

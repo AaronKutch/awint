@@ -110,11 +110,9 @@
 use std::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
-use triple_arena::{ptr_trait_struct_with_gen, Ptr};
+use triple_arena::Ptr;
 
-use crate::{Ast, BiMap, ComponentType::*, Names};
-
-ptr_trait_struct_with_gen!(PBind);
+use crate::{Ast, BiMap, ComponentType::*, Names, PBind, PText, PVal, PWidth, Value, Width};
 
 /// Note: the type must be unambiguous for the construction functions
 ///
@@ -148,14 +146,13 @@ pub fn cc_macro_code_gen<
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
-    ast: &Ast,
+    mut ast: Ast,
     specified_init: bool,
     mut code_gen: CodeGen<'a, F0, F1, F2>,
     names: Names,
 ) -> String {
-    let cc = &ast.cc;
     // first check for simple infallible constant return
-    if code_gen.return_type.is_some() && (cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
+    if code_gen.return_type.is_some() && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
         let comp = &ast.cc[0].comps[0];
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
@@ -167,15 +164,17 @@ pub fn cc_macro_code_gen<
         }
     }
 
-    let mut bindings: BiMap<PBind, Vec<char>, ()> = BiMap::new();
-    let mut bindings_ptrs: Vec<Ptr<PBind>> = vec![];
+    // the first bool is for if the binding is used, the second is for if the
+    // binding needs to be mutable
+    let mut binds: BiMap<PBind, Ptr<PText>, (bool, bool)> = BiMap::new();
     // get unique variables used in sinks
-    for concat in &cc[1..] {
-        for comp in &concat.comps {
-            if let Variable(ref s) = comp.c_type {
-                bindings
-                    .insert_with(s.clone(), |p| {
-                        bindings_ptrs.push(p);
+    for concat in &mut ast.cc[1..] {
+        for comp in &mut concat.comps {
+            if let Variable(_) = comp.c_type {
+                binds
+                    .insert_with(comp.txt, |p| {
+                        comp.binding = Some(p);
+                        (false, false)
                     })
                     .unwrap();
             }
@@ -185,10 +184,10 @@ pub fn cc_macro_code_gen<
     let mut need_buffer = false;
     let mut source_has_filler = false;
 
-    for comp in &cc[0].comps {
+    for comp in &mut ast.cc[0].comps {
         match comp.c_type {
-            Variable(ref s) => match bindings.insert(s.clone(), ()) {
-                Ok(p) => bindings_ptrs.push(p),
+            Variable(_) => match binds.insert(comp.txt, (false, false)) {
+                Ok(p) => comp.binding = Some(p),
                 // the same variable is in the source concatenation and a sink concatenation
                 Err(_) => need_buffer = true,
             },
@@ -197,10 +196,28 @@ pub fn cc_macro_code_gen<
         }
     }
 
+    let mut widths: BiMap<PWidth, Width, bool> = BiMap::new();
+
+    // concatenation bitwidth checking
+    for concat in &ast.cc[1..] {
+        //if concat.deterministic_width && c
+    }
+
+    let mut values: BiMap<PVal, Value, bool> = BiMap::new();
+    // range checking
+    for concat in &ast.cc[1..] {
+        for comp in &concat.comps {
+            if !comp.has_full_range() {
+                let _ = values.insert(Value::Bitwidth(comp.binding.unwrap()), false);
+                if !comp.range.start.as_ref().unwrap().is_guaranteed_zero() {}
+            }
+        }
+    }
+
     // create the common bitwidth
     let common_bw = if let Some(bw) = ast.common_bw {
         format!("let {} = {}usize;\n", names.bw, bw)
-    } else if ast.deterministic {
+    } else if ast.deterministic_width {
         // for dynamic bitwidths, we recorded the index of one concatenation
         // which we know has a runtime deterministic bitwidth.
         let s = format!("let {}: usize = {}_{};\n", names.bw, names.bw, todo!());

@@ -1,5 +1,7 @@
 use awint_core::Bits;
 
+triple_arena::ptr_trait_struct_with_gen!(PText; PBind; PVal; PWidth);
+
 /// Returns architecture-independent Rust code that returns an
 /// `InlAwi` preset with the value of `bits`.
 pub fn unstable_native_inlawi(bits: &Bits) -> String {

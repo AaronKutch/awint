@@ -305,7 +305,7 @@ pub fn stage4(
         }
     }
     ast.common_bw = common_bw;
-    ast.deterministic = deterministic;
+    ast.deterministic_width = deterministic;
     Ok(())
 }
 
