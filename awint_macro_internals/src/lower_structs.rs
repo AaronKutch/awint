@@ -1,8 +1,10 @@
+use std::fmt::Write;
+
 use triple_arena::Ptr;
 
 use crate::{
-    chars_to_string, BiMap, Component, Concatenation, EitherResult, PBind, PSumWidth, PText, PVal,
-    PWidth, Usb,
+    chars_to_string, Ast, BiMap, Component, Concatenation, EitherResult, Names, PBind, PSumWidth,
+    PText, PVal, PWidth, Usb,
 };
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -28,7 +30,7 @@ pub struct Lower {
     pub binds: BiMap<PBind, Ptr<PText>, (bool, bool)>,
     pub values: BiMap<PVal, Value, bool>,
     pub widths: BiMap<PWidth, Width, bool>,
-    pub sum_widths: BiMap<PSumWidth, SumWidths, bool>,
+    pub sum_widths: BiMap<PSumWidth, SumWidths, ()>,
     pub static_width: Option<Ptr<PVal>>,
     pub dynamic_width: Option<Ptr<PSumWidth>>,
 }
@@ -107,7 +109,82 @@ impl Lower {
         // note that in the `is_some` case, we want to lower the components anyway
         // because of component range checks that are still needed in some circumstances
         if concat.total_bw.is_none() {
-            concat.sum_widths = Some(self.sum_widths.insert(SumWidths(v), false).either());
+            concat.sum_widths = Some(self.sum_widths.insert(SumWidths(v), ()).either());
+        }
+    }
+
+    /// Checks that ranges aren't reversed
+    pub fn lower_lt_checks(&mut self, names: Names) -> String {
+        let mut s = String::new();
+        for (width, used) in self.widths.arena_mut().vals_mut() {
+            if let Width::Range(lo, hi) = width {
+                *used = true;
+                if !s.is_empty() {
+                    s += ",";
+                }
+                write!(
+                    s,
+                    "({}_{},{}_{})",
+                    names.value,
+                    lo.get_raw(),
+                    names.value,
+                    hi.get_raw()
+                )
+                .unwrap();
+            }
+        }
+        if s.is_empty() {
+            s
+        } else {
+            format!("Bits::unstable_lt_checks([{}]).is_some()", s)
+        }
+    }
+
+    /// Checks that we aren't trying to squeeze the unbounded filler into
+    /// negative widths
+    pub fn lower_common_lt_checks(&mut self, ast: &Ast, names: Names) -> String {
+        let mut s = String::new();
+        for concat in &ast.cc {
+            if let Some(sum_widths) = concat.sum_widths {
+                if !concat.deterministic_width {
+                    if !s.is_empty() {
+                        s += ",";
+                    }
+                    write!(s, "{}_{}", names.bw, sum_widths.get_raw()).unwrap();
+                }
+            }
+        }
+        if s.is_empty() {
+            s
+        } else {
+            format!(
+                "Bits::unstable_common_lt_checks({}, [{}]).is_some()",
+                names.bw, s
+            )
+        }
+    }
+
+    /// Checks that deterministic concat widths are equal to the common
+    /// bitwidth
+    pub fn lower_common_ne_checks(&mut self, ast: &Ast, names: Names) -> String {
+        let mut s = String::new();
+        for concat in &ast.cc {
+            if let Some(sum_widths) = concat.sum_widths {
+                if concat.deterministic_width {
+                    if !s.is_empty() {
+                        s += ",";
+                    }
+                    write!(s, "{}_{}", names.bw, sum_widths.get_raw()).unwrap();
+                }
+            }
+        }
+        if s.is_empty() {
+            s
+        } else {
+            format!(
+                "Bits::unstable_common_ne_checks({}, [{}]).is_some()",
+                names.bw, s
+            )
         }
     }
 }

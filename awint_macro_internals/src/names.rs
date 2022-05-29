@@ -1,5 +1,6 @@
 /// Prefixes used for codegen names and functions. Most of these should be
 /// prefixed with two underscores and the crate name to prevent collisions.
+#[derive(Debug, Clone, Copy)]
 pub struct Names<'a> {
     /// Prefix used for constants
     pub constant: &'a str,

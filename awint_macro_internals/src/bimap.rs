@@ -54,6 +54,11 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
         &self.arena
     }
 
+    /// Warning: invalidating pointers in the arena can break the `BiMap`
+    pub fn arena_mut(&mut self) -> &mut Arena<P, (T, A)> {
+        &mut self.arena
+    }
+
     /*pub fn insert_with<F0: FnOnce(Ptr<P>) -> T, F1: FnOnce() -> A>
       (&mut self, create: F0, associate: F1) -> Ptr<P> {
         self.arena.insert_with(|p| {

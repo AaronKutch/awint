@@ -202,7 +202,7 @@ pub fn cc_macro_code_gen<
     }
 
     // create the common bitwidth
-    let common_bw = if let Some(bw) = ast.common_bw {
+    /*let common_bw = if let Some(bw) = ast.common_bw {
         format!("let {} = {}usize;\n", names.bw, bw)
     } else if ast.deterministic_width {
         // for dynamic bitwidths, we recorded the index of one concatenation
@@ -213,9 +213,9 @@ pub fn cc_macro_code_gen<
         // for the case with all unbounded fillers, find the max bitwidth for the buffer
         // to use.
         format!("let {} = Bits::unstable_max({});\n", names.bw, todo!())
-    };
+    };*/
 
-    let construction = if let Some(return_type) = code_gen.return_type {
+    let construction = if let Some(_) = code_gen.return_type {
         format!(
             "let mut {} = {};\n",
             names.awi,
@@ -230,6 +230,20 @@ pub fn cc_macro_code_gen<
     } else {
         String::new()
     };
+
+    let lt_checks = l.lower_lt_checks(names);
+    let common_lt_checks = l.lower_common_lt_checks(&ast, names);
+    let common_ne_checks = l.lower_common_ne_checks(&ast, names);
+
+    /*  format!(
+        "if Bits::unstable_common_ne_checks({}, {}).is_some()\n&& \
+         Bits::unstable_common_lt_checks({}, {}).is_some() {{\n{}\n}} else {{None}}",
+        names.bw,
+        array_partials(l.concat_ne_partials),
+        names.bw,
+        array_partials(l.concat_lt_partials),
+        output
+    )*/
 
     /*
     let mut fielding = String::new();
