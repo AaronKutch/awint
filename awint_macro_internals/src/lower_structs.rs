@@ -193,7 +193,7 @@ impl<'a> Lower<'a> {
         }
     }
 
-    pub fn field_comp(&mut self, comp: &Component, msb_align: bool) -> String {
+    pub fn field_comp(&mut self, comp: &Component, msb_align: bool, from_buf: bool) -> String {
         let mut s = String::new();
         if let Some(width) = comp.width {
             if msb_align {
@@ -208,39 +208,75 @@ impl<'a> Lower<'a> {
                 .unwrap();
             }
             if let Some(bind) = comp.bind {
-                if let Some(start) = comp.start {
-                    write!(
-                        s,
-                        "{}({},{},{}_{},{}_{},{}_{}){}",
-                        self.fn_names.field,
-                        self.names.awi_ref,
-                        self.names.shl,
-                        self.names.bind,
-                        bind.get_raw(),
-                        self.names.value,
-                        start.get_raw(),
-                        self.names.width,
-                        width.get_raw(),
-                        self.fn_names.unwrap,
-                    )
-                    .unwrap();
+                if from_buf {
+                    *self.binds.a_get_mut(bind) = (true, true);
+                    if let Some(start) = comp.start {
+                        write!(
+                            s,
+                            "{}({}_{},{}_{},{},{},{}_{}){}",
+                            self.fn_names.field,
+                            self.names.bind,
+                            bind.get_raw(),
+                            self.names.value,
+                            start.get_raw(),
+                            self.names.awi_ref,
+                            self.names.shl,
+                            self.names.width,
+                            width.get_raw(),
+                            self.fn_names.unwrap,
+                        )
+                        .unwrap();
+                    } else {
+                        // start is zero, use field_to
+                        write!(
+                            s,
+                            "{}({}_{},{},{},{}_{}){}",
+                            self.fn_names.field_from,
+                            self.names.bind,
+                            bind.get_raw(),
+                            self.names.awi_ref,
+                            self.names.shl,
+                            self.names.width,
+                            width.get_raw(),
+                            self.fn_names.unwrap,
+                        )
+                        .unwrap();
+                    }
                 } else {
-                    // start is zero, use field_to
-                    write!(
-                        s,
-                        "{}({},{},{}_{},{}_{}){}",
-                        self.fn_names.field_to,
-                        self.names.awi_ref,
-                        self.names.shl,
-                        self.names.bind,
-                        bind.get_raw(),
-                        self.names.width,
-                        width.get_raw(),
-                        self.fn_names.unwrap,
-                    )
-                    .unwrap();
+                    self.binds.a_get_mut(bind).0 = true;
+                    if let Some(start) = comp.start {
+                        write!(
+                            s,
+                            "{}({},{},{}_{},{}_{},{}_{}){}",
+                            self.fn_names.field,
+                            self.names.awi_ref,
+                            self.names.shl,
+                            self.names.bind,
+                            bind.get_raw(),
+                            self.names.value,
+                            start.get_raw(),
+                            self.names.width,
+                            width.get_raw(),
+                            self.fn_names.unwrap,
+                        )
+                        .unwrap();
+                    } else {
+                        // start is zero, use field_to
+                        write!(
+                            s,
+                            "{}({},{},{}_{},{}_{}){}",
+                            self.fn_names.field_to,
+                            self.names.awi_ref,
+                            self.names.shl,
+                            self.names.bind,
+                            bind.get_raw(),
+                            self.names.width,
+                            width.get_raw(),
+                            self.fn_names.unwrap,
+                        )
+                        .unwrap();
+                    }
                 }
-                self.binds.a_get_mut(bind).0 = true;
             } // else is a filler, keep shift changes however
               // this runs for both fillers and nonfillers
             if !msb_align {
@@ -259,24 +295,36 @@ impl<'a> Lower<'a> {
         s
     }
 
-    pub fn field_concat(&mut self, concat: &Concatenation) -> String {
+    pub fn field_concat(&mut self, concat: &Concatenation, from_buf: bool) -> String {
         if (concat.comps.len() == 1) && concat.comps[0].has_full_range() {
             // use copy_assign
             let sink = &concat.comps[0].bind.unwrap();
-            self.binds.a_get_mut(sink).0 = true;
-            return format!(
-                "{}({},{}_{}){};\n",
-                self.fn_names.copy_assign,
-                self.names.awi_ref,
-                self.names.bind,
-                sink.get_raw(),
-                self.fn_names.unwrap
-            )
+            if from_buf {
+                *self.binds.a_get_mut(sink) = (true, true);
+                return format!(
+                    "{}({}_{},{}){};\n",
+                    self.fn_names.copy_assign,
+                    self.names.bind,
+                    sink.get_raw(),
+                    self.names.awi_ref,
+                    self.fn_names.unwrap
+                )
+            } else {
+                self.binds.a_get_mut(sink).0 = true;
+                return format!(
+                    "{}({},{}_{}){};\n",
+                    self.fn_names.copy_assign,
+                    self.names.awi_ref,
+                    self.names.bind,
+                    sink.get_raw(),
+                    self.fn_names.unwrap
+                )
+            }
         }
         let mut s = format!("let mut {}=0usize;\n", self.names.shl);
         let mut lsb_i = 0;
         while lsb_i < concat.comps.len() {
-            let field = self.field_comp(&concat.comps[lsb_i], false);
+            let field = self.field_comp(&concat.comps[lsb_i], false, from_buf);
             if field.is_empty() {
                 // if we encounter an unbounded filler, reset and try again from the most
                 // significant side
@@ -291,7 +339,12 @@ impl<'a> Lower<'a> {
             writeln!(s, "let mut {}={};", self.names.shl, self.names.cw).unwrap();
         }
         while msb_i > lsb_i {
-            write!(s, "{}", self.field_comp(&concat.comps[msb_i], true)).unwrap();
+            write!(
+                s,
+                "{}",
+                self.field_comp(&concat.comps[msb_i], true, from_buf)
+            )
+            .unwrap();
             msb_i -= 1;
         }
         s
@@ -305,10 +358,15 @@ impl<'a> Lower<'a> {
     ) -> String {
         let mut s = String::new();
         if filler_in_source && !specified_init {
-            // the tricky case, copy from sink to buffer first to get filler no-op property
-            for concat in &ast.cc {
-                writeln!(s, "{}", self.field_concat(concat)).unwrap();
+            // see explanation at top of `lowering.rs`
+            // sink -> buf
+            for concat in &ast.cc[1..] {
+                writeln!(s, "{}", self.field_concat(concat, false)).unwrap();
             }
+            // src -> buf
+            writeln!(s, "{}", self.field_concat(&ast.cc[0], false)).unwrap();
+            // buf -> sink
+            writeln!(s, "{}", self.field_concat(&ast.cc[0], true)).unwrap();
         }
         s
     }
