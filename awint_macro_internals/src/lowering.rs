@@ -110,9 +110,8 @@
 use std::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
-use triple_arena::Ptr;
 
-use crate::{Ast, BiMap, ComponentType::*, Names, PBind, PText, PVal, PWidth, Value, Width};
+use crate::{Ast, ComponentType::*, Lower, Names};
 
 /// Note: the type must be unambiguous for the construction functions
 ///
@@ -141,14 +140,13 @@ pub struct CodeGen<
 
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
-    'a,
     F0: FnMut(&str) -> String,
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     mut ast: Ast,
     specified_init: bool,
-    mut code_gen: CodeGen<'a, F0, F1, F2>,
+    mut code_gen: CodeGen<'_, F0, F1, F2>,
     names: Names,
 ) -> String {
     // first check for simple infallible constant return
@@ -164,14 +162,16 @@ pub fn cc_macro_code_gen<
         }
     }
 
+    let mut l = Lower::new();
+
     // the first bool is for if the binding is used, the second is for if the
     // binding needs to be mutable
-    let mut binds: BiMap<PBind, Ptr<PText>, (bool, bool)> = BiMap::new();
+
     // get unique variables used in sinks
     for concat in &mut ast.cc[1..] {
         for comp in &mut concat.comps {
             if let Variable(_) = comp.c_type {
-                binds
+                l.binds
                     .insert_with(comp.txt, |p| {
                         comp.binding = Some(p);
                         (false, false)
@@ -186,7 +186,7 @@ pub fn cc_macro_code_gen<
 
     for comp in &mut ast.cc[0].comps {
         match comp.c_type {
-            Variable(_) => match binds.insert(comp.txt, (false, false)) {
+            Variable(_) => match l.binds.insert(comp.txt, (false, false)) {
                 Ok(p) => comp.binding = Some(p),
                 // the same variable is in the source concatenation and a sink concatenation
                 Err(_) => need_buffer = true,
@@ -196,22 +196,9 @@ pub fn cc_macro_code_gen<
         }
     }
 
-    let mut widths: BiMap<PWidth, Width, bool> = BiMap::new();
-
-    // concatenation bitwidth checking
-    for concat in &ast.cc[1..] {
-        //if concat.deterministic_width && c
-    }
-
-    let mut values: BiMap<PVal, Value, bool> = BiMap::new();
-    // range checking
-    for concat in &ast.cc[1..] {
-        for comp in &concat.comps {
-            if !comp.has_full_range() {
-                let _ = values.insert(Value::Bitwidth(comp.binding.unwrap()), false);
-                if !comp.range.start.as_ref().unwrap().is_guaranteed_zero() {}
-            }
-        }
+    // work backwards so we calculate only what we need
+    for concat in &mut ast.cc {
+        l.lower_concat(concat);
     }
 
     // create the common bitwidth

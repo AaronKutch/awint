@@ -103,6 +103,13 @@ impl Component {
             Filler => self.range.end.is_some(),
         }
     }
+
+    pub fn is_unbounded_filler(&self) -> bool {
+        match self.c_type {
+            Filler => self.range.end.is_none(),
+            _ => false,
+        }
+    }
 }
 
 /// Looks for the existence of a top level "[]" delimited group and uses the

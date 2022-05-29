@@ -1,6 +1,10 @@
 use awint_core::Bits;
 
-triple_arena::ptr_trait_struct_with_gen!(PText; PBind; PVal; PWidth);
+#[cfg(debug_assertions)]
+triple_arena::ptr_trait_struct_with_gen!(PText; PBind; PVal; PWidth; PSumWidth);
+
+#[cfg(not(debug_assertions))]
+triple_arena::ptr_trait_struct!(PText; PBind; PVal; PWidth; PSumWidth);
 
 /// Returns architecture-independent Rust code that returns an
 /// `InlAwi` preset with the value of `bits`.

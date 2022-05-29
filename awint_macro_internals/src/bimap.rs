@@ -6,6 +6,23 @@ use std::{
 
 use triple_arena::{Arena, Ptr, PtrTrait};
 
+/// For results that have the same `Ok` and `Err` types
+pub trait EitherResult {
+    type T;
+    fn either(self) -> Self::T;
+}
+
+impl<S> EitherResult for Result<S, S> {
+    type T = S;
+
+    fn either(self) -> Self::T {
+        match self {
+            Ok(t) => t,
+            Err(t) => t,
+        }
+    }
+}
+
 /// This is a special purpose structure that can efficiently handle forwards and
 /// backwards lookups and maintains the set property. `A` is associated data
 /// that is not hashed or used in equality comparisons.
