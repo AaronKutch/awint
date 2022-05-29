@@ -111,7 +111,7 @@ use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::ExtAwi;
 
-use crate::{Ast, ComponentType::*, Lower, Names};
+use crate::{Ast, ComponentType::*, FnNames, Lower, Names};
 
 /// Note: the type must be unambiguous for the construction functions
 ///
@@ -133,10 +133,7 @@ pub struct CodeGen<
     pub must_use: F0,
     pub lit_construction_fn: Option<F1>,
     pub construction_fn: F2,
-    pub lt_fn: &'a str,
-    pub common_lt_fn: &'a str,
-    pub common_ne_fn: &'a str,
-    pub max_fn: &'a str,
+    pub fn_names: FnNames<'a>,
 }
 
 /// Lowering of the parsed structs into Rust code.
@@ -163,7 +160,8 @@ pub fn cc_macro_code_gen<
         }
     }
 
-    let mut l = Lower::new();
+    let fn_names = code_gen.fn_names;
+    let mut l = Lower::new(names, fn_names);
 
     // the first bool is for if the binding is used, the second is for if the
     // binding needs to be mutable
@@ -174,7 +172,7 @@ pub fn cc_macro_code_gen<
             if let Variable(_) = comp.c_type {
                 l.binds
                     .insert_with(comp.txt, |p| {
-                        comp.binding = Some(p);
+                        comp.bind = Some(p);
                         (false, false)
                     })
                     .unwrap();
@@ -188,7 +186,7 @@ pub fn cc_macro_code_gen<
     for comp in &mut ast.cc[0].comps {
         match comp.c_type {
             Variable(_) => match l.binds.insert(comp.txt, (false, false)) {
-                Ok(p) => comp.binding = Some(p),
+                Ok(p) => comp.bind = Some(p),
                 // the same variable is in the source concatenation and a sink concatenation
                 Err(_) => need_buffer = true,
             },
@@ -201,9 +199,9 @@ pub fn cc_macro_code_gen<
     for concat in &mut ast.cc {
         l.lower_concat(concat);
     }
-    let lt_checks = l.lower_lt_checks(code_gen.lt_fn, names);
-    let common_lt_checks = l.lower_common_lt_checks(&ast, code_gen.common_lt_fn, names);
-    let common_ne_checks = l.lower_common_ne_checks(&ast, code_gen.common_ne_fn, names);
+    let lt_checks = l.lower_lt_checks();
+    let common_lt_checks = l.lower_common_lt_checks(&ast);
+    let common_ne_checks = l.lower_common_ne_checks(&ast);
     let infallible =
         lt_checks.is_empty() && common_lt_checks.is_empty() && common_ne_checks.is_empty();
 
@@ -262,7 +260,7 @@ pub fn cc_macro_code_gen<
             }
             write!(s, "{}_{}", names.cw, concat.cw.unwrap().get_raw()).unwrap();
         }
-        format!("let {} = {}({});\n", code_gen.max_fn, names.cw, s)
+        format!("let {} = {}({});\n", fn_names.max_fn, names.cw, s)
     };
 
     // common width calculation comes before the zero check

@@ -171,7 +171,9 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                                 range_txt: None,
                                 c_type: crate::component::ComponentType::Unparsed,
                                 range: Usbr::unbounded(),
-                                binding: None,
+                                bind: None,
+                                width: None,
+                                start: None,
                             });
                         }
                         _ => unreachable!(),

@@ -206,6 +206,20 @@ impl Bits {
         Some(())
     }
 
+    // TODO optimize
+
+    /// A specialization of [Bits::field] with `from` set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_to(&mut self, to: usize, rhs: &Self, width: usize) -> Option<()> {
+        self.field(to, rhs, 0, width)
+    }
+
+    /// A specialization of [Bits::field] with `to` set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_from(&mut self, rhs: &Self, from: usize, width: usize) -> Option<()> {
+        self.field(0, rhs, from, width)
+    }
+
     /// Copy entry from lookup table. Copies a `self.bw()` sized bitfield from
     /// `lut` at bit position `inx.to_usize() * self.bw()`. If `lut.bw() !=
     /// (self.bw() * (2^inx.bw()))`, `None` will be returned.

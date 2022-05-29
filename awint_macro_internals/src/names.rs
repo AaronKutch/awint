@@ -5,7 +5,7 @@ pub struct Names<'a> {
     /// Prefix used for constants
     pub constant: &'a str,
     /// Prefix used for initial bindings
-    pub binding: &'a str,
+    pub bind: &'a str,
     /// Prefix used for values
     pub value: &'a str,
     /// Prefix used for widths
@@ -24,7 +24,7 @@ pub struct Names<'a> {
 }
 
 const CONSTANT: &str = "__awint_constant";
-const BINDING: &str = "__awint_bind";
+const BIND: &str = "__awint_bind";
 const VALUE: &str = "__awint_val";
 const WIDTH: &str = "__awint_width";
 const CW: &str = "__awint_cw";
@@ -36,7 +36,7 @@ const SHL: &str = "__awint_shl";
 /// Default names for `awint`
 pub const AWINT_NAMES: Names = Names {
     constant: CONSTANT,
-    binding: BINDING,
+    bind: BIND,
     value: VALUE,
     width: WIDTH,
     cw: CW,
@@ -44,4 +44,33 @@ pub const AWINT_NAMES: Names = Names {
     awi: AWI,
     awi_ref: AWI_REF,
     shl: SHL,
+};
+
+#[derive(Debug, Clone, Copy)]
+pub struct FnNames<'a> {
+    pub lt_fn: &'a str,
+    pub common_lt_fn: &'a str,
+    pub common_ne_fn: &'a str,
+    pub max_fn: &'a str,
+    pub copy_assign: &'a str,
+    pub field: &'a str,
+    pub field_to: &'a str,
+    pub field_from: &'a str,
+    pub unwrap: &'a str,
+}
+
+// TODO instead should probably go the single `unstable_` function route and
+// handle target debug assertion configuration for unwraps that way
+const UNWRAP: &str = ".unwrap()";
+
+pub const AWINT_FN_NAMES: FnNames = FnNames {
+    lt_fn: "Bits::unstable_lt_checks",
+    common_lt_fn: "Bits::unstable_common_lt_checks",
+    common_ne_fn: "Bits::unstable_common_ne_checks",
+    max_fn: "Bits::unstable_max",
+    copy_assign: "Bits::copy_assign",
+    field: "Bits::field",
+    field_to: "Bits::field_to",
+    field_from: "Bits::field_from",
+    unwrap: UNWRAP,
 };

@@ -6,7 +6,7 @@ use ComponentType::*;
 
 use crate::{
     chars_to_string, i128_to_nonzerousize, parse_range, usize_to_i128, Ast, CCMacroError,
-    Delimiter, PBind, PText, Text, Usbr,
+    Delimiter, PBind, PText, PVal, PWidth, Text, Usbr,
 };
 
 #[derive(Debug, Clone)]
@@ -24,7 +24,9 @@ pub struct Component {
     pub range_txt: Option<Ptr<PText>>,
     pub c_type: ComponentType,
     pub range: Usbr,
-    pub binding: Option<Ptr<PBind>>,
+    pub bind: Option<Ptr<PBind>>,
+    pub width: Option<Ptr<PWidth>>,
+    pub start: Option<Ptr<PVal>>,
 }
 
 impl Component {

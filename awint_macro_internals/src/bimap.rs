@@ -105,6 +105,10 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
     pub fn p_get<B: Borrow<Ptr<P>>>(&self, p: B) -> &(T, A) {
         &self.arena[p]
     }
+
+    pub fn a_get_mut<B: Borrow<Ptr<P>>>(&mut self, p: B) -> &mut A {
+        &mut self.arena[p].1
+    }
 }
 
 impl<P: PtrTrait, T: Clone + Eq + Hash, A> Default for BiMap<P, T, A> {

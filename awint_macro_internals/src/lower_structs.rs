@@ -3,8 +3,8 @@ use std::fmt::Write;
 use triple_arena::Ptr;
 
 use crate::{
-    chars_to_string, Ast, BiMap, Component, Concatenation, EitherResult, Names, PBind, PCWidth,
-    PText, PVal, PWidth, Usb,
+    chars_to_string, Ast, BiMap, Component, Concatenation, EitherResult, FnNames, Names, PBind,
+    PCWidth, PText, PVal, PWidth, Usb,
 };
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -26,22 +26,26 @@ pub enum Width {
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub struct CWidth(Vec<Ptr<PWidth>>);
 
-pub struct Lower {
+pub struct Lower<'a> {
     pub binds: BiMap<PBind, Ptr<PText>, (bool, bool)>,
     pub values: BiMap<PVal, Value, bool>,
     pub widths: BiMap<PWidth, Width, bool>,
     pub cw: BiMap<PCWidth, CWidth, ()>,
     pub dynamic_width: Option<Ptr<PCWidth>>,
+    pub names: Names<'a>,
+    pub fn_names: FnNames<'a>,
 }
 
-impl Lower {
-    pub fn new() -> Self {
+impl<'a> Lower<'a> {
+    pub fn new(names: Names<'a>, fn_names: FnNames<'a>) -> Self {
         Self {
             binds: BiMap::new(),
             values: BiMap::new(),
             widths: BiMap::new(),
             cw: BiMap::new(),
             dynamic_width: None,
+            names,
+            fn_names,
         }
     }
 
@@ -67,11 +71,11 @@ impl Lower {
         }
     }
 
-    pub fn lower_comp(&mut self, comp: &Component) -> Option<Ptr<PWidth>> {
+    pub fn lower_comp(&mut self, comp: &mut Component) -> Option<Ptr<PWidth>> {
         if comp.is_unbounded_filler() {
             return None
         }
-        Some(if let Some(w) = comp.range.static_width() {
+        let res = Some(if let Some(w) = comp.range.static_width() {
             let p_val = self
                 .values
                 .insert(Value::Usize(format!("{}", w)), false)
@@ -83,23 +87,26 @@ impl Lower {
             } else {
                 // need information from component
                 self.values
-                    .insert(Value::Bitwidth(comp.binding.unwrap()), false)
+                    .insert(Value::Bitwidth(comp.bind.unwrap()), false)
                     .either()
             };
             if comp.range.start.as_ref().unwrap().is_guaranteed_zero() {
                 self.widths.insert(Width::Single(end_p_val), false).either()
             } else {
                 let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
+                comp.start = Some(start_p_val);
                 self.widths
                     .insert(Width::Range(start_p_val, end_p_val), false)
                     .either()
             }
-        })
+        });
+        comp.width = res;
+        res
     }
 
     pub fn lower_concat(&mut self, concat: &mut Concatenation) {
         let mut v = vec![];
-        for comp in &concat.comps {
+        for comp in &mut concat.comps {
             if let Some(w) = self.lower_comp(comp) {
                 v.push(w);
             }
@@ -112,7 +119,7 @@ impl Lower {
     }
 
     /// Checks that ranges aren't reversed
-    pub fn lower_lt_checks(&mut self, lt_fn: &str, names: Names) -> String {
+    pub fn lower_lt_checks(&mut self) -> String {
         let mut s = String::new();
         for (width, used) in self.widths.arena_mut().vals_mut() {
             if let Width::Range(lo, hi) = width {
@@ -123,9 +130,9 @@ impl Lower {
                 write!(
                     s,
                     "({}_{},{}_{})",
-                    names.value,
+                    self.names.value,
                     lo.get_raw(),
-                    names.value,
+                    self.names.value,
                     hi.get_raw()
                 )
                 .unwrap();
@@ -134,18 +141,13 @@ impl Lower {
         if s.is_empty() {
             s
         } else {
-            format!("{}([{}]).is_some()", lt_fn, s)
+            format!("{}([{}]).is_some()", self.fn_names.lt_fn, s)
         }
     }
 
     /// Checks that we aren't trying to squeeze the unbounded filler into
     /// negative widths
-    pub fn lower_common_lt_checks(
-        &mut self,
-        ast: &Ast,
-        common_lt_fn: &str,
-        names: Names,
-    ) -> String {
+    pub fn lower_common_lt_checks(&mut self, ast: &Ast) -> String {
         let mut s = String::new();
         for concat in &ast.cc {
             if let Some(cw) = concat.cw {
@@ -153,25 +155,23 @@ impl Lower {
                     if !s.is_empty() {
                         s += ",";
                     }
-                    write!(s, "{}_{}", names.cw, cw.get_raw()).unwrap();
+                    write!(s, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                 }
             }
         }
         if s.is_empty() {
             s
         } else {
-            format!("{}({}, [{}]).is_some()", common_lt_fn, names.cw, s)
+            format!(
+                "{}({}, [{}]).is_some()",
+                self.fn_names.common_lt_fn, self.names.cw, s
+            )
         }
     }
 
     /// Checks that deterministic concat widths are equal to the common
     /// bitwidth
-    pub fn lower_common_ne_checks(
-        &mut self,
-        ast: &Ast,
-        common_ne_fn: &str,
-        names: Names,
-    ) -> String {
+    pub fn lower_common_ne_checks(&mut self, ast: &Ast) -> String {
         let mut s = String::new();
         for concat in &ast.cc {
             if let Some(cw) = concat.cw {
@@ -179,20 +179,137 @@ impl Lower {
                     if !s.is_empty() {
                         s += ",";
                     }
-                    write!(s, "{}_{}", names.cw, cw.get_raw()).unwrap();
+                    write!(s, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                 }
             }
         }
         if s.is_empty() {
             s
         } else {
-            format!("{}({}, [{}]).is_some()", common_ne_fn, names.cw, s)
+            format!(
+                "{}({},[{}]).is_some()",
+                self.fn_names.common_ne_fn, self.names.cw, s
+            )
         }
     }
-}
 
-impl Default for Lower {
-    fn default() -> Self {
-        Self::new()
+    pub fn field_comp(&mut self, comp: &Component, msb_align: bool) -> String {
+        let mut s = String::new();
+        if let Some(width) = comp.width {
+            if msb_align {
+                // subtract the shift amount first
+                write!(
+                    s,
+                    "{}-={}_{};",
+                    self.names.shl,
+                    self.names.width,
+                    width.get_raw()
+                )
+                .unwrap();
+            }
+            if let Some(bind) = comp.bind {
+                if let Some(start) = comp.start {
+                    write!(
+                        s,
+                        "{}({},{},{}_{},{}_{},{}_{}){}",
+                        self.fn_names.field,
+                        self.names.awi_ref,
+                        self.names.shl,
+                        self.names.bind,
+                        bind.get_raw(),
+                        self.names.value,
+                        start.get_raw(),
+                        self.names.width,
+                        width.get_raw(),
+                        self.fn_names.unwrap,
+                    )
+                    .unwrap();
+                } else {
+                    // start is zero, use field_to
+                    write!(
+                        s,
+                        "{}({},{},{}_{},{}_{}){}",
+                        self.fn_names.field_to,
+                        self.names.awi_ref,
+                        self.names.shl,
+                        self.names.bind,
+                        bind.get_raw(),
+                        self.names.width,
+                        width.get_raw(),
+                        self.fn_names.unwrap,
+                    )
+                    .unwrap();
+                }
+                self.binds.a_get_mut(bind).0 = true;
+            } // else is a filler, keep shift changes however
+              // this runs for both fillers and nonfillers
+            if !msb_align {
+                // add to the shift amount afterwards
+                write!(
+                    s,
+                    "{}+={}_{};",
+                    self.names.shl,
+                    self.names.width,
+                    width.get_raw()
+                )
+                .unwrap();
+            }
+            writeln!(s).unwrap();
+        } // else is unbounded filler, switch to other alignment
+        s
+    }
+
+    pub fn field_concat(&mut self, concat: &Concatenation) -> String {
+        if (concat.comps.len() == 1) && concat.comps[0].has_full_range() {
+            // use copy_assign
+            let sink = &concat.comps[0].bind.unwrap();
+            self.binds.a_get_mut(sink).0 = true;
+            return format!(
+                "{}({},{}_{}){};\n",
+                self.fn_names.copy_assign,
+                self.names.awi_ref,
+                self.names.bind,
+                sink.get_raw(),
+                self.fn_names.unwrap
+            )
+        }
+        let mut s = format!("let mut {}=0usize;\n", self.names.shl);
+        let mut lsb_i = 0;
+        while lsb_i < concat.comps.len() {
+            let field = self.field_comp(&concat.comps[lsb_i], false);
+            if field.is_empty() {
+                // if we encounter an unbounded filler, reset and try again from the most
+                // significant side
+                break
+            } else {
+                write!(s, "{}", field).unwrap();
+            }
+            lsb_i += 1;
+        }
+        let mut msb_i = concat.comps.len() - 1;
+        if msb_i > lsb_i {
+            writeln!(s, "let mut {}={};", self.names.shl, self.names.cw).unwrap();
+        }
+        while msb_i > lsb_i {
+            write!(s, "{}", self.field_comp(&concat.comps[msb_i], true)).unwrap();
+            msb_i -= 1;
+        }
+        s
+    }
+
+    pub fn lower_fielding(
+        &mut self,
+        ast: &Ast,
+        filler_in_source: bool,
+        specified_init: bool,
+    ) -> String {
+        let mut s = String::new();
+        if filler_in_source && !specified_init {
+            // the tricky case, copy from sink to buffer first to get filler no-op property
+            for concat in &ast.cc {
+                writeln!(s, "{}", self.field_concat(concat)).unwrap();
+            }
+        }
+        s
     }
 }
