@@ -164,4 +164,19 @@ fn macro_successes() {
     let mut y = inlawi!(0u16);
     cc_imax!(.., a, ..4; y);
     assert_eq!(y, inlawi!(0x7fafu16));
+    // make sure sink -> buffer refreshes between sinks
+    let mut a = inlawi!(0xaaaau16);
+    let mut b = inlawi!(0xbbbbu16);
+    let mut c = inlawi!(0xccccu16);
+    let mut d = inlawi!(0xddddu16);
+    cc!(
+        ..8, 0x1111u16, ..8;
+        a, b;
+        c, d;
+    )
+    .unwrap();
+    assert_eq!(a, inlawi!(0xaa11u16));
+    assert_eq!(b, inlawi!(0x11bbu16));
+    assert_eq!(c, inlawi!(0xcc11u16));
+    assert_eq!(d, inlawi!(0x11ddu16));
 }

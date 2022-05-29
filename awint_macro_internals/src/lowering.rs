@@ -111,7 +111,7 @@ use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::ExtAwi;
 
-use crate::{Ast, ComponentType::*, FnNames, Lower, Names};
+use crate::{Ast, ComponentType::*, EitherResult, FnNames, Lower, Names};
 
 /// Note: the type must be unambiguous for the construction functions
 ///
@@ -163,35 +163,26 @@ pub fn cc_macro_code_gen<
     let fn_names = code_gen.fn_names;
     let mut l = Lower::new(names, fn_names);
 
-    // the first bool is for if the binding is used, the second is for if the
-    // binding needs to be mutable
-
-    // get unique variables used in sinks
-    for concat in &mut ast.cc[1..] {
-        for comp in &mut concat.comps {
-            if let Variable(_) = comp.c_type {
-                l.binds
-                    .insert_with(comp.txt, |p| {
-                        comp.bind = Some(p);
-                        (false, false)
-                    })
-                    .unwrap();
-            }
-        }
-    }
-
     let mut need_buffer = false;
     let mut source_has_filler = false;
 
-    for comp in &mut ast.cc[0].comps {
-        match comp.c_type {
-            Variable(_) => match l.binds.insert(comp.txt, (false, false)) {
-                Ok(p) => comp.bind = Some(p),
-                // the same variable is in the source concatenation and a sink concatenation
-                Err(_) => need_buffer = true,
-            },
-            Filler => source_has_filler = true,
-            _ => (),
+    for (concat_i, concat) in ast.cc.iter_mut().enumerate() {
+        if (concat.comps.len() != 1) || (!concat.comps[0].has_full_range()) {
+            need_buffer = true;
+        }
+        for comp in &mut concat.comps {
+            match comp.c_type {
+                Unparsed => unreachable!(),
+                Literal(ref awi) => {
+                    todo!()
+                }
+                Variable(_) => comp.bind = Some(l.binds.insert(comp.txt, (false, false)).either()),
+                Filler => {
+                    if concat_i == 0 {
+                        source_has_filler = true;
+                    }
+                }
+            }
         }
     }
 
@@ -216,7 +207,7 @@ pub fn cc_macro_code_gen<
         String::new()
     };
 
-    let mut fielding = String::new();
+    let fielding = l.lower_fielding(&ast, source_has_filler, specified_init, need_buffer);
 
     let returning = match (code_gen.return_type.is_some(), infallible) {
         (false, false) => "Some(())".to_owned(),
@@ -292,103 +283,6 @@ pub fn cc_macro_code_gen<
     format!("{{{}\n{}\n{}}}", bindings, values, inner4)
 
     /*
-    let mut fielding = String::new();
-
-    if filler_in_source && !specified_initialization {
-        // note: in all cases that reach here the source must be `AWI_REF`
-        for j0 in 1..concats.len() {
-            let concat = &concats[j0];
-            let use_copy_assign =
-                concat.concatenation.len() == 1 && concat.concatenation[0].has_full_range();
-            // see notes at top of file
-            // sink -> buffer
-            if use_copy_assign {
-                // use copy assign
-                let sink_comp = &concat.concatenation[0];
-                if let Some(sink_name) = lowered_name(Some(&l.literals), sink_comp) {
-                    fielding += &format!(
-                        "{}.const_as_mut().copy_assign({}_{}).unwrap();\n",
-                        AWI_REF.to_owned(),
-                        REF,
-                        l.refs.get_id(&sink_name)
-                    );
-                    l.used_ref_refs.insert(sink_name);
-                } // else it is a no-op filler
-            } else {
-                fielding += &l.lower_fielding_to_awi(concat);
-            }
-            // no general possibilty for copy assigning, because there is a sink
-            // source -> buffer
-            fielding += &l.lower_fielding_to_awi(&concats[0]);
-            // buffer -> sink
-            if use_copy_assign {
-                // use copy assign
-                let sink_comp = &concat.concatenation[0];
-                if let Some(sink_name) = lowered_name(Some(&l.literals), sink_comp) {
-                    fielding += &format!(
-                        "{}_{}.const_as_mut().copy_assign({}).unwrap();\n",
-                        REF,
-                        l.refs.get_id(&sink_name),
-                        AWI_REF.to_owned()
-                    );
-                    l.used_mut_refs.insert(sink_name);
-                }
-            } else {
-                fielding += &l.lower_fielding_from_awi(concat);
-            }
-        }
-    } else if no_buffer {
-        let name = lowered_name(Some(&l.literals), &concats[0].concatenation[0]).unwrap();
-        let source_name = format!("{}_{}", REF, l.refs.get_id(&name));
-        l.used_ref_refs.insert(name);
-        // simplest copy assigning
-        for concat in &concats[1..] {
-            let sink_comp = &concat.concatenation[0];
-            if let Some(sink_name) = lowered_name(Some(&l.literals), sink_comp) {
-                fielding += &format!(
-                    "{}_{}.const_as_mut().copy_assign({}).unwrap();\n",
-                    REF,
-                    l.refs.get_id(&sink_name),
-                    source_name
-                );
-                l.used_mut_refs.insert(sink_name);
-            }
-        }
-    } else {
-        // source -> buffer once
-        if concats[0].concatenation.len() == 1 && concats[0].concatenation[0].has_full_range() {
-            let sink_comp = &concats[0].concatenation[0];
-            if let Some(sink_name) = lowered_name(Some(&l.literals), sink_comp) {
-                fielding += &format!(
-                    "{}.const_as_mut().copy_assign({}_{}).unwrap();\n",
-                    AWI_REF.to_owned(),
-                    REF,
-                    l.refs.get_id(&sink_name)
-                );
-                l.used_ref_refs.insert(sink_name);
-            }
-        } else {
-            fielding += &l.lower_fielding_to_awi(&concats[0]);
-        }
-        // buffer -> sinks
-        for concat in &concats[1..] {
-            if concat.concatenation.len() == 1 && concat.concatenation[0].has_full_range() {
-                let sink_comp = &concat.concatenation[0];
-                if let Some(sink_name) = lowered_name(Some(&l.literals), sink_comp) {
-                    fielding += &format!(
-                        "{}_{}.const_as_mut().copy_assign({}).unwrap();\n",
-                        REF,
-                        l.refs.get_id(&sink_name),
-                        AWI_REF.to_owned()
-                    );
-                    l.used_mut_refs.insert(sink_name);
-                }
-            } else {
-                fielding += &l.lower_fielding_from_awi(concat);
-            }
-        }
-    }
-
     // bindings that need to be mutable
     let mut mutable_bindings = HashSet::<u64>::new();
 

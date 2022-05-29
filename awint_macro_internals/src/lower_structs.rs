@@ -353,20 +353,48 @@ impl<'a> Lower<'a> {
     pub fn lower_fielding(
         &mut self,
         ast: &Ast,
-        filler_in_source: bool,
+        source_has_filler: bool,
         specified_init: bool,
+        need_buffer: bool,
     ) -> String {
         let mut s = String::new();
-        if filler_in_source && !specified_init {
+        // FIXME if the source is full width I think buffer can be avoided
+        if source_has_filler && !specified_init {
             // see explanation at top of `lowering.rs`
-            // sink -> buf
-            for concat in &ast.cc[1..] {
-                writeln!(s, "{}", self.field_concat(concat, false)).unwrap();
+            for i in 1..ast.cc.len() {
+                // there are some situations where this could be deduplicated
+                // sink -> buf
+                writeln!(s, "{}", self.field_concat(&ast.cc[i], false)).unwrap();
+                // src -> buf
+                writeln!(s, "{}", self.field_concat(&ast.cc[0], false)).unwrap();
+                // buf -> sink
+                writeln!(s, "{}", self.field_concat(&ast.cc[0], true)).unwrap();
             }
-            // src -> buf
+        } else if need_buffer {
+            // src -> buf once
             writeln!(s, "{}", self.field_concat(&ast.cc[0], false)).unwrap();
-            // buf -> sink
-            writeln!(s, "{}", self.field_concat(&ast.cc[0], true)).unwrap();
+            // buf -> sinks
+            for i in 1..ast.cc.len() {
+                writeln!(s, "{}", self.field_concat(&ast.cc[i], true)).unwrap();
+            }
+        } else {
+            // direct copy assigning
+            let src = ast.cc[0].comps[0].bind.unwrap();
+            for i in 1..ast.cc.len() {
+                let sink = ast.cc[i].comps[0].bind.unwrap();
+                *self.binds.a_get_mut(sink) = (true, true);
+                writeln!(
+                    s,
+                    "{}({}_{},{}_{}){};",
+                    self.fn_names.copy_assign,
+                    self.names.bind,
+                    sink.get_raw(),
+                    self.names.bind,
+                    src.get_raw(),
+                    self.fn_names.unwrap
+                )
+                .unwrap();
+            }
         }
         s
     }
