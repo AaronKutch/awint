@@ -4,7 +4,7 @@ use awint_ext::ExtAwi;
 use triple_arena::Ptr;
 
 use crate::{
-    i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PSumWidth,
+    i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PCWidth,
     PText, Usbr,
 };
 
@@ -31,7 +31,8 @@ pub struct Concatenation {
     // even if `total_bw` is not statically known, this concatenation width could be known from
     // this concatentation alone at runtime
     pub deterministic_width: bool,
-    pub sum_widths: Option<Ptr<PSumWidth>>,
+    // concatenation width
+    pub cw: Option<Ptr<PCWidth>>,
 }
 
 impl Concatenation {

@@ -159,7 +159,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     total_bw: None,
                     filler_alignment: crate::FillerAlign::None,
                     deterministic_width: false,
-                    sum_widths: None,
+                    cw: None,
                 };
                 let c_len = ast.txt[p_concat].len();
                 for comp_i in 0..c_len {

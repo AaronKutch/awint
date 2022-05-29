@@ -10,8 +10,8 @@ pub struct Names<'a> {
     pub value: &'a str,
     /// Prefix used for widths
     pub width: &'a str,
-    /// Prefix used for common bitwidth
-    pub bw: &'a str,
+    /// Prefix used for concatenation width
+    pub cw: &'a str,
     /// Prefix used for `Bits` references
     pub bits_ref: &'a str,
     /// Name used by the construct which might be created for returning, created
@@ -27,7 +27,7 @@ const CONSTANT: &str = "__awint_constant";
 const BINDING: &str = "__awint_bind";
 const VALUE: &str = "__awint_val";
 const WIDTH: &str = "__awint_width";
-const BW: &str = "__awint_bw";
+const CW: &str = "__awint_cw";
 const BITS_REF: &str = "__awint_ref";
 const AWI: &str = "__awint_awi";
 const AWI_REF: &str = "__awint_awi_ref";
@@ -39,7 +39,7 @@ pub const AWINT_NAMES: Names = Names {
     binding: BINDING,
     value: VALUE,
     width: WIDTH,
-    bw: BW,
+    cw: CW,
     bits_ref: BITS_REF,
     awi: AWI,
     awi_ref: AWI_REF,

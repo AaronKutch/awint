@@ -107,7 +107,7 @@
 // that an extra index like x[i][..], x[i][12..42] can coexist,
 // that nested invocations and most Rust syntax should be able to work,
 
-use std::num::NonZeroUsize;
+use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::ExtAwi;
 
@@ -134,7 +134,8 @@ pub struct CodeGen<
     pub lit_construction_fn: Option<F1>,
     pub construction_fn: F2,
     pub lt_fn: &'a str,
-    pub le_fn: &'a str,
+    pub common_lt_fn: &'a str,
+    pub common_ne_fn: &'a str,
     pub max_fn: &'a str,
 }
 
@@ -200,50 +201,97 @@ pub fn cc_macro_code_gen<
     for concat in &mut ast.cc {
         l.lower_concat(concat);
     }
+    let lt_checks = l.lower_lt_checks(code_gen.lt_fn, names);
+    let common_lt_checks = l.lower_common_lt_checks(&ast, code_gen.common_lt_fn, names);
+    let common_ne_checks = l.lower_common_ne_checks(&ast, code_gen.common_ne_fn, names);
+    let infallible =
+        lt_checks.is_empty() && common_lt_checks.is_empty() && common_ne_checks.is_empty();
 
-    // create the common bitwidth
-    /*let common_bw = if let Some(bw) = ast.common_bw {
-        format!("let {} = {}usize;\n", names.bw, bw)
-    } else if ast.deterministic_width {
-        // for dynamic bitwidths, we recorded the index of one concatenation
-        // which we know has a runtime deterministic bitwidth.
-        let s = format!("let {}: usize = {}_{};\n", names.bw, names.bw, todo!());
-        s
-    } else {
-        // for the case with all unbounded fillers, find the max bitwidth for the buffer
-        // to use.
-        format!("let {} = Bits::unstable_max({});\n", names.bw, todo!())
-    };*/
-
-    let construction = if let Some(_) = code_gen.return_type {
+    let construction = if code_gen.return_type.is_some() || need_buffer {
+        // FIXME separate construction and buffer?
         format!(
             "let mut {} = {};\n",
             names.awi,
-            (code_gen.construction_fn)("", ast.common_bw, Some(names.bw))
-        )
-    } else if need_buffer {
-        format!(
-            "let mut {} = {};\n",
-            names.awi,
-            (code_gen.construction_fn)("", ast.common_bw, Some(names.bw))
+            (code_gen.construction_fn)("", ast.common_bw, Some(names.cw))
         )
     } else {
         String::new()
     };
 
-    let lt_checks = l.lower_lt_checks(names);
-    let common_lt_checks = l.lower_common_lt_checks(&ast, names);
-    let common_ne_checks = l.lower_common_ne_checks(&ast, names);
+    let mut fielding = String::new();
 
-    /*  format!(
-        "if Bits::unstable_common_ne_checks({}, {}).is_some()\n&& \
-         Bits::unstable_common_lt_checks({}, {}).is_some() {{\n{}\n}} else {{None}}",
-        names.bw,
-        array_partials(l.concat_ne_partials),
-        names.bw,
-        array_partials(l.concat_lt_partials),
-        output
-    )*/
+    let returning = match (code_gen.return_type.is_some(), infallible) {
+        (false, false) => "Some(())".to_owned(),
+        (false, true) => String::new(),
+        (true, false) => (code_gen.must_use)(&format!("Some({})", names.awi)),
+        (true, true) => (code_gen.must_use)(names.awi),
+    };
+
+    // inner code consisting of the zero check, construction of returning or
+    // buffers, fielding, and return values
+    let mut inner0 = format!("{}\n{}\n{}", construction, fielding, returning);
+    if !infallible {
+        if code_gen.return_type.is_some() {
+            // checking if common width is zero
+            inner0 = format!("if {} != 0 {{\n{}\n}} else {{None}}", names.cw, inner0);
+        } else {
+            // Non-construction macros can have a zero concatenation bitwidth, but we have
+            // to avoid creating the buffer.
+            inner0 = format!("if {} != 0 {{\n{}\n}} else {{Some(())}}", names.cw, inner0);
+        }
+    }
+
+    // designate the common concatenation width
+    let common_cw = if let Some(bw) = ast.common_bw {
+        format!("let {} = {}usize;\n", names.cw, bw)
+    } else if let Some(p_sum_width) = l.dynamic_width {
+        let s = format!(
+            "let {} = {}_{};\n",
+            names.cw,
+            names.cw,
+            p_sum_width.get_raw()
+        );
+        s
+    } else {
+        // for the case with all unbounded fillers, find the max bitwidth for the buffer
+        // to use.
+        let mut s = String::new();
+        for concat in &ast.cc {
+            if !s.is_empty() {
+                s += ",";
+            }
+            write!(s, "{}_{}", names.cw, concat.cw.unwrap().get_raw()).unwrap();
+        }
+        format!("let {} = {}({});\n", code_gen.max_fn, names.cw, s)
+    };
+
+    // common width calculation comes before the zero check
+    let inner1 = format!("{}\n{}", common_cw, inner0);
+
+    let cws = String::new();
+    let widths = String::new();
+
+    // width and common width calculations come after range checks and before equal
+    // width checks
+    let inner2 = if common_ne_checks.is_empty() {
+        inner1
+    } else {
+        format!("if {} {{\n{}\n}} else {{None}}", common_ne_checks, inner1)
+    };
+
+    let inner3 = format!("{}\n{}\n{}", widths, cws, inner2);
+
+    // range checks
+    let mut inner4 = if common_lt_checks.is_empty() {
+        inner3
+    } else {
+        format!("if {} {{\n{}\n}} else {{None}}", common_lt_checks, inner3)
+    };
+
+    let mut values = String::new();
+    let mut bindings = String::new();
+
+    format!("{{{}\n{}\n{}}}", bindings, values, inner4)
 
     /*
     let mut fielding = String::new();
@@ -418,86 +466,5 @@ pub fn cc_macro_code_gen<
             }
         }
     }
-
-    let infallible = l.concat_lt_partials.is_empty()
-        && l.concat_ne_partials.is_empty()
-        && l.comp_check_partials.is_empty();
-
-    let returning = match (return_source, infallible) {
-        (false, false) => "Some(())".to_owned(),
-        (false, true) => String::new(),
-        (true, false) => format!("Some({})", AWI),
-        (true, true) => AWI.to_owned(),
-    };
-
-    // construct the output code by starting with the innermost scope
-    let mut output = if !return_source && (concats.len() < 2) {
-        // for cases where nothing is copied or constructed
-        format!("\n{}\n", returning)
-    } else {
-        format!(
-            "\n{}\n{}\n{}\n{}\n",
-            referencing, constructing, fielding, returning
-        )
-    };
-
-    if !infallible {
-        if return_source {
-            output = format!("if {} != 0 {{\n{}\n}} else {{None}}", BW, output);
-        } else {
-            // Non-construction macros can have a zero concatenation bitwidth, but we have
-            // to avoid creating the buffer.
-            output = format!("if {} != 0 {{\n{}\n}} else {{Some(())}}", BW, output);
-        }
-    }
-
-    match (
-        l.concat_ne_partials.is_empty(),
-        l.concat_lt_partials.is_empty(),
-    ) {
-        (true, true) => (),
-        (true, false) => {
-            output = format!(
-                "if Bits::unstable_common_lt_checks({}, {}).is_some() {{\n{}\n}} else {{None}}",
-                BW,
-                array_partials(l.concat_lt_partials),
-                output
-            )
-        }
-        (false, true) => {
-            output = format!(
-                "if Bits::unstable_common_ne_checks({}, {}).is_some() {{\n{}\n}} else {{None}}",
-                BW,
-                array_partials(l.concat_ne_partials),
-                output
-            )
-        }
-        (false, false) => {
-            output = format!(
-                "if Bits::unstable_common_ne_checks({}, {}).is_some()\n&& \
-                 Bits::unstable_common_lt_checks({}, {}).is_some() {{\n{}\n}} else {{None}}",
-                BW,
-                array_partials(l.concat_ne_partials),
-                BW,
-                array_partials(l.concat_lt_partials),
-                output
-            )
-        }
-    }
-    output = format!(
-        "{}\n{}\n{}\n{}",
-        s_widths, l.s_bitwidths, l.common_bw, output
-    );
-    if !l.lt_checks.arena().is_empty() {
-        output = format!(
-            "if Bits::unstable_lt_checks({}).is_some() {{\n{}\n}} else {{None}}",
-            array_partials(l.comp_check_partials),
-            output
-        );
-    }
-    output = format!(
-        "{{\n{}\n{}\n{}\n{}\n}}",
-        l.s_literals, s_bindings, s_values, output
-    );*/
-    String::new()
+    */
 }
