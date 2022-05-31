@@ -48,6 +48,9 @@ pub const AWINT_NAMES: Names = Names {
 
 #[derive(Debug, Clone, Copy)]
 pub struct FnNames<'a> {
+    pub get_bw: &'a str,
+    pub mut_bits_ref: &'a str,
+    pub bits_ref: &'a str,
     pub lt_fn: &'a str,
     pub common_lt_fn: &'a str,
     pub common_ne_fn: &'a str,
@@ -64,6 +67,9 @@ pub struct FnNames<'a> {
 const UNWRAP: &str = ".unwrap()";
 
 pub const AWINT_FN_NAMES: FnNames = FnNames {
+    get_bw: "Bits::bw",
+    mut_bits_ref: "&mut Bits",
+    bits_ref: "&Bits",
     lt_fn: "Bits::unstable_lt_checks",
     common_lt_fn: "Bits::unstable_common_lt_checks",
     common_ne_fn: "Bits::unstable_common_ne_checks",

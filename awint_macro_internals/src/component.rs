@@ -13,7 +13,7 @@ use crate::{
 pub enum ComponentType {
     Unparsed,
     Literal(ExtAwi),
-    Variable(Vec<char>),
+    Variable,
     Filler,
 }
 
@@ -64,7 +64,7 @@ impl Component {
                 }
                 self.c_type = Literal(lit.clone());
             }
-            Variable(_) => {
+            Variable => {
                 self.range.simplify()?;
             }
             Filler => {
@@ -101,7 +101,7 @@ impl Component {
                 }
                 true
             }
-            Variable(_) => self.range.end.is_none(),
+            Variable => self.range.end.is_none(),
             Filler => self.range.end.is_some(),
         }
     }
@@ -214,12 +214,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                     }
                 }
                 if needs_parsing {
-                    let mut s = vec![];
-                    ast.chars_assign_subtree(
-                        &mut s,
-                        ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
-                    );
-                    ast.cc[concat_i].comps[comp_i].c_type = Variable(s);
+                    ast.cc[concat_i].comps[comp_i].c_type = Variable;
                 }
             }
         }

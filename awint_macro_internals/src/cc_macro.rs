@@ -1,6 +1,6 @@
 use std::{num::NonZeroUsize, str::FromStr};
 
-use awint_ext::ExtAwi;
+use awint_core::Bits;
 use proc_macro2::TokenStream;
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 pub fn cc_macro<
     'a,
     F0: FnMut(&str) -> String,
-    F1: FnMut(ExtAwi) -> String,
+    F1: FnMut(&Bits) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     // TODO bring out documentation once finished

@@ -67,7 +67,7 @@ impl Concatenation {
                         })
                     }
                 }
-                Variable(_) => (),
+                Variable => (),
                 Filler => {
                     // unbounded filler handling
                     if comp.range.end.is_none() {

@@ -109,9 +109,9 @@
 
 use std::{fmt::Write, num::NonZeroUsize};
 
-use awint_ext::ExtAwi;
+use awint_core::Bits;
 
-use crate::{Ast, ComponentType::*, EitherResult, FnNames, Lower, Names};
+use crate::{Ast, Bind, ComponentType::*, EitherResult, FnNames, Lower, Names};
 
 /// Note: the type must be unambiguous for the construction functions
 ///
@@ -125,7 +125,7 @@ use crate::{Ast, ComponentType::*, EitherResult, FnNames, Lower, Names};
 pub struct CodeGen<
     'a,
     F0: FnMut(&str) -> String,
-    F1: FnMut(ExtAwi) -> String,
+    F1: FnMut(&Bits) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 > {
     pub static_width: bool,
@@ -139,7 +139,7 @@ pub struct CodeGen<
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
     F0: FnMut(&str) -> String,
-    F1: FnMut(ExtAwi) -> String,
+    F1: FnMut(&Bits) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     mut ast: Ast,
@@ -153,9 +153,7 @@ pub fn cc_macro_code_gen<
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
-                return (code_gen.must_use)(&code_gen.lit_construction_fn.unwrap()(
-                    ExtAwi::from_bits(lit),
-                ))
+                return (code_gen.must_use)(&code_gen.lit_construction_fn.unwrap()(lit))
             }
         }
     }
@@ -174,9 +172,15 @@ pub fn cc_macro_code_gen<
             match comp.c_type {
                 Unparsed => unreachable!(),
                 Literal(ref awi) => {
-                    todo!()
+                    comp.bind = Some(
+                        l.binds
+                            .insert(Bind::Literal(awi.clone()), (false, false))
+                            .either(),
+                    )
                 }
-                Variable(_) => comp.bind = Some(l.binds.insert(comp.txt, (false, false)).either()),
+                Variable => {
+                    comp.bind = Some(l.binds.insert(Bind::Txt(comp.txt), (false, false)).either())
+                }
                 Filler => {
                     if concat_i == 0 {
                         source_has_filler = true;
@@ -257,8 +261,8 @@ pub fn cc_macro_code_gen<
     // common width calculation comes before the zero check
     let inner1 = format!("{}\n{}", common_cw, inner0);
 
-    let cws = String::new();
-    let widths = String::new();
+    let cws = l.lower_cws();
+    let widths = l.lower_widths();
 
     // width and common width calculations come after range checks and before equal
     // width checks
@@ -271,92 +275,14 @@ pub fn cc_macro_code_gen<
     let inner3 = format!("{}\n{}\n{}", widths, cws, inner2);
 
     // range checks
-    let mut inner4 = if common_lt_checks.is_empty() {
+    let inner4 = if common_lt_checks.is_empty() {
         inner3
     } else {
         format!("if {} {{\n{}\n}} else {{None}}", common_lt_checks, inner3)
     };
 
-    let mut values = String::new();
-    let mut bindings = String::new();
+    let values = l.lower_values();
+    let bindings = l.lower_bindings(&ast, code_gen.lit_construction_fn.unwrap());
 
     format!("{{{}\n{}\n{}}}", bindings, values, inner4)
-
-    /*
-    // bindings that need to be mutable
-    let mut mutable_bindings = HashSet::<u64>::new();
-
-    // lower all used references by assigning them to `let` bindings
-    let mut referencing = String::new();
-    for reference in &l.used_mut_refs {
-        // mutable bindings supersede immutable ones
-        l.used_ref_refs.remove(reference);
-        let id = l.bindings.get_id(reference);
-        referencing += &format!(
-            "let {}_{}: &mut Bits = {}_{}.const_as_mut();\n",
-            REF,
-            l.refs.get_and_set_used(reference).0,
-            BINDING,
-            id
-        );
-        mutable_bindings.insert(id);
-    }
-    for reference in &l.used_ref_refs {
-        referencing += &format!(
-            "let {}_{}: &Bits = {}_{}.const_as_ref();\n",
-            REF,
-            l.refs.get_and_set_used(reference).0,
-            BINDING,
-            l.bindings.get_id(reference)
-        );
-    }
-    for (ptr, (_, _, used)) in l.refs.arena() {
-        if *used {
-            l.bindings.set_used(l.ref_to_binding[&ptr]);
-        }
-    }
-
-    // Lower all used widths by calculating them. This uses more values, which is
-    // why this must run first. Overflow is not possible because of component
-    // checks.
-    let mut s_widths = String::new();
-    for (ptr, (id, width, used)) in l.widths.arena() {
-        if *used {
-            match width {
-                Width::Single(ref s) => {
-                    s_widths +=
-                        &format!("let {}_{}: usize = {};\n", WIDTH, id, l.string_to_value[s]);
-                }
-                Width::Range(ref s0, ref s1) => {
-                    s_widths += &format!(
-                        "let {}_{}: usize = {}.wrapping_sub({});\n",
-                        WIDTH, id, l.string_to_value[s1], l.string_to_value[s0],
-                    );
-                }
-            }
-            l.values.set_used(l.width_to_value[&ptr]);
-        }
-    }
-
-    // lower all used values
-    let mut s_values = String::new();
-    for (ptr, (id, val, used)) in l.values.arena() {
-        if *used {
-            s_values += &format!("let {}_{}: usize = {};\n", VALUE, id, val);
-            l.bindings.set_used(l.value_to_binding[&ptr]);
-        }
-    }
-
-    // lower all used bindings by assigning them to `let` bindings
-    let mut s_bindings = String::new();
-    for (id, val, used) in l.bindings.arena().vals() {
-        if *used {
-            if mutable_bindings.contains(id) {
-                s_bindings += &format!("let mut {}_{} = {};\n", BINDING, id, val);
-            } else {
-                s_bindings += &format!("let {}_{} = {};\n", BINDING, id, val);
-            }
-        }
-    }
-    */
 }

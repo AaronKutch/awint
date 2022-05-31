@@ -1,11 +1,19 @@
 use std::fmt::Write;
 
+use awint_core::Bits;
+use awint_ext::ExtAwi;
 use triple_arena::Ptr;
 
 use crate::{
     chars_to_string, Ast, BiMap, Component, Concatenation, EitherResult, FnNames, Names, PBind,
     PCWidth, PText, PVal, PWidth, Usb,
 };
+
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+pub enum Bind {
+    Literal(ExtAwi),
+    Txt(Ptr<PText>),
+}
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -27,7 +35,7 @@ pub enum Width {
 pub struct CWidth(Vec<Ptr<PWidth>>);
 
 pub struct Lower<'a> {
-    pub binds: BiMap<PBind, Ptr<PText>, (bool, bool)>,
+    pub binds: BiMap<PBind, Bind, (bool, bool)>,
     pub values: BiMap<PVal, Value, bool>,
     pub widths: BiMap<PWidth, Width, bool>,
     pub cw: BiMap<PCWidth, CWidth, ()>,
@@ -380,6 +388,7 @@ impl<'a> Lower<'a> {
         } else {
             // direct copy assigning
             let src = ast.cc[0].comps[0].bind.unwrap();
+            self.binds.a_get_mut(src).0 = true;
             for i in 1..ast.cc.len() {
                 let sink = ast.cc[i].comps[0].bind.unwrap();
                 *self.binds.a_get_mut(sink) = (true, true);
@@ -394,6 +403,145 @@ impl<'a> Lower<'a> {
                     self.fn_names.unwrap
                 )
                 .unwrap();
+            }
+        }
+        s
+    }
+
+    pub fn lower_cws(&mut self) -> String {
+        let mut s = String::new();
+        for (p_cw, (cw, ())) in self.cw.arena() {
+            write!(s, "let {}_{}=", self.names.cw, p_cw.get_raw()).unwrap();
+            for (i, w) in cw.0.iter().enumerate() {
+                *self.widths.a_get_mut(w) = true;
+                if i != 0 {
+                    write!(s, "+").unwrap();
+                }
+                write!(s, "{}_{}", self.names.cw, p_cw.get_raw()).unwrap();
+            }
+            writeln!(s, ";").unwrap();
+        }
+        s
+    }
+
+    pub fn lower_widths(&mut self) -> String {
+        let mut s = String::new();
+        for (p_w, (w, used)) in self.widths.arena() {
+            if *used {
+                match w {
+                    Width::Single(v) => {
+                        *self.values.a_get_mut(v) = true;
+                        writeln!(
+                            s,
+                            "let {}_{}={}_{};",
+                            self.names.width,
+                            p_w.get_raw(),
+                            self.names.value,
+                            v.get_raw()
+                        )
+                        .unwrap();
+                    }
+                    Width::Range(v0, v1) => {
+                        *self.values.a_get_mut(v0) = true;
+                        *self.values.a_get_mut(v1) = true;
+                        writeln!(
+                            s,
+                            "let {}_{}={}_{}-{}_{};",
+                            self.names.width,
+                            p_w.get_raw(),
+                            self.names.value,
+                            v1.get_raw(),
+                            self.names.value,
+                            v0.get_raw()
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+        }
+        s
+    }
+
+    pub fn lower_values(&mut self) -> String {
+        let mut s = String::new();
+        for (p_v, (v, used)) in self.values.arena() {
+            if *used {
+                match v {
+                    Value::Bitwidth(b) => {
+                        self.binds.a_get_mut(b).0 = true;
+                        writeln!(
+                            s,
+                            "let {}_{}={}({}_{});",
+                            self.names.value,
+                            p_v.get_raw(),
+                            self.fn_names.get_bw,
+                            self.names.bind,
+                            b.get_raw()
+                        )
+                        .unwrap();
+                    }
+                    Value::Usize(string) => {
+                        writeln!(
+                            s,
+                            "let {}_{}:usize={};",
+                            self.names.value,
+                            p_v.get_raw(),
+                            string
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+        }
+        s
+    }
+
+    pub fn lower_bindings<F: FnMut(&Bits) -> String>(
+        &mut self,
+        ast: &Ast,
+        mut lit_construction_fn: F,
+    ) -> String {
+        let mut s = String::new();
+        for (p_b, (bind, (used, mutable))) in self.binds.arena() {
+            if *used {
+                match bind {
+                    Bind::Literal(ref awi) => {
+                        writeln!(
+                            s,
+                            "let {}_{}={};",
+                            self.names.bind,
+                            p_b.get_raw(),
+                            (lit_construction_fn)(awi)
+                        )
+                        .unwrap();
+                    }
+                    Bind::Txt(txt) => {
+                        let mut chars = vec![];
+                        ast.chars_assign_subtree(&mut chars, *txt);
+                        let chars = chars_to_string(&chars);
+                        if *mutable {
+                            writeln!(
+                                s,
+                                "let {}_{}:{}={{{}}};",
+                                self.names.bind,
+                                p_b.get_raw(),
+                                self.fn_names.mut_bits_ref,
+                                chars
+                            )
+                            .unwrap();
+                        } else {
+                            writeln!(
+                                s,
+                                "let {}_{}:{}={{{}}};",
+                                self.names.bind,
+                                p_b.get_raw(),
+                                self.fn_names.bits_ref,
+                                chars
+                            )
+                            .unwrap();
+                        }
+                    }
+                }
             }
         }
         s
