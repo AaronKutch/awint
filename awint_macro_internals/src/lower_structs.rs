@@ -170,7 +170,7 @@ impl<'a> Lower<'a> {
             s
         } else {
             format!(
-                "{}({}, [{}]).is_some()",
+                "{}({},[{}]).is_some()",
                 self.fn_names.common_lt_fn, self.names.cw, s
             )
         }
@@ -419,7 +419,7 @@ impl<'a> Lower<'a> {
                 if i != 0 {
                     write!(s, "+").unwrap();
                 }
-                write!(s, "{}_{}", self.names.cw, p_cw.get_raw()).unwrap();
+                write!(s, "{}_{}", self.names.width, w.get_raw()).unwrap();
             }
             writeln!(s, ";").unwrap();
         }
