@@ -524,9 +524,10 @@ impl<'a> Lower<'a> {
                         if *mutable {
                             writeln!(
                                 s,
-                                "let {}_{}:{}={{{}}};",
+                                "let {}_{}:{}={}{{{}}};",
                                 self.names.bind,
                                 p_b.get_raw(),
+                                self.fn_names.mut_bits_ref,
                                 self.fn_names.mut_bits_ref,
                                 chars
                             )
@@ -534,9 +535,10 @@ impl<'a> Lower<'a> {
                         } else {
                             writeln!(
                                 s,
-                                "let {}_{}:{}={{{}}};",
+                                "let {}_{}:{}={}{{{}}};",
                                 self.names.bind,
                                 p_b.get_raw(),
+                                self.fn_names.bits_ref,
                                 self.fn_names.bits_ref,
                                 chars
                             )

@@ -1,3 +1,9 @@
+use std::num::NonZeroUsize;
+
+use awint_ext::ExtAwi;
+
+use crate::unstable_native_inlawi;
+
 /// Prefixes used for codegen names and functions. Most of these should be
 /// prefixed with two underscores and the crate name to prevent collisions.
 #[derive(Debug, Clone, Copy)]
@@ -80,3 +86,126 @@ pub const AWINT_FN_NAMES: FnNames = FnNames {
     field_from: "Bits::field_from",
     unwrap: UNWRAP,
 };
+
+/// Note: the type must be unambiguous for the construction functions
+///
+/// - `static_width`: if the type needs a statically known width
+/// - `return_type`: if the bits need to be returned
+/// - `must_use`: wraps return values in a function for insuring `#[must_use]`
+/// - `lit_construction_fn`: construction function for known literals
+/// - `construction_fn`: is input the specified initialization, width if it is
+///   statically known, and dynamic width if known. As a special case, the
+///   initialization is empty for when initialization doesn't matter
+pub struct CodeGen<
+    'a,
+    F0: FnMut(&str) -> String,
+    // I run into weird lifetime issues trying to use &Bits
+    F1: FnMut(ExtAwi) -> String,
+    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+> {
+    pub static_width: bool,
+    pub return_type: Option<&'a str>,
+    pub must_use: F0,
+    pub lit_construction_fn: F1,
+    pub construction_fn: F2,
+    pub fn_names: FnNames<'a>,
+}
+
+pub fn awint_must_use(s: &str) -> String {
+    format!("Bits::must_use({})", s)
+}
+
+pub fn awint_lit_construction_fn(awi: ExtAwi) -> String {
+    unstable_native_inlawi(&awi)
+}
+
+fn extawi_s(init: &str, s: &str) -> String {
+    format!("ExtAwi::{}({})", init, s)
+}
+
+fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
+    format!(
+        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::{}",
+        w, w, init
+    )
+}
+
+pub fn cc_construction_fn(
+    _init: &str,
+    static_width: Option<NonZeroUsize>,
+    dynamic_width: Option<&str>,
+) -> String {
+    let init = "zero";
+    if let Some(w) = static_width {
+        inlawi_s(init, w)
+    } else if let Some(s) = dynamic_width {
+        extawi_s(init, s)
+    } else {
+        unreachable!()
+    }
+}
+
+pub fn inlawi_construction_fn(
+    _init: &str,
+    static_width: Option<NonZeroUsize>,
+    _dynamic_width: Option<&str>,
+) -> String {
+    let init = "zero";
+    if let Some(w) = static_width {
+        inlawi_s(init, w)
+    } else {
+        unreachable!()
+    }
+}
+
+pub fn extawi_construction_fn(
+    _init: &str,
+    _static_width: Option<NonZeroUsize>,
+    dynamic_width: Option<&str>,
+) -> String {
+    let init = "zero";
+    if let Some(s) = dynamic_width {
+        extawi_s(init, s)
+    } else {
+        unreachable!()
+    }
+}
+
+pub fn cc_construction_fn2(
+    init: &str,
+    static_width: Option<NonZeroUsize>,
+    dynamic_width: Option<&str>,
+) -> String {
+    if let Some(w) = static_width {
+        inlawi_s(init, w)
+    } else if let Some(s) = dynamic_width {
+        extawi_s(init, s)
+    } else {
+        unreachable!()
+    }
+}
+
+pub fn inlawi_construction_fn2(
+    init: &str,
+    static_width: Option<NonZeroUsize>,
+    _dynamic_width: Option<&str>,
+) -> String {
+    if let Some(w) = static_width {
+        inlawi_s(init, w)
+    } else {
+        unreachable!()
+    }
+}
+
+pub fn extawi_construction_fn2(
+    init: &str,
+    _static_width: Option<NonZeroUsize>,
+    dynamic_width: Option<&str>,
+) -> String {
+    let init = format!("panicking_{}", init);
+    if let Some(s) = dynamic_width {
+        extawi_s(&init, s)
+    } else {
+        unreachable!()
+    }
+}

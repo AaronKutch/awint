@@ -111,30 +111,7 @@ use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::ExtAwi;
 
-use crate::{Ast, Bind, ComponentType::*, EitherResult, FnNames, Lower, Names};
-
-/// Note: the type must be unambiguous for the construction functions
-///
-/// - `static_width`: if the type needs a statically known width
-/// - `return_type`: if the bits need to be returned
-/// - `must_use`: wraps return values in a function for insuring `#[must_use]`
-/// - `lit_construction_fn`: construction function for known literals
-/// - `construction_fn`: is input the specified initialization, width if it is
-///   statically known, and dynamic width if known. As a special case, the
-///   initialization is empty for when initialization doesn't matter
-pub struct CodeGen<
-    'a,
-    F0: FnMut(&str) -> String,
-    F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
-> {
-    pub static_width: bool,
-    pub return_type: Option<&'a str>,
-    pub must_use: F0,
-    pub lit_construction_fn: Option<F1>,
-    pub construction_fn: F2,
-    pub fn_names: FnNames<'a>,
-}
+use crate::{Ast, Bind, CodeGen, ComponentType::*, EitherResult, Lower, Names};
 
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
@@ -153,9 +130,7 @@ pub fn cc_macro_code_gen<
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
-                return (code_gen.must_use)(&code_gen.lit_construction_fn.unwrap()(
-                    ExtAwi::from_bits(lit),
-                ))
+                return (code_gen.must_use)(&(code_gen.lit_construction_fn)(ExtAwi::from_bits(lit)))
             }
         }
     }
@@ -284,7 +259,7 @@ pub fn cc_macro_code_gen<
     };
 
     let values = l.lower_values();
-    let bindings = l.lower_bindings(&ast, code_gen.lit_construction_fn.unwrap());
+    let bindings = l.lower_bindings(&ast, code_gen.lit_construction_fn);
 
     format!("{{{}\n{}\n{}}}", bindings, values, inner4)
 }

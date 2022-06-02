@@ -558,11 +558,12 @@
 //!   `awint_macro_internals::code_gen` function and call it with the same
 //!   arguments as the respective macro in `awint_macros/src/lib.rs`.
 
-extern crate alloc;
-use alloc::{format, string::ToString};
-
 extern crate proc_macro;
-use awint_macro_internals::*;
+use awint_macro_internals::{
+    awint_lit_construction_fn, awint_must_use, cc_construction_fn, cc_construction_fn2, cc_macro,
+    extawi_construction_fn, extawi_construction_fn2, inlawi_construction_fn,
+    inlawi_construction_fn2, unstable_native_inlawi_ty, CodeGen, AWINT_FN_NAMES, AWINT_NAMES,
+};
 use proc_macro::TokenStream;
 
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
@@ -594,7 +595,15 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 /// single components. See the lib documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn cc(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, "zero", false, false) {
+    let code_gen = CodeGen {
+        static_width: false,
+        return_type: None,
+        must_use: awint_must_use,
+        lit_construction_fn: awint_lit_construction_fn,
+        construction_fn: cc_construction_fn,
+        fn_names: AWINT_FN_NAMES,
+    };
+    match cc_macro(&input.to_string(), false, code_gen, AWINT_NAMES) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),
     }
@@ -604,7 +613,15 @@ pub fn cc(input: TokenStream) -> TokenStream {
 /// construct an `InlAwi`. See the lib documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, "zero", true, true) {
+    let code_gen = CodeGen {
+        static_width: true,
+        return_type: Some("InlAwi"),
+        must_use: awint_must_use,
+        lit_construction_fn: awint_lit_construction_fn,
+        construction_fn: inlawi_construction_fn,
+        fn_names: AWINT_FN_NAMES,
+    };
+    match cc_macro(&input.to_string(), false, code_gen, AWINT_NAMES) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),
     }
@@ -614,7 +631,15 @@ pub fn inlawi(input: TokenStream) -> TokenStream {
 /// construct an `ExtAwi`. See the lib documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
-    match code_gen(&input.to_string(), false, "zero", false, true) {
+    let code_gen = CodeGen {
+        static_width: false,
+        return_type: Some("ExtAwi"),
+        must_use: awint_must_use,
+        lit_construction_fn: awint_lit_construction_fn,
+        construction_fn: extawi_construction_fn,
+        fn_names: AWINT_FN_NAMES,
+    };
+    match cc_macro(&input.to_string(), false, code_gen, AWINT_NAMES) {
         Ok(s) => s.parse().unwrap(),
         Err(s) => panic!("{}", s),
     }
@@ -628,7 +653,15 @@ macro_rules! cc_construction {
             #[doc = "specified initialization."]
             #[proc_macro]
             pub fn $fn_name(input: TokenStream) -> TokenStream {
-                match code_gen(&input.to_string(), true, $cc_fn, false, false) {
+                let code_gen = CodeGen {
+                    static_width: false,
+                    return_type: None,
+                    must_use: awint_must_use,
+                    lit_construction_fn: awint_lit_construction_fn,
+                    construction_fn: cc_construction_fn2,
+                    fn_names: AWINT_FN_NAMES,
+                };
+                match cc_macro(&input.to_string(), true, code_gen, AWINT_NAMES) {
                     Ok(s) => s.parse().unwrap(),
                     Err(s) => panic!("{}", s),
                 }
@@ -662,7 +695,15 @@ macro_rules! inlawi_construction {
                         .parse()
                         .unwrap()
                 } else {
-                    match code_gen(&input.to_string(), true, $inlawi_fn, true, true) {
+                    let code_gen = CodeGen {
+                        static_width: true,
+                        return_type: Some("InlAwi"),
+                        must_use: awint_must_use,
+                        lit_construction_fn: awint_lit_construction_fn,
+                        construction_fn: inlawi_construction_fn2,
+                        fn_names: AWINT_FN_NAMES,
+                    };
+                    match cc_macro(&input.to_string(), true, code_gen, AWINT_NAMES) {
                         Ok(s) => s.parse().unwrap(),
                         Err(s) => panic!("{}", s),
                     }
@@ -697,7 +738,15 @@ macro_rules! extawi_construction {
                         .parse()
                         .unwrap()
                 } else {
-                    match code_gen(&input.to_string(), true, $extawi_fn, false, true) {
+                    let code_gen = CodeGen {
+                        static_width: false,
+                        return_type: Some("ExtAwi"),
+                        must_use: awint_must_use,
+                        lit_construction_fn: awint_lit_construction_fn,
+                        construction_fn: extawi_construction_fn2,
+                        fn_names: AWINT_FN_NAMES,
+                    };
+                    match cc_macro(&input.to_string(), true, code_gen, AWINT_NAMES) {
                         Ok(s) => s.parse().unwrap(),
                         Err(s) => panic!("{}", s),
                     }

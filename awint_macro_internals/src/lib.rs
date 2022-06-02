@@ -37,14 +37,3 @@ pub use names::*;
 pub use ranges::*;
 pub use token_stream::*;
 pub use token_tree::*;
-
-// FIXME remove
-pub fn code_gen(
-    _input: &str,
-    _specified_initialization: bool,
-    _construct_fn: &str,
-    _inlawi: bool,
-    _return_source: bool,
-) -> Result<String, String> {
-    Err(String::new())
-}
