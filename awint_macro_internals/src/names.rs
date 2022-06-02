@@ -2,8 +2,6 @@ use std::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
 
-use crate::unstable_native_inlawi;
-
 /// Prefixes used for codegen names and functions. Most of these should be
 /// prefixed with two underscores and the crate name to prevent collisions.
 #[derive(Debug, Clone, Copy)]
@@ -109,103 +107,4 @@ pub struct CodeGen<
     pub lit_construction_fn: F1,
     pub construction_fn: F2,
     pub fn_names: FnNames<'a>,
-}
-
-pub fn awint_must_use(s: &str) -> String {
-    format!("Bits::must_use({})", s)
-}
-
-pub fn awint_lit_construction_fn(awi: ExtAwi) -> String {
-    unstable_native_inlawi(&awi)
-}
-
-fn extawi_s(init: &str, s: &str) -> String {
-    format!("ExtAwi::{}({})", init, s)
-}
-
-fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
-    format!(
-        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::{}",
-        w, w, init
-    )
-}
-
-pub fn cc_construction_fn(
-    _init: &str,
-    static_width: Option<NonZeroUsize>,
-    dynamic_width: Option<&str>,
-) -> String {
-    let init = "zero";
-    if let Some(w) = static_width {
-        inlawi_s(init, w)
-    } else if let Some(s) = dynamic_width {
-        extawi_s(init, s)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn inlawi_construction_fn(
-    _init: &str,
-    static_width: Option<NonZeroUsize>,
-    _dynamic_width: Option<&str>,
-) -> String {
-    let init = "zero";
-    if let Some(w) = static_width {
-        inlawi_s(init, w)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn extawi_construction_fn(
-    _init: &str,
-    _static_width: Option<NonZeroUsize>,
-    dynamic_width: Option<&str>,
-) -> String {
-    let init = "zero";
-    if let Some(s) = dynamic_width {
-        extawi_s(init, s)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn cc_construction_fn2(
-    init: &str,
-    static_width: Option<NonZeroUsize>,
-    dynamic_width: Option<&str>,
-) -> String {
-    if let Some(w) = static_width {
-        inlawi_s(init, w)
-    } else if let Some(s) = dynamic_width {
-        extawi_s(init, s)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn inlawi_construction_fn2(
-    init: &str,
-    static_width: Option<NonZeroUsize>,
-    _dynamic_width: Option<&str>,
-) -> String {
-    if let Some(w) = static_width {
-        inlawi_s(init, w)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn extawi_construction_fn2(
-    init: &str,
-    _static_width: Option<NonZeroUsize>,
-    dynamic_width: Option<&str>,
-) -> String {
-    let init = format!("panicking_{}", init);
-    if let Some(s) = dynamic_width {
-        extawi_s(&init, s)
-    } else {
-        unreachable!()
-    }
 }

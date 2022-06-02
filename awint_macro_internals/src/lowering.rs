@@ -156,7 +156,11 @@ pub fn cc_macro_code_gen<
                     )
                 }
                 Variable => {
-                    comp.bind = Some(l.binds.insert(Bind::Txt(comp.mid_txt.unwrap()), (false, false)).either())
+                    comp.bind = Some(
+                        l.binds
+                            .insert(Bind::Txt(comp.mid_txt.unwrap()), (false, false))
+                            .either(),
+                    )
                 }
                 Filler => {
                     if concat_i == 0 {
@@ -215,12 +219,7 @@ pub fn cc_macro_code_gen<
     let common_cw = if let Some(bw) = ast.common_bw {
         format!("let {}={}usize;\n", names.cw, bw)
     } else if let Some(p_sum_width) = l.dynamic_width {
-        let s = format!(
-            "let {}={}_{};\n",
-            names.cw,
-            names.cw,
-            p_sum_width.get_raw()
-        );
+        let s = format!("let {}={}_{};\n", names.cw, names.cw, p_sum_width.get_raw());
         s
     } else {
         // for the case with all unbounded fillers, find the max bitwidth for the buffer
