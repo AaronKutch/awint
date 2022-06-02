@@ -109,7 +109,7 @@
 
 use std::{fmt::Write, num::NonZeroUsize};
 
-use awint_core::Bits;
+use awint_ext::ExtAwi;
 
 use crate::{Ast, Bind, ComponentType::*, EitherResult, FnNames, Lower, Names};
 
@@ -125,7 +125,7 @@ use crate::{Ast, Bind, ComponentType::*, EitherResult, FnNames, Lower, Names};
 pub struct CodeGen<
     'a,
     F0: FnMut(&str) -> String,
-    F1: FnMut(&Bits) -> String,
+    F1: FnMut(ExtAwi) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 > {
     pub static_width: bool,
@@ -139,7 +139,7 @@ pub struct CodeGen<
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
     F0: FnMut(&str) -> String,
-    F1: FnMut(&Bits) -> String,
+    F1: FnMut(ExtAwi) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     mut ast: Ast,
@@ -153,7 +153,9 @@ pub fn cc_macro_code_gen<
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
-                return (code_gen.must_use)(&code_gen.lit_construction_fn.unwrap()(lit))
+                return (code_gen.must_use)(&code_gen.lit_construction_fn.unwrap()(
+                    ExtAwi::from_bits(lit),
+                ))
             }
         }
     }

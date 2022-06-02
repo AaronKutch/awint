@@ -1,4 +1,4 @@
-use std::{num::NonZeroUsize, ops::Range};
+use std::num::NonZeroUsize;
 
 use triple_arena::{Arena, Ptr};
 
@@ -124,24 +124,6 @@ impl Ast {
                 stack[last].1 += 1;
             }
         }
-    }
-
-    /// Combines a range of `Text`s in `txt` into a new `Text::Chars` node
-    pub fn combine_subtree(&mut self, txt: Ptr<PText>, range: Range<usize>) -> Ptr<PText> {
-        let mut chars = vec![];
-        for i in range {
-            match &self.txt[txt][i] {
-                Text::Group(d, p) => {
-                    chars.extend(d.lhs_chars());
-                    self.chars_assign_subtree(&mut chars, *p);
-                    chars.extend(d.rhs_chars());
-                }
-                Text::Chars(s) => {
-                    chars.extend(s);
-                }
-            }
-        }
-        self.txt.insert(vec![Text::Chars(chars)])
     }
 }
 

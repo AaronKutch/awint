@@ -1,12 +1,11 @@
 use std::fmt::Write;
 
-use awint_core::Bits;
 use awint_ext::ExtAwi;
 use triple_arena::Ptr;
 
 use crate::{
-    chars_to_string, Ast, BiMap, Component, Concatenation, EitherResult, FnNames, Names, PBind,
-    PCWidth, PText, PVal, PWidth, Usb,
+    chars_to_string, Ast, BiMap, Component, ComponentType, Concatenation, EitherResult, FnNames,
+    Names, PBind, PCWidth, PText, PVal, PWidth, Usb,
 };
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -305,6 +304,9 @@ impl<'a> Lower<'a> {
 
     pub fn field_concat(&mut self, concat: &Concatenation, from_buf: bool) -> String {
         if (concat.comps.len() == 1) && concat.comps[0].has_full_range() {
+            if matches!(&concat.comps[0].c_type, ComponentType::Filler) {
+                return String::new()
+            }
             // use copy_assign
             let sink = &concat.comps[0].bind.unwrap();
             if from_buf {
@@ -496,7 +498,7 @@ impl<'a> Lower<'a> {
         s
     }
 
-    pub fn lower_bindings<F: FnMut(&Bits) -> String>(
+    pub fn lower_bindings<F: FnMut(ExtAwi) -> String>(
         &mut self,
         ast: &Ast,
         mut lit_construction_fn: F,
@@ -511,7 +513,7 @@ impl<'a> Lower<'a> {
                             "let {}_{}={};",
                             self.names.bind,
                             p_b.get_raw(),
-                            (lit_construction_fn)(awi)
+                            (lit_construction_fn)(ExtAwi::from_bits(awi))
                         )
                         .unwrap();
                     }

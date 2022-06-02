@@ -54,10 +54,6 @@ impl Usb {
         Self { s: vec![], x: 0 }
     }
 
-    pub fn new(s: &[char], x: i128) -> Self {
-        Usb { s: s.to_owned(), x }
-    }
-
     pub fn new_s(s: &[char]) -> Self {
         Usb {
             s: s.to_owned(),
@@ -102,16 +98,6 @@ impl Usb {
             self.x == 0
         } else {
             false
-        }
-    }
-
-    pub fn code_gen_value(&self) -> String {
-        if self.s.is_empty() {
-            format!("{}", self.x)
-        } else if self.x == 0 {
-            chars_to_string(&self.s)
-        } else {
-            format!("({} + {})", chars_to_string(&self.s), self.x)
         }
     }
 }
