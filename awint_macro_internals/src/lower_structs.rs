@@ -118,14 +118,10 @@ impl<'a> Lower<'a> {
                 v.push(w);
             }
         }
-        // note that in the `is_some` case, we want to lower the components anyway
-        // because of component range checks that are still needed in some circumstances
-        if concat.total_bw.is_none() {
-            concat.cw = Some(self.cw.insert(CWidth(v), ()).either());
-        }
+        concat.cw = Some(self.cw.insert(CWidth(v), ()).either());
     }
 
-    /// Checks that ranges aren't reversed
+    /// Checks that ranges aren't reversed and the upper bounds are not beyond bitwidths
     pub fn lower_lt_checks(&mut self) -> String {
         let mut s = String::new();
         for (width, used) in self.widths.arena_mut().vals_mut() {
@@ -152,51 +148,45 @@ impl<'a> Lower<'a> {
         }
     }
 
-    /// Checks that we aren't trying to squeeze the unbounded filler into
-    /// negative widths
-    pub fn lower_common_lt_checks(&mut self, ast: &Ast) -> String {
-        let mut s = String::new();
+    /// Checks that we aren't trying to squeeze unbounded fillers into
+    /// negative widths for nondeterministic cases and that deterministic concat
+    /// widths are equal to the common bitwidth
+    pub fn lower_common_checks(&mut self, ast: &Ast) -> String {
+        let mut ne = String::new();
+        let mut lt = String::new();
         for concat in &ast.cc {
-            if let Some(cw) = concat.cw {
-                if !concat.deterministic_width {
-                    if !s.is_empty() {
-                        s += ",";
-                    }
-                    write!(s, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+            let cw = concat.cw.unwrap();
+            if concat.deterministic_width {
+                if !ne.is_empty() {
+                    ne += ",";
                 }
+                write!(ne, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+            } else {
+                if !lt.is_empty() {
+                    lt += ",";
+                }
+                write!(lt, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
             }
         }
-        if s.is_empty() {
-            s
-        } else {
-            format!(
+        match (ne.is_empty(), lt.is_empty()) {
+            (true, true) => String::new(),
+            (true, false) => format!(
                 "{}({},[{}]).is_some()",
-                self.fn_names.common_lt_fn, self.names.cw, s
-            )
-        }
-    }
-
-    /// Checks that deterministic concat widths are equal to the common
-    /// bitwidth
-    pub fn lower_common_ne_checks(&mut self, ast: &Ast) -> String {
-        let mut s = String::new();
-        for concat in &ast.cc {
-            if let Some(cw) = concat.cw {
-                if concat.deterministic_width {
-                    if !s.is_empty() {
-                        s += ",";
-                    }
-                    write!(s, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
-                }
-            }
-        }
-        if s.is_empty() {
-            s
-        } else {
-            format!(
+                self.fn_names.common_lt_fn, self.names.cw, lt
+            ),
+            (false, true) => format!(
                 "{}({},[{}]).is_some()",
-                self.fn_names.common_ne_fn, self.names.cw, s
-            )
+                self.fn_names.common_ne_fn, self.names.cw, ne
+            ),
+            (false, false) => format!(
+                "{}({},[{}]).is_some() && {}({},[{}]).is_some()",
+                self.fn_names.common_lt_fn,
+                self.names.cw,
+                lt,
+                self.fn_names.common_ne_fn,
+                self.names.cw,
+                ne,
+            ),
         }
     }
 

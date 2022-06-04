@@ -176,10 +176,8 @@ pub fn cc_macro_code_gen<
         l.lower_concat(concat);
     }
     let lt_checks = l.lower_lt_checks();
-    let common_lt_checks = l.lower_common_lt_checks(&ast);
-    let common_ne_checks = l.lower_common_ne_checks(&ast);
-    let infallible =
-        lt_checks.is_empty() && common_lt_checks.is_empty() && common_ne_checks.is_empty();
+    let common_checks = l.lower_common_checks(&ast);
+    let infallible = lt_checks.is_empty() && common_checks.is_empty();
 
     let construction = if code_gen.return_type.is_some() || need_buffer {
         // buffer and reference to buffer
@@ -218,18 +216,11 @@ pub fn cc_macro_code_gen<
         }
     }
 
-    // unequal concat width checks
-    let inner1 = if common_ne_checks.is_empty() {
+    // concat width checks
+    let inner1 = if common_checks.is_empty() {
         inner0
     } else {
-        format!("if {} {{\n{}\n}}else{{None}}", common_ne_checks, inner0)
-    };
-
-    // unbounded filler concat checks
-    let inner2 = if common_lt_checks.is_empty() {
-        inner1
-    } else {
-        format!("if {} {{\n{}\n}}else{{None}}", common_lt_checks, inner1)
+        format!("if {} {{\n{}\n}}else{{None}}", common_checks, inner0)
     };
 
     // designate the common concatenation width
@@ -255,22 +246,22 @@ pub fn cc_macro_code_gen<
     // concat width checks
     let cws = l.lower_cws();
     let widths = l.lower_widths();
-    let inner3 = format!("{}{}{}{}", widths, cws, common_cw, inner2);
+    let inner2 = format!("{}{}{}{}", widths, cws, common_cw, inner1);
 
     // reversal checks
-    let inner4 = if lt_checks.is_empty() {
-        inner3
+    let inner3 = if lt_checks.is_empty() {
+        inner2
     } else {
-        format!("if {} {{\n{}\n}}else{{None}}", lt_checks, inner3)
+        format!("if {} {{\n{}\n}}else{{None}}", lt_checks, inner2)
     };
 
     let values = l.lower_values();
     let bindings = l.lower_bindings(&ast, code_gen.lit_construction_fn);
 
-    let inner5 = format!("{{\n{}{}{}}}", bindings, values, inner4);
+    let inner4 = format!("{{\n{}{}{}}}", bindings, values, inner3);
     if wrap_must_use {
-        (code_gen.must_use)(&inner5)
+        (code_gen.must_use)(&inner4)
     } else {
-        inner5
+        inner4
     }
 }
