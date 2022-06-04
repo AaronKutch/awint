@@ -156,8 +156,8 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                 let mut concat = Concatenation {
                     txt: p_concat,
                     comps: vec![],
-                    total_bw: None,
                     filler_alignment: crate::FillerAlign::None,
+                    static_width: None,
                     deterministic_width: false,
                     cw: None,
                 };

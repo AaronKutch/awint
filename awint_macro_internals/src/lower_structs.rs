@@ -34,10 +34,16 @@ pub enum Width {
 pub struct CWidth(Vec<Ptr<PWidth>>);
 
 pub struct Lower<'a> {
+    /// The first bool is if the binding is used, the second is for if it needs
+    /// to be mutable
     pub binds: BiMap<PBind, Bind, (bool, bool)>,
+    /// The bool is if the value is used
     pub values: BiMap<PVal, Value, bool>,
-    pub widths: BiMap<PWidth, Width, bool>,
-    pub cw: BiMap<PCWidth, CWidth, ()>,
+    /// The first bool is if the width is used for lt checks, the second if it
+    /// needs to be assigned to a `let` binding
+    pub widths: BiMap<PWidth, Width, (bool, bool)>,
+    // the bool is if the cw is used
+    pub cw: BiMap<PCWidth, CWidth, bool>,
     pub dynamic_width: Option<Ptr<PCWidth>>,
     pub names: Names<'a>,
     pub fn_names: FnNames<'a>,
@@ -78,19 +84,51 @@ impl<'a> Lower<'a> {
         }
     }
 
+    // Returns the width corresponding to the range of the component, and internally
+    // pushes the upperbound-bitwidth check.
     pub fn lower_comp(&mut self, comp: &mut Component) -> Option<Ptr<PWidth>> {
         if comp.is_unbounded_filler() {
             return None
         }
+        // push width between the upper bound and bitwidth of variable, so that the
+        // later reversal check will prevent the upper bound from being beyond the
+        // bitwidth
+        let need_extra_check = !(comp.has_full_range() || comp.is_static_literal());
         let res = Some(if let Some(w) = comp.range.static_width() {
             let p_val = self
                 .values
                 .insert(Value::Usize(format!("{}", w)), false)
                 .either();
-            self.widths.insert(Width::Single(p_val), false).either()
+            if need_extra_check {
+                if let Some(ref end) = comp.range.end {
+                    // range end is not the same as variable end, need to check
+                    let end_p_val = self.lower_bound(end);
+                    let var_end_p_val = self
+                        .values
+                        .insert(Value::Bitwidth(comp.bind.unwrap()), false)
+                        .either();
+                    self.widths
+                        .insert(Width::Range(end_p_val, var_end_p_val), (true, false))
+                        .either();
+                };
+            }
+            self.widths
+                .insert(Width::Single(p_val), (false, false))
+                .either()
         } else {
             let end_p_val = if let Some(ref end) = comp.range.end {
-                self.lower_bound(end)
+                let end_p_val = self.lower_bound(end);
+                if need_extra_check {
+                    // range end is not the same as variable end, need to check
+                    let var_end_p_val = self
+                        .values
+                        .insert(Value::Bitwidth(comp.bind.unwrap()), false)
+                        .either();
+                    self.widths
+                        .insert(Width::Range(end_p_val, var_end_p_val), (true, false))
+                        .either();
+                }
+                end_p_val
             } else {
                 // need information from component
                 self.values
@@ -98,12 +136,14 @@ impl<'a> Lower<'a> {
                     .either()
             };
             if comp.range.start.as_ref().unwrap().is_guaranteed_zero() {
-                self.widths.insert(Width::Single(end_p_val), false).either()
+                self.widths
+                    .insert(Width::Single(end_p_val), (false, false))
+                    .either()
             } else {
                 let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
                 comp.start = Some(start_p_val);
                 self.widths
-                    .insert(Width::Range(start_p_val, end_p_val), false)
+                    .insert(Width::Range(start_p_val, end_p_val), (true, false))
                     .either()
             }
         });
@@ -118,27 +158,31 @@ impl<'a> Lower<'a> {
                 v.push(w);
             }
         }
-        concat.cw = Some(self.cw.insert(CWidth(v), ()).either());
+        concat.cw = Some(self.cw.insert(CWidth(v), false).either());
     }
 
-    /// Checks that ranges aren't reversed and the upper bounds are not beyond bitwidths
+    /// Checks that ranges aren't reversed and the upper bounds are not beyond
+    /// bitwidths
     pub fn lower_lt_checks(&mut self) -> String {
         let mut s = String::new();
         for (width, used) in self.widths.arena_mut().vals_mut() {
-            if let Width::Range(lo, hi) = width {
-                *used = true;
-                if !s.is_empty() {
-                    s += ",";
+            if used.0 {
+                if let Width::Range(lo, hi) = width {
+                    if !s.is_empty() {
+                        s += ",";
+                    }
+                    *self.values.a_get_mut(*lo) = true;
+                    *self.values.a_get_mut(*hi) = true;
+                    write!(
+                        s,
+                        "({}_{},{}_{})",
+                        self.names.value,
+                        lo.get_raw(),
+                        self.names.value,
+                        hi.get_raw()
+                    )
+                    .unwrap();
                 }
-                write!(
-                    s,
-                    "({}_{},{}_{})",
-                    self.names.value,
-                    lo.get_raw(),
-                    self.names.value,
-                    hi.get_raw()
-                )
-                .unwrap();
             }
         }
         if s.is_empty() {
@@ -155,17 +199,20 @@ impl<'a> Lower<'a> {
         let mut ne = String::new();
         let mut lt = String::new();
         for concat in &ast.cc {
-            let cw = concat.cw.unwrap();
-            if concat.deterministic_width {
-                if !ne.is_empty() {
-                    ne += ",";
+            if concat.static_width.is_none() {
+                let cw = concat.cw.unwrap();
+                *self.cw.a_get_mut(cw) = true;
+                if concat.deterministic_width {
+                    if !ne.is_empty() {
+                        ne += ",";
+                    }
+                    write!(ne, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+                } else {
+                    if !lt.is_empty() {
+                        lt += ",";
+                    }
+                    write!(lt, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                 }
-                write!(ne, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
-            } else {
-                if !lt.is_empty() {
-                    lt += ",";
-                }
-                write!(lt, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
             }
         }
         match (ne.is_empty(), lt.is_empty()) {
@@ -204,7 +251,7 @@ impl<'a> Lower<'a> {
                 )
                 .unwrap();
             }
-            *self.widths.a_get_mut(width) = true;
+            self.widths.a_get_mut(width).1 = true;
             if let Some(bind) = comp.bind {
                 if from_buf {
                     *self.binds.a_get_mut(bind) = (true, true);
@@ -403,16 +450,18 @@ impl<'a> Lower<'a> {
 
     pub fn lower_cws(&mut self) -> String {
         let mut s = String::new();
-        for (p_cw, (cw, ())) in self.cw.arena() {
-            write!(s, "let {}_{}=", self.names.cw, p_cw.get_raw()).unwrap();
-            for (i, w) in cw.0.iter().enumerate() {
-                *self.widths.a_get_mut(w) = true;
-                if i != 0 {
-                    write!(s, "+").unwrap();
+        for (p_cw, (cw, used)) in self.cw.arena() {
+            if *used {
+                write!(s, "let {}_{}=", self.names.cw, p_cw.get_raw()).unwrap();
+                for (i, w) in cw.0.iter().enumerate() {
+                    self.widths.a_get_mut(w).1 = true;
+                    if i != 0 {
+                        write!(s, "+").unwrap();
+                    }
+                    write!(s, "{}_{}", self.names.width, w.get_raw()).unwrap();
                 }
-                write!(s, "{}_{}", self.names.width, w.get_raw()).unwrap();
+                writeln!(s, ";").unwrap();
             }
-            writeln!(s, ";").unwrap();
         }
         s
     }
@@ -420,7 +469,7 @@ impl<'a> Lower<'a> {
     pub fn lower_widths(&mut self) -> String {
         let mut s = String::new();
         for (p_w, (w, used)) in self.widths.arena() {
-            if *used {
+            if used.1 {
                 match w {
                     Width::Single(v) => {
                         *self.values.a_get_mut(v) = true;

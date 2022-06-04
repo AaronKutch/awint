@@ -26,8 +26,8 @@ pub enum FillerAlign {
 pub struct Concatenation {
     pub txt: Ptr<PText>,
     pub comps: Vec<Component>,
-    pub total_bw: Option<NonZeroUsize>,
     pub filler_alignment: FillerAlign,
+    pub static_width: Option<NonZeroUsize>,
     // even if `total_bw` is not statically known, this concatenation width could be known from
     // this concatentation alone at runtime
     pub deterministic_width: bool,
@@ -38,8 +38,8 @@ pub struct Concatenation {
 impl Concatenation {
     pub fn check(&mut self, concat_i: usize, concat_txt: Ptr<PText>) -> Result<(), CCMacroError> {
         let concat_len = self.comps.len();
-        let mut cumulative_bw = Some(0usize);
         // start by assuming yes
+        let mut cumulative_bw = Some(0usize);
         self.deterministic_width = true;
         for (comp_i, comp) in self.comps.iter().enumerate() {
             if let Some(var_w) = comp.range.static_width() {
@@ -48,9 +48,6 @@ impl Concatenation {
                 }
             } else {
                 cumulative_bw = None;
-            }
-            if comp.range.end.is_none() {
-                self.deterministic_width = false;
             }
             match comp.c_type {
                 Unparsed => unreachable!(),
@@ -71,6 +68,7 @@ impl Concatenation {
                 Filler => {
                     // unbounded filler handling
                     if comp.range.end.is_none() {
+                        self.deterministic_width = false;
                         if (concat_i != 0) && (concat_len == 0) {
                             return Err(CCMacroError::new(
                                 "sink concatenations that consist of only an unbounded filler are \
@@ -108,7 +106,7 @@ impl Concatenation {
         }
         if let Some(w) = cumulative_bw {
             if let Some(w) = NonZeroUsize::new(w) {
-                self.total_bw = Some(w);
+                self.static_width = Some(w);
             } else {
                 // in the case of `cc!` this isn't a logical error, but it is a useless no-op
                 return Err(CCMacroError {
@@ -183,7 +181,7 @@ pub fn stage4(
     let mut overall_alignment = ast.cc[0].filler_alignment;
     let mut alignment_change_i = 0;
     let mut deterministic = ast.cc[0].deterministic_width;
-    let mut common_bw = ast.cc[0].total_bw;
+    let mut common_bw = ast.cc[0].static_width;
     let mut original_common_i = 0;
     for (concat_i, concat) in ast.cc.iter().enumerate() {
         let this_align = concat.filler_alignment;
@@ -199,7 +197,7 @@ pub fn stage4(
             }
         }
         deterministic |= concat.deterministic_width;
-        if let Some(this_bw) = concat.total_bw {
+        if let Some(this_bw) = concat.static_width {
             if let Some(prev_bw) = common_bw {
                 if this_bw != prev_bw {
                     return Err(CCMacroError::new(

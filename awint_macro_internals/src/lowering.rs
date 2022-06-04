@@ -166,6 +166,13 @@ pub fn cc_macro_code_gen<
                     if concat_i == 0 {
                         source_has_filler = true;
                     }
+                    if !comp.is_static_literal() {
+                        comp.bind = Some(
+                            l.binds
+                                .insert(Bind::Txt(comp.mid_txt.unwrap()), (false, false))
+                                .either(),
+                        )
+                    }
                 }
             }
         }
@@ -226,8 +233,9 @@ pub fn cc_macro_code_gen<
     // designate the common concatenation width
     let common_cw = if let Some(bw) = ast.common_bw {
         format!("let {}={}usize;\n", names.cw, bw)
-    } else if let Some(p_sum_width) = l.dynamic_width {
-        let s = format!("let {}={}_{};\n", names.cw, names.cw, p_sum_width.get_raw());
+    } else if let Some(p_cw) = l.dynamic_width {
+        *l.cw.a_get_mut(p_cw) = true;
+        let s = format!("let {}={}_{};\n", names.cw, names.cw, p_cw.get_raw());
         s
     } else {
         // for the case with all unbounded fillers, find the max bitwidth for the buffer
@@ -237,7 +245,9 @@ pub fn cc_macro_code_gen<
             if !s.is_empty() {
                 s += ",";
             }
-            write!(s, "{}_{}", names.cw, concat.cw.unwrap().get_raw()).unwrap();
+            let p_cw = concat.cw.unwrap();
+            *l.cw.a_get_mut(p_cw) = true;
+            write!(s, "{}_{}", names.cw, p_cw.get_raw()).unwrap();
         }
         format!("let {}={}({});\n", fn_names.max_fn, names.cw, s)
     };
