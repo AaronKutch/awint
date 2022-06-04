@@ -196,7 +196,9 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                 let mut needs_parsing = true;
                 if let Text::Chars(ref s) = ast.txt[mid_txt][0] {
                     if matches!(s[0], '-' | '0'..='9') {
-                        let s = chars_to_string(s);
+                        let mut s = vec![];
+                        ast.chars_assign_subtree(&mut s, mid_txt);
+                        let s = chars_to_string(&s);
                         match ExtAwi::from_str(&s) {
                             Ok(awi) => {
                                 ast.cc[concat_i].comps[comp_i].c_type = Literal(awi);

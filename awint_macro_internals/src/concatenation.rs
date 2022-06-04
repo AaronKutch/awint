@@ -213,7 +213,7 @@ pub fn stage4(
                 original_common_i = concat_i;
             }
         }
-        if (!specified_init) && (concat_i == 0) {
+        if (!specified_init) && (concat_i == 0) && return_type.is_some() {
             for comp in &concat.comps {
                 if matches!(comp.c_type, Filler) {
                     return Err(CCMacroError {
