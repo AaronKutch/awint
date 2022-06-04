@@ -2,7 +2,8 @@ use awint_internals::*;
 
 use crate::Bits;
 
-// TODO we can avoid if statements by nesting or a clever enough single function
+// TODO we can avoid if statements by a clever enough single function, use
+// wrapping arithmetic for the widths and cws, have a single inner FnOnce
 
 /// Intended for use by the macros, for the purposes of avoiding `if` statements
 /// with booleans for `awint_dag`, reducing the number of nested statements, and
@@ -30,7 +31,7 @@ impl Bits {
     #[inline]
     pub const fn unstable_lt_checks<const N: usize>(lt_checks: [(usize, usize); N]) -> Option<()> {
         const_for!(i in {0..N} {
-            if lt_checks[i].0 < lt_checks[i].1 {
+            if lt_checks[i].0 >= lt_checks[i].1 {
                 return None
             }
         });
@@ -39,26 +40,18 @@ impl Bits {
 
     #[doc(hidden)]
     #[inline]
-    pub const fn unstable_common_lt_checks<const N: usize>(
-        common_lhs: usize,
-        rhss: [usize; N],
+    pub const fn unstable_common_checks<const N: usize, const M: usize>(
+        common_cw: usize,
+        lt: [usize; N],
+        eq: [usize; M],
     ) -> Option<()> {
         const_for!(i in {0..N} {
-            if common_lhs < rhss[i] {
+            if common_cw >= lt[i] {
                 return None
             }
         });
-        Some(())
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    pub const fn unstable_common_ne_checks<const N: usize>(
-        common_lhs: usize,
-        rhss: [usize; N],
-    ) -> Option<()> {
-        const_for!(i in {0..N} {
-            if common_lhs != rhss[i] {
+        const_for!(i in {0..M} {
+            if common_cw != eq[i] {
                 return None
             }
         });

@@ -249,7 +249,7 @@ pub fn cc_macro_code_gen<
             *l.cw.a_get_mut(p_cw) = true;
             write!(s, "{}_{}", names.cw, p_cw.get_raw()).unwrap();
         }
-        format!("let {}={}({});\n", fn_names.max_fn, names.cw, s)
+        format!("let {}={}([{}]);\n", names.cw, fn_names.max_fn, s)
     };
 
     // width and common width calculations come after reversal checks and before

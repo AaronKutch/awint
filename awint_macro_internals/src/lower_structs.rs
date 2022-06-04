@@ -74,6 +74,10 @@ impl<'a> Lower<'a> {
                     false,
                 )
                 .either()
+        } else if usb.x == 0 {
+            self.values
+                .insert(Value::Usize(format!("{}", chars_to_string(&usb.s))), false)
+                .either()
         } else {
             self.values
                 .insert(
@@ -196,17 +200,22 @@ impl<'a> Lower<'a> {
     /// negative widths for nondeterministic cases and that deterministic concat
     /// widths are equal to the common bitwidth
     pub fn lower_common_checks(&mut self, ast: &Ast) -> String {
-        let mut ne = String::new();
         let mut lt = String::new();
+        let mut eq = String::new();
         for concat in &ast.cc {
             if concat.static_width.is_none() {
                 let cw = concat.cw.unwrap();
                 *self.cw.a_get_mut(cw) = true;
                 if concat.deterministic_width {
-                    if !ne.is_empty() {
-                        ne += ",";
+                    if self.dynamic_width.is_none() {
+                        self.dynamic_width = Some(cw);
+                        // avoid comparing to self
+                    } else {
+                        if !eq.is_empty() {
+                            eq += ",";
+                        }
+                        write!(eq, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                     }
-                    write!(ne, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                 } else {
                     if !lt.is_empty() {
                         lt += ",";
@@ -215,25 +224,13 @@ impl<'a> Lower<'a> {
                 }
             }
         }
-        match (ne.is_empty(), lt.is_empty()) {
-            (true, true) => String::new(),
-            (true, false) => format!(
-                "{}({},[{}]).is_some()",
-                self.fn_names.common_lt_fn, self.names.cw, lt
-            ),
-            (false, true) => format!(
-                "{}({},[{}]).is_some()",
-                self.fn_names.common_ne_fn, self.names.cw, ne
-            ),
-            (false, false) => format!(
-                "{}({},[{}]).is_some() && {}({},[{}]).is_some()",
-                self.fn_names.common_lt_fn,
-                self.names.cw,
-                lt,
-                self.fn_names.common_ne_fn,
-                self.names.cw,
-                ne,
-            ),
+        if eq.is_empty() && lt.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "{}({},[{}],[{}]).is_some()",
+                self.fn_names.common_fn, self.names.cw, lt, eq
+            )
         }
     }
 
