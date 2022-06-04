@@ -182,11 +182,13 @@ pub fn cc_macro_code_gen<
         lt_checks.is_empty() && common_lt_checks.is_empty() && common_ne_checks.is_empty();
 
     let construction = if code_gen.return_type.is_some() || need_buffer {
-        // FIXME separate construction and buffer?
+        // buffer and reference to buffer
         format!(
-            "let mut {}={};\n",
+            "let mut {}={};let {}=&mut {};\n",
             names.awi,
-            (code_gen.construction_fn)("", ast.common_bw, Some(names.cw))
+            (code_gen.construction_fn)("", ast.common_bw, Some(names.cw)),
+            names.awi_ref,
+            names.awi,
         )
     } else {
         String::new()

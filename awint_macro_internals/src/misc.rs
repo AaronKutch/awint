@@ -91,7 +91,7 @@ pub fn extawi_construction_fn(
     _static_width: Option<NonZeroUsize>,
     dynamic_width: Option<&str>,
 ) -> String {
-    let init = "zero";
+    let init = "panicking_zero";
     if let Some(s) = dynamic_width {
         extawi_s(init, s)
     } else {

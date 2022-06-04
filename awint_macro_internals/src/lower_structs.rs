@@ -214,13 +214,14 @@ impl<'a> Lower<'a> {
                 )
                 .unwrap();
             }
+            *self.widths.a_get_mut(width) = true;
             if let Some(bind) = comp.bind {
                 if from_buf {
                     *self.binds.a_get_mut(bind) = (true, true);
                     if let Some(start) = comp.start {
                         write!(
                             s,
-                            "{}({}_{},{}_{},{},{},{}_{}){}",
+                            "{}({}_{},{}_{},{},{},{}_{}){};",
                             self.fn_names.field,
                             self.names.bind,
                             bind.get_raw(),
@@ -237,7 +238,7 @@ impl<'a> Lower<'a> {
                         // start is zero, use field_to
                         write!(
                             s,
-                            "{}({}_{},{},{},{}_{}){}",
+                            "{}({}_{},{},{},{}_{}){};",
                             self.fn_names.field_from,
                             self.names.bind,
                             bind.get_raw(),
@@ -254,7 +255,7 @@ impl<'a> Lower<'a> {
                     if let Some(start) = comp.start {
                         write!(
                             s,
-                            "{}({},{},{}_{},{}_{},{}_{}){}",
+                            "{}({},{},{}_{},{}_{},{}_{}){};",
                             self.fn_names.field,
                             self.names.awi_ref,
                             self.names.shl,
@@ -271,7 +272,7 @@ impl<'a> Lower<'a> {
                         // start is zero, use field_to
                         write!(
                             s,
-                            "{}({},{},{}_{},{}_{}){}",
+                            "{}({},{},{}_{},{}_{}){};",
                             self.fn_names.field_to,
                             self.names.awi_ref,
                             self.names.shl,
@@ -510,7 +511,7 @@ impl<'a> Lower<'a> {
                     Bind::Literal(ref awi) => {
                         writeln!(
                             s,
-                            "let {}_{}={};",
+                            "let {}_{}=&{};",
                             self.names.bind,
                             p_b.get_raw(),
                             (lit_construction_fn)(ExtAwi::from_bits(awi))
@@ -524,10 +525,9 @@ impl<'a> Lower<'a> {
                         if *mutable {
                             writeln!(
                                 s,
-                                "let {}_{}:{}={}{{{}}};",
+                                "let {}_{}:{}=&mut{{{}}};",
                                 self.names.bind,
                                 p_b.get_raw(),
-                                self.fn_names.mut_bits_ref,
                                 self.fn_names.mut_bits_ref,
                                 chars
                             )
@@ -535,10 +535,9 @@ impl<'a> Lower<'a> {
                         } else {
                             writeln!(
                                 s,
-                                "let {}_{}:{}={}{{{}}};",
+                                "let {}_{}:{}=&{{{}}};",
                                 self.names.bind,
                                 p_b.get_raw(),
-                                self.fn_names.bits_ref,
                                 self.fn_names.bits_ref,
                                 chars
                             )
