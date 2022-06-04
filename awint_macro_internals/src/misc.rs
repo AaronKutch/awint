@@ -71,11 +71,11 @@ pub fn awint_extawi_lit_construction_fn(awi: ExtAwi) -> String {
     format!("ExtAwi::from_bits(&{})", unstable_native_inlawi(&awi))
 }
 
-fn extawi_s(init: &str, s: &str) -> String {
-    format!("ExtAwi::{}({})", init, s)
+pub fn extawi_s(init: &str, s: &str) -> String {
+    format!("ExtAwi::panicking_{}({})", init, s)
 }
 
-fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
+pub fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
     format!(
         "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::{}()",
         w, w, init
@@ -115,48 +115,9 @@ pub fn extawi_construction_fn(
     _static_width: Option<NonZeroUsize>,
     dynamic_width: Option<&str>,
 ) -> String {
-    let init = "panicking_zero";
+    let init = "zero";
     if let Some(s) = dynamic_width {
         extawi_s(init, s)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn cc_construction_fn2(
-    init: &str,
-    static_width: Option<NonZeroUsize>,
-    dynamic_width: Option<&str>,
-) -> String {
-    if let Some(w) = static_width {
-        inlawi_s(init, w)
-    } else if let Some(s) = dynamic_width {
-        extawi_s(init, s)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn inlawi_construction_fn2(
-    init: &str,
-    static_width: Option<NonZeroUsize>,
-    _dynamic_width: Option<&str>,
-) -> String {
-    if let Some(w) = static_width {
-        inlawi_s(init, w)
-    } else {
-        unreachable!()
-    }
-}
-
-pub fn extawi_construction_fn2(
-    init: &str,
-    _static_width: Option<NonZeroUsize>,
-    dynamic_width: Option<&str>,
-) -> String {
-    let init = format!("panicking_{}", init);
-    if let Some(s) = dynamic_width {
-        extawi_s(&init, s)
     } else {
         unreachable!()
     }
