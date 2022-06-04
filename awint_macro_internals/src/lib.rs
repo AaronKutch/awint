@@ -67,7 +67,7 @@ pub fn awint_macro_extawi(input: &str) -> Result<String, String> {
         static_width: false,
         return_type: Some("ExtAwi"),
         must_use: awint_must_use,
-        lit_construction_fn: awint_lit_construction_fn,
+        lit_construction_fn: awint_extawi_lit_construction_fn,
         construction_fn: extawi_construction_fn,
         fn_names: AWINT_FN_NAMES,
     };

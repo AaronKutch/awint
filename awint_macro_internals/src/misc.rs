@@ -9,6 +9,26 @@ triple_arena::ptr_trait_struct_with_gen!(PText; PBind; PVal; PWidth; PCWidth);
 #[cfg(not(debug_assertions))]
 triple_arena::ptr_trait_struct!(PText; PBind; PVal; PWidth; PCWidth);
 
+pub fn i128_to_usize(x: i128) -> Result<usize, String> {
+    usize::try_from(x).map_err(|_| "`usize::try_from` overflow".to_owned())
+}
+
+pub fn i128_to_nonzerousize(x: i128) -> Result<NonZeroUsize, String> {
+    NonZeroUsize::new(i128_to_usize(x)?).ok_or_else(|| "`NonZeroUsize::new` overflow".to_owned())
+}
+
+pub fn usize_to_i128(x: usize) -> Result<i128, String> {
+    i128::try_from(x).map_err(|_| "`i128::try_from` overflow".to_owned())
+}
+
+pub fn chars_to_string(chars: &[char]) -> String {
+    let mut s = String::new();
+    for c in chars {
+        s.push(*c);
+    }
+    s
+}
+
 /// Returns architecture-independent Rust code that returns an
 /// `InlAwi` preset with the value of `bits`.
 pub fn unstable_native_inlawi(bits: &Bits) -> String {
@@ -45,6 +65,10 @@ pub fn awint_must_use(s: &str) -> String {
 
 pub fn awint_lit_construction_fn(awi: ExtAwi) -> String {
     unstable_native_inlawi(&awi)
+}
+
+pub fn awint_extawi_lit_construction_fn(awi: ExtAwi) -> String {
+    format!("ExtAwi::from_bits(&{})", unstable_native_inlawi(&awi))
 }
 
 fn extawi_s(init: &str, s: &str) -> String {
@@ -136,12 +160,4 @@ pub fn extawi_construction_fn2(
     } else {
         unreachable!()
     }
-}
-
-pub fn chars_to_string(chars: &[char]) -> String {
-    let mut s = String::new();
-    for c in chars {
-        s.push(*c);
-    }
-    s
 }

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Write, iter, num::NonZeroUsize};
+use std::{collections::HashSet, fmt::Write, iter};
 
 use triple_arena::Ptr;
 
@@ -151,16 +151,4 @@ impl CCMacroError {
 
 pub fn error_and_help(error: &str, help: &str) -> String {
     format!("{}\n{} {}", error, color_text("help:", 93), help)
-}
-
-pub fn i128_to_usize(x: i128) -> Result<usize, String> {
-    usize::try_from(x).map_err(|_| "`usize::try_from` overflow".to_owned())
-}
-
-pub fn i128_to_nonzerousize(x: i128) -> Result<NonZeroUsize, String> {
-    NonZeroUsize::new(i128_to_usize(x)?).ok_or_else(|| "`NonZeroUsize::new` overflow".to_owned())
-}
-
-pub fn usize_to_i128(x: usize) -> Result<i128, String> {
-    i128::try_from(x).map_err(|_| "`i128::try_from` overflow".to_owned())
 }

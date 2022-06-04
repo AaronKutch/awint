@@ -1,4 +1,4 @@
-use std::{mem, str::FromStr};
+use std::{mem, num::NonZeroUsize, str::FromStr};
 
 use awint_ext::ExtAwi;
 use triple_arena::Ptr;
@@ -31,17 +31,19 @@ pub struct Component {
 
 impl Component {
     pub fn simplify(&mut self) -> Result<(), String> {
-        match self.c_type.clone() {
+        match self.c_type {
             Unparsed => unreachable!(),
             Literal(ref mut lit) => {
                 self.range.simplify()?;
                 // note: `lit` here is a reference to a clone
                 self.range.simplify_literal(lit.const_as_ref())?;
                 // static ranges on literals have been verified, attempt to truncate
-                if let Some(x) = self.range.end.clone().and_then(|x| x.static_val()) {
-                    let mut tmp = ExtAwi::zero(i128_to_nonzerousize(x)?);
-                    tmp.zero_resize_assign(lit);
-                    *lit = tmp;
+                if let Some(ref end) = self.range.end {
+                    if let Some(x) = end.static_val() {
+                        let mut tmp = ExtAwi::zero(i128_to_nonzerousize(x)?);
+                        tmp.zero_resize_assign(lit);
+                        *lit = tmp;
+                    }
                 }
                 // Note: I only truncate the start when the end is a plain static value, because
                 // the subtraction from the end would introduce the possibility for an
@@ -53,8 +55,8 @@ impl Component {
                             if x > 0 {
                                 let nz_x = i128_to_nonzerousize(x)?;
                                 let w = lit.bw() - nz_x.get();
-                                let mut tmp = ExtAwi::zero(nz_x);
-                                tmp.field(0, lit, nz_x.get(), w);
+                                let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+                                tmp.field_from(lit, nz_x.get(), w).unwrap();
                                 *lit = tmp;
                                 self.range.start.as_mut().unwrap().x = 0;
                                 self.range.end.as_mut().unwrap().x -= x;
