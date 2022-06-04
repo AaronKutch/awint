@@ -148,10 +148,9 @@ impl Concatenation {
                     let mut combined = ExtAwi::zero(total);
                     combined.zero_resize_assign(&lit0);
                     combined
-                        .field(
+                        .field_to(
                             i128_to_usize(w0).unwrap(),
                             &lit1,
-                            0,
                             i128_to_usize(w1).unwrap(),
                         )
                         .unwrap();

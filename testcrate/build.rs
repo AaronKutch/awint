@@ -165,11 +165,11 @@ impl<'a> Concat<'a> {
         assert_eq!(val.bw(), fill.bw());
         if self.align_side {
             self.ms_shift -= val.bw();
-            self.val.field(self.ms_shift, &val, 0, val.bw());
-            self.fill.field(self.ms_shift, &fill, 0, fill.bw());
+            self.val.field_to(self.ms_shift, &val, val.bw());
+            self.fill.field_to(self.ms_shift, &fill, fill.bw());
         } else {
-            self.val.field(self.ls_shift, &val, 0, val.bw());
-            self.fill.field(self.ls_shift, &fill, 0, fill.bw());
+            self.val.field_to(self.ls_shift, &val, val.bw());
+            self.fill.field_to(self.ls_shift, &fill, fill.bw());
             self.ls_shift += val.bw();
         }
     }
@@ -180,7 +180,7 @@ impl<'a> Concat<'a> {
             return
         }
         let tmp = ExtAwi::umax(bw(self.ms_shift - self.ls_shift));
-        self.fill.field(self.ls_shift, &tmp, 0, tmp.bw()).unwrap();
+        self.fill.field_to(self.ls_shift, &tmp, tmp.bw()).unwrap();
     }
 
     /// The first element is the bitwidth used by the macro, second it the

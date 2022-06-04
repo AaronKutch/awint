@@ -27,7 +27,7 @@ fn lut_and_field() {
                 inx.usize_assign(i);
                 out.lut(lut, inx).unwrap();
                 tmp0.zero_resize_assign(out);
-                tmp1.field(0, lut, i * out.bw(), out.bw()).unwrap();
+                tmp1.field_from(lut, i * out.bw(), out.bw()).unwrap();
                 assert_eq!(tmp0, tmp1);
             }
         }
