@@ -199,9 +199,10 @@ pub fn cc_macro_code_gen<
     let returning = match (code_gen.return_type.is_some(), infallible) {
         (false, false) => "Some(())".to_owned(),
         (false, true) => String::new(),
-        (true, false) => (code_gen.must_use)(&format!("Some({})", names.awi)),
-        (true, true) => (code_gen.must_use)(names.awi),
+        (true, false) => format!("Some({})", names.awi),
+        (true, true) => names.awi.to_owned(),
     };
+    let wrap_must_use = !returning.is_empty();
 
     // inner code consisting of the zero check, construction of returning or
     // buffers, fielding, and return values
@@ -216,6 +217,20 @@ pub fn cc_macro_code_gen<
             inner0 = format!("if {} != 0 {{\n{}\n}}else{{Some(())}}", names.cw, inner0);
         }
     }
+
+    // unequal concat width checks
+    let inner1 = if common_ne_checks.is_empty() {
+        inner0
+    } else {
+        format!("if {} {{\n{}\n}}else{{None}}", common_ne_checks, inner0)
+    };
+
+    // unbounded filler concat checks
+    let inner2 = if common_lt_checks.is_empty() {
+        inner1
+    } else {
+        format!("if {} {{\n{}\n}}else{{None}}", common_lt_checks, inner1)
+    };
 
     // designate the common concatenation width
     let common_cw = if let Some(bw) = ast.common_bw {
@@ -236,31 +251,26 @@ pub fn cc_macro_code_gen<
         format!("let {}={}({});\n", fn_names.max_fn, names.cw, s)
     };
 
-    // common width calculation comes before the zero check
-    let inner1 = format!("{}\n{}", common_cw, inner0);
-
+    // width and common width calculations come after reversal checks and before
+    // concat width checks
     let cws = l.lower_cws();
     let widths = l.lower_widths();
+    let inner3 = format!("{}{}{}{}", widths, cws, common_cw, inner2);
 
-    // width and common width calculations come after range checks and before equal
-    // width checks
-    let inner2 = if common_ne_checks.is_empty() {
-        inner1
-    } else {
-        format!("if {} {{\n{}\n}}else{{None}}", common_ne_checks, inner1)
-    };
-
-    let inner3 = format!("{}\n{}\n{}", widths, cws, inner2);
-
-    // range checks
-    let inner4 = if common_lt_checks.is_empty() {
+    // reversal checks
+    let inner4 = if lt_checks.is_empty() {
         inner3
     } else {
-        format!("if {} {{\n{}\n}}else{{None}}", common_lt_checks, inner3)
+        format!("if {} {{\n{}\n}}else{{None}}", lt_checks, inner3)
     };
 
     let values = l.lower_values();
     let bindings = l.lower_bindings(&ast, code_gen.lit_construction_fn);
 
-    format!("{{{}\n{}\n{}}}", bindings, values, inner4)
+    let inner5 = format!("{{\n{}{}{}}}", bindings, values, inner4);
+    if wrap_must_use {
+        (code_gen.must_use)(&inner5)
+    } else {
+        inner5
+    }
 }

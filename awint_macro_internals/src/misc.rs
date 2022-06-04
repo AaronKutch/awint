@@ -53,7 +53,7 @@ fn extawi_s(init: &str, s: &str) -> String {
 
 fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
     format!(
-        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::{}",
+        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::{}()",
         w, w, init
     )
 }
