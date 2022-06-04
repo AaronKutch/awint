@@ -97,7 +97,8 @@ impl<'a> Lower<'a> {
         // push width between the upper bound and bitwidth of variable, so that the
         // later reversal check will prevent the upper bound from being beyond the
         // bitwidth
-        let need_extra_check = !(comp.has_full_range() || comp.is_static_literal());
+        let need_extra_check =
+            comp.bind.is_some() && (!comp.has_full_range()) && (!comp.is_static_literal());
         let res = Some(if let Some(w) = comp.range.static_width() {
             let p_val = self
                 .values
@@ -207,10 +208,15 @@ impl<'a> Lower<'a> {
                 let cw = concat.cw.unwrap();
                 *self.cw.a_get_mut(cw) = true;
                 if concat.deterministic_width {
+                    let mut set_dynamic_width = false;
                     if self.dynamic_width.is_none() {
                         self.dynamic_width = Some(cw);
-                        // avoid comparing to self
-                    } else {
+                        set_dynamic_width = true;
+                    }
+                    // we can avoid comparing the same value against itself, however the second
+                    // condition handles cases like `inlawi!(a; ..64)` where the dynamic width might
+                    // not be equal to the static width we expect
+                    if (!set_dynamic_width) || ast.common_bw.is_some() {
                         if !eq.is_empty() {
                             eq += ",";
                         }
@@ -403,7 +409,6 @@ impl<'a> Lower<'a> {
         need_buffer: bool,
     ) -> String {
         let mut s = String::new();
-        // FIXME if the source is full width I think buffer can be avoided
         if source_has_filler && !specified_init {
             // see explanation at top of `lowering.rs`
             for i in 1..ast.cc.len() {
@@ -427,19 +432,20 @@ impl<'a> Lower<'a> {
             let src = ast.cc[0].comps[0].bind.unwrap();
             self.binds.a_get_mut(src).0 = true;
             for i in 1..ast.cc.len() {
-                let sink = ast.cc[i].comps[0].bind.unwrap();
-                *self.binds.a_get_mut(sink) = (true, true);
-                writeln!(
-                    s,
-                    "{}({}_{},{}_{}){};",
-                    self.fn_names.copy_assign,
-                    self.names.bind,
-                    sink.get_raw(),
-                    self.names.bind,
-                    src.get_raw(),
-                    self.fn_names.unwrap
-                )
-                .unwrap();
+                if let Some(sink) = ast.cc[i].comps[0].bind {
+                    *self.binds.a_get_mut(sink) = (true, true);
+                    writeln!(
+                        s,
+                        "{}({}_{},{}_{}){};",
+                        self.fn_names.copy_assign,
+                        self.names.bind,
+                        sink.get_raw(),
+                        self.names.bind,
+                        src.get_raw(),
+                        self.fn_names.unwrap
+                    )
+                    .unwrap();
+                }
             }
         }
         s

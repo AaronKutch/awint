@@ -166,13 +166,6 @@ pub fn cc_macro_code_gen<
                     if concat_i == 0 {
                         source_has_filler = true;
                     }
-                    if !comp.is_static_literal() {
-                        comp.bind = Some(
-                            l.binds
-                                .insert(Bind::Txt(comp.mid_txt.unwrap()), (false, false))
-                                .either(),
-                        )
-                    }
                 }
             }
         }
