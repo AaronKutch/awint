@@ -54,16 +54,16 @@ fn fp_identities_inner(
     x0bw0: &FP<ExtAwi>,
     //x1bw0: &FP<ExtAwi>,
     //x2bw0: &FP<ExtAwi>,
-    x3bw0: &mut FP<ExtAwi>,
+    mut x3bw0: &mut FP<ExtAwi>,
     x4bw0: &mut FP<ExtAwi>,
     //x5bw0: &mut FP<ExtAwi>,
     x0bw1: &FP<ExtAwi>,
     //x1bw1: &FP<ExtAwi>,
-    x2bw1: &mut FP<ExtAwi>,
+    mut x2bw1: &mut FP<ExtAwi>,
     x3bw1: &mut FP<ExtAwi>,
     //x0bw2: &FP<ExtAwi>,
     //x1bw2: &mut FP<ExtAwi>,
-    pad0: &mut Bits,
+    mut pad0: &mut Bits,
     /*pad1: &mut Bits,
      *pad2: &mut Bits, */
 ) -> Option<()> {
@@ -74,7 +74,7 @@ fn fp_identities_inner(
     // truncation
     cc!(x0bw0; x3bw0)?;
     x3bw0.neg_assign(x0bw0.is_negative());
-    cc_zero!(.., x3bw0, ..align0; pad0);
+    cc_zero!(.., x3bw0, ..align0; pad0).unwrap();
     cc_zero!(pad0; .., x2bw1, ..align1)?;
     x2bw1.neg_assign(x0bw1.signed() && x0bw0.is_negative());
     cc!(x0bw0; x3bw0)?;
@@ -96,7 +96,7 @@ fn fp_identities_inner(
     eq(x3bw0, x0bw0);
     x3bw0.neg_assign(x0bw0.is_negative());
     // find if low and high bits get cut off
-    cc_zero!(.., x3bw0, ..align0; pad0);
+    cc_zero!(.., x3bw0, ..align0; pad0).unwrap();
     if !pad0.is_zero() {
         let mut target_bounds = FP::rel_sb(x2bw1);
         target_bounds.0 += MAX_FP;

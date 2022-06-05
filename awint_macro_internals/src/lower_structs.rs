@@ -76,7 +76,7 @@ impl<'a> Lower<'a> {
                 .either()
         } else if usb.x == 0 {
             self.values
-                .insert(Value::Usize(format!("{}", chars_to_string(&usb.s))), false)
+                .insert(Value::Usize(chars_to_string(&usb.s)), false)
                 .either()
         } else {
             self.values
@@ -100,6 +100,10 @@ impl<'a> Lower<'a> {
         let need_extra_check =
             comp.bind.is_some() && (!comp.has_full_range()) && (!comp.is_static_literal());
         let res = Some(if let Some(w) = comp.range.static_width() {
+            if !comp.range.start.as_ref().unwrap().is_guaranteed_zero() {
+                let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
+                comp.start = Some(start_p_val);
+            }
             let p_val = self
                 .values
                 .insert(Value::Usize(format!("{}", w)), false)
@@ -168,7 +172,7 @@ impl<'a> Lower<'a> {
 
     /// Checks that ranges aren't reversed and the upper bounds are not beyond
     /// bitwidths
-    pub fn lower_lt_checks(&mut self) -> String {
+    pub fn lower_le_checks(&mut self) -> String {
         let mut s = String::new();
         for (width, used) in self.widths.arena_mut().vals_mut() {
             if used.0 {
@@ -193,7 +197,7 @@ impl<'a> Lower<'a> {
         if s.is_empty() {
             s
         } else {
-            format!("{}([{}]).is_some()", self.fn_names.lt_fn, s)
+            format!("{}([{}]).is_some()", self.fn_names.le_fn, s)
         }
     }
 
@@ -201,9 +205,12 @@ impl<'a> Lower<'a> {
     /// negative widths for nondeterministic cases and that deterministic concat
     /// widths are equal to the common bitwidth
     pub fn lower_common_checks(&mut self, ast: &Ast) -> String {
-        let mut lt = String::new();
+        let mut ge = String::new();
         let mut eq = String::new();
         for concat in &ast.cc {
+            if (concat.comps.len() == 1) && concat.comps[0].is_unbounded_filler() {
+                continue
+            }
             if concat.static_width.is_none() {
                 let cw = concat.cw.unwrap();
                 *self.cw.a_get_mut(cw) = true;
@@ -223,19 +230,19 @@ impl<'a> Lower<'a> {
                         write!(eq, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                     }
                 } else {
-                    if !lt.is_empty() {
-                        lt += ",";
+                    if !ge.is_empty() {
+                        ge += ",";
                     }
-                    write!(lt, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+                    write!(ge, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                 }
             }
         }
-        if eq.is_empty() && lt.is_empty() {
+        if eq.is_empty() && ge.is_empty() {
             String::new()
         } else {
             format!(
                 "{}({},[{}],[{}]).is_some()",
-                self.fn_names.common_fn, self.names.cw, lt, eq
+                self.fn_names.common_fn, self.names.cw, ge, eq
             )
         }
     }
@@ -259,6 +266,7 @@ impl<'a> Lower<'a> {
                 if from_buf {
                     *self.binds.a_get_mut(bind) = (true, true);
                     if let Some(start) = comp.start {
+                        *self.values.a_get_mut(start) = true;
                         write!(
                             s,
                             "{}({}_{},{}_{},{},{},{}_{}){};",
@@ -293,6 +301,7 @@ impl<'a> Lower<'a> {
                 } else {
                     self.binds.a_get_mut(bind).0 = true;
                     if let Some(start) = comp.start {
+                        *self.values.a_get_mut(start) = true;
                         write!(
                             s,
                             "{}({},{},{}_{},{}_{},{}_{}){};",

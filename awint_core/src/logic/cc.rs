@@ -29,9 +29,9 @@ impl Bits {
 
     #[doc(hidden)]
     #[inline]
-    pub const fn unstable_lt_checks<const N: usize>(lt_checks: [(usize, usize); N]) -> Option<()> {
+    pub const fn unstable_le_checks<const N: usize>(le_checks: [(usize, usize); N]) -> Option<()> {
         const_for!(i in {0..N} {
-            if lt_checks[i].0 >= lt_checks[i].1 {
+            if le_checks[i].0 > le_checks[i].1 {
                 return None
             }
         });
@@ -42,11 +42,11 @@ impl Bits {
     #[inline]
     pub const fn unstable_common_checks<const N: usize, const M: usize>(
         common_cw: usize,
-        lt: [usize; N],
+        ge: [usize; N],
         eq: [usize; M],
     ) -> Option<()> {
         const_for!(i in {0..N} {
-            if common_cw >= lt[i] {
+            if common_cw < ge[i] {
                 return None
             }
         });

@@ -79,9 +79,9 @@ fn identities_inner(
     }
     x2.u8_slice_assign(&bytes[..inx]);
     x0.to_u8_slice(&mut bytes[..inx]);
-    for i in inx..bytes.len() {
+    /*for i in inx..bytes.len() {
         assert!(bytes[i] == 0);
-    }
+    }*/
     x3.copy_assign(x0)?;
     x2.u8_slice_assign(&bytes[..inx]);
     x3.range_and_assign(0..(cmp::min(inx * 8, bw))).unwrap();

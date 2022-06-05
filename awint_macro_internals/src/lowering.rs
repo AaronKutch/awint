@@ -175,7 +175,7 @@ pub fn cc_macro_code_gen<
     for concat in &mut ast.cc {
         l.lower_concat(concat);
     }
-    let lt_checks = l.lower_lt_checks();
+    let lt_checks = l.lower_le_checks();
     let common_checks = l.lower_common_checks(&ast);
     let infallible = lt_checks.is_empty() && common_checks.is_empty();
 

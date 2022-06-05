@@ -8,7 +8,10 @@
 ### Changes
 - Overhaul of the macros. Uses proper token tree parsing that fixes many long standing issues.
   Nested macros and complex inner expressions with brackets, commas, and semicolons not belonging to
-  the outside macro are now possible. Trailing commas and semicolons are allowed.
+  the outside macro are now possible. Trailing commas and semicolons are allowed. Note: one common
+  pattern broken with mutability errors by the new macros is
+  `let mut awi = inlawi!(0u8); let awi_ref = awi.const_as_mut(); cc!(0u8; awi_ref);`, this can be
+  fixed by directly using the `awi` with `cc!(0u8; awi)` or making the reference mutable.
 - Implemented `Copy` for `FP<B>` if `B: Copy`
 
 ## [0.4.0] - 2022-04-07
