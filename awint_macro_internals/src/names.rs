@@ -63,6 +63,7 @@ pub struct FnNames<'a> {
     pub field_to: &'a str,
     pub field_from: &'a str,
     pub unwrap: &'a str,
+    pub bw_call: &'a [char],
 }
 
 // TODO instead should probably go the single `unstable_` function route and
@@ -81,6 +82,7 @@ pub const AWINT_FN_NAMES: FnNames = FnNames {
     field_to: "Bits::field_to",
     field_from: "Bits::field_from",
     unwrap: UNWRAP,
+    bw_call: &['.', 'b', 'w', '(', ')'],
 };
 
 /// Note: the type must be unambiguous for the construction functions

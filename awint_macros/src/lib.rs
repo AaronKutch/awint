@@ -105,14 +105,18 @@
 //!
 //! // The macros are able to perform some limited recognition of bounds of the
 //! // form `(arbitrary + statically_known)` or
-//! // `(-statically_known - -arbitrary)`, etc.
-//! // FIXME
-//! cc!(x[(r0 + 5)..(-5 + r0)]); // error: ... statically determined
-//! // This recognition is usually not externally visible because the macro
-//! // still has to check that the arbitrary variable input does not cause the
-//! // bound to go out of range (and thus the macro is still fallible and needs
-//! // to return an `Option`), but it does eliminate some checks and improves
-//! // performance.
+//! // `(-statically_known - -arbitrary)`, etc. This recognition is usually not
+//! // externally visible unless you trigger it at compile time, because the
+//! // macro still has to check that the arbitrary part of the range does not
+//! // cause the bound to go out of range, but it does eliminate some checks
+//! // and improves performance.
+//!
+//! // error: determined statically that this has a reversed range
+//! //cc!(x[(r0 + 5)..(-5 + r0)]);
+//!
+//! // note that even though `r0` is arbitrary, the macro is able to recognize
+//! // that the result width is 5 without us adding `;..5` to the end
+//! assert_eq!(inlawi!(x[r0..(r0 + 5)]).unwrap(), inlawi!(0u5));
 //!
 //! // The second kind of invalid bound is a range that extends beyond the
 //! // width of the variable or literal. Earlier, the values of 2 and 8 were
@@ -124,22 +128,25 @@
 //! // Static zero width ranges will cause a compile-time panic as a warning
 //! // about components that do nothing, but they are achievable with dynamic
 //! // ranges.
-//! let r = 5; // FIXME use r3 = 5 and a constant
-//! assert!(cc!(x[r..r]).is_some());
-//! let r = 10;
-//! assert!(cc!(x[r..r]).is_some());
+//! let r0 = 5;
+//! let r1 = 5;
+//! assert!(cc!(x[r0..r1]).is_some());
+//! let r0 = 10;
+//! let r1 = 10;
+//! assert!(cc!(x[r0..r1]).is_some());
 //! // The restriction about values not being larger than `x.bw()` still
 //! // applies.
-//! let r = 11;
-//! assert!(cc!(x[r..r]).is_none());
+//! let r0 = 11;
+//! let r1 = 11;
+//! assert!(cc!(x[r0..r1]).is_none());
 //!
 //! // `InlAwi`s and `ExtAwi`s cannot have zero bitwidths, so zero width
 //! // concatenations will cause their macros to panic at compile time or
 //! // return `None`.
 //! let r = 5;
-//! assert!(extawi!(x[r..r]).is_none());
-//! // error: determined statically that this has zero bitwidth
-//! //let _ = inlawi!(x[5..5]);
+//! assert!(extawi!(x[r..5]).is_none());
+//! // error: determined statically that this concatenation has zero width
+//! //let _ = extawi!(x[5..5]);
 //!
 //! // The macros are parsed by using `proc-macro2` token trees and looking
 //! // only at punctuation in top level delimited groups. It will separate by
@@ -149,7 +156,7 @@
 //! // This allows for almost every conceivable Rust expression being used:
 //! assert!(
 //!     cc!([inlawi!(01); 4][3][
-//!         || {let _ = (7..9, 2..=3); let _ = "'\".,;"; 1}
+//!         (|| {let _ = (7..9, 2..=3); let _ = "'\".,;"; 1})()
 //!     ]).is_some()
 //! );
 //! // the middle `[3]` indexes the array of `InlAwi`s, and the right
@@ -159,7 +166,7 @@
 //! // Of course, you wouldn't want to use expressions this complex in a single
 //! // line, most of the time you should use external bindings.
 //!
-//! let awis = [extawi!(0); 4];
+//! let awis = [inlawi!(0); 4];
 //! // If you are using normal indexing but do not want the macro to interpret
 //! // it as a bit indexing, wrap the component in parenthesis, and then the
 //! // macro will ignore everything inside (since it is not a top level "[]"
@@ -229,15 +236,16 @@
 //! let source = inlawi!(0xc4di64);
 //! // a bunch of zeroed 64 bit arbitrary width integers from different
 //! // storage types and construction methods.
-//! let mut awi = ExtAwi::zero(bw(64));
-//! let a = awi.const_as_mut();
-//! let mut b = extawi!(0i64);
-//! let mut c = <inlawi_ty!(64)>::zero();
+//! let mut awi: ExtAwi = ExtAwi::zero(bw(64));
+//! let mut a: &mut Bits = awi.const_as_mut();
+//! let mut b: ExtAwi = extawi!(0i64);
+//! let mut c: inlawi_ty!(64) = <inlawi_ty!(64)>::zero();
+//! let mut d: FP<ExtAwi> = FP::new(false, extawi!(0u64), 32).unwrap();
 //!
 //! // Use the `cc` macro to copy the source concatenation `source` to the sink
-//! // concatenations `a`, `b`, and `c`. Here, every concatenation is just a
-//! // single variable component.
-//! cc!(source; a; b; c).unwrap();
+//! // concatenations `a`, `b`, `c`, and `d`. Here, every concatenation is just
+//! // a single variable component.
+//! cc!(source; a; b; c; d).unwrap();
 //!
 //! assert_eq!(a, inlawi!(0xc4di64).const_as_ref());
 //! assert_eq!(b, extawi!(0xc4di64));

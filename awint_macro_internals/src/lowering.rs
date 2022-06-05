@@ -141,26 +141,29 @@ pub fn cc_macro_code_gen<
     let mut need_buffer = false;
     let mut source_has_filler = false;
 
-    for (concat_i, concat) in ast.cc.iter_mut().enumerate() {
+    for concat_i in 0..ast.cc.len() {
+        let concat = &ast.cc[concat_i];
         if (concat.comps.len() != 1) || (!concat.comps[0].has_full_range()) {
             need_buffer = true;
         }
-        for comp in &mut concat.comps {
-            match comp.c_type {
+        for comp_i in 0..ast.cc[concat_i].comps.len() {
+            match ast.cc[concat_i].comps[comp_i].c_type {
                 Unparsed => unreachable!(),
                 Literal(ref awi) => {
-                    comp.bind = Some(
+                    ast.cc[concat_i].comps[comp_i].bind = Some(
                         l.binds
                             .insert(Bind::Literal(awi.clone()), (false, false))
                             .either(),
                     )
                 }
                 Variable => {
-                    comp.bind = Some(
-                        l.binds
-                            .insert(Bind::Txt(comp.mid_txt.unwrap()), (false, false))
-                            .either(),
-                    )
+                    let mut chars = vec![];
+                    ast.chars_assign_subtree(
+                        &mut chars,
+                        ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
+                    );
+                    ast.cc[concat_i].comps[comp_i].bind =
+                        Some(l.binds.insert(Bind::Txt(chars), (false, false)).either())
                 }
                 Filler => {
                     if concat_i == 0 {
@@ -260,7 +263,7 @@ pub fn cc_macro_code_gen<
     };
 
     let values = l.lower_values();
-    let bindings = l.lower_bindings(&ast, code_gen.lit_construction_fn);
+    let bindings = l.lower_bindings(code_gen.lit_construction_fn);
 
     let inner4 = format!("{{\n{}{}{}}}", bindings, values, inner3);
     if wrap_must_use {

@@ -5,13 +5,14 @@ use triple_arena::Ptr;
 
 use crate::{
     chars_to_string, Ast, BiMap, Component, ComponentType, Concatenation, EitherResult, FnNames,
-    Names, PBind, PCWidth, PText, PVal, PWidth, Usb,
+    Names, PBind, PCWidth, PVal, PWidth, Usb,
 };
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub enum Bind {
     Literal(ExtAwi),
-    Txt(Ptr<PText>),
+    // text must be lowered by this point so that the set property works
+    Txt(Vec<char>),
 }
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -62,34 +63,49 @@ impl<'a> Lower<'a> {
         }
     }
 
+    /// In cases like `a[(a.bw() - 16)..]` we want to replace `a.bw()` with
+    /// `Bits::bw(bind_to_a)` or else we run into borrow issues. This is
+    /// admittedly jank, but fixes the vast majority of these kinds of cases
+    /// without needing a full fledged parser for arithmetic and function calls.
+    pub fn try_txt_bound_to_binding(&mut self, txt: &[char]) -> String {
+        if txt.ends_with(self.fn_names.bw_call) {
+            let var = txt[..(txt.len() - 5)].to_owned();
+            if let Some(p) = self.binds.contains(&Bind::Txt(var)) {
+                self.binds.a_get_mut(p).0 = true;
+                return format!(
+                    "{}({}_{})",
+                    self.fn_names.get_bw,
+                    self.names.bind,
+                    p.get_raw()
+                )
+            }
+        }
+        chars_to_string(txt)
+    }
+
     pub fn lower_bound(&mut self, usb: &Usb) -> Ptr<PVal> {
         if let Some(x) = usb.static_val() {
             self.values
                 .insert(Value::Usize(format!("{}", x)), false)
                 .either()
-        } else if usb.x < 0 {
-            self.values
-                .insert(
-                    Value::Usize(format!("{}-{}", chars_to_string(&usb.s), -usb.x)),
-                    false,
-                )
-                .either()
-        } else if usb.x == 0 {
-            self.values
-                .insert(Value::Usize(chars_to_string(&usb.s)), false)
-                .either()
         } else {
-            self.values
-                .insert(
-                    Value::Usize(format!("{}+{}", chars_to_string(&usb.s), usb.x)),
-                    false,
-                )
-                .either()
+            let txt = self.try_txt_bound_to_binding(&usb.s);
+            if usb.x < 0 {
+                self.values
+                    .insert(Value::Usize(format!("{}-{}", txt, -usb.x)), false)
+                    .either()
+            } else if usb.x == 0 {
+                self.values.insert(Value::Usize(txt), false).either()
+            } else {
+                self.values
+                    .insert(Value::Usize(format!("{}+{}", txt, usb.x)), false)
+                    .either()
+            }
         }
     }
 
-    // Returns the width corresponding to the range of the component, and internally
-    // pushes the upperbound-bitwidth check.
+    /// Returns the width corresponding to the range of the component, and
+    /// internally pushes the upperbound-bitwidth check.
     pub fn lower_comp(&mut self, comp: &mut Component) -> Option<Ptr<PWidth>> {
         if comp.is_unbounded_filler() {
             return None
@@ -554,7 +570,6 @@ impl<'a> Lower<'a> {
 
     pub fn lower_bindings<F: FnMut(ExtAwi) -> String>(
         &mut self,
-        ast: &Ast,
         mut lit_construction_fn: F,
     ) -> String {
         let mut s = String::new();
@@ -572,10 +587,8 @@ impl<'a> Lower<'a> {
                         )
                         .unwrap();
                     }
-                    Bind::Txt(txt) => {
-                        let mut chars = vec![];
-                        ast.chars_assign_subtree(&mut chars, *txt);
-                        let chars = chars_to_string(&chars);
+                    Bind::Txt(chars) => {
+                        let chars = chars_to_string(chars);
                         // note: we can't use extra braces in the bindings or else the E0716
                         // workaround doesn't work
                         if *mutable {

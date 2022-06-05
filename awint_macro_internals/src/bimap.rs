@@ -59,6 +59,10 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
         &mut self.arena
     }
 
+    pub fn contains(&self, t: &T) -> Option<Ptr<P>> {
+        self.map.get(t).copied()
+    }
+
     /*pub fn insert_with<F0: FnOnce(Ptr<P>) -> T, F1: FnOnce() -> A>
       (&mut self, create: F0, associate: F1) -> Ptr<P> {
         self.arena.insert_with(|p| {

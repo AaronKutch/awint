@@ -6,6 +6,7 @@
 #![allow(clippy::needless_range_loop)]
 // TODO need a refactor
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::comparison_chain)]
 
 // TODO after refactor make everything private and find unused functions
 

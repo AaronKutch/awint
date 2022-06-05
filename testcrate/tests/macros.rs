@@ -110,4 +110,13 @@ fn macro_successes() {
     assert_eq!(b, inlawi!(0x11bbu16));
     assert_eq!(c, inlawi!(0xcc11u16));
     assert_eq!(d, inlawi!(0x11ddu16));
+    // check for borrow collisions
+    let mut a = inlawi!(0x9876543210u40);
+    let b = extawi!(
+        a[..=7], a[(a.bw() - 16)..];
+        a[(5 * 4)..(9 * 4)], a[..(2 * 4)];
+    )
+    .unwrap();
+    assert_eq!(a, inlawi!(0x9109843276u40));
+    assert_eq!(b, extawi!(0x109876_u24));
 }
