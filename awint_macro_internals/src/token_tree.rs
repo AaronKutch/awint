@@ -154,8 +154,8 @@ mod debug {
                         if node.center.is_empty() {
                             node.center.push(d.lhs_str().to_owned() + d.rhs_str());
                         } else {
-                            node.center[0] += &d.lhs_str();
-                            node.center[0] += &d.rhs_str();
+                            node.center[0] += d.lhs_str();
+                            node.center[0] += d.rhs_str();
                         }
                     }
                 }
