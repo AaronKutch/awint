@@ -418,7 +418,7 @@ impl<'a> Lower<'a> {
                 // src -> buf
                 writeln!(s, "{}", self.field_concat(&ast.cc[0], false)).unwrap();
                 // buf -> sink
-                writeln!(s, "{}", self.field_concat(&ast.cc[0], true)).unwrap();
+                writeln!(s, "{}", self.field_concat(&ast.cc[i], true)).unwrap();
             }
         } else if need_buffer {
             // src -> buf once
@@ -447,7 +447,8 @@ impl<'a> Lower<'a> {
                         .unwrap();
                     }
                 }
-            } // else cases like `extawi!(umax: ..r; ...)` or `extawi!(umax: ..; ...)`
+            } // else cases like `extawi!(umax: ..r)` or `extawi!(umax: ..;
+              // ..8)`
         }
         s
     }
@@ -554,9 +555,10 @@ impl<'a> Lower<'a> {
                     Bind::Literal(ref awi) => {
                         writeln!(
                             s,
-                            "let {}_{}=&{};",
+                            "let {}_{}:{}=&{};",
                             self.names.bind,
                             p_b.get_raw(),
+                            self.fn_names.bits_ref,
                             (lit_construction_fn)(ExtAwi::from_bits(awi))
                         )
                         .unwrap();
@@ -565,10 +567,12 @@ impl<'a> Lower<'a> {
                         let mut chars = vec![];
                         ast.chars_assign_subtree(&mut chars, *txt);
                         let chars = chars_to_string(&chars);
+                        // note: we can't use extra braces in the bindings or else the E0716
+                        // workaround doesn't work
                         if *mutable {
                             writeln!(
                                 s,
-                                "let {}_{}:{}=&mut{{{}}};",
+                                "let {}_{}:{}=&mut {};",
                                 self.names.bind,
                                 p_b.get_raw(),
                                 self.fn_names.mut_bits_ref,
@@ -578,7 +582,7 @@ impl<'a> Lower<'a> {
                         } else {
                             writeln!(
                                 s,
-                                "let {}_{}:{}=&{{{}}};",
+                                "let {}_{}:{}=&{};",
                                 self.names.bind,
                                 p_b.get_raw(),
                                 self.fn_names.bits_ref,
