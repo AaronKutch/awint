@@ -429,24 +429,25 @@ impl<'a> Lower<'a> {
             }
         } else {
             // direct copy assigning
-            let src = ast.cc[0].comps[0].bind.unwrap();
-            self.binds.a_get_mut(src).0 = true;
-            for i in 1..ast.cc.len() {
-                if let Some(sink) = ast.cc[i].comps[0].bind {
-                    *self.binds.a_get_mut(sink) = (true, true);
-                    writeln!(
-                        s,
-                        "{}({}_{},{}_{}){};",
-                        self.fn_names.copy_assign,
-                        self.names.bind,
-                        sink.get_raw(),
-                        self.names.bind,
-                        src.get_raw(),
-                        self.fn_names.unwrap
-                    )
-                    .unwrap();
+            if let Some(src) = ast.cc[0].comps[0].bind {
+                self.binds.a_get_mut(src).0 = true;
+                for i in 1..ast.cc.len() {
+                    if let Some(sink) = ast.cc[i].comps[0].bind {
+                        *self.binds.a_get_mut(sink) = (true, true);
+                        writeln!(
+                            s,
+                            "{}({}_{},{}_{}){};",
+                            self.fn_names.copy_assign,
+                            self.names.bind,
+                            sink.get_raw(),
+                            self.names.bind,
+                            src.get_raw(),
+                            self.fn_names.unwrap
+                        )
+                        .unwrap();
+                    }
                 }
-            }
+            } // else cases like `extawi!(umax: ..r; ...)` or `extawi!(umax: ..; ...)`
         }
         s
     }
