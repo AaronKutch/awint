@@ -4,14 +4,18 @@
 ### Fixes
 - Fixed that `to_u8_slice` on big endian platforms did not zero bytes beyond `self.bw()`. There was
   a blind spot in the testing that has been fixed.
+- Fixed error E0716 in many cases for the macros.
 
 ### Changes
+- Note: in order for some expressions to remain const, you need to add
+  `#![feature(const_trait_impl)]` to your crate root, or else you will run into strange
+  `erroneous constant used` and `deref_mut` errors.
 - Overhaul of the macros. Uses proper token tree parsing that fixes many long standing issues.
   Nested macros and complex inner expressions with brackets, commas, and semicolons not belonging to
-  the outside macro are now possible. Trailing commas and semicolons are allowed. Note: one common
-  pattern broken with mutability errors by the new macros is
-  `let mut awi = inlawi!(0u8); let awi_ref = awi.const_as_mut(); cc!(0u8; awi_ref);`, this can be
-  fixed by directly using the `awi` with `cc!(0u8; awi)` or making the reference mutable.
+  the outside macro are now possible. Trailing commas and semicolons are allowed.
+- Note: certain reference patterns of a form like `fn(awi_ref: &mut Bits) {cc!(1u8; awi_ref)}` are
+  broken by the workaround for E0716. This can be fixed by making the reference mutable
+  `fn(mut awi_ref: &mut Bits) {...}`.
 - Implemented `Copy` for `FP<B>` if `B: Copy`
 
 ## [0.4.0] - 2022-04-07

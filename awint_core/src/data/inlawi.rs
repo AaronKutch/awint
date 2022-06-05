@@ -1,9 +1,7 @@
 use core::{
-    borrow::{Borrow, BorrowMut},
     fmt,
     hash::{Hash, Hasher},
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
 };
 
 use awint_internals::*;
@@ -35,16 +33,14 @@ use crate::Bits;
 /// information.
 ///
 /// ```
+/// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]
 /// #![feature(const_option)]
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
 ///
-/// const fn const_fn(lhs: &mut Bits, rhs: &Bits) {
+/// const fn const_fn(mut lhs: &mut Bits, rhs: &Bits) {
 ///     // `InlAwi` stored on the stack does no allocation
-///     let mut tmp_awi = inlawi!(0i100);
-///     // `InlAwi` implements `Deref`, but if you want to use it in `const`
-///     // contexts, `const_as_ref` or `const_as_mut` should be used
-///     let tmp = tmp_awi.const_as_mut();
+///     let mut tmp = inlawi!(0i100);
 ///     tmp.mul_add_assign(lhs, rhs).unwrap();
 ///     cc!(tmp; lhs).unwrap();
 /// }
@@ -241,68 +237,8 @@ impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
-    type Target = Bits;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn borrow(&self) -> &Bits {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn as_ref(&self) -> &Bits {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn borrow_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
 // FIXME
-
+// maybe use const `From` in addition to this?
 /*impl InlAwi<8, 2> {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_u8(x: u8) -> Self {

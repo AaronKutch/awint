@@ -170,6 +170,7 @@ pub fn cc_macro_code_gen<
             }
         }
     }
+    need_buffer |= code_gen.return_type.is_some();
 
     // work backwards so we calculate only what we need
     for concat in &mut ast.cc {

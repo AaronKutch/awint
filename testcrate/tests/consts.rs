@@ -1,5 +1,6 @@
 #![feature(const_mut_refs)]
 #![feature(const_option)]
+#![feature(const_trait_impl)]
 
 use awint::prelude::{
     bw, cc, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero,
@@ -21,7 +22,6 @@ const fn eq(lhs: &Bits, rhs: &Bits) {
     }
 }
 
-/*
 /// The purpose of this test is to supply some actual test values to some
 /// functions to make sure `fuzz.rs` isn't running into false positives.
 #[test]
@@ -70,7 +70,7 @@ const fn consts() {
     eq(z2.const_as_ref(), inlawi!(0xba98u16).const_as_ref());
     eq(z1.const_as_ref(), inlawi!(0x7654u16).const_as_ref());
     eq(z0.const_as_ref(), inlawi!(0x3210u16).const_as_ref());
-}*/
+}
 
 #[test]
 #[should_panic]

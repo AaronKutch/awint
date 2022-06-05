@@ -5,3 +5,8 @@ mod serde;
 
 pub use bits::Bits;
 pub use inlawi::InlAwi;
+
+#[cfg(feature = "const_support")]
+mod const_traits;
+#[cfg(not(feature = "const_support"))]
+mod traits;

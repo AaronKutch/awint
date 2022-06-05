@@ -31,6 +31,15 @@ system depending on these feature flags:
 
 Note: By default, "const_support" and "std" are turned on.
 
+NOTE: As of Rust 1.63, if you try to use "const_support" with the macros you may get strange
+`erroneous constant used` and `deref_mut` errors unless you add all of
+```
+#![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
+#![feature(const_option)]
+```
+to _all_ of the crate roots where you use the macros.
+
 ## Planned Features
 
 Note: I have discovered a const workaround for all(?) cases that cause E0716 in the macros and will
