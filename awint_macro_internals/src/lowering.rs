@@ -140,6 +140,7 @@ pub fn cc_macro_code_gen<
 
     let mut need_buffer = false;
     let mut source_has_filler = false;
+    let mut no_vars = true;
 
     for concat_i in 0..ast.cc.len() {
         let concat = &ast.cc[concat_i];
@@ -157,6 +158,7 @@ pub fn cc_macro_code_gen<
                     )
                 }
                 Variable => {
+                    no_vars = false;
                     let mut chars = vec![];
                     ast.chars_assign_subtree(
                         &mut chars,
@@ -174,6 +176,10 @@ pub fn cc_macro_code_gen<
         }
     }
     need_buffer |= code_gen.return_type.is_some();
+    if code_gen.return_type.is_none() && no_vars {
+        // for cases like `cc!(r0..r1)` or `cc!(0x123u12[r0..r1])`
+        need_buffer = false;
+    }
 
     // work backwards so we calculate only what we need
     for concat in &mut ast.cc {

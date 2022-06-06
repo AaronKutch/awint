@@ -13,7 +13,7 @@ fn main() -> ! {
     // without the dependency leaking into runtime
     let mut awi0 = inlawi!(12345i20);
     let awi1 = inlawi!(54321i20);
-    let x0 = awi0.const_as_mut();
+    let mut x0 = awi0.const_as_mut();
     let x1 = awi1.const_as_ref();
     x0.add_assign(x1).unwrap();
     assert!(x0.is_zero());
@@ -33,7 +33,7 @@ fn main() -> ! {
     // copy assign
     let a = inlawi!(0xau4);
     let mut awi = <inlawi_ty!(4)>::zero();
-    let b = awi.const_as_mut();
+    let mut b = awi.const_as_mut();
     let mut c = inlawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
@@ -84,6 +84,9 @@ fn main() -> ! {
     let _a = inlawi!(0xau4);
     let mut _y = inlawi!(0u16);
     assert_eq!(_y, inlawi!(0x7fafu16));
+    let r0 = 3;
+    let r1 = 7;
+    assert_eq!(cc!(0x123u12[r0..r1]), Some(()));
 
     panic!("main is not allowed to return")
 }
