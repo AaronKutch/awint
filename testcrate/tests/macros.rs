@@ -119,6 +119,14 @@ fn macro_successes() {
     .unwrap();
     assert_eq!(a, inlawi!(0x9109843276u40));
     assert_eq!(b, extawi!(0x109876_u24));
+    let mut a = inlawi!(0x9876543210u40);
+    let b = extawi!(
+        a[..=0x7], a[(a.bw() - 0b10000)..];
+        a[(5 * 4)..(9 * 4)], a[..0o10];
+    )
+    .unwrap();
+    assert_eq!(a, inlawi!(0x9109843276u40));
+    assert_eq!(b, extawi!(0x109876_u24));
     let r0 = 3;
     let r1 = 7;
     assert_eq!(cc!(0x123u12[r0..r1]), Some(()));

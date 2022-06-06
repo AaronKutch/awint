@@ -5,32 +5,19 @@
 //! All of the macros often require `Bits` and `InlAwi` to be in scope. This
 //! could be from `awint_core` or be a reexport from `awint`. `extawi!` and
 //! similar always requires `ExtAwi` to be in scope, which could be imported
-//! from `awint_ext` or be a reexport from `awint`. `cc!` may require none, one,
-//! or both storage types depending on the input. Macros with fallible inputs
-//! require `Option<T>` variants to be in scope.
-//!
-//! ## Inputs
-//!
-//! Macros accepting only `usize` literals: `inlawi_ty`
-//!
-//! Macros accepting only concatenations of components: `inlawi`, `extawi`
-//!
-//! Macros accepting both: `inlawi_zero`, `inlawi_umax`, `inlawi_imax`,
-//! `inlawi_imin`, `inlawi_uone`, `extawi_zero`, `extawi_umax`, `extawi_imax`,
-//! `extawi_imin`, `extawi_uone`
-//!
-//! The macros that accept both work by first trying to parse the whole input as
-//! a `usize` literal, then if the parsing fails attempt to interpret the input
-//! as concatenations of components.
+//! from `awint_ext` or be a reexport from `awint`. `cc!` may require none,
+//! one, or both storage types depending on the input. Macros with fallible
+//! inputs require `Option<T>` variants to be in scope.
 //!
 //! ## Concatenations of Components
 //!
-//! Some of the macros accept "concatenations of components". A component can be
-//! a literal, a variable, or a filler. Components are written in a big endian
-//! order (like literals), and concatenations are written in a little endian
-//! order (because large concatentations will usually be formatted on different
-//! lines, and we want the data flow to be downwards), so the general layout of
-//! the input to a macro is:
+//! Some of the macros accept "concatenations of components". A component can
+//! be a literal, a variable, or a filler. Components are written in a big
+//! endian order (so that the big-endianness of literals flows the same way
+//! visually), and concatenations are written in a little endian order (because
+//! large concatentations will usually be formatted on different lines, and we
+//! want the data flow to be downwards), so the general layout of the input to
+//! a macro is:
 //!
 //! ```text
 //! macro!(
@@ -40,6 +27,8 @@
 //!                             ⋮
 //! )
 //! ```
+//! (there may also be a specified initialization prefixed with a `:` at the
+//! beginning, but we will get to that later)
 //!
 //! The first concatenation, or concatenation 0, is the "source" concatenation,
 //! and the following concatenations are "sink" concatenations. Either
@@ -53,10 +42,12 @@
 //! bounds checks.
 //!
 //! These macros automate a large number of things for the user:
+//!  - Avoiding borrow errors even when the same variable is being used in
+//!    different concatenations and in ranges of itself
 //!  - Using only `const` capable constructions and functions if possible
 //!  - All bounds checks are run before any fielding happens, so that no
 //!    mutation or allocation occurs when an error is returned, matching the
-//!    common behavior of functions in the `awint` system.
+//!    common behavior of functions in the `awint` system
 //!  - Trying to optimize away as many bounds checks as possible
 //!  - Trying to optimize away intermediate buffers
 //!  - Concatenating literals together at compile time, and even returning
@@ -95,13 +86,19 @@
 //! // is able to know the value of the range at compile time.
 //! assert!(cc!(x[2..8]).is_some());
 //!
+//! // The macro recognizes decimal, hexadecimal, octal and binary static
+//! // values so that they seamlessly work with Rust literals.
+//! assert!(cc!(x[2..0x8]).is_some());
+//! assert!(cc!(x[0b10..0o10]).is_some());
+//!
 //! // The first kind of invalid bound is a reversed range, in which the
 //! // start of the range is larger than the end of the range.
 //! assert!(cc!(x[r1..r0]).is_none());
 //!
 //! // Here, the macro is able to determine at compile time that the range is
-//! // reversed
-//! //cc!(x[8..2]); // error: ... has a reversed range
+//! // reversed.
+//! // error: determined statically that this has a reversed range
+//! //cc!(x[8..2]);
 //!
 //! // The macros are able to perform some limited recognition of bounds of the
 //! // form `(arbitrary + statically_known)` or
@@ -115,7 +112,7 @@
 //! //cc!(x[(r0 + 5)..(-5 + r0)]);
 //!
 //! // note that even though `r0` is arbitrary, the macro is able to recognize
-//! // that the result width is 5 without us adding `;..5` to the end
+//! // that it needs a `inlawi_ty(5)` without us telling it more explicitly
 //! assert_eq!(inlawi!(x[r0..(r0 + 5)]).unwrap(), inlawi!(0u5));
 //!
 //! // The second kind of invalid bound is a range that extends beyond the
@@ -148,23 +145,23 @@
 //! // error: determined statically that this concatenation has zero width
 //! //let _ = extawi!(x[5..5]);
 //!
-//! // The macros are parsed by using `proc-macro2` token trees and looking
-//! // only at punctuation in top level delimited groups. It will separate by
-//! // ',' and ';' to get components, and then each component will be parsed
-//! // again for top level delimited groups, and if the last token tree in
-//! // the component is "[]" delimited it will treat that as a bit indexer.
-//! // This allows for almost every conceivable Rust expression being used:
+//! // The macros are parsed by using `proc-macro2` token trees and look only
+//! // at punctuation in top level delimited groups. It will separate by ','
+//! // and ';' to get components, and then each component will be parsed again
+//! // for top level delimited groups, and if the last token tree in the
+//! // component is "[]" delimited it will treat that as a bit indexer. This
+//! // allows for almost every conceivable Rust expression being used:
 //! assert!(
-//!     cc!([inlawi!(01); 4][3][
-//!         (|| {let _ = (7..9, 2..=3); let _ = "'\".,;"; 1})()
+//!     cc!([inlawi!(0u10); 4][3][
+//!         (|| {let _ = (4..5, 6..=7); let _ = "'\".,;"; 9})()
 //!     ]).is_some()
 //! );
-//! // the middle `[3]` indexes the array of `InlAwi`s, and the right
-//! // "[]" delimited group is interpreted as a single bit index.
-//! // The parsing is able to ignore inner puncutation and just use the `1`
-//! // result of the closure as the index.
-//! // Of course, you wouldn't want to use expressions this complex in a single
-//! // line, most of the time you should use external bindings.
+//! // The first `[inlawi!(0u10); 4]` is an array of 4 `InlAwi`s, the middle
+//! // `[3]` indexes the array of `InlAwi`s, and the rightmost "[]" delimited
+//! // group is interpreted as a single bit index. The parsing is able to
+//! // ignore inner puncutation and just use the `9` result of the closure as
+//! // the index. Of course, you wouldn't want to use expressions this complex
+//! // in a single line, most of the time you should use external bindings.
 //!
 //! let awis = [inlawi!(0); 4];
 //! // If you are using normal indexing but do not want the macro to interpret
@@ -188,17 +185,17 @@
 //! `ExtAwi`. See that documentation for more details.
 //!
 //! Note: The `FromStr` implementation allows for signed and unsigned values,
-//! binary, octal, decimal, and hexadecimal bases, but for the remainder of this
-//! documentation we will mainly be using unsigned hexadecimal for literals and
-//! decimal for range bounds. This is because hexadecimal neatly divides along
-//! bit multiples of 4, and the large base allows one to easily see where
-//! different groups of 4 bits are being copied.
+//! binary, octal, decimal, and hexadecimal bases, but for the remainder of
+//! this documentation we will mainly be using unsigned hexadecimal for
+//! literals and decimal for range bounds. This is because hexadecimal neatly
+//! divides along bit multiples of 4, and the large base allows one to easily
+//! see where different groups of 4 bits are being copied.
 //!
 //! ```
 //! use awint::prelude::*;
 //!
 //! // Here, we pass a single concatenation of 3 literals to the `inlawi!`
-//! // construction macro. constructs an `InlAwi` out of a 4 bit signed
+//! // construction macro. This constructs an `InlAwi` out of a 4 bit signed
 //! // negative 1, a 16 bit binary string, and a 8 bit unsigned 42. The
 //! // total bitwidth is 4 + 16 + 8 = 28.
 //! let awi: inlawi_ty!(28) = inlawi!(-1i4, 0000_0101_0011_1001, 42u8);
@@ -208,7 +205,7 @@
 //! // in some circumstances for readability. The macros automatically truncate
 //! // and concatenate constants with statically known bounds together for best
 //! // runtime performance.
-//! assert_eq!(inlawi!(0x654321_u24[0b100..0x10]), inlawi!(0x432_u12));
+//! assert_eq!(inlawi!(0x654321_u24[4..16]), inlawi!(0x432_u12));
 //!
 //! // Arbitrary dynamic ranges using things from outside the macro can also
 //! // be applied. The macros will assume the range bounds to result in
@@ -224,11 +221,11 @@
 //!
 //! ### Variables
 //!
-//! Anything that has well defined `bw() -> usize`, `const_as_ref() -> &Bits`,
-//! and `const_as_mut() -> &mut Bits` functions can be used as a variable.
-//! Arbitrary `Bits` references (`Bits` itself has these functions as no-ops,
-//! they are just hidden from the documentation), `ExtAwi`, `InlAwi`, and other
-//! well defined arbitrary width integer types can thus be used as variables.
+//! Anything that has well defined `bw() -> usize`, `Deref::deref() -> &Bits`,
+//! `DerefMut::deref_mut() -> &mut Bits`, `AsRef::as_ref() -> &Bits`, and
+//! `AsMut::as_mut() -> &mut Bits` functions can be used as a variable.
+//! Arbitrary `Bits` references, `ExtAwi`, `InlAwi`, `FP<B>` and other well
+//! defined arbitrary width integer types can thus be used as variables.
 //!
 //! ```
 //! use awint::prelude::*;
@@ -240,7 +237,7 @@
 //! let mut a: &mut Bits = awi.const_as_mut();
 //! let mut b: ExtAwi = extawi!(0i64);
 //! let mut c: inlawi_ty!(64) = <inlawi_ty!(64)>::zero();
-//! let mut d: FP<ExtAwi> = FP::new(false, extawi!(0u64), 32).unwrap();
+//! let mut d: FP<inlawi_ty!(64)> = FP::new(false, inlawi!(0u64), 32).unwrap();
 //!
 //! // Use the `cc` macro to copy the source concatenation `source` to the sink
 //! // concatenations `a`, `b`, `c`, and `d`. Here, every concatenation is just
@@ -299,13 +296,18 @@
 //! |-------z2------|-------z1------|-------z0------|
 //! ```
 //!
-//! Again, arbitrary ranges can be applied to variables:
+//! Again, arbitrary ranges can be applied to variables, note there are no
+//! borrowing errors:
 //!
 //! ```
 //! use awint::prelude::*;
 //!
 //! let mut a = inlawi!(0x9876543210u40);
 //!
+//! // Note: because the range bounds cannot be negative, ranges starting
+//! // with 0 (e.x. `0..r`) can have the zero omitted and just use `..r`.
+//! // Ranges ending like `r..` will include all bits up to the most
+//! // significant bit of the variable.
 //! let b = extawi!(
 //!     a[..=7], a[(a.bw() - 16)..];
 //!     a[(5 * 4)..(9 * 4)], a[..(2 * 4)];
@@ -314,41 +316,84 @@
 //! assert_eq!(b, extawi!(0x109876_u24));
 //! ```
 //!
+//! Also note: if you see the compiler complain about mutability of `Bits`
+//! references, ignore the help message about removing the `&mut` and make
+//! the reference itself mutable. This happens because the macro can't tell
+//! if what it is binding to is already a mutable reference and not a storage
+//! type, and so always tries to take a `&mut Bits` reference of variables.
+//! ```
+//! use awint::prelude::*;
+//!
+//! // error: cannot borrow x and z as mutable ...
+//! //fn test(x: &mut Bits) {
+//! //    cc!(0x123u12; x).unwrap();
+//! //
+//! //    let mut y = inlawi!(0u12);
+//! //    let z = y.const_as_mut();
+//! //    cc!(0x123u12; z).unwrap();
+//! //}
+//!
+//! // add the extra `mut` in front of references
+//! fn test(mut x: &mut Bits) {
+//!     cc!(0x123u12; x).unwrap();
+//!
+//!     let mut y = inlawi!(0u12);
+//!     let mut z = y.const_as_mut();
+//!     cc!(0x123u12; z).unwrap();
+//! }
+//! ```
+//!
+//! Also, if you are using the `const_support` feature and are trying to use
+//! the macros in a `const` context, as of Rust 1.63 you need to add all of
+//! ```text
+//! #![feature(const_mut_refs)]
+//! #![feature(const_option)]
+//! #![feature(const_trait_impl)]
+//! ```
+//! to your crate roots or else you will encounter many confusing or misleading
+//! compiler errors.
+//!
 //! ### Fillers
 //!
-//! The third type of component is written as a range with no variable or
-//! literal attached. When used in sources, corresponding sink bits are left
-//! unmutated. When used in sinks, corresponding source bits have no effect.
-//!
-//! When used in the source bits of specified initialization construction macros
-//! (`inlawi_zero!`, `extawi_zero`, `inlawi_umax!`, etc), fillers adopt what the
-//! corresponding bits would be normally initialized to (zero, unsigned
-//! maximum value, etc).
-//!
-//! The unspecified initialization macros `inlawi!` and `extawi!` do not allow
-//! fillers in their source concatenations, because it would be ambiguous what
-//! those bits should initially be set to.
+//! The third type of component is written as a range by itself. When used in
+//! sources, corresponding sink bits are left unmutated. When used in sinks,
+//! corresponding source bits have no effect.
 //!
 //! ```
 //! use awint::prelude::*;
 //!
-//! let x = inlawi!(0x1234u16);
-//! let mut y = inlawi!(0x5678u16);
+//! // filler bits in source concatenations have no effects and sink bits are
+//! // preserved
+//! let x = inlawi!(0xabcd_u16);
 //!
-//! // note: because the range bounds cannot be negative, ranges starting
-//! // with 0 (e.x. `0..r`) can have the zero omitted and just use `..r`.
+//! let mut y = inlawi!(0x123456_u24);
 //! cc!(
 //!     x, ..8;
-//!     ..8, y;
+//!     y;
 //! ).unwrap();
+//! assert_eq!(y, inlawi!(0xabcd56_u24));
 //!
-//! assert_eq!(y, inlawi!(0x3478u16));
+//! y = inlawi!(0x123456_u24);
+//! cc!(
+//!     ..8, x;
+//!     y;
+//! ).unwrap();
+//! assert_eq!(y, inlawi!(0x12abcd_u24));
+//!
+//! // filler bits in sink concatenations can act as spacers that drop the
+//! // effects of source bits, note that the effect is processed independently
+//! // for every sink concatenation.
+//! let x = inlawi!(0x123456_u24);
+//! let mut y = inlawi!(0u16);
+//! let mut z = inlawi!(0u16);
+//! cc!(
+//!     x;
+//!     y, ..8;
+//!     ..8, z;
+//! ).unwrap();
+//! assert_eq!(y, inlawi!(0x1234_u16));
+//! assert_eq!(z, inlawi!(0x3456_u16));
 //! ```
-//!
-//! The `..8` filler in the source aligned with the two digits `0x78u8` in the
-//! `y` component in the sink, so they were left unmutated. The digits `0x34u8`
-//! in the source aligned with and overwrote `0x56u8` in the sink. The `0x12u8`
-//! aligned with the `..8` filler in the sink, so they did nothing.
 //!
 //! Fillers are also useful in cases where all concatenations lack a needed
 //! degree of determinable width, and we want a cheap way to specify it:
@@ -363,14 +408,39 @@
 //! //inlawi!(x);
 //!
 //! assert_eq!(inlawi!(x; ..44).unwrap(), inlawi!(-99i44));
+//! ```
+//!
+//! We run into a problem when using fillers in the source concatenation of a
+//! construction macro. In the `cc` macro the source bits are not returned, so
+//! it doesn't matter that they do not have a well defined value. In a
+//! construction macro however, all the bits of the source need to have some
+//! kind of set value.
+//! ```
+//! use awint::prelude::*;
+//!
+//! // error: a construction macro with unspecified initialization cannot have
+//! // a filler in the source concatenation
+//! //let x = extawi!(..8);
+//!
+//! // we introduce the initialization specifier, which can be one of "zero",
+//! // "umax", "imax", "imin", or "uone" corresponding to the standard
+//! // construction functions of `ExtAwi` and `InlAwi`
+//! let x = extawi!(umax: ..8);
+//! assert_eq!(x, ExtAwi::umax(bw(8)));
+//!
+//! // another example of adding determinism
+//! let x = extawi!(-99i44);
 //!
 //! // error: there is a only a source concatenation that has no statically
 //! // or dynamically determinable width
-//! //extawi!(umax: .., x);
+//! //extawi!(umax: ..; x); //FIXME
 //!
+//! // "umax" is all set bits, so we are sign extending this negative value
 //! let r = 128;
 //! assert_eq!(extawi!(umax: .., x; ..r).unwrap(), extawi!(-99i128));
 //! ```
+//!
+//! However, what happens if we
 //!
 //! ### Unbounded fillers
 //!
@@ -426,10 +496,10 @@
 //! assert!(cc!(.., 0x321u12; y).is_none());
 //!
 //! // The third case allows `y.bw()` to be any possible bitwidth. If
-//! // `y.bw() < 12` it will act like the first case, otherwise it acts like the
-//! // second case. Because there are no restrictions on concatenation widths
-//! // and there are no ranges that could index the variables out of bounds,
-//! // these calls are infallible and no `Option` is returned.
+//! // `y.bw() < 12` it will act like the first case, otherwise it acts like
+//! // the second case. Because there are no restrictions on concatenation
+//! // widths and there are no ranges that could index the variables out of
+//! // bounds, these calls are infallible and no `Option` is returned.
 //!
 //! let mut y = extawi!(0u20);
 //! cc!(
@@ -463,8 +533,8 @@
 //! assert_eq!(y, extawi!(0x3fff21u24));
 //!
 //! // Note again that filler widths cannot be negative, and so this will cause
-//! // an error because we are trying to compress the 4 bit and 8 bit components
-//! // into a less than 12 bit space.
+//! // an error because we are trying to compress the 4 bit and 8 bit
+//! // components into a less than 12 bit space.
 //!
 //! let mut y = extawi!(0u8);
 //! assert!(cc!(0x3u4, .., 0x21u8; y).is_none());
@@ -539,11 +609,12 @@
 //!
 //! ### Other Notes
 //!
-//! - If dynamic values are used in ranges, they should not use generator like
-//!   behavior (e.x. using a function that changes its output between calls in
-//!   `x[f()..=f()]`), or else you may get unexpected behavior. The parser and
-//!   code generator treats identical strings like they produce the same value
-//!   every time, and would call `f()` only once.
+//! - If dynamic values are used in ranges or as variables multiple times, they
+//!   should not use generator like behavior (e.x. using a function that changes
+//!   its output between calls in `x[f()..=f()]`), or else you may get
+//!   unexpected behavior. The parser and code generator treats identical
+//!   strings like they produce the same value every time, and would call `f()`
+//!   only once.
 //! - In general, the macros use the `Bits::field` operation to copy different
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
@@ -562,9 +633,9 @@
 //!   way to overflow is to exceed `usize::MAX` in concatenation widths, or the
 //!   individual arbitrary expressions entered into the macro overflow (e.x.
 //!   `..(usize::MAX + 1)`).
-//! - In case you want to see the code generated by a macro, you can use the
-//!   `awint_macro_internals::code_gen` function and call it with the same
-//!   arguments as the respective macro in `awint_macros/src/lib.rs`.
+//! - In case you want to see the code generated by a macro, you can use
+//!   `awint_macro_internals` functions like `awint_macro_inlawi` and call it
+//!   with the macro input as a string
 
 extern crate proc_macro;
 use awint_macro_internals::{
@@ -628,6 +699,10 @@ pub fn extawi(input: TokenStream) -> TokenStream {
         Err(s) => panic!("{}", s),
     }
 }
+
+// I considered `bits!` and `bits_mut!` macros, but they tend to run into weird
+// errors that would confuse people, better to have us decide and use the
+// storage types directly
 
 /*
 #[cfg(feature = "dag")]
