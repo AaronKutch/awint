@@ -111,7 +111,7 @@ use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::ExtAwi;
 
-use crate::{Ast, Bind, CodeGen, ComponentType::*, EitherResult, Lower, Names};
+use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, EitherResult, Lower, Names};
 
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
@@ -120,7 +120,6 @@ pub fn cc_macro_code_gen<
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     mut ast: Ast,
-    specified_init: bool,
     mut code_gen: CodeGen<'_, F0, F1, F2>,
     names: Names,
 ) -> String {
@@ -190,11 +189,16 @@ pub fn cc_macro_code_gen<
     let infallible = lt_checks.is_empty() && common_checks.is_empty();
 
     let construction = if code_gen.return_type.is_some() || need_buffer {
+        let mut s = vec![];
+        if let Some(init) = ast.txt_init {
+            ast.chars_assign_subtree(&mut s, init);
+        }
+        let s = chars_to_string(&s);
         // buffer and reference to buffer
         format!(
             "let mut {}={};let {}=&mut {};\n",
             names.awi,
-            (code_gen.construction_fn)("", ast.common_bw, Some(names.cw)),
+            (code_gen.construction_fn)(&s, ast.common_bw, Some(names.cw)),
             names.awi_ref,
             names.awi,
         )
@@ -202,7 +206,7 @@ pub fn cc_macro_code_gen<
         String::new()
     };
 
-    let fielding = l.lower_fielding(&ast, source_has_filler, specified_init, need_buffer);
+    let fielding = l.lower_fielding(&ast, source_has_filler, need_buffer);
 
     let returning = match (code_gen.return_type.is_some(), infallible) {
         (false, false) => "Some(())".to_owned(),

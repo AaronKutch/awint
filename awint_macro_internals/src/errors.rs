@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt::Write, iter};
 
 use triple_arena::Ptr;
 
-use crate::{Ast, Delimiter, PText, Text};
+use crate::{chars_to_string, Ast, Delimiter, PText, Text};
 
 /// Wrap `s` in ANSI delimiters for terminal colors.
 /// {90..=97} => {grey, red, green, yellow, blue, purple, cyan, white}
@@ -31,6 +31,7 @@ impl CCMacroError {
     /// inline.
     pub fn ast_error(&self, ast: &Ast) -> String {
         // enhance cc level punctuation
+        let colon = &color_text(":", 97);
         let comma = &color_text(", ", 97);
         let semicolon = &color_text("; ", 97);
         let lbracket = &color_text("[", 97);
@@ -40,6 +41,11 @@ impl CCMacroError {
         // efficiency is not going to matter on terminal errors
         let red_text: HashSet<Ptr<PText>> = self.red_text.iter().copied().collect();
 
+        if let Some(txt_init) = ast.txt_init {
+            let mut init = vec![];
+            ast.chars_assign_subtree(&mut init, txt_init);
+            writeln!(s, "{}{}", chars_to_string(&init), colon).unwrap();
+        }
         // if some, color carets are active
         let mut color_lvl = None;
         let mut use_color_line = false;

@@ -366,10 +366,10 @@
 //!
 //! // error: there is a only a source concatenation that has no statically
 //! // or dynamically determinable width
-//! //extawi_umax!(.., x);
+//! //extawi!(umax: .., x);
 //!
 //! let r = 128;
-//! assert_eq!(extawi_umax!(.., x; ..r).unwrap(), extawi!(-99i128));
+//! assert_eq!(extawi!(umax: .., x; ..r).unwrap(), extawi!(-99i128));
 //! ```
 //!
 //! ### Unbounded fillers
@@ -415,14 +415,14 @@
 //! ).unwrap();
 //! assert_eq!(y, extawi!(0x00321u20));
 //!
-//! let mut y = extawi_umax!(32);
+//! let mut y = extawi!(umax: ..32);
 //! cc!(
 //!     .., 0x321u12;
 //!     y;
 //! ).unwrap();
 //! assert_eq!(y, extawi!(0xffff_f321_u32));
 //!
-//! let mut y = extawi_umax!(8);
+//! let mut y = extawi!(umax: ..8);
 //! assert!(cc!(.., 0x321u12; y).is_none());
 //!
 //! // The third case allows `y.bw()` to be any possible bitwidth. If
@@ -458,7 +458,7 @@
 //!
 //! // The macros are even smart enough to do this:
 //!
-//! let mut y = extawi_umax!(24);
+//! let mut y = extawi!(umax: ..24);
 //! cc!(0x3u4, .., 0x21u8; y).unwrap();
 //! assert_eq!(y, extawi!(0x3fff21u24));
 //!
@@ -568,8 +568,7 @@
 
 extern crate proc_macro;
 use awint_macro_internals::{
-    awint_macro_cc, awint_macro_cc2, awint_macro_extawi, awint_macro_extawi2, awint_macro_inlawi,
-    awint_macro_inlawi2, unstable_native_inlawi_ty,
+    awint_macro_cc, awint_macro_extawi, awint_macro_inlawi, unstable_native_inlawi_ty,
 };
 use proc_macro::TokenStream;
 
@@ -609,7 +608,8 @@ pub fn cc(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an `InlAwi`. See the lib documentation of `awint_macros` for more.
+/// construct an `InlAwi`. See the crate documentation of `awint_macros` for
+/// more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
     match awint_macro_inlawi(&input.to_string()) {
@@ -619,7 +619,8 @@ pub fn inlawi(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an `ExtAwi`. See the lib documentation of `awint_macros` for more.
+/// construct an `ExtAwi`. See the crate documentation of `awint_macros` for
+/// more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
     match awint_macro_extawi(&input.to_string()) {
@@ -627,101 +628,6 @@ pub fn extawi(input: TokenStream) -> TokenStream {
         Err(s) => panic!("{}", s),
     }
 }
-
-macro_rules! cc_construction {
-    ($($fn_name:ident, $cc_fn:expr, $doc:expr);*;) => {
-        $(
-            #[doc = "The same as `cc!` but with"]
-            #[doc = $doc]
-            #[doc = "specified initialization."]
-            #[proc_macro]
-            pub fn $fn_name(input: TokenStream) -> TokenStream {
-                match awint_macro_cc2(&input.to_string(), $cc_fn) {
-                    Ok(s) => s.parse().unwrap(),
-                    Err(s) => panic!("{}", s),
-                }
-            }
-        )*
-    };
-}
-
-cc_construction!(
-    cc_zero, "zero", "Zero-value";
-    cc_umax, "umax", "Unsigned-maximum-value";
-    cc_imax, "imax", "Signed-maximum-value";
-    cc_imin, "imin", "Signed-minimum-value";
-    cc_uone, "uone", "Unsigned-one-value";
-);
-
-macro_rules! inlawi_construction {
-    ($($fn_name:ident, $inlawi_fn:expr, $doc:expr);*;) => {
-        $(
-            #[doc = "The same as `inlawi!` but with"]
-            #[doc = $doc]
-            #[doc = "specified initialization."]
-            #[proc_macro]
-            pub fn $fn_name(input: TokenStream) -> TokenStream {
-                if let Ok(bw) = input.to_string().parse::<u128>() {
-                    assert!(
-                        bw != 0,
-                        "Tried to construct an `InlAwi` with an invalid bitwidth of 0"
-                    );
-                    format!("{}::{}()", unstable_native_inlawi_ty(bw as u128), $inlawi_fn)
-                        .parse()
-                        .unwrap()
-                } else {
-                    match awint_macro_inlawi2(&input.to_string(), $inlawi_fn) {
-                        Ok(s) => s.parse().unwrap(),
-                        Err(s) => panic!("{}", s),
-                    }
-                }
-            }
-        )*
-    };
-}
-
-inlawi_construction!(
-    inlawi_zero, "zero", "Zero-value";
-    inlawi_umax, "umax", "Unsigned-maximum-value";
-    inlawi_imax, "imax", "Signed-maximum-value";
-    inlawi_imin, "imin", "Signed-minimum-value";
-    inlawi_uone, "uone", "Unsigned-one-value";
-);
-
-macro_rules! extawi_construction {
-    ($($fn_name:ident, $extawi_fn:expr, $doc:expr);*;) => {
-        $(
-            #[doc = "The same as `extawi!` but with"]
-            #[doc = $doc]
-            #[doc = "specified initialization."]
-            #[proc_macro]
-            pub fn $fn_name(input: TokenStream) -> TokenStream {
-                if let Ok(bw) = input.to_string().parse::<u128>() {
-                    assert!(
-                        bw != 0,
-                        "Tried to construct an `ExtAwi` with an invalid bitwidth of 0"
-                    );
-                    format!("ExtAwi::panicking_{}({})", $extawi_fn, bw)
-                        .parse()
-                        .unwrap()
-                } else {
-                    match awint_macro_extawi2(&input.to_string(), $extawi_fn) {
-                        Ok(s) => s.parse().unwrap(),
-                        Err(s) => panic!("{}", s),
-                    }
-                }
-            }
-        )*
-    };
-}
-
-extawi_construction!(
-    extawi_zero, "zero", "Zero-value";
-    extawi_umax, "umax", "Unsigned-maximum-value";
-    extawi_imax, "imax", "Signed-maximum-value";
-    extawi_imin, "imin", "Signed-minimum-value";
-    extawi_uone, "uone", "Unsigned-one-value";
-);
 
 /*
 #[cfg(feature = "dag")]

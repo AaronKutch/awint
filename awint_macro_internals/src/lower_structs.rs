@@ -430,11 +430,10 @@ impl<'a> Lower<'a> {
         &mut self,
         ast: &Ast,
         source_has_filler: bool,
-        specified_init: bool,
         need_buffer: bool,
     ) -> String {
         let mut s = String::new();
-        if source_has_filler && !specified_init {
+        if source_has_filler && ast.txt_init.is_none() {
             // see explanation at top of `lowering.rs`
             for i in 1..ast.cc.len() {
                 // there are some situations where this could be deduplicated

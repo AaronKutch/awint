@@ -26,7 +26,7 @@ use crate::Bits;
 /// done directly because it is non-portable and relies on unstable internal
 /// details. Instead, you should use
 ///
-/// `let _: inlawi_ty!(100) = inlawi_zero!(100);` or `let _ =
+/// `let _: inlawi_ty!(100) = inlawi!(zero: 100);` or `let _ =
 /// <inlawi_ty!(100)>::zero();` using macros from the `awint_macros` crate.
 ///
 /// See the crate level documentation of `awint_macros` for more macros and

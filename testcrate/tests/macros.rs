@@ -3,23 +3,23 @@ use awint::prelude::*;
 macro_rules! construction {
     ($($bw:expr)*) => {
         $(
-            let inlawi = inlawi_zero!($bw);
+            let inlawi = inlawi!(zero: ..$bw);
             let extawi = ExtAwi::zero(bw($bw));
             assert!(inlawi.const_as_ref().is_zero());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi_umax!($bw);
+            let inlawi = inlawi!(umax: ..$bw);
             let extawi = ExtAwi::umax(bw($bw));
             assert!(inlawi.const_as_ref().is_umax());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi_imax!($bw);
+            let inlawi = inlawi!(imax: ..$bw);
             let extawi = ExtAwi::imax(bw($bw));
             assert!(inlawi.const_as_ref().is_imax());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi_imin!($bw);
+            let inlawi = inlawi!(imin: ..$bw);
             let extawi = ExtAwi::imin(bw($bw));
             assert!(inlawi.const_as_ref().is_imin());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi_uone!($bw);
+            let inlawi = inlawi!(uone: ..$bw);
             let extawi = ExtAwi::uone(bw($bw));
             assert!(inlawi.const_as_ref().is_uone());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
@@ -62,7 +62,7 @@ fn macro_successes() {
     let e = inlawi!(0xeeeu12);
     let result = extawi!(0xabbcffdeeefu44);
     assert_eq!(
-        extawi_umax!(0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap(),
+        extawi!(umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap(),
         result
     );
     assert_eq!(sink0, result);
@@ -75,7 +75,7 @@ fn macro_successes() {
     cc!(0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap();
     assert_eq!(sink0, result);
     assert_eq!(sink1, result);
-    assert_eq!(extawi_umax!(..;..9), extawi_umax!(9));
+    assert_eq!(extawi!(umax: ..;..9), extawi!(umax: ..9));
     let a = inlawi!(0x123u12);
     let b = inlawi!(0x4u4);
     assert_eq!(extawi!(a, b), extawi!(0x1234u16));
@@ -93,7 +93,7 @@ fn macro_successes() {
     assert_eq!(extawi!(0100[r]).unwrap(), extawi!(1));
     let a = inlawi!(0xau4);
     let mut y = inlawi!(0u16);
-    cc_imax!(.., a, ..4; y).unwrap();
+    cc!(imax: .., a, ..4; y).unwrap();
     assert_eq!(y, inlawi!(0x7fafu16));
     // make sure sink -> buffer refreshes between sinks
     let mut a = inlawi!(0xaaaau16);
@@ -122,4 +122,9 @@ fn macro_successes() {
     let r0 = 3;
     let r1 = 7;
     assert_eq!(cc!(0x123u12[r0..r1]), Some(()));
+    let e = 2;
+    assert_eq!(
+        extawi!(uone:  ..=, ; ..=18, ..e, ..=, ).unwrap(),
+        extawi!(0x1_u21)
+    );
 }

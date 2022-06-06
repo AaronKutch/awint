@@ -18,6 +18,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
     let mut ast = Ast {
         txt: Arena::new(),
         txt_root: Ptr::invalid(),
+        txt_init: None,
         cc: vec![],
         common_bw: None,
         deterministic_width: false,

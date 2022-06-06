@@ -20,7 +20,7 @@ fn main() -> ! {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     x0.rand_assign_using(&mut rng).unwrap();
     cc!(x1; x0).unwrap();
-    let _ = inlawi_umax!(.., x0; ..100).unwrap();
+    let _ = inlawi!(umax: .., x0; ..100).unwrap();
 
     // copied some macro tests here to make sure that `ExtAwi` is not brought in
     // through future changes
@@ -53,7 +53,7 @@ fn main() -> ! {
     let e = inlawi!(0xeeeu12);
     let result = inlawi!(0xabbcffdeeefu44);
     assert_eq!(
-        inlawi_umax!(0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1; ..44).unwrap(),
+        inlawi!(umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1; ..44).unwrap(),
         result
     );
     assert_eq!(sink0, result);
@@ -66,7 +66,7 @@ fn main() -> ! {
     cc!(0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1; ..44).unwrap();
     assert_eq!(sink0, result);
     assert_eq!(sink1, result);
-    assert_eq!(inlawi_umax!(..;..9), inlawi_umax!(9));
+    assert_eq!(inlawi!(umax: ..;..9), inlawi!(umax: ..9));
     let a = inlawi!(0x123u12);
     let b = inlawi!(0x4u4);
     assert_eq!(inlawi!(a, b; ..16).unwrap(), inlawi!(0x1234u16));

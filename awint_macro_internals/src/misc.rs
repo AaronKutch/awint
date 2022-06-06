@@ -83,11 +83,13 @@ pub fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
 }
 
 pub fn cc_construction_fn(
-    _init: &str,
+    mut init: &str,
     static_width: Option<NonZeroUsize>,
     dynamic_width: Option<&str>,
 ) -> String {
-    let init = "zero";
+    if init.is_empty() {
+        init = "zero";
+    }
     if let Some(w) = static_width {
         inlawi_s(init, w)
     } else if let Some(s) = dynamic_width {
@@ -98,11 +100,13 @@ pub fn cc_construction_fn(
 }
 
 pub fn inlawi_construction_fn(
-    _init: &str,
+    mut init: &str,
     static_width: Option<NonZeroUsize>,
     _dynamic_width: Option<&str>,
 ) -> String {
-    let init = "zero";
+    if init.is_empty() {
+        init = "zero";
+    }
     if let Some(w) = static_width {
         inlawi_s(init, w)
     } else {
@@ -111,11 +115,13 @@ pub fn inlawi_construction_fn(
 }
 
 pub fn extawi_construction_fn(
-    _init: &str,
+    mut init: &str,
     _static_width: Option<NonZeroUsize>,
     dynamic_width: Option<&str>,
 ) -> String {
-    let init = "zero";
+    if init.is_empty() {
+        init = "zero";
+    }
     if let Some(s) = dynamic_width {
         extawi_s(init, s)
     } else {

@@ -111,9 +111,9 @@ fn funnel() {
 #[test]
 fn awint_internals_test() {
     let mut rng = &mut Xoshiro128StarStar::seed_from_u64(0);
-    let mut lhs = inlawi_zero!(128);
-    let mut rhs = inlawi_zero!(128);
-    let mut add = inlawi_zero!(128);
+    let mut lhs = inlawi!(0u128);
+    let mut rhs = inlawi!(0u128);
+    let mut add = inlawi!(0u128);
     lhs.rand_assign_using(&mut rng).unwrap();
     rhs.rand_assign_using(&mut rng).unwrap();
     add.rand_assign_using(&mut rng).unwrap();
@@ -123,9 +123,9 @@ fn awint_internals_test() {
     let mut tmp1 = extawi!(0u128);
     tmp0.u128_assign(lo);
     tmp1.u128_assign(hi);
-    let lhs = inlawi_zero!(..,lhs;..256).unwrap();
-    let rhs = inlawi_zero!(..,rhs;..256).unwrap();
-    let mut add = inlawi_zero!(..,add;..256).unwrap();
+    let lhs = inlawi!(zero: ..,lhs;..256).unwrap();
+    let rhs = inlawi!(zero: ..,rhs;..256).unwrap();
+    let mut add = inlawi!(zero: ..,add;..256).unwrap();
     add.mul_add_assign(&lhs, &rhs).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
 }

@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 
-use awint::{bw, cc, cc_zero, Bits, ExtAwi, FP};
+use awint::{bw, cc, Bits, ExtAwi, FP};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
@@ -74,8 +74,8 @@ fn fp_identities_inner(
     // truncation
     cc!(x0bw0; x3bw0)?;
     x3bw0.neg_assign(x0bw0.is_negative());
-    cc_zero!(.., x3bw0, ..align0; pad0).unwrap();
-    cc_zero!(pad0; .., x2bw1, ..align1)?;
+    cc!(zero: .., x3bw0, ..align0; pad0).unwrap();
+    cc!(zero: pad0; .., x2bw1, ..align1)?;
     x2bw1.neg_assign(x0bw1.signed() && x0bw0.is_negative());
     cc!(x0bw0; x3bw0)?;
     FP::truncate_assign(x3bw1, x3bw0);
@@ -96,7 +96,7 @@ fn fp_identities_inner(
     eq(x3bw0, x0bw0);
     x3bw0.neg_assign(x0bw0.is_negative());
     // find if low and high bits get cut off
-    cc_zero!(.., x3bw0, ..align0; pad0).unwrap();
+    cc!(zero: .., x3bw0, ..align0; pad0).unwrap();
     if !pad0.is_zero() {
         let mut target_bounds = FP::rel_sb(x2bw1);
         target_bounds.0 += MAX_FP;

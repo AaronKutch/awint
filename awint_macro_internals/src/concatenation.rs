@@ -173,7 +173,6 @@ pub fn stage3(ast: &mut Ast) -> Result<(), CCMacroError> {
 
 pub fn stage4(
     ast: &mut Ast,
-    specified_init: bool,
     return_type: &Option<&str>,
     static_width: bool,
 ) -> Result<(), CCMacroError> {
@@ -213,7 +212,7 @@ pub fn stage4(
                 original_common_i = concat_i;
             }
         }
-        if (!specified_init) && (concat_i == 0) && return_type.is_some() {
+        if ast.txt_init.is_none() && (concat_i == 0) && return_type.is_some() {
             for comp in &concat.comps {
                 if matches!(comp.c_type, Filler) {
                     return Err(CCMacroError {

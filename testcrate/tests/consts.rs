@@ -2,10 +2,7 @@
 #![feature(const_option)]
 #![feature(const_trait_impl)]
 
-use awint::prelude::{
-    bw, cc, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero,
-    Bits, InlAwi,
-};
+use awint::prelude::{bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
 
 const fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
@@ -108,11 +105,11 @@ macro_rules! test_nonequal_bw {
 #[allow(clippy::reversed_empty_ranges)]
 const fn bits_functions() {
     // these macros also test the corresponding `InlAwi` functions
-    let mut awi0 = inlawi_zero!(128);
-    let mut awi1 = inlawi_umax!(192);
-    let mut awi2 = inlawi_imax!(192);
-    let mut awi3 = inlawi_imin!(192);
-    let mut awi4 = inlawi_uone!(192);
+    let mut awi0 = inlawi!(zero: ..128);
+    let mut awi1 = inlawi!(umax: ..192);
+    let mut awi2 = inlawi!(imax: ..192);
+    let mut awi3 = inlawi!(imin: ..192);
+    let mut awi4 = inlawi!(uone: ..192);
     let x0 = awi0.const_as_mut();
     let x1 = awi1.const_as_mut();
     let x2 = awi2.const_as_mut();

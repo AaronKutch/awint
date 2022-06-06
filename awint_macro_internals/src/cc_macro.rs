@@ -19,8 +19,6 @@ pub fn cc_macro<
 >(
     // TODO bring out documentation once finished
     input: &str,
-    // FIXME remove
-    specified_init: bool,
     code_gen: CodeGen<'a, F0, F1, F2>,
     names: Names,
 ) -> Result<String, String> {
@@ -146,12 +144,7 @@ pub fn cc_macro<
 
     // stage 4: cc pass accounting for macro type
     let static_width = code_gen.static_width;
-    match stage4(
-        &mut ast,
-        specified_init,
-        &code_gen.return_type,
-        static_width,
-    ) {
+    match stage4(&mut ast, &code_gen.return_type, static_width) {
         Ok(()) => (),
         Err(e) => return Err(e.ast_error(&ast)),
     };
@@ -169,5 +162,5 @@ pub fn cc_macro<
     .unwrap();
     */
 
-    Ok(cc_macro_code_gen(ast, specified_init, code_gen, names))
+    Ok(cc_macro_code_gen(ast, code_gen, names))
 }

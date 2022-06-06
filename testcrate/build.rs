@@ -185,7 +185,7 @@ impl<'a> Concat<'a> {
         self.fill.field_to(self.ls_shift, &tmp, tmp.bw()).unwrap();
     }
 
-    /// The first element is the bitwidth used by the macro, second it the
+    /// The first element is the bitwidth used by the macro, second is the
     /// actual bitwidth of the referenced component
     pub fn gen_comp_bitwidth(&mut self, comp_i: usize) -> (usize, usize) {
         // we have to use up the total `width`. This also makes sure there are enough
@@ -695,8 +695,8 @@ fn main() {
         } else {
             ("extawi".to_owned(), "eq_ext".to_owned())
         };
-        let macro_suffix = if specified_initialization {
-            format!("_{}", construct_fn)
+        let init = if specified_initialization {
+            format!("{}:", construct_fn)
         } else {
             String::new()
         };
@@ -709,8 +709,8 @@ fn main() {
 
         write!(
             s,
-            "let _source = inlawi!({:?});\n{}{}(&{}{}!({}),\n{}\n);\n{}\n",
-            source, prior_sets, eq_fn, macro_root, macro_suffix, concats, eq_rhs, assertions
+            "let _source = inlawi!({:?});\n{}{}(&{}!({}{}),\n{}\n);\n{}\n",
+            source, prior_sets, eq_fn, macro_root, init, concats, eq_rhs, assertions
         )
         .unwrap();
     }

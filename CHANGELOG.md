@@ -7,15 +7,19 @@
 - Fixed error E0716 in many cases for the macros.
 
 ### Changes
-- Note: in order for some expressions to remain const, you need to add
-  `#![feature(const_trait_impl)]` to your crate root, or else you will run into strange
-  `erroneous constant used` and `deref_mut` errors.
 - Overhaul of the macros. Uses proper token tree parsing that fixes many long standing issues.
   Nested macros and complex inner expressions with brackets, commas, and semicolons not belonging to
   the outside macro are now possible. Trailing commas and semicolons are allowed.
+- Note: in order for some expressions to remain const, you need to add
+  `#![feature(const_trait_impl)]` to your crate root, or else you will run into strange
+  `erroneous constant used` and `deref_mut` errors.
 - Note: certain reference patterns of a form like `fn(awi_ref: &mut Bits) {cc!(1u8; awi_ref)}` are
   broken by the workaround for E0716. This can be fixed by making the reference mutable
   `fn(mut awi_ref: &mut Bits) {...}`.
+- Note: the old specified initialization macros such as `extawi_[init]!(...)` can be replaced by
+  `extawi!([init]: ...)`. The old initialization macros also had a feature where a single literal
+  with no suffix could be interpreted as a bitwidth (e.x. `inlawi_zero!(64)`), but this
+  functionality has been removed and instead fillers should be used (e.x. `inlawi!(zero: ..64)`).
 - Implemented `Copy` for `FP<B>` if `B: Copy`
 
 ## [0.4.0] - 2022-04-07

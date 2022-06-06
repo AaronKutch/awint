@@ -119,7 +119,7 @@ impl Component {
 /// Looks for the existence of a top level "[]" delimited group and uses the
 /// last one as a bit range.
 pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
-    // first, assign `val_txt` and `range_txt`
+    // first, assign `mid_txt` and `range_txt`
     for concat_i in 0..ast.cc.len() {
         for comp_i in 0..ast.cc[concat_i].comps.len() {
             let comp_txt = ast.cc[concat_i].comps[comp_i].txt;
@@ -148,23 +148,44 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
             ast.cc[concat_i].comps[comp_i].mid_txt = Some(mid_p);
         }
     }
-    // FIXME
-    //"component with a bitrange that indexes nothing".to_owned(),
-    //
-    // the spacing check is to exclude semicolons in "::" separators
-    /*if check_for_init
-        && (last == 0)
-        && initialization.is_none()
-        && (p.as_char() == ':')
-        && matches!(p.spacing(), Spacing::Alone)
-    {
-        initialization = Some(mem::take(&mut string));
-    } else {
-        string.push(p.as_char());
+
+    // checking for specified initialization after ranges have been handled
+    let comps_len = ast.cc[0].comps.len();
+    let first_txt = ast.cc[0].comps[comps_len - 1].mid_txt.unwrap();
+    let len = ast.txt[first_txt].len();
+    let mut txt_i = 0;
+    while txt_i < len {
+        let mut is_single_colon = false;
+        if let Text::Chars(ref s) = ast.txt[first_txt][txt_i] {
+            if (s.len() == 1) && (s[0] == ':') {
+                is_single_colon = true;
+                if (txt_i + 1) < len {
+                    if let Text::Chars(ref s2) = ast.txt[first_txt][txt_i + 1] {
+                        if (s2.len() == 1) && (s2[0] == ':') {
+                            // skip "::" separators
+                            txt_i += 1;
+                            is_single_colon = false;
+                        }
+                    }
+                }
+            }
+        }
+        if is_single_colon {
+            // surgery
+            if (txt_i + 1) == len {
+                return Err(CCMacroError::new(
+                    "specified initialization is followed by empty component".to_owned(),
+                    ast.cc[0].comps[comps_len - 1].mid_txt.unwrap(),
+                ))
+            }
+            let init_p = ast.txt.insert(ast.txt[first_txt][..txt_i].to_vec());
+            ast.txt[first_txt] = ast.txt[first_txt][(txt_i + 1)..].to_vec();
+            ast.txt_init = Some(init_p);
+            break
+        }
+        txt_i += 1;
     }
-    // specialize this case to prevent confusion
-    Err("specified initialization is followed by empty component".to_owned())
-    */
+
     // do these checks after the range brackets have all been set
     for concat_i in 0..ast.cc.len() {
         for comp_i in 0..ast.cc[concat_i].comps.len() {

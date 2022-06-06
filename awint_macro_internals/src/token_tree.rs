@@ -90,6 +90,7 @@ pub enum Text {
 pub struct Ast {
     pub txt: Arena<PText, Vec<Text>>,
     pub txt_root: Ptr<PText>,
+    pub txt_init: Option<Ptr<PText>>,
     pub cc: Vec<Concatenation>,
     pub common_bw: Option<NonZeroUsize>,
     pub deterministic_width: bool,
