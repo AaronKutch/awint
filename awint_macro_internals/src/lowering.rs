@@ -245,6 +245,9 @@ pub fn cc_macro_code_gen<
         // to use.
         let mut s = String::new();
         for concat in &ast.cc {
+            if (concat.comps.len() == 1) && concat.comps[0].is_unbounded_filler() {
+                continue
+            }
             if !s.is_empty() {
                 s += ",";
             }

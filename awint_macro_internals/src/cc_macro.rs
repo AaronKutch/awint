@@ -159,14 +159,15 @@ pub fn cc_macro<
     // stage 5: concatenation simplification
     stage5(&mut ast);
 
-    /*dbg!(&ast);
+    /*
     #[cfg(feature = "debug")]
     triple_arena_render::render_to_svg_file(
         &ast.txt,
         false,
         std::path::PathBuf::from("./example.svg"),
     )
-    .unwrap();*/
+    .unwrap();
+    */
 
     Ok(cc_macro_code_gen(ast, specified_init, code_gen, names))
 }

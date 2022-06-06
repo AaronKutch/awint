@@ -347,7 +347,7 @@ impl<'a> Concat<'a> {
                 };
                 writeln!(
                     self.prior_sets,
-                    "let {}awi{} = inlawi!({:?});let bits{} = awi{}.const_as_{}();",
+                    "let {}awi{} = inlawi!({:?});let mut bits{} = awi{}.const_as_{}();",
                     mutability, vnum, awi, vnum, vnum, ref_fn
                 )
                 .unwrap();
