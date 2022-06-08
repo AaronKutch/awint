@@ -35,6 +35,9 @@
 //
 // `inlawi!(x[..1])` and other guaranteed width>=1 && (shl=0 || shl=bw-1) parts
 // should be infallible
+//
+// since we are now relying on const traits, maybe we should allow `&Bits` as
+// indexes themselves
 
 use std::{fmt::Write, num::NonZeroUsize};
 

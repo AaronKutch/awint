@@ -197,6 +197,9 @@ const fn bits_functions() {
     assert!(x4.short_udivide_assign(x0, 1).is_none());
     assert!(x4.short_udivide_inplace_assign(0).is_none());
 
+    assert!(x0.get(128).is_none());
+    assert!(x0.set(128, false).is_none());
+
     // TODO test all const serialization
 
     test_nonequal_bw!(

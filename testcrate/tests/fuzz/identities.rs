@@ -245,6 +245,15 @@ fn identities_inner(
         assert!(x0.count_ones() <= (bw - x0.lz() - x0.tz()));
     }
 
+    // bit get and set
+    x2.copy_assign(x0)?;
+    x3.copy_assign(x0)?;
+    let b = x2.get(s0)?;
+    x2.set(s0, !b)?;
+    x3.xor_assign(x2)?;
+    assert_eq!(x3.count_ones(), 1);
+    assert_eq!(x3.tz(), s0);
+
     // reversal
     x2.copy_assign(x0)?;
     let lz = x2.lz();

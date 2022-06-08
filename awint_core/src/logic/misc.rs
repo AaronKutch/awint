@@ -23,6 +23,36 @@ impl Bits {
         }
     }
 
+    /// Gets the bit at `inx` bits from the least significant bit, returning
+    /// `None` if `inx >= self.bw()`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn get(&self, inx: usize) -> Option<bool> {
+        if inx >= self.bw() {
+            None
+        } else {
+            unsafe { Some((self.get_unchecked(digits_u(inx)) & (1 << extra_u(inx))) != 0) }
+        }
+    }
+
+    /// Sets the bit at `inx` bits from the least significant bit, returning
+    /// `None` if `inx >= self.bw()`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn set(&mut self, inx: usize, bit: bool) -> Option<()> {
+        if inx >= self.bw() {
+            None
+        } else {
+            unsafe {
+                let x = self.get_unchecked(digits_u(inx));
+                *self.get_unchecked_mut(digits_u(inx)) = if bit {
+                    x | (1 << extra_u(inx))
+                } else {
+                    x & (!(1 << extra_u(inx)))
+                };
+            }
+            Some(())
+        }
+    }
+
     /// Returns the number of leading zero bits
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn lz(&self) -> usize {
