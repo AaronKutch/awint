@@ -31,81 +31,10 @@
 //! sink would need to be aware of all dynamic fillers in the source.
 
 // TODO
-// note: when refactoring keep first line of error (the "concatenation 0:
-// component ...") mostly the same so error lens works, add on more lines
-// describing how the input is being parsed
-//
 // Known issues:
-//
-// Wrap fallible return values e.x.
-// FIXME it is implemented as generic `Bits::must_use`
-// so the compiler produces warnings
-//
-// Previously, we could not introduce the binding step into the macros, because
-// we could not make two usecases work at the same time:
-//
-// ```
-// // `a` is bound outside of the macro
-// let mut a = inlawi!(0xau4);
-// { // inside macro
-//     let tmp_bind = a.const_as_mut();
-//     // ...
-// }
-// // use a for something later (if we did not call `const_as_mut`,
-// // it would fail because `a` would be moved)
-// ```
-//
-// ```
-// // the macro is called directly with the constructor
-// {
-//     // error[E0716]: temporary value dropped while borrowed
-//     let tmp_bind = inlawi!(0xau4).const_as_mut();
-//     // ...
-// }
-// ```
-//
-// I discovered that for whatever reason, some builtin traits such as `AsRef`
-// and `AsMut` avoid E0716 (be sure to explicitly include the reference type to
-// reduce reference nesting if the bound part is external stuff that already has
-// a layer of reference):
-// ```
-// let __awint_bind_0: &Bits = &inlawi!(0xau4);
-// let __awint_bind_1: &mut Bits = &mut inlawi!(0xau4);
-// ```
-//
-// Make default initializations be postfixed with ':' to reduce macro
-// duplication. The only thing this will prevent is certain complicated
-// expressions.
-//
-// Some expressions such as `((rbb.0 - lo) as usize)` get broken because of
-// space removal
 //
 // `inlawi!(x[..1])` and other guaranteed width>=1 && (shl=0 || shl=bw-1) parts
 // should be infallible
-//
-// There needs to be an initial typeless binding e.x. `let __awint_bind_0 =
-// f(x)` so that complicated expressions are not called twice for their
-// bitwidths and getting references from them. This also prevents lifetimes
-// being too short from intermediates.
-//
-// In some cases (e.x. `inlawi_imin(5..7)`), certain width values and shift
-// increments are created when they are not needed. However, the known cases
-// are very easily optimized away (I _think_ they are already optimized away
-// at the MIR level before progressing). The code is complicated enough as it
-// is, perhaps this should be fixed in a future refactor.
-//
-// The static width determination system isn't smart enough to know that
-// "x[pos..=pos]" or "x[pos]" has a bitwidth of 1. The docs say that same
-// string inputs should not be generator like, and the code gen already
-// removes redundant value, so we should handle this in `Usbr` somewhere.
-//
-// The range value parser should be able to handle hexadecimal and octal
-// statically (e.x. `x[0x10..0x15]` should have known bitwidth).
-//
-// TODO: document new hexadecimal, octal, binary, and decimal parsing,
-// some things optimization can do (but nesting still works),
-// that an extra index like x[i][..], x[i][12..42] can coexist,
-// that nested invocations and most Rust syntax should be able to work,
 
 use std::{fmt::Write, num::NonZeroUsize};
 

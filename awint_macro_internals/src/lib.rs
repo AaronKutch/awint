@@ -4,14 +4,7 @@
 //! people who have new storage types.
 
 #![allow(clippy::needless_range_loop)]
-// TODO need a refactor
-#![allow(clippy::too_many_arguments)]
 #![allow(clippy::comparison_chain)]
-
-// TODO after refactor make everything private and find unused functions
-
-// TODO eliminate buffer if source component variables do not have same text as
-// any sink variable
 
 mod bimap;
 mod cc_macro;

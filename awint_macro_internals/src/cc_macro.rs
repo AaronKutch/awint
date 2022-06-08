@@ -17,7 +17,6 @@ pub fn cc_macro<
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
-    // TODO bring out documentation once finished
     input: &str,
     code_gen: CodeGen<'a, F0, F1, F2>,
     names: Names,
