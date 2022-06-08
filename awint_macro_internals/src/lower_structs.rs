@@ -263,11 +263,84 @@ impl<'a> Lower<'a> {
         }
     }
 
-    pub fn field_comp(&mut self, comp: &Component, msb_align: bool, from_buf: bool) -> String {
-        let mut s = String::new();
-        if let Some(width) = comp.width {
-            if msb_align {
-                // subtract the shift amount first
+    #[allow(clippy::too_many_arguments)]
+    pub fn write_field(
+        &mut self,
+        s: &mut String,
+        lhs: &str,
+        to: Option<&str>,
+        rhs: &str,
+        from: Option<&str>,
+        width: &str,
+        width1: bool,
+    ) {
+        if width1 {
+            // #[inline] is on Bits::field_bit, Bits::get, and Bits::set so this is ok
+            match (to, from) {
+                (Some(to), Some(from)) => write!(
+                    s,
+                    "{}({},{},{},{})",
+                    self.fn_names.field_bit, lhs, to, rhs, from
+                )
+                .unwrap(),
+                (Some(to), None) => {
+                    write!(s, "{}({},{},0,{})", self.fn_names.field_bit, lhs, to, rhs).unwrap()
+                }
+                (None, Some(from)) => {
+                    write!(s, "{}({},0,{},{})", self.fn_names.field_bit, lhs, rhs, from).unwrap()
+                }
+                (None, None) => {
+                    write!(s, "{}({},0,{},0)", self.fn_names.field_bit, lhs, rhs).unwrap()
+                }
+            }
+            write!(s, "{};", self.fn_names.unwrap).unwrap();
+        } else {
+            match (to, from) {
+                (Some(to), Some(from)) => {
+                    write!(s, "{}({},{},{},{}", self.fn_names.field, lhs, to, rhs, from).unwrap()
+                }
+                (Some(to), None) => {
+                    write!(s, "{}({},{},{}", self.fn_names.field_to, lhs, to, rhs).unwrap()
+                }
+                (None, Some(from)) => {
+                    write!(s, "{}({},{},{}", self.fn_names.field_from, lhs, rhs, from).unwrap()
+                }
+                (None, None) => write!(s, "{}({},{}", self.fn_names.field_width, lhs, rhs).unwrap(),
+            }
+            write!(s, ",{}){};", width, self.fn_names.unwrap).unwrap();
+        }
+    }
+
+    pub fn field_comp(
+        &mut self,
+        s: &mut String,
+        comp: &Component,
+        msb_align: bool,
+        from_buf: bool,
+        first_in_align: bool,
+        last_in_align: bool,
+    ) {
+        let width = comp.width.unwrap();
+        let mut width1 = false;
+        if let Some(w) = comp.range.static_width() {
+            if w == 1 {
+                width1 = true;
+            }
+        }
+        let width_s = format!("{}_{}", self.names.width, width.get_raw());
+        if msb_align {
+            // subtract the shift amount first
+            if first_in_align {
+                write!(
+                    s,
+                    "let mut {}={}-{}_{};",
+                    self.names.shl,
+                    self.names.cw,
+                    self.names.width,
+                    width.get_raw()
+                )
+                .unwrap();
+            } else {
                 write!(
                     s,
                     "{}-={}_{};",
@@ -277,83 +350,79 @@ impl<'a> Lower<'a> {
                 )
                 .unwrap();
             }
-            self.widths.a_get_mut(width).1 = true;
-            if let Some(bind) = comp.bind {
-                if from_buf {
-                    *self.binds.a_get_mut(bind) = (true, true);
-                    if let Some(start) = comp.start {
-                        *self.values.a_get_mut(start) = true;
-                        write!(
-                            s,
-                            "{}({}_{},{}_{},{},{},{}_{}){};",
-                            self.fn_names.field,
-                            self.names.bind,
-                            bind.get_raw(),
-                            self.names.value,
-                            start.get_raw(),
-                            self.names.awi_ref,
-                            self.names.shl,
-                            self.names.width,
-                            width.get_raw(),
-                            self.fn_names.unwrap,
-                        )
-                        .unwrap();
-                    } else {
-                        // start is zero, use field_to
-                        write!(
-                            s,
-                            "{}({}_{},{},{},{}_{}){};",
-                            self.fn_names.field_from,
-                            self.names.bind,
-                            bind.get_raw(),
-                            self.names.awi_ref,
-                            self.names.shl,
-                            self.names.width,
-                            width.get_raw(),
-                            self.fn_names.unwrap,
-                        )
-                        .unwrap();
-                    }
-                } else {
-                    self.binds.a_get_mut(bind).0 = true;
-                    if let Some(start) = comp.start {
-                        *self.values.a_get_mut(start) = true;
-                        write!(
-                            s,
-                            "{}({},{},{}_{},{}_{},{}_{}){};",
-                            self.fn_names.field,
-                            self.names.awi_ref,
-                            self.names.shl,
-                            self.names.bind,
-                            bind.get_raw(),
-                            self.names.value,
-                            start.get_raw(),
-                            self.names.width,
-                            width.get_raw(),
-                            self.fn_names.unwrap,
-                        )
-                        .unwrap();
-                    } else {
-                        // start is zero, use field_to
-                        write!(
-                            s,
-                            "{}({},{},{}_{},{}_{}){};",
-                            self.fn_names.field_to,
-                            self.names.awi_ref,
-                            self.names.shl,
-                            self.names.bind,
-                            bind.get_raw(),
-                            self.names.width,
-                            width.get_raw(),
-                            self.fn_names.unwrap,
-                        )
-                        .unwrap();
-                    }
+        }
+        self.widths.a_get_mut(width).1 = true;
+        if let Some(bind) = comp.bind {
+            let bind_s = format!("{}_{}", self.names.bind, bind.get_raw());
+            if from_buf {
+                *self.binds.a_get_mut(bind) = (true, true);
+                if let Some(start) = comp.start {
+                    *self.values.a_get_mut(start) = true;
                 }
-            } // else is a filler, keep shift changes however
-              // this runs for both fillers and nonfillers
-            if !msb_align {
-                // add to the shift amount afterwards
+                let start_s = if let Some(start) = comp.start {
+                    format!("{}_{}", self.names.value, start.get_raw())
+                } else {
+                    String::new()
+                };
+                self.write_field(
+                    s,
+                    &bind_s,
+                    if start_s.is_empty() {
+                        None
+                    } else {
+                        Some(&start_s)
+                    },
+                    self.names.awi_ref,
+                    if (!msb_align) && first_in_align {
+                        None
+                    } else {
+                        Some(self.names.shl)
+                    },
+                    &width_s,
+                    width1,
+                );
+            } else {
+                self.binds.a_get_mut(bind).0 = true;
+                if let Some(start) = comp.start {
+                    *self.values.a_get_mut(start) = true;
+                }
+                let start_s = if let Some(start) = comp.start {
+                    format!("{}_{}", self.names.value, start.get_raw())
+                } else {
+                    String::new()
+                };
+                self.write_field(
+                    s,
+                    self.names.awi_ref,
+                    if (!msb_align) && first_in_align {
+                        None
+                    } else {
+                        Some(self.names.shl)
+                    },
+                    &bind_s,
+                    if start_s.is_empty() {
+                        None
+                    } else {
+                        Some(&start_s)
+                    },
+                    &width_s,
+                    width1,
+                );
+            }
+        } // else is a filler, keep shift changes however
+          // this runs for both fillers and nonfillers
+        if !(msb_align || last_in_align) {
+            // add to the shift amount afterwards
+            if first_in_align {
+                write!(
+                    s,
+                    "let mut {}={}_{};",
+                    self.names.shl,
+                    self.names.width,
+                    width.get_raw()
+                )
+                .unwrap();
+            } else {
                 write!(
                     s,
                     "{}+={}_{};",
@@ -363,9 +432,8 @@ impl<'a> Lower<'a> {
                 )
                 .unwrap();
             }
-            writeln!(s).unwrap();
-        } // else is unbounded filler, switch to other alignment
-        s
+        }
+        writeln!(s).unwrap();
     }
 
     pub fn field_concat(&mut self, concat: &Concatenation, from_buf: bool) -> String {
@@ -397,30 +465,35 @@ impl<'a> Lower<'a> {
                 )
             }
         }
-        let mut s = format!("let mut {}=0usize;\n", self.names.shl);
+        let mut s = String::new();
         let mut lsb_i = 0;
         while lsb_i < concat.comps.len() {
-            let field = self.field_comp(&concat.comps[lsb_i], false, from_buf);
-            if field.is_empty() {
-                // if we encounter an unbounded filler, reset and try again from the most
-                // significant side
+            if concat.comps[lsb_i].width.is_none() {
                 break
-            } else {
-                write!(s, "{}", field).unwrap();
             }
+            self.field_comp(
+                &mut s,
+                &concat.comps[lsb_i],
+                false,
+                from_buf,
+                lsb_i == 0,
+                (lsb_i + 1) == concat.comps.len(),
+            );
             lsb_i += 1;
         }
         let mut msb_i = concat.comps.len() - 1;
-        if msb_i > lsb_i {
-            writeln!(s, "let mut {}={};", self.names.shl, self.names.cw).unwrap();
-        }
         while msb_i > lsb_i {
-            write!(
-                s,
-                "{}",
-                self.field_comp(&concat.comps[msb_i], true, from_buf)
-            )
-            .unwrap();
+            if concat.comps[msb_i].width.is_none() {
+                break
+            }
+            self.field_comp(
+                &mut s,
+                &concat.comps[msb_i],
+                true,
+                from_buf,
+                msb_i == (concat.comps.len() - 1),
+                (msb_i - 1) == lsb_i,
+            );
             msb_i -= 1;
         }
         s

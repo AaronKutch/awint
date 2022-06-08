@@ -104,6 +104,12 @@ fn multi_bw_inner(
     x1bw1.field(to, x0bw0, 0, width).unwrap();
     x2bw1.field_to(to, x0bw0, width).unwrap();
     eq(x1bw1, x2bw1);
+    x1bw1.field(0, x0bw0, 0, width).unwrap();
+    x2bw1.field_width(x0bw0, width).unwrap();
+    eq(x1bw1, x2bw1);
+    x1bw1.field(to, x0bw0, from, 1).unwrap();
+    x2bw1.field_bit(to, x0bw0, from).unwrap();
+    eq(x1bw1, x2bw1);
 
     // arbitrary width multiplication
     x1bw0.copy_assign(x0bw0)?;

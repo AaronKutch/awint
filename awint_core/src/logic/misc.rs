@@ -1,3 +1,5 @@
+use core::ptr;
+
 use awint_internals::*;
 use const_fn::const_fn;
 
@@ -25,6 +27,7 @@ impl Bits {
 
     /// Gets the bit at `inx` bits from the least significant bit, returning
     /// `None` if `inx >= self.bw()`
+    #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn get(&self, inx: usize) -> Option<bool> {
         if inx >= self.bw() {
@@ -36,6 +39,7 @@ impl Bits {
 
     /// Sets the bit at `inx` bits from the least significant bit, returning
     /// `None` if `inx >= self.bw()`
+    #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn set(&mut self, inx: usize, bit: bool) -> Option<()> {
         if inx >= self.bw() {
@@ -381,6 +385,38 @@ impl Bits {
             }
         }
         Some(())
+    }
+
+    /// A specialization of [Bits::field] with `to` and `from` set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_width(&mut self, rhs: &Self, width: usize) -> Option<()> {
+        if (width > self.bw()) || (width > rhs.bw()) {
+            return None
+        }
+        let bw_digits = digits_u(width);
+        let bw_bits = extra_u(width);
+        unsafe {
+            ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), bw_digits);
+            // last digit
+            if bw_bits != 0 {
+                let to_mask = MAX << bw_bits;
+                let from_mask = !to_mask;
+                *self.get_unchecked_mut(bw_digits) = (self.get_unchecked(bw_digits) & to_mask)
+                    | (rhs.get_unchecked(bw_digits) & from_mask);
+            }
+        }
+        Some(())
+    }
+
+    /// A specialization of [Bits::field] with `width` set to 1.
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_bit(&mut self, to: usize, rhs: &Bits, from: usize) -> Option<()> {
+        if let Some(b) = rhs.get(from) {
+            self.set(to, b)
+        } else {
+            None
+        }
     }
 
     /// Copy entry from lookup table. Copies a `self.bw()` sized bitfield from

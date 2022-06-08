@@ -62,6 +62,8 @@ pub struct FnNames<'a> {
     pub field: &'a str,
     pub field_to: &'a str,
     pub field_from: &'a str,
+    pub field_width: &'a str,
+    pub field_bit: &'a str,
     pub unwrap: &'a str,
     pub bw_call: &'a [char],
 }
@@ -81,6 +83,8 @@ pub const AWINT_FN_NAMES: FnNames = FnNames {
     field: "Bits::field",
     field_to: "Bits::field_to",
     field_from: "Bits::field_from",
+    field_width: "Bits::field_width",
+    field_bit: "Bits::field_bit",
     unwrap: UNWRAP,
     bw_call: &['.', 'b', 'w', '(', ')'],
 };

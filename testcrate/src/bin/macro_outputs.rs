@@ -16,6 +16,8 @@ const TEST_FN_NAMES: FnNames = FnNames {
     field: "field",
     field_to: "field_to",
     field_from: "field_from",
+    field_width: "field_width",
+    field_bit: "field_bit",
     unwrap: ".unwrap()",
     bw_call: &['.', 'b', 'w', '(', ')'],
 };
@@ -184,6 +186,10 @@ fn main() {
     );
     cc(&mut s, "..8, 0x1111u16, ..8; a, b; c, d;");
     dynamic_cc(&mut s, "uone:  ..=, ; ..=18, ..e, ..=, ");
+    dynamic_cc(
+        &mut s,
+        "umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1",
+    );
 
     let mut f = OpenOptions::new()
         .truncate(true)
