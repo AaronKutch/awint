@@ -69,7 +69,7 @@ impl Concatenation {
                     // unbounded filler handling
                     if comp.range.end.is_none() {
                         self.deterministic_width = false;
-                        if (concat_i != 0) && (concat_len == 0) {
+                        if (concat_i != 0) && (concat_len == 1) {
                             return Err(CCMacroError::new(
                                 "sink concatenations that consist of only an unbounded filler are \
                                  no-ops"
@@ -108,7 +108,7 @@ impl Concatenation {
             if let Some(w) = NonZeroUsize::new(w) {
                 self.static_width = Some(w);
             } else {
-                // in the case of `cc!` this isn't a logical error, but it is a useless no-op
+                // not sure if this is reachable
                 return Err(CCMacroError {
                     red_text: vec![concat_txt],
                     error: "determined statically that this concatenation has zero width"

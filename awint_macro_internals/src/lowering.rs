@@ -150,7 +150,7 @@ pub fn cc_macro_code_gen<
 
     // inner code consisting of the zero check, construction of returning or
     // buffers, fielding, and return values
-    let mut inner0 = format!("{}\n{}\n{}", construction, fielding, returning);
+    let mut inner0 = format!("{}{}{}", construction, fielding, returning);
     if !infallible {
         if code_gen.return_type.is_some() {
             // checking if common width is zero
