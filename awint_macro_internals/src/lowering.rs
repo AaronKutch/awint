@@ -38,6 +38,8 @@
 //
 // since we are now relying on const traits, maybe we should allow `&Bits` as
 // indexes themselves
+//
+// (0x123u12[...]; ..64) can never succeed, there should probably be an error
 
 use std::{fmt::Write, num::NonZeroUsize};
 

@@ -164,7 +164,11 @@ impl Usbr {
                 return Err("determined statically that this has a reversed range".to_owned())
             } else if r0 == r1 {
                 // this is required for literals that would take up a concatenation
-                return Err("determined statically that this has a zero bitwidth range, which is a useless no-op".to_owned())
+                return Err(
+                    "determined statically that this has a zero bitwidth range, which is a \
+                     useless no-op"
+                        .to_owned(),
+                )
             }
         }
         // `static_width` does the equal string check
@@ -172,7 +176,11 @@ impl Usbr {
             if w < 0 {
                 return Err("determined statically that this has a reversed range".to_owned())
             } else if w == 0 {
-                return Err("determined statically that this has a zero bitwidth range, which is a useless no-op".to_owned())
+                return Err(
+                    "determined statically that this has a zero bitwidth range, which is a \
+                     useless no-op"
+                        .to_owned(),
+                )
             }
         }
         Ok(())

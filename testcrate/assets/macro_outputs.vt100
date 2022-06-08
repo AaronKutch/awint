@@ -125,6 +125,14 @@ x[97m[[0m(-1)..[97m][0m[97m; [0m[91mconcatenation 0
 
 
 
+0x123u12[7 + j..i + 5]
+Err:
+bounds of ranges need to be a single Rust literal, identifier, or parenthesis delimited group
+0x123u12[97m[[0m7+j..i+5[97m][0m[97m; [0m[91mconcatenation 0
+         ^^^       [0m
+[93mhelp:[0m wrap the bound in parenthesis like `(7+j)`
+
+
 x[1..0]
 Err:
 determined statically that this has a reversed range
@@ -189,6 +197,14 @@ a filler with a bounded start should also have a bounded end
 
 
 
+var[]
+Err:
+range is empty
+var[97m[[0m[97m][0m[97m; [0m[91mconcatenation 0
+   ^^ [0m
+
+
+
 x[0..1..2]
 Err:
 encountered two top level ".." strings in same range
@@ -211,6 +227,27 @@ encountered top level deprecated "..." string in range
 x[97m[[0m0...1[97m][0m[97m; [0m[91mconcatenation 0
  ^^^^^^^ [0m
 
+
+
+a,b,c;d,e,0..0,f;g,h,i
+Err:
+determined statically that this has a zero bitwidth range, which is a useless no-op
+a[97m, [0mb[97m, [0mc[97m; [0m
+d[97m, [0me[97m, [0m0..0[97m, [0mf[97m; [0m[91mconcatenation 1
+      ^^^^^ component 1: determined statically that this has a zero bitwidth range, which is a useless no-op  [0m
+g[97m, [0mh[97m, [0mi[97m; [0m
+
+
+
+a, b, c; 0x1u4, 0x2u4, 0, 0x3u4; a[r..(r + 3)], b, c;
+Err:
+sink concatenations cannot have literals
+a[97m, [0mb[97m, [0mc[97m; [0m
+0x1u4[97m, [0m0x2u4[97m, [0m0[97m, [0m0x3u4[97m; [0m[91mconcatenation 1
+                 ^^^^^ component 0: sink concatenations cannot have literals [0m
+a[97m[[0mr..(r+3)[97m][0m[97m, [0mb[97m, [0mc[97m; [0m
+[97m; [0m
+[93mhelp:[0m if the space taken up by the component is necessary, use a filler equivalent to its width instead
 
 
 x; 0u8
@@ -248,12 +285,512 @@ x[97m[[0m(r-7)..(r+1)[97m][0m[97m; [0m[91mconcatenation 1
 
 
 
-x[r..(r+7)]; x[(r-7)..(r+1)]
+.., x
 Err:
-determined statically that concatenations 0 and 1 have unequal bitwidths 7 and 8
-x[97m[[0mr..(r+7)[97m][0m[97m; [0m
-x[97m[[0m(r-7)..(r+1)[97m][0m[97m; [0m[91mconcatenation 1
-^^^^^^^^^^^^^^^^[0m
+a construction macro with unspecified initialization cannot have a filler in the source concatenation
+..[97m, [0mx[97m; [0m[91mconcatenation 0
+^^^ component 1: a construction macro with unspecified initialization cannot have a filler in the source concatenation  [0m
+[93mhelp:[0m prefix the first concatenation with the desired initialization function followed by a colon, such as "zero: " or "umax: "
 
+
+.., x
+Err:
+a construction macro with unspecified initialization cannot have a filler in the source concatenation
+..[97m, [0mx[97m; [0m[91mconcatenation 0
+^^^ component 1: a construction macro with unspecified initialization cannot have a filler in the source concatenation  [0m
+[93mhelp:[0m prefix the first concatenation with the desired initialization function followed by a colon, such as "zero: " or "umax: "
+
+
+x
+Err:
+`StaticAwi` construction macros need at least one concatenation to have a width that can be determined statically by the macro
+x[97m; [0m
+[93mhelp:[0m use constant ranges on all the components of any concatenation, or append a filler-only concatenation such as "; ..64 ;" that gives the macro needed information
+
+
+zero: .., x
+Err:
+there is a only a source concatenation that has no statically or dynamically determinable width
+zero[97m:[0m
+..[97m, [0mx[97m; [0m
+[93mhelp:[0m unbounded fillers have no effects if there is only one concatenation
+
+
+zero: x, .., y; .., w
+Err:
+there is an unbounded filler in the middle of a concatenation, and no concatenation has a statically or dynamically determinable width
+zero[97m:[0m
+x[97m, [0m..[97m, [0my[97m; [0m[91mconcatenation 0
+   ^^^ component 1: there is an unbounded filler in the middle of a concatenation, and no concatenation has a statically or dynamically determinable width  [0m
+..[97m, [0mw[97m; [0m
+[93mhelp:[0m append a filler-only concatenation such as "; ..64 ;" or "; ..var ;" that gives the macro needed information
+
+
+zero: .., x; y, ..
+Err:
+concatenations 0 and 1 have unbounded fillers aligned opposite each other, and no concatenation has a statically or dynamically determinable width
+zero[97m:[0m
+..[97m, [0mx[97m; [0m
+y[97m, [0m..[97m; [0m
+[93mhelp:[0m append a filler-only concatenation such as "; ..64 ;" or "; ..var ;" that gives the macro needed information
+
+
+0x123u12
+Ok:
+mu(lit(0x123_u12))
+
+
+-0xabcd1234i36
+Ok:
+mu(lit(0xf_5432edcc_u36))
+
+
+0x123u12[4..8]
+Ok:
+mu(lit(0x2_u4))
+
+
+0xau4, 0x4321u32[8..12], 0x7u4
+Ok:
+mu(lit(0xa37_u12))
+
+
+0x123u12[i]
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_val_0:usize=i;
+let __awint_val_1:usize=1;
+let __awint_val_2:usize=i+1;
+let __awint_val_3=bw(__awint_bind_0);
+if le([(__awint_val_2,__awint_val_3)]).is_some() {
+let __awint_width_1=__awint_val_1;
+let __awint_cw=1usize;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(1),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+var[i][j][k]
+Ok:
+mu({
+let __awint_bind_0:&B=&var[i][j];
+let __awint_val_0:usize=k;
+let __awint_val_1:usize=1;
+let __awint_val_2:usize=k+1;
+let __awint_val_3=bw(__awint_bind_0);
+if le([(__awint_val_2,__awint_val_3)]).is_some() {
+let __awint_width_1=__awint_val_1;
+let __awint_cw=1usize;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(1),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+ var [ 3 ..= 7 ] 
+Ok:
+mu({
+let __awint_bind_0:&B=&var;
+let __awint_val_0:usize=3;
+let __awint_val_1:usize=5;
+let __awint_val_2:usize=8;
+let __awint_val_3=bw(__awint_bind_0);
+if le([(__awint_val_2,__awint_val_3)]).is_some() {
+let __awint_width_1=__awint_val_1;
+let __awint_cw=5usize;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(5),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+0x123u12[(7 + j)..(i + 5)]
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_val_0:usize=i+5;
+let __awint_val_1=bw(__awint_bind_0);
+let __awint_val_2:usize=j+7;
+if le([(__awint_val_0,__awint_val_1),(__awint_val_2,__awint_val_0)]).is_some() {
+let __awint_width_1=__awint_val_0-__awint_val_2;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=__awint_cw_0;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_2,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+0x123u12[..(i - j + 5)]
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_val_0:usize=i-j+5;
+let __awint_val_1=bw(__awint_bind_0);
+if le([(__awint_val_0,__awint_val_1)]).is_some() {
+let __awint_width_1=__awint_val_0;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=__awint_cw_0;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+0x123u12[(i - 1)..(i + 5)]
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_val_0:usize=i-1;
+let __awint_val_1:usize=6;
+let __awint_val_2:usize=i+5;
+let __awint_val_3=bw(__awint_bind_0);
+if le([(__awint_val_2,__awint_val_3)]).is_some() {
+let __awint_width_1=__awint_val_1;
+let __awint_cw=6usize;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(6),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+0x123u12[(+ 5 + i - j)..(var - 7)]; ..64
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_val_0:usize=var-7;
+let __awint_val_1=bw(__awint_bind_0);
+let __awint_val_2:usize=i-j+5;
+if le([(__awint_val_0,__awint_val_1),(__awint_val_2,__awint_val_0)]).is_some() {
+let __awint_width_1=__awint_val_0-__awint_val_2;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=64usize;
+if c_fn(__awint_cw,[],[__awint_cw_0]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(64),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_2,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+
+Some(__awint_awi)
+}else{None}
+}else{None}
+}else{None}})
+
+
+0x123u12[(+ 5 + i - j)..(var - 7)]; ..8
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_val_0:usize=var-7;
+let __awint_val_1=bw(__awint_bind_0);
+let __awint_val_2:usize=i-j+5;
+if le([(__awint_val_0,__awint_val_1),(__awint_val_2,__awint_val_0)]).is_some() {
+let __awint_width_1=__awint_val_0-__awint_val_2;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=8usize;
+if c_fn(__awint_cw,[],[__awint_cw_0]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(8),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_2,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+
+Some(__awint_awi)
+}else{None}
+}else{None}
+}else{None}})
+
+
+x[..(r as usize)]
+Ok:
+mu({
+let __awint_bind_0:&B=&x;
+let __awint_val_0:usize=r as usize;
+let __awint_val_1=bw(__awint_bind_0);
+if le([(__awint_val_0,__awint_val_1)]).is_some() {
+let __awint_width_1=__awint_val_0;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=__awint_cw_0;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+x[..(r)]
+Ok:
+mu({
+let __awint_bind_0:&B=&x;
+let __awint_val_0:usize=r;
+let __awint_val_1=bw(__awint_bind_0);
+if le([(__awint_val_0,__awint_val_1)]).is_some() {
+let __awint_width_1=__awint_val_0;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=__awint_cw_0;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+x[..((r - lo) as usize)]
+Ok:
+mu({
+let __awint_bind_0:&B=&x;
+let __awint_val_0:usize=(r-lo)as usize;
+let __awint_val_1=bw(__awint_bind_0);
+if le([(__awint_val_0,__awint_val_1)]).is_some() {
+let __awint_width_1=__awint_val_0;
+let __awint_cw_0=__awint_width_1;
+let __awint_cw=__awint_cw_0;
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+umax: 0xau4, b, 0xcu4, .., 0x98765_u20[x..(sink0.bw() - 9)], e, 0xfu4; sink0; sink1,;
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0xf_u4);
+let __awint_bind_1:&B=&e;
+let __awint_bind_2:&B=&lit(0x98765_u20);
+let __awint_bind_3:&B=&lit(0xc_u4);
+let __awint_bind_4:&B=&b;
+let __awint_bind_5:&B=&lit(0xa_u4);
+let __awint_bind_6:&mut B=&mut sink0;
+let __awint_bind_7:&mut B=&mut sink1;
+let __awint_val_0:usize=4;
+let __awint_val_1=bw(__awint_bind_1);
+let __awint_val_2:usize=bw(__awint_bind_6)-9;
+let __awint_val_3=bw(__awint_bind_2);
+let __awint_val_4:usize=x;
+let __awint_val_5=bw(__awint_bind_4);
+let __awint_val_6=bw(__awint_bind_6);
+let __awint_val_7=bw(__awint_bind_7);
+if le([(__awint_val_2,__awint_val_3),(__awint_val_4,__awint_val_2)]).is_some() {
+let __awint_width_0=__awint_val_0;
+let __awint_width_1=__awint_val_1;
+let __awint_width_3=__awint_val_2-__awint_val_4;
+let __awint_width_4=__awint_val_5;
+let __awint_width_5=__awint_val_6;
+let __awint_width_6=__awint_val_7;
+let __awint_cw_0=__awint_width_0+__awint_width_1+__awint_width_3+__awint_width_0+__awint_width_4+__awint_width_0;
+let __awint_cw_1=__awint_width_5;
+let __awint_cw_2=__awint_width_6;
+let __awint_cw=__awint_cw_1;
+if c_fn(__awint_cw,[__awint_cw_0],[__awint_cw_2]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(umax,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_0).unwrap();__awint_shl+=__awint_width_0;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+field(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_val_4,__awint_width_3).unwrap();__awint_shl+=__awint_width_3;
+let mut __awint_shl=__awint_cw;
+__awint_shl-=__awint_width_0;field_to(__awint_awi_ref,__awint_shl,__awint_bind_5,__awint_width_0).unwrap();
+__awint_shl-=__awint_width_4;field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_4).unwrap();
+__awint_shl-=__awint_width_0;field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_0).unwrap();
+
+copy(__awint_bind_6,__awint_awi_ref).unwrap();
+
+copy(__awint_bind_7,__awint_awi_ref).unwrap();
+
+Some(__awint_awi)
+}else{None}
+}else{None}
+}else{None}})
+
+
+zero: .., x; .., y
+Ok:
+mu({
+let __awint_bind_0:&B=&x;
+let __awint_bind_1:&mut B=&mut y;
+let __awint_val_0=bw(__awint_bind_0);
+let __awint_val_1=bw(__awint_bind_1);
+let __awint_width_0=__awint_val_0;
+let __awint_width_1=__awint_val_1;
+let __awint_cw_0=__awint_width_0;
+let __awint_cw_1=__awint_width_1;
+let __awint_cw=max([__awint_cw_0,__awint_cw_1]);
+if c_fn(__awint_cw,[__awint_cw_0,__awint_cw_1],[]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_0).unwrap();__awint_shl+=__awint_width_0;
+
+let mut __awint_shl=0usize;
+field_from(__awint_bind_1,__awint_awi_ref,__awint_shl,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
+
+
+x; .., a[..(x.bw())], b[..y]; .., c[..z], d[..w]; ..128
+Ok:
+mu({
+let __awint_bind_0:&B=&x;
+let __awint_bind_1:&mut B=&mut b;
+let __awint_bind_2:&mut B=&mut a;
+let __awint_bind_3:&mut B=&mut d;
+let __awint_bind_4:&mut B=&mut c;
+let __awint_val_0=bw(__awint_bind_0);
+let __awint_val_1:usize=y;
+let __awint_val_2=bw(__awint_bind_1);
+let __awint_val_3:usize=bw(__awint_bind_0);
+let __awint_val_4=bw(__awint_bind_2);
+let __awint_val_5:usize=w;
+let __awint_val_6=bw(__awint_bind_3);
+let __awint_val_7:usize=z;
+let __awint_val_8=bw(__awint_bind_4);
+if le([(__awint_val_1,__awint_val_2),(__awint_val_3,__awint_val_4),(__awint_val_5,__awint_val_6),(__awint_val_7,__awint_val_8)]).is_some() {
+let __awint_width_0=__awint_val_0;
+let __awint_width_2=__awint_val_1;
+let __awint_width_4=__awint_val_3;
+let __awint_width_6=__awint_val_5;
+let __awint_width_8=__awint_val_7;
+let __awint_cw_0=__awint_width_0;
+let __awint_cw_1=__awint_width_2+__awint_width_4;
+let __awint_cw_2=__awint_width_6+__awint_width_8;
+let __awint_cw=128usize;
+if c_fn(__awint_cw,[__awint_cw_1,__awint_cw_2],[__awint_cw_0]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(128),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+copy(__awint_awi_ref,__awint_bind_0).unwrap();
+
+let mut __awint_shl=0usize;
+field_from(__awint_bind_1,__awint_awi_ref,__awint_shl,__awint_width_2).unwrap();__awint_shl+=__awint_width_2;
+field_from(__awint_bind_2,__awint_awi_ref,__awint_shl,__awint_width_4).unwrap();__awint_shl+=__awint_width_4;
+
+let mut __awint_shl=0usize;
+field_from(__awint_bind_3,__awint_awi_ref,__awint_shl,__awint_width_6).unwrap();__awint_shl+=__awint_width_6;
+field_from(__awint_bind_4,__awint_awi_ref,__awint_shl,__awint_width_8).unwrap();__awint_shl+=__awint_width_8;
+
+
+Some(__awint_awi)
+}else{None}
+}else{None}
+}else{None}})
+
+
+..8, 0x1111u16, ..8; a, b; c, d;
+Ok:
+mu({
+let __awint_bind_0:&B=&lit(0x1111_u16);
+let __awint_bind_1:&mut B=&mut b;
+let __awint_bind_2:&mut B=&mut a;
+let __awint_bind_3:&mut B=&mut d;
+let __awint_bind_4:&mut B=&mut c;
+let __awint_val_0:usize=8;
+let __awint_val_1:usize=16;
+let __awint_val_2=bw(__awint_bind_1);
+let __awint_val_3=bw(__awint_bind_2);
+let __awint_val_4=bw(__awint_bind_3);
+let __awint_val_5=bw(__awint_bind_4);
+let __awint_width_0=__awint_val_0;
+let __awint_width_1=__awint_val_1;
+let __awint_width_2=__awint_val_2;
+let __awint_width_3=__awint_val_3;
+let __awint_width_4=__awint_val_4;
+let __awint_width_5=__awint_val_5;
+let __awint_cw_1=__awint_width_2+__awint_width_3;
+let __awint_cw_2=__awint_width_4+__awint_width_5;
+let __awint_cw=32usize;
+if c_fn(__awint_cw,[],[__awint_cw_1,__awint_cw_2]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(zero,Some(32),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_2).unwrap();__awint_shl+=__awint_width_2;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_3).unwrap();__awint_shl+=__awint_width_3;
+
+let mut __awint_shl=0usize;
+__awint_shl+=__awint_width_0;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+__awint_shl+=__awint_width_0;
+
+let mut __awint_shl=0usize;
+field_from(__awint_bind_1,__awint_awi_ref,__awint_shl,__awint_width_2).unwrap();__awint_shl+=__awint_width_2;
+field_from(__awint_bind_2,__awint_awi_ref,__awint_shl,__awint_width_3).unwrap();__awint_shl+=__awint_width_3;
+
+let mut __awint_shl=0usize;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_4).unwrap();__awint_shl+=__awint_width_4;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_5).unwrap();__awint_shl+=__awint_width_5;
+
+let mut __awint_shl=0usize;
+__awint_shl+=__awint_width_0;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1).unwrap();__awint_shl+=__awint_width_1;
+__awint_shl+=__awint_width_0;
+
+let mut __awint_shl=0usize;
+field_from(__awint_bind_3,__awint_awi_ref,__awint_shl,__awint_width_4).unwrap();__awint_shl+=__awint_width_4;
+field_from(__awint_bind_4,__awint_awi_ref,__awint_shl,__awint_width_5).unwrap();__awint_shl+=__awint_width_5;
+
+Some(())
+}else{Some(())}
+}else{None}})
+
+
+uone:  ..=, ; ..=18, ..e, ..=, 
+Ok:
+mu({
+let __awint_val_0:usize=e;
+let __awint_val_1:usize=19;
+let __awint_width_0=__awint_val_0;
+let __awint_width_1=__awint_val_1;
+let __awint_cw_1=__awint_width_0+__awint_width_1;
+let __awint_cw=max([__awint_cw_1]);
+if c_fn(__awint_cw,[__awint_cw_1],[]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(uone,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=0usize;
+
+let mut __awint_shl=0usize;
+let mut __awint_shl=__awint_cw;
+__awint_shl-=__awint_width_1;
+__awint_shl-=__awint_width_0;
+
+Some(__awint_awi)
+}else{None}
+}else{None}})
 
 
