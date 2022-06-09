@@ -190,6 +190,7 @@ fn main() {
         &mut s,
         "umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1",
     );
+    cc(&mut s, "imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y");
 
     let mut f = OpenOptions::new()
         .truncate(true)

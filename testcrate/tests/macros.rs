@@ -135,4 +135,9 @@ fn macro_successes() {
         extawi!(uone:  ..=, ; ..=18, ..e, ..=, ).unwrap(),
         extawi!(0x1_u21)
     );
+    let r = 3;
+    let x = inlawi!(0x8_u5);
+    let mut y = inlawi!(0u15);
+    cc!(imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y).unwrap();
+    assert_eq!(y, inlawi!(0x247fu15))
 }

@@ -284,7 +284,7 @@ impl<'a> Lower<'a> {
                 )
                 .unwrap(),
                 (Some(to), None) => {
-                    write!(s, "{}({},{},0,{})", self.fn_names.field_bit, lhs, to, rhs).unwrap()
+                    write!(s, "{}({},{},{},0)", self.fn_names.field_bit, lhs, to, rhs).unwrap()
                 }
                 (None, Some(from)) => {
                     write!(s, "{}({},0,{},{})", self.fn_names.field_bit, lhs, rhs, from).unwrap()

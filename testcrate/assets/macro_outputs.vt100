@@ -812,3 +812,40 @@ Some(__awint_awi)
 }else{None}})
 
 
+imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y
+Ok:
+mu({
+let __awint_bind_0:&B=&x;
+let __awint_bind_1:&B=&lit(0x0_u1);
+let __awint_bind_2:&mut B=&mut y;
+let __awint_val_0:usize=3;
+let __awint_val_1:usize=r+1;
+let __awint_val_2=bw(__awint_bind_0);
+let __awint_val_3:usize=1;
+let __awint_val_4:usize=2;
+let __awint_val_5=bw(__awint_bind_2);
+let __awint_width_0=__awint_val_0;
+let __awint_width_1=__awint_val_1;
+let __awint_width_2=__awint_val_2;
+let __awint_width_3=__awint_val_3;
+let __awint_width_4=__awint_val_4;
+let __awint_width_5=__awint_val_5;
+let __awint_cw_0=__awint_width_0+__awint_width_1+__awint_width_2+__awint_width_3+__awint_width_4;
+let __awint_cw_1=__awint_width_5;
+let __awint_cw=__awint_cw_0;
+if c_fn(__awint_cw,[],[__awint_cw_1]).is_some() {
+if __awint_cw != 0 {
+let mut __awint_awi=awi(imax,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let mut __awint_shl=__awint_width_0;
+__awint_shl+=__awint_width_1;
+field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_2).unwrap();__awint_shl+=__awint_width_2;
+field_bit(__awint_awi_ref,__awint_shl,__awint_bind_1,0).unwrap();__awint_shl+=__awint_width_3;
+
+
+copy(__awint_bind_2,__awint_awi_ref).unwrap();
+
+Some(())
+}else{Some(())}
+}else{None}})
+
+
