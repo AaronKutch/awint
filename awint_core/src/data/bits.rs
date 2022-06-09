@@ -49,9 +49,22 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 ///
 /// # Portability
 ///
-/// The [core::hash::Hash] implementation is not portable across platforms (this
+/// This crate strives to maintain deterministic outputs across architectures
+/// with different `usize::BITS` and different endiannesses. The
+/// [Bits::u8_slice_assign] function, the [Bits::to_u8_slice] functions, the
+/// serialization impls enabled by `serde_support`, the strings produced by the
+/// `const` serialization functions, and functions like `bits_to_string_radix`
+/// in the `awint_ext` crate are all portable and should be used when sending
+/// representations of `Bits` between architectures.
+///
+/// The `rand_assign_using` function enabled by `rand_support` uses a
+/// deterministic byte oriented implementation to avoid portability issues as
+/// long as the rng itself is portable.
+///
+/// The [core::hash::Hash] implementation is _not_ deterministic across
+/// platforms and may not even be deterministic across compiler versions. This
 /// is because of technical problems, and the standard library docs say it is
-/// not intended to be portable anyway).
+/// not intended to be portable anyway.
 ///
 /// There are many functions that depend on `usize` and `NonZeroUsize`. In cases
 /// where the `usize` describes the bitwidth, a bit shift, or a bit position,
@@ -63,10 +76,10 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// views into a contiguous range of bits inside `Bits`, such as
 /// `Bits::as_slice`, `Bits::first`, and `Bits::get_digit` (which are all hidden
 /// from the documentation, please refer to the source code of `bits.rs` if
-/// needed). Most end users should not uses these, since they have
-/// a strong dependence on the size of `usize`. These functions are actual views
-/// into the inner building blocks of this crate that other functions are built
-/// around in such a way that they are portable (e.g. the addition functions may
+/// needed). Most end users should not use these, since they have a strong
+/// dependence on the size of `usize`. These functions are actual views into the
+/// inner building blocks of this crate that other functions are built around in
+/// such a way that they are portable (e.g. the addition functions may
 /// internally operate on differing numbers of `usize` digits depending on the
 /// size of `usize`, but the end result looks the same to users on different
 /// architectures). The only reason these functions are exposed, is that someone
@@ -77,16 +90,7 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// the zeroeth bit or a given bit position like [Bits::short_cin_mul],
 /// [Bits::short_udivide_assign], or [Bits::usize_or_assign], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
-/// `0..=u16::MAX`.
-///
-/// The `Bits::from_u8_slice` function and related functions, the serialization
-/// impls enabled by `serde_support`, the strings produced by the `const`
-/// serialization functions, and the serialization free functions in the
-/// `awint_ext` crate are all portable and should be used when sending
-/// representations of `Bits` between architectures.
-///
-/// The `rand_assign_using` function enabled by `rand_support` use a
-/// deterministic byte oriented implementation to avoid portability issues.
+/// `0..=u16::MAX`, or special care is taken.
 #[repr(transparent)]
 pub struct Bits {
     /// # Raw Invariants
@@ -294,6 +298,7 @@ impl<'a> Bits {
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
+    #[doc(hidden)]
     #[inline]
     pub const fn len(&self) -> usize {
         // Safety: The length on the raw slice is the number of `usize` digits plus the
@@ -359,7 +364,9 @@ impl<'a> Bits {
         unsafe { self.get_unchecked_mut(self.len() - 1) }
     }
 
-    /// Clears the unused bits.
+    /// Clears the unused bits. This is only needed if you are using certain
+    /// hidden functions to write to the digits directly.
+    #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn clear_unused_bits(&mut self) {
@@ -482,8 +489,10 @@ impl<'a> Bits {
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
     }
 
-    /// Assigns the bits of `buf` to `self`. Any bits beyond `self.bw()` are
-    /// ignored. This function is portable across target architecture pointer
+    /// Assigns the bits of `buf` to `self`. If `(buf.len() * 8) > self.bw()`
+    /// then the corresponding bits in `buf` beyond `self.bw()` are ignored. If
+    /// `(buf.len() * 8) < self.bw()` then the rest of the bits in `self` are
+    /// zeroed. This function is portable across target architecture pointer
     /// sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn u8_slice_assign(&'a mut self, buf: &[u8]) {
@@ -520,19 +529,21 @@ impl<'a> Bits {
         self.clear_unused_bits();
     }
 
-    /// Assigns the bits of `self` to `buf`. Any corresponding bits beyond
-    /// `self.bw()` are zeroed. This function is portable across target
-    /// architecture pointer sizes and endianness.
+    /// Assigns the bits of `self` to `buf`. If `(buf.len() * 8) > self.bw()`
+    /// then the corresponding bits in `buf` beyond `self.bw()` are zeroed. If
+    /// `(buf.len() * 8) < self.bw()` then the bits of `self` beyond the buffer
+    /// do nothing. This function is portable across target architecture
+    /// pointer sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_u8_slice(&'a self, buf: &mut [u8]) {
+        let self_byte_width = self.len() * BYTE_RATIO;
+        let min_width = if self_byte_width < buf.len() {
+            self_byte_width
+        } else {
+            buf.len()
+        };
         #[cfg(target_endian = "little")]
         {
-            let self_byte_width = self.len() * BYTE_RATIO;
-            let min_width = if self_byte_width < buf.len() {
-                self_byte_width
-            } else {
-                buf.len()
-            };
             unsafe {
                 // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
                 // for writes at least up to `min_width`, they are aligned, and are
@@ -542,9 +553,6 @@ impl<'a> Bits {
                     buf.as_mut_ptr(),
                     min_width,
                 );
-                // zero remaining bytes.
-                // Safety: `min_width` cannot be more than `buf.len()`
-                ptr::write_bytes(buf.as_mut_ptr().add(min_width), 0, buf.len() - min_width);
             }
         }
         #[cfg(target_endian = "big")]
@@ -559,6 +567,11 @@ impl<'a> Bits {
                     s += 8;
                 });
             });
+        }
+        unsafe {
+            // zero remaining bytes.
+            // Safety: `min_width` cannot be more than `buf.len()`
+            ptr::write_bytes(buf.as_mut_ptr().add(min_width), 0, buf.len() - min_width);
         }
     }
 

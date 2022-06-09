@@ -4,6 +4,7 @@
 #![cfg(miri)]
 #![allow(bad_style)]
 #![allow(unused_imports)]
+#![allow(unused_mut)]
 
 use std::any::Any;
 

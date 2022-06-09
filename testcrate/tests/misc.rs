@@ -27,7 +27,7 @@ fn lut_and_field() {
                 inx.usize_assign(i);
                 out.lut(lut, inx).unwrap();
                 tmp0.zero_resize_assign(out);
-                tmp1.field(0, lut, i * out.bw(), out.bw()).unwrap();
+                tmp1.field_from(lut, i * out.bw(), out.bw()).unwrap();
                 assert_eq!(tmp0, tmp1);
             }
         }
@@ -111,9 +111,9 @@ fn funnel() {
 #[test]
 fn awint_internals_test() {
     let mut rng = &mut Xoshiro128StarStar::seed_from_u64(0);
-    let mut lhs = inlawi_zero!(128);
-    let mut rhs = inlawi_zero!(128);
-    let mut add = inlawi_zero!(128);
+    let mut lhs = inlawi!(0u128);
+    let mut rhs = inlawi!(0u128);
+    let mut add = inlawi!(0u128);
     lhs.rand_assign_using(&mut rng).unwrap();
     rhs.rand_assign_using(&mut rng).unwrap();
     add.rand_assign_using(&mut rng).unwrap();
@@ -123,9 +123,23 @@ fn awint_internals_test() {
     let mut tmp1 = extawi!(0u128);
     tmp0.u128_assign(lo);
     tmp1.u128_assign(hi);
-    let lhs = inlawi_zero!(..,lhs;..256).unwrap();
-    let rhs = inlawi_zero!(..,rhs;..256).unwrap();
-    let mut add = inlawi_zero!(..,add;..256).unwrap();
+    let lhs = inlawi!(zero: ..,lhs;..256).unwrap();
+    let rhs = inlawi!(zero: ..,rhs;..256).unwrap();
+    let mut add = inlawi!(zero: ..,add;..256).unwrap();
     add.mul_add_assign(&lhs, &rhs).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
+}
+
+#[test]
+fn from_primitive() {
+    assert_eq!(InlAwi::from_u8(u8::MAX), inlawi!(umax: ..8));
+    assert_eq!(InlAwi::from_u16(u16::MAX), inlawi!(umax: ..16));
+    assert_eq!(InlAwi::from_u32(u32::MAX), inlawi!(umax: ..32));
+    assert_eq!(InlAwi::from_u64(u64::MAX), inlawi!(umax: ..64));
+    assert_eq!(InlAwi::from_u128(u128::MAX), inlawi!(umax: ..128));
+    assert_eq!(InlAwi::from_i8(i8::MAX), inlawi!(imax: ..8));
+    assert_eq!(InlAwi::from_i16(i16::MAX), inlawi!(imax: ..16));
+    assert_eq!(InlAwi::from_i32(i32::MAX), inlawi!(imax: ..32));
+    assert_eq!(InlAwi::from_i64(i64::MAX), inlawi!(imax: ..64));
+    assert_eq!(InlAwi::from_i128(i128::MAX), inlawi!(imax: ..128));
 }

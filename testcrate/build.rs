@@ -6,9 +6,11 @@
 
 use std::{
     cmp::{max, min},
-    env, fs,
+    env,
+    fmt::Write,
+    fs,
     fs::OpenOptions,
-    io::Write,
+    io,
     num::NonZeroUsize,
     path::PathBuf,
 };
@@ -23,7 +25,7 @@ use rand_xoshiro::{
 // Actions is acting up and returning exit code 255
 
 // number of tests generated
-const NUM_TESTS: usize = 300;
+const NUM_TESTS: usize = 1000;
 // should be plenty to test all edge cases
 const MAX_CONCATS: usize = 4;
 // enough to get multiple components on each side of an unbounded filler
@@ -165,11 +167,11 @@ impl<'a> Concat<'a> {
         assert_eq!(val.bw(), fill.bw());
         if self.align_side {
             self.ms_shift -= val.bw();
-            self.val.field(self.ms_shift, &val, 0, val.bw());
-            self.fill.field(self.ms_shift, &fill, 0, fill.bw());
+            self.val.field_to(self.ms_shift, &val, val.bw());
+            self.fill.field_to(self.ms_shift, &fill, fill.bw());
         } else {
-            self.val.field(self.ls_shift, &val, 0, val.bw());
-            self.fill.field(self.ls_shift, &fill, 0, fill.bw());
+            self.val.field_to(self.ls_shift, &val, val.bw());
+            self.fill.field_to(self.ls_shift, &fill, fill.bw());
             self.ls_shift += val.bw();
         }
     }
@@ -180,10 +182,10 @@ impl<'a> Concat<'a> {
             return
         }
         let tmp = ExtAwi::umax(bw(self.ms_shift - self.ls_shift));
-        self.fill.field(self.ls_shift, &tmp, 0, tmp.bw()).unwrap();
+        self.fill.field_to(self.ls_shift, &tmp, tmp.bw()).unwrap();
     }
 
-    /// The first element is the bitwidth used by the macro, second it the
+    /// The first element is the bitwidth used by the macro, second is the
     /// actual bitwidth of the referenced component
     pub fn gen_comp_bitwidth(&mut self, comp_i: usize) -> (usize, usize) {
         // we have to use up the total `width`. This also makes sure there are enough
@@ -221,7 +223,7 @@ impl<'a> Concat<'a> {
             } else {
                 // else arbitrary
                 let vnum = self.next_unique();
-                *self.prior_sets += &format!("let s{} = {};", vnum, start);
+                write!(self.prior_sets, "let s{} = {};", vnum, start).unwrap();
                 format!("s{}", vnum)
             })
         } else {
@@ -234,7 +236,7 @@ impl<'a> Concat<'a> {
             } else {
                 // else arbitrary
                 let vnum = self.next_unique();
-                *self.prior_sets += &format!("let e{} = {};", vnum, end - inclusive);
+                write!(self.prior_sets, "let e{} = {};", vnum, end - inclusive).unwrap();
                 format!("e{}", vnum)
             })
         } else {
@@ -343,22 +345,32 @@ impl<'a> Concat<'a> {
                 } else {
                     "mut".to_owned()
                 };
-                *self.prior_sets += &format!(
-                    "let {}awi{} = inlawi!({:?});let bits{} = awi{}.const_as_{}();\n",
+                writeln!(
+                    self.prior_sets,
+                    "let {}awi{} = inlawi!({:?});let mut bits{} = awi{}.const_as_{}();",
                     mutability, vnum, awi, vnum, vnum, ref_fn
-                );
+                )
+                .unwrap();
                 format!("bits{}", vnum)
             }
             // InlAwi
             1 => {
-                *self.prior_sets +=
-                    &format!("let {}inl{} = inlawi!({:?});\n", mutability, vnum, awi);
+                writeln!(
+                    self.prior_sets,
+                    "let {}inl{} = inlawi!({:?});",
+                    mutability, vnum, awi
+                )
+                .unwrap();
                 format!("inl{}", vnum)
             }
             // ExtAwi
             _ => {
-                *self.prior_sets +=
-                    &format!("let {}ext{} = extawi!({:?});\n", mutability, vnum, awi);
+                writeln!(
+                    self.prior_sets,
+                    "let {}ext{} = extawi!({:?});",
+                    mutability, vnum, awi
+                )
+                .unwrap();
                 format!("ext{}", vnum)
             }
         };
@@ -508,15 +520,17 @@ impl<'a> Concat<'a> {
                 // this should just be a single assertion with no dynamic `_result` or `shl`
                 // assignments.
                 if self.align_side {
-                    self.assertions += &format!("_shl -= {};\n", sc);
+                    writeln!(self.assertions, "_shl -= {};", sc).unwrap();
                 }
-                self.assertions += &format!(
+                write!(
+                    self.assertions,
                     "let mut _result = inlawi!({:?});\n_result.field({}, &_source, _shl, \
                      {}).unwrap();\nassert_eq!({}.const_as_ref(), _result.const_as_ref());\n",
                     awi, start, sc, ref_s
-                );
+                )
+                .unwrap();
                 if !self.align_side {
-                    self.assertions += &format!("_shl += {};\n", sc);
+                    writeln!(self.assertions, "_shl += {};", sc).unwrap();
                 }
             } else {
                 // filler
@@ -525,9 +539,9 @@ impl<'a> Concat<'a> {
                     let sc = end - start;
                     self.non_unbounded_width += sc;
                     if self.align_side {
-                        self.assertions += &format!("_shl -= {};\n", sc);
+                        writeln!(self.assertions, "_shl -= {};", sc).unwrap();
                     } else {
-                        self.assertions += &format!("_shl += {};\n", sc);
+                        writeln!(self.assertions, "_shl += {};", sc).unwrap();
                     }
                 } else {
                     self.assertions += "let mut _shl = _source.bw();";
@@ -550,7 +564,7 @@ fn main() {
     let mut vnum = 0;
     // number of tests generated
     for test_i in 0..NUM_TESTS {
-        s += &format!("// {}\n", test_i);
+        writeln!(s, "// {}", test_i).unwrap();
         // make unbounded source fillers more common, where more edge cases are
         let awi_type = match rng.next_u32() % 8 {
             0..=5 => 0,
@@ -681,8 +695,8 @@ fn main() {
         } else {
             ("extawi".to_owned(), "eq_ext".to_owned())
         };
-        let macro_suffix = if specified_initialization {
-            format!("_{}", construct_fn)
+        let init = if specified_initialization {
+            format!("{}:", construct_fn)
         } else {
             String::new()
         };
@@ -693,19 +707,23 @@ fn main() {
             format!("{}!({:?})", macro_root, source)
         };
 
-        s += &format!(
-            "let _source = inlawi!({:?});\n{}{}(&{}{}!({}),\n{}\n);\n{}\n",
-            source, prior_sets, eq_fn, macro_root, macro_suffix, concats, eq_rhs, assertions
-        );
+        write!(
+            s,
+            "let _source = inlawi!({:?});\n{}{}(&{}!({}{}),\n{}\n);\n{}\n",
+            source, prior_sets, eq_fn, macro_root, init, concats, eq_rhs, assertions
+        )
+        .unwrap();
     }
     s += "}";
 
-    OpenOptions::new()
-        .write(true)
-        .append(true)
-        .create(true)
-        .open(out_file)
-        .unwrap()
-        .write_all(s.as_bytes())
-        .unwrap();
+    <fs::File as io::Write>::write_all(
+        &mut OpenOptions::new()
+            .write(true)
+            .append(true)
+            .create(true)
+            .open(out_file)
+            .unwrap(),
+        s.as_bytes(),
+    )
+    .unwrap();
 }

@@ -1,10 +1,8 @@
 #![feature(const_mut_refs)]
 #![feature(const_option)]
+#![feature(const_trait_impl)]
 
-use awint::prelude::{
-    bw, cc, inlawi, inlawi_imax, inlawi_imin, inlawi_ty, inlawi_umax, inlawi_uone, inlawi_zero,
-    Bits, InlAwi,
-};
+use awint::prelude::{bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
 
 const fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
@@ -107,11 +105,11 @@ macro_rules! test_nonequal_bw {
 #[allow(clippy::reversed_empty_ranges)]
 const fn bits_functions() {
     // these macros also test the corresponding `InlAwi` functions
-    let mut awi0 = inlawi_zero!(128);
-    let mut awi1 = inlawi_umax!(192);
-    let mut awi2 = inlawi_imax!(192);
-    let mut awi3 = inlawi_imin!(192);
-    let mut awi4 = inlawi_uone!(192);
+    let mut awi0 = inlawi!(zero: ..128);
+    let mut awi1 = inlawi!(umax: ..192);
+    let mut awi2 = inlawi!(imax: ..192);
+    let mut awi3 = inlawi!(imin: ..192);
+    let mut awi4 = inlawi!(uone: ..192);
     let x0 = awi0.const_as_mut();
     let x1 = awi1.const_as_mut();
     let x2 = awi2.const_as_mut();
@@ -146,6 +144,33 @@ const fn bits_functions() {
     assert!(x0.field(128, x1, 192, 0).is_some());
     assert!(x0.field(129, x1, 192, 0).is_none());
     assert!(x0.field(128, x1, 193, 0).is_none());
+    assert!(x0.field_to(0, x1, 128).is_some());
+    assert!(x0.field_to(1, x1, 128).is_none());
+    assert!(x0.field_to(0, x1, 129).is_none());
+    assert!(x0.field_to(128, x1, 0).is_some());
+    assert!(x1.field_to(0, x0, 128).is_some());
+    assert!(x1.field_to(64, x0, 128).is_some());
+    assert!(x1.field_to(0, x0, 129).is_none());
+    assert!(x1.field_to(192, x0, 0).is_some());
+    assert!(x0.field_from(x1, 0, 128).is_some());
+    assert!(x0.field_from(x1, 64, 128).is_some());
+    assert!(x0.field_from(x1, 65, 128).is_none());
+    assert!(x0.field_from(x1, 0, 129).is_none());
+    assert!(x0.field_from(x1, 192, 0).is_some());
+    assert!(x1.field_from(x0, 0, 128).is_some());
+    assert!(x1.field_from(x0, 65, 128).is_none());
+    assert!(x1.field_from(x0, 64, 129).is_none());
+    assert!(x1.field_from(x0, 128, 0).is_some());
+    assert!(x0.field_width(x1, 0).is_some());
+    assert!(x0.field_width(x1, 128).is_some());
+    assert!(x0.field_width(x1, 129).is_none());
+    assert!(x1.field_width(x0, 0).is_some());
+    assert!(x1.field_width(x0, 128).is_some());
+    assert!(x1.field_width(x0, 129).is_none());
+    assert!(x0.field_bit(0, x1, 0).is_some());
+    assert!(x0.field_bit(127, x1, 191).is_some());
+    assert!(x0.field_bit(128, x1, 191).is_none());
+    assert!(x0.field_bit(127, x1, 192).is_none());
 
     assert!(x0.lut(x1, x3).is_none());
     assert!(x0.funnel(x1, x3).is_none());
@@ -198,6 +223,9 @@ const fn bits_functions() {
     x0.umax_assign();
     assert!(x4.short_udivide_assign(x0, 1).is_none());
     assert!(x4.short_udivide_inplace_assign(0).is_none());
+
+    assert!(x0.get(128).is_none());
+    assert!(x0.set(128, false).is_none());
 
     // TODO test all const serialization
 

@@ -1,6 +1,6 @@
 name: Awint CI
 
-on: [pull_request]
+on: ['pull_request']
 
 env:
   # NOTE: do not set RUSTFLAGS here, because it overwrites
@@ -68,7 +68,7 @@ jobs:
       - name: Install Rust components
         run: |
           rustup set profile minimal
-          rustup default stable
+          rustup install 1.61.0
       # In the past I have had problems with features not being orthogonal due to configuration
       # mistakes, so we test several combinations here
       - name: Run `cargo build`

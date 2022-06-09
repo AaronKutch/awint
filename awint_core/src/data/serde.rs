@@ -41,7 +41,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
         let mut buf = [0u8; BW];
         let mut pad = Self::zero();
         // do the minimum amount of work necessary
-        let upper = chars_upper_bound(bits.bw() - bits.lz(), 16).unwrap();
+        let upper = chars_upper_bound(bits.sig(), 16).unwrap();
         bits.to_bytes_radix(false, &mut buf[..upper], 16, false, pad.const_as_mut())
             .unwrap();
         // find the lower bound of signficant digits

@@ -95,8 +95,8 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // there may be a bunch of leading zeros, so do not return an error yet
-                const_for!(i in {0..i} {
-                    match src[i] {
+                const_for!(j in {0..i} {
+                    match src[j] {
                         b'_' | b'0' => (),
                         _ => return Err(Overflow)
                     }
@@ -177,8 +177,8 @@ impl Bits {
             let o1 = pad1.short_cin_mul(0, radix as usize);
             if o1 != 0 {
                 // there may be a bunch of leading zeros, so do not return an error yet
-                const_for!(i in {0..i} {
-                    match src[i] {
+                const_for!(j in {0..i} {
+                    match src[j] {
                         b'_' | b'0' => (),
                         _ => return Err(Overflow)
                     }

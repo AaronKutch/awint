@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.5.0] - 2022-06-09
+### Fixes
+- Fixed that `to_u8_slice` on big endian platforms did not zero bytes beyond `self.bw()`. There was
+  a blind spot in the testing that has been fixed.
+- Fixed error E0716 in many cases for the macros.
+
+### Changes
+- Overhaul of the macros. Uses proper token tree parsing that fixes many long standing issues.
+  Nested macros and complex inner expressions with brackets, commas, and semicolons not belonging to
+  the outside macro are now possible. Trailing commas and semicolons are allowed.
+- Note: in order for some expressions to remain const, you need to add
+  `#![feature(const_trait_impl)]` to your crate root, or else you will run into strange
+  `erroneous constant used` and `deref_mut` errors.
+- Note: certain reference patterns of a form like `fn(awi_ref: &mut Bits) {cc!(1u8; awi_ref)}` are
+  broken by the workaround for E0716. This can be fixed by making the reference mutable
+  `fn(mut awi_ref: &mut Bits) {...}`.
+- Note: the old specified initialization macros such as `extawi_[init]!(...)` can be replaced by
+  `extawi!([init]: ...)`. The old initialization macros also had a feature where a single literal
+  with no suffix could be interpreted as a bitwidth (e.x. `inlawi_zero!(64)`), but this
+  functionality has been removed and instead fillers should be used (e.x. `inlawi!(zero: ..64)`).
+- Implemented `Copy` for `FP<B>` if `B: Copy`
+
+### Additions
+- Added more specializations of `Bits::field` and used them to improve macro performance
+- Added `Bits::sig` as a shorthand for `x.bw() - x.lz()`
+- Added direct `InlAwi::from_X` functions
+
 ## [0.4.0] - 2022-04-07
 ### Fixes
 - Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with

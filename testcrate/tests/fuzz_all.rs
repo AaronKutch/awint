@@ -4,7 +4,7 @@
 mod fuzz;
 use core::cmp;
 
-use awint::{bw, inlawi_zero, Bits, ExtAwi, InlAwi};
+use awint::{bw, inlawi, Bits, ExtAwi, InlAwi};
 
 const N: u32 = if cfg!(miri) {
     32
@@ -68,12 +68,12 @@ macro_rules! test_inlawi {
             fn $name() {
                 fuzz::identities($n, $seed,
                     [
-                        inlawi_zero!($len).const_as_mut(),
-                        inlawi_zero!($len).const_as_mut(),
-                        inlawi_zero!($len).const_as_mut(),
-                        inlawi_zero!($len).const_as_mut(),
-                        inlawi_zero!($len).const_as_mut(),
-                        inlawi_zero!($len).const_as_mut(),
+                        inlawi!(zero: ..$len).const_as_mut(),
+                        inlawi!(zero: ..$len).const_as_mut(),
+                        inlawi!(zero: ..$len).const_as_mut(),
+                        inlawi!(zero: ..$len).const_as_mut(),
+                        inlawi!(zero: ..$len).const_as_mut(),
+                        inlawi!(zero: ..$len).const_as_mut(),
                     ]
                 );
             }

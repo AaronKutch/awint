@@ -1,3 +1,5 @@
+use core::ptr;
+
 use awint_internals::*;
 use const_fn::const_fn;
 
@@ -20,6 +22,38 @@ impl Bits {
             (self.last() as isize) < 0
         } else {
             (self.last() & (1 << (self.extra() - 1))) != 0
+        }
+    }
+
+    /// Gets the bit at `inx` bits from the least significant bit, returning
+    /// `None` if `inx >= self.bw()`
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn get(&self, inx: usize) -> Option<bool> {
+        if inx >= self.bw() {
+            None
+        } else {
+            unsafe { Some((self.get_unchecked(digits_u(inx)) & (1 << extra_u(inx))) != 0) }
+        }
+    }
+
+    /// Sets the bit at `inx` bits from the least significant bit, returning
+    /// `None` if `inx >= self.bw()`
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn set(&mut self, inx: usize, bit: bool) -> Option<()> {
+        if inx >= self.bw() {
+            None
+        } else {
+            unsafe {
+                let x = self.get_unchecked(digits_u(inx));
+                *self.get_unchecked_mut(digits_u(inx)) = if bit {
+                    x | (1 << extra_u(inx))
+                } else {
+                    x & (!(1 << extra_u(inx)))
+                };
+            }
+            Some(())
         }
     }
 
@@ -65,6 +99,12 @@ impl Bits {
             ones += x.count_ones() as usize;
         });
         ones
+    }
+
+    /// Returns the number of significant bits, `self.bw() - self.lz()`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn sig(&self) -> usize {
+        self.bw() - self.lz()
     }
 
     /// "Fielding" bitfields with targeted copy assigns. The bitwidths of `self`
@@ -146,9 +186,9 @@ impl Bits {
                 }
             } else {
                 let mut from = from;
-                let mut i = 0;
+                let mut i = to_digits;
                 loop {
-                    if i >= bw_digits {
+                    if i >= (bw_digits + to_digits) {
                         // handle the extra bits from the field
                         if bw_bits != 0 {
                             let tmp = rhs.get_digit(from);
@@ -163,14 +203,13 @@ impl Bits {
                                 total -= BITS;
                                 let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
                                 let mask = MAX >> (BITS - to_bits);
-                                *self.get_unchecked_mut(i + to_digits) =
-                                    (self.get_unchecked(i + to_digits) & mask) | tmp.0;
+                                *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp.0;
                                 if total != 0 {
                                     // the extra bits cross a digit boundary
                                     i += 1;
                                     let mask = MAX << total;
-                                    *self.get_unchecked_mut(i + to_digits) =
-                                        (self.get_unchecked(i + to_digits) & mask) | tmp.1;
+                                    *self.get_unchecked_mut(i) =
+                                        (self.get_unchecked(i) & mask) | tmp.1;
                                 }
                             } else {
                                 // total < BITS
@@ -179,8 +218,7 @@ impl Bits {
                                 // positioned in the middle. The mask has to cover before and after
                                 // the extra bits.
                                 let mask = (MAX << total) | (MAX >> (BITS - to_bits));
-                                *self.get_unchecked_mut(i + to_digits) =
-                                    (self.get_unchecked(i + to_digits) & mask) | tmp;
+                                *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp;
                             }
                         }
                         break
@@ -192,18 +230,197 @@ impl Bits {
                     let mask1 = MAX << to_bits;
                     // because the partial field is one `usize` long
                     let mask0 = !mask1;
-                    *self.get_unchecked_mut(i + to_digits) =
-                        (self.get_unchecked(i + to_digits) & mask0) | tmp.0;
+                    *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask0) | tmp.0;
                     i += 1;
                     from += BITS;
                     // this incurs more stores to `self` than necessary,
                     // but the alternative is even more complex
-                    *self.get_unchecked_mut(i + to_digits) =
-                        (self.get_unchecked(i + to_digits) & mask1) | tmp.1;
+                    *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask1) | tmp.1;
                 }
             }
         }
         Some(())
+    }
+
+    /// A specialization of [Bits::field] with `from` set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_to(&mut self, to: usize, rhs: &Self, width: usize) -> Option<()> {
+        let bw_digits = digits_u(width);
+        let bw_bits = extra_u(width);
+        let to_digits = digits_u(to);
+        let to_bits = extra_u(to);
+        // we do the comparisons in this order to make sure that the subtractions do not
+        // overflow
+        if (width > self.bw()) || (width > rhs.bw()) || (to > (self.bw() - width)) {
+            return None
+        }
+        if width == 0 {
+            return Some(())
+        }
+        unsafe {
+            if (bw_digits != 0) && (to_bits == 0) {
+                const_for!(i in {0..bw_digits} {
+                    *self.get_unchecked_mut(i + to_digits) =
+                        rhs.get_unchecked(i);
+                });
+                // handle last digit
+                if bw_bits != 0 {
+                    let to_mask = MAX << bw_bits;
+                    let from_mask = !to_mask;
+                    *self.get_unchecked_mut(bw_digits + to_digits) =
+                        (self.get_unchecked(bw_digits + to_digits) & to_mask)
+                            | (rhs.get_unchecked(bw_digits) & from_mask);
+                }
+            } else {
+                let mut i = to_digits;
+                loop {
+                    if i >= (bw_digits + to_digits) {
+                        // handle the extra bits from the field
+                        if bw_bits != 0 {
+                            let tmp = rhs.get_unchecked(i - to_digits);
+                            // add extra masking for the extra temporary bits
+                            let tmp = tmp & (MAX >> (BITS - bw_bits));
+                            let mut total = to_bits + bw_bits;
+                            if to_bits == 0 {
+                                let mask = MAX << bw_bits;
+                                *self.get_unchecked_mut(to_digits) =
+                                    tmp | (self.get_unchecked(to_digits) & mask);
+                            } else if total >= BITS {
+                                total -= BITS;
+                                let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
+                                let mask = MAX >> (BITS - to_bits);
+                                *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp.0;
+                                if total != 0 {
+                                    // the extra bits cross a digit boundary
+                                    i += 1;
+                                    let mask = MAX << total;
+                                    *self.get_unchecked_mut(i) =
+                                        (self.get_unchecked(i) & mask) | tmp.1;
+                                }
+                            } else {
+                                // total < BITS
+                                let tmp = tmp << to_bits;
+                                // Because the extra bits are fewer than BITS and they are
+                                // positioned in the middle. The mask has to cover before and after
+                                // the extra bits.
+                                let mask = (MAX << total) | (MAX >> (BITS - to_bits));
+                                *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp;
+                            }
+                        }
+                        break
+                    }
+                    let tmp = rhs.get_unchecked(i - to_digits);
+                    // shift up into new field placements
+                    let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
+                    // mask
+                    let mask1 = MAX << to_bits;
+                    // because the partial field is one `usize` long
+                    let mask0 = !mask1;
+                    *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask0) | tmp.0;
+                    i += 1;
+                    // this incurs more stores to `self` than necessary,
+                    // but the alternative is even more complex
+                    *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask1) | tmp.1;
+                }
+            }
+        }
+        Some(())
+    }
+
+    /// A specialization of [Bits::field] with `to` set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_from(&mut self, rhs: &Self, from: usize, width: usize) -> Option<()> {
+        let bw_digits = digits_u(width);
+        let bw_bits = extra_u(width);
+        let from_digits = digits_u(from);
+        let from_bits = extra_u(from);
+        // we do the comparisons in this order to make sure that the subtractions do not
+        // overflow
+        if (width > self.bw()) || (width > rhs.bw()) || (from > (rhs.bw() - width)) {
+            return None
+        }
+        if width == 0 {
+            return Some(())
+        }
+        unsafe {
+            if (bw_digits != 0) && (from_bits == 0) {
+                const_for!(i in {0..bw_digits} {
+                    *self.get_unchecked_mut(i) =
+                        rhs.get_unchecked(i + from_digits);
+                });
+                // handle last digit
+                if bw_bits != 0 {
+                    let to_mask = MAX << bw_bits;
+                    let from_mask = !to_mask;
+                    *self.get_unchecked_mut(bw_digits) = (self.get_unchecked(bw_digits) & to_mask)
+                        | (rhs.get_unchecked(bw_digits + from_digits) & from_mask);
+                }
+            } else if bw_digits != 0 {
+                const_for!(i in {0..bw_digits} {
+                    *self.get_unchecked_mut(i) =
+                        rhs.get_digit(from + (i * BITS));
+                });
+                // handle last digit
+                if bw_bits != 0 {
+                    let to_mask = MAX << bw_bits;
+                    let from_mask = !to_mask;
+                    *self.get_unchecked_mut(bw_digits) = (self.get_unchecked(bw_digits) & to_mask)
+                        | (rhs.get_digit(from + (bw_digits * BITS)) & from_mask);
+                }
+            } else {
+                let mut from = from;
+                let mut i = 0;
+                loop {
+                    if i >= bw_digits {
+                        // handle the extra bits from the field
+                        if bw_bits != 0 {
+                            let tmp = rhs.get_digit(from);
+                            // add extra masking for the extra temporary bits
+                            let tmp = tmp & (MAX >> (BITS - bw_bits));
+                            let mask = MAX << bw_bits;
+                            *self.first_mut() = tmp | (self.first() & mask);
+                        }
+                        break
+                    }
+                    *self.get_unchecked_mut(i) = rhs.get_digit(from);
+                    i += 1;
+                    from += BITS;
+                }
+            }
+        }
+        Some(())
+    }
+
+    /// A specialization of [Bits::field] with `to` and `from` set to 0.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_width(&mut self, rhs: &Self, width: usize) -> Option<()> {
+        if (width > self.bw()) || (width > rhs.bw()) {
+            return None
+        }
+        let bw_digits = digits_u(width);
+        let bw_bits = extra_u(width);
+        unsafe {
+            ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), bw_digits);
+            // last digit
+            if bw_bits != 0 {
+                let to_mask = MAX << bw_bits;
+                let from_mask = !to_mask;
+                *self.get_unchecked_mut(bw_digits) = (self.get_unchecked(bw_digits) & to_mask)
+                    | (rhs.get_unchecked(bw_digits) & from_mask);
+            }
+        }
+        Some(())
+    }
+
+    /// A specialization of [Bits::field] with `width` set to 1.
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn field_bit(&mut self, to: usize, rhs: &Bits, from: usize) -> Option<()> {
+        if let Some(b) = rhs.get(from) {
+            self.set(to, b)
+        } else {
+            None
+        }
     }
 
     /// Copy entry from lookup table. Copies a `self.bw()` sized bitfield from

@@ -9,7 +9,7 @@ fn rand() {
     // note: mirror changes of this example to the doctest for the
     // `rand_assign_using` function
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    let mut awi = inlawi_zero!(100);
+    let mut awi = inlawi!(zero: ..100);
     awi.const_as_mut().rand_assign_using(&mut rng).unwrap();
     assert_eq!(awi, inlawi!(0x5ab77d3629a089d75dec9045du100));
     awi.const_as_mut().rand_assign_using(&mut rng).unwrap();
@@ -45,21 +45,20 @@ impl Xoshiro {
         let s3 = awi3.const_as_mut();
         let mut result = inlawi!(s1; ..32).unwrap();
         let r = result.const_as_mut();
-        let mut awi_tmp = inlawi!(s1; ..32).unwrap();
-        let tmp = awi_tmp.const_as_mut();
+        let mut tmp = inlawi!(s1; ..32).unwrap();
 
         // result = s1.wrapping_mul(5).rotate_left(7).wrapping_mul(9)
 
         // multiply by 5
         r.shl_assign(2).unwrap();
-        r.add_assign(tmp).unwrap();
+        r.add_assign(&tmp).unwrap();
 
         r.rotl_assign(7).unwrap();
 
         // multiply by 9
         cc!(r; tmp).unwrap();
         r.shl_assign(3).unwrap();
-        r.add_assign(tmp).unwrap();
+        r.add_assign(&tmp).unwrap();
 
         //let t = s1 << 9;
         //s2 ^= s0;
@@ -75,7 +74,7 @@ impl Xoshiro {
         s3.xor_assign(s1).unwrap();
         s1.xor_assign(s2).unwrap();
         s0.xor_assign(s3).unwrap();
-        s2.xor_assign(tmp).unwrap();
+        s2.xor_assign(&tmp).unwrap();
         s3.rotl_assign(11).unwrap();
         cc!(s0; self.state[..32]).unwrap();
         cc!(s1; self.state[32..64]).unwrap();

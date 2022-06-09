@@ -1,9 +1,7 @@
 use core::{
-    borrow::{Borrow, BorrowMut},
     fmt,
     hash::{Hash, Hasher},
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
 };
 
 use awint_internals::*;
@@ -28,23 +26,22 @@ use crate::Bits;
 /// done directly because it is non-portable and relies on unstable internal
 /// details. Instead, you should use
 ///
-/// `let _: inlawi_ty!(100) = inlawi_zero!(100);` or `let _ =
+/// `let _: inlawi_ty!(100) = inlawi!(0u100);` or `let _ =
 /// <inlawi_ty!(100)>::zero();` using macros from the `awint_macros` crate.
 ///
 /// See the crate level documentation of `awint_macros` for more macros and
 /// information.
 ///
 /// ```
+/// // only needed if you are trying to use in `const` contexts
+/// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]
 /// #![feature(const_option)]
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
 ///
-/// const fn const_fn(lhs: &mut Bits, rhs: &Bits) {
+/// const fn const_fn(mut lhs: &mut Bits, rhs: &Bits) {
 ///     // `InlAwi` stored on the stack does no allocation
-///     let mut tmp_awi = inlawi!(0i100);
-///     // `InlAwi` implements `Deref`, but if you want to use it in `const`
-///     // contexts, `const_as_ref` or `const_as_mut` should be used
-///     let tmp = tmp_awi.const_as_mut();
+///     let mut tmp = inlawi!(0i100);
 ///     tmp.mul_add_assign(lhs, rhs).unwrap();
 ///     cc!(tmp; lhs).unwrap();
 /// }
@@ -120,6 +117,14 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         BW
     }
 
+    /// Returns the raw length of this type of `InlAwi` as a `usize`
+    #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn const_raw_len() -> usize {
+        assert_inlawi_invariants::<BW, LEN>();
+        LEN
+    }
+
     /// The same as `Self::const_nzbw()` except that it takes `&self`, this
     /// exists to help with macros
     #[const_fn(cfg(feature = "const_support"))]
@@ -135,10 +140,9 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
-    #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
-        self.const_as_ref().len()
+        Self::const_raw_len() - 1
     }
 
     /// This is not intended for direct use, use `awint_macros::inlawi`
@@ -241,62 +245,41 @@ impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
-    type Target = Bits;
+macro_rules! inlawi_from {
+    ($($w:expr, $u:ident $from_u:ident $u_assign:ident
+        $i:ident $from_i:ident $i_assign:ident);*;) => {
+        $(
+            impl InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+                #[const_fn(cfg(feature = "const_support"))]
+                pub const fn $from_u(x: $u) -> Self {
+                    let mut awi = Self::zero();
+                    awi.const_as_mut().$u_assign(x);
+                    awi
+                    //let mut raw = [0; {Bits::unstable_raw_digits($w)}];
+                    //raw[raw.len() - 1] = $w;
+                    //const_for!(i in {0..(Bits::unstable_raw_digits($w) - 1)}{
+                    //    raw[i] = (x >> (i * BITS)) as usize;
+                    //});
+                    //Self { raw }
+                }
+            }
 
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.const_as_ref()
-    }
+            impl InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+                #[const_fn(cfg(feature = "const_support"))]
+                pub const fn $from_i(x: $i) -> Self {
+                    let mut awi = Self::zero();
+                    awi.const_as_mut().$i_assign(x);
+                    awi
+                }
+            }
+        )*
+    };
 }
 
-impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn borrow(&self) -> &Bits {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn as_ref(&self) -> &Bits {
-        self.const_as_ref()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn borrow_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
-
-impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
-    }
-}
+inlawi_from!(
+    8, u8 from_u8 u8_assign i8 from_i8 i8_assign;
+    16, u16 from_u16 u16_assign i16 from_i16 i16_assign;
+    32, u32 from_u32 u32_assign i32 from_i32 i32_assign;
+    64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
+    128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
+);

@@ -276,7 +276,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             let mut tmp = ExtAwi::zero(
                 NonZeroUsize::new(multiplier_bits.checked_add(calc_fp).ok_or(Overflow)?).unwrap(),
             );
-            tmp.field(0, &unsigned, tot_tz as usize, field_bits)
+            tmp.field_from(&unsigned, tot_tz as usize, field_bits)
                 .unwrap();
             for _ in 0..calc_digits {
                 tmp.short_cin_mul(0, usize::from(radix));

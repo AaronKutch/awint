@@ -85,8 +85,8 @@ impl Bits {
     ) {
         debug_assert!(div.lz() > duo.lz());
         debug_assert!((div.lz() - duo.lz()) < BITS);
-        debug_assert!((duo.bw() - duo.lz()) >= (BITS * 2));
-        let i = duo.bw() - duo.lz() - (BITS * 2);
+        debug_assert!((duo.sig()) >= (BITS * 2));
+        let i = duo.sig() - (BITS * 2);
         let duo_sig_dd = duo.get_double_digit(i);
         let div_sig_dd = div.get_double_digit(i);
         // Because `lz_diff < BITS`, the quotient will fit in one `usize`
