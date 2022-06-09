@@ -8,9 +8,9 @@ use crate::Bits;
 /// Intended for use by the macros, for the purposes of avoiding `if` statements
 /// with booleans for `awint_dag`, reducing the number of nested statements, and
 /// avoiding requiring the user to import more than `Bit`s in some cases.
+#[doc(hidden)]
 impl Bits {
     /// Used by the macros to enforce compiler warnings
-    #[doc(hidden)]
     #[must_use]
     #[inline]
     pub const fn must_use<T>(t: T) -> T {
@@ -22,13 +22,11 @@ impl Bits {
     /// different from the target architecture pointer width (and we can't use
     /// `target_pointer_width` because it corresponds to whatever architecture
     /// the procedural macro crate is running for).
-    #[doc(hidden)]
     #[inline]
     pub const fn unstable_raw_digits(bw: usize) -> usize {
         raw_digits(bw)
     }
 
-    #[doc(hidden)]
     #[inline]
     pub const fn unstable_le_checks<const N: usize>(le_checks: [(usize, usize); N]) -> Option<()> {
         const_for!(i in {0..N} {
@@ -39,7 +37,6 @@ impl Bits {
         Some(())
     }
 
-    #[doc(hidden)]
     #[inline]
     pub const fn unstable_common_checks<const N: usize, const M: usize>(
         common_cw: usize,
@@ -60,7 +57,6 @@ impl Bits {
     }
 
     /// this panics if `N == 0`
-    #[doc(hidden)]
     #[inline]
     pub const fn unstable_max<const N: usize>(x: [usize; N]) -> usize {
         let mut max = x[0];

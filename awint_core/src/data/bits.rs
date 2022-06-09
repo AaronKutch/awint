@@ -76,10 +76,10 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// views into a contiguous range of bits inside `Bits`, such as
 /// `Bits::as_slice`, `Bits::first`, and `Bits::get_digit` (which are all hidden
 /// from the documentation, please refer to the source code of `bits.rs` if
-/// needed). Most end users should not uses these, since they have
-/// a strong dependence on the size of `usize`. These functions are actual views
-/// into the inner building blocks of this crate that other functions are built
-/// around in such a way that they are portable (e.g. the addition functions may
+/// needed). Most end users should not use these, since they have a strong
+/// dependence on the size of `usize`. These functions are actual views into the
+/// inner building blocks of this crate that other functions are built around in
+/// such a way that they are portable (e.g. the addition functions may
 /// internally operate on differing numbers of `usize` digits depending on the
 /// size of `usize`, but the end result looks the same to users on different
 /// architectures). The only reason these functions are exposed, is that someone
@@ -298,6 +298,7 @@ impl<'a> Bits {
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
+    #[doc(hidden)]
     #[inline]
     pub const fn len(&self) -> usize {
         // Safety: The length on the raw slice is the number of `usize` digits plus the
@@ -363,7 +364,9 @@ impl<'a> Bits {
         unsafe { self.get_unchecked_mut(self.len() - 1) }
     }
 
-    /// Clears the unused bits.
+    /// Clears the unused bits. This is only needed if you are using certain
+    /// hidden functions to write to the digits directly.
+    #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn clear_unused_bits(&mut self) {
