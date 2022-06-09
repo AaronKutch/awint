@@ -552,7 +552,7 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
             edge_cases!(fl, x1, x3, {
                 let s0 = (rng.next_u32() as usize) % bw;
                 let s1 = (rng.next_u32() as usize) % bw;
-                identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, bytes, s0, s1)?;
+                identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
             })
         })
     }
