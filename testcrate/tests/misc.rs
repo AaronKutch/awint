@@ -129,3 +129,17 @@ fn awint_internals_test() {
     add.mul_add_assign(&lhs, &rhs).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
 }
+
+#[test]
+fn from_primitive() {
+    assert_eq!(InlAwi::from_u8(u8::MAX), inlawi!(umax: ..8));
+    assert_eq!(InlAwi::from_u16(u16::MAX), inlawi!(umax: ..16));
+    assert_eq!(InlAwi::from_u32(u32::MAX), inlawi!(umax: ..32));
+    assert_eq!(InlAwi::from_u64(u64::MAX), inlawi!(umax: ..64));
+    assert_eq!(InlAwi::from_u128(u128::MAX), inlawi!(umax: ..128));
+    assert_eq!(InlAwi::from_i8(i8::MAX), inlawi!(imax: ..8));
+    assert_eq!(InlAwi::from_i16(i16::MAX), inlawi!(imax: ..16));
+    assert_eq!(InlAwi::from_i32(i32::MAX), inlawi!(imax: ..32));
+    assert_eq!(InlAwi::from_i64(i64::MAX), inlawi!(imax: ..64));
+    assert_eq!(InlAwi::from_i128(i128::MAX), inlawi!(imax: ..128));
+}

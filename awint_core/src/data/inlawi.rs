@@ -26,13 +26,14 @@ use crate::Bits;
 /// done directly because it is non-portable and relies on unstable internal
 /// details. Instead, you should use
 ///
-/// `let _: inlawi_ty!(100) = inlawi!(zero: 100);` or `let _ =
+/// `let _: inlawi_ty!(100) = inlawi!(0u100);` or `let _ =
 /// <inlawi_ty!(100)>::zero();` using macros from the `awint_macros` crate.
 ///
 /// See the crate level documentation of `awint_macros` for more macros and
 /// information.
 ///
 /// ```
+/// // only needed if you are trying to use in `const` contexts
 /// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]
 /// #![feature(const_option)]
@@ -119,7 +120,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns the raw length of this type of `InlAwi` as a `usize`
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn const_rlen() -> usize {
+    pub const fn const_raw_len() -> usize {
         assert_inlawi_invariants::<BW, LEN>();
         LEN
     }
@@ -141,7 +142,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
-        Self::const_rlen() - 1
+        Self::const_raw_len() - 1
     }
 
     /// This is not intended for direct use, use `awint_macros::inlawi`
