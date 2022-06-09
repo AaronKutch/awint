@@ -33,8 +33,8 @@ pub fn chars_to_string(chars: &[char]) -> String {
 /// `InlAwi` preset with the value of `bits`.
 pub fn unstable_native_inlawi(bits: &Bits) -> String {
     // gets `bits` in `Vec<u8>` form, truncated
-    let sig_bits = bits.bw() - bits.lz();
-    let len = (sig_bits / 8) + (((sig_bits % 8) != 0) as usize);
+    let sig = bits.sig();
+    let len = (sig / 8) + (((sig % 8) != 0) as usize);
     let mut buf = vec![0u8; len];
     bits.to_u8_slice(&mut buf);
 

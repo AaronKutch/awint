@@ -35,7 +35,7 @@ pub const MAX: usize = usize::MAX;
 pub const fn bw(bw: usize) -> NonZeroUsize {
     match NonZeroUsize::new(bw) {
         None => {
-            panic!("Tried to construct an invalid bitwidth of 0 using the `awint::bw` function")
+            panic!("tried to construct an invalid bitwidth of 0 using the `awint::bw` function")
         }
         Some(bw) => bw,
     }

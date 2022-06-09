@@ -101,6 +101,12 @@ impl Bits {
         ones
     }
 
+    /// Returns the number of significant bits, `self.bw() - self.lz()`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn sig(&self) -> usize {
+        self.bw() - self.lz()
+    }
+
     /// "Fielding" bitfields with targeted copy assigns. The bitwidths of `self`
     /// and `rhs` do not have to be equal, but the inputs must collectively obey
     /// `width <= self.bw() && width <= rhs.bw() && to <= (self.bw() - width)

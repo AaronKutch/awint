@@ -103,7 +103,7 @@ fn fp_identities_inner(
         target_bounds.1 += MAX_FP;
         let lsnb = pad0.tz() as isize;
         assert!(o.0 == ((lsnb < target_bounds.0) || (lsnb > target_bounds.1)));
-        let msnb = (pad0.bw() - pad0.lz() - 1) as isize;
+        let msnb = (pad0.sig() - 1) as isize;
         let extra = x2bw1.is_negative() != x0bw0.is_negative();
         assert!(o.1 == ((msnb < target_bounds.0) || (msnb > target_bounds.1) || extra));
     } else {

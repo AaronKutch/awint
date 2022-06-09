@@ -22,6 +22,11 @@
   functionality has been removed and instead fillers should be used (e.x. `inlawi!(zero: ..64)`).
 - Implemented `Copy` for `FP<B>` if `B: Copy`
 
+### Additions
+- Added more specializations of `Bits::field` and used them to improve macro performance
+- Added `Bits::sig` as a shorthand for `x.bw() - x.lz()`
+- Added direct `InlAwi::from_X` functions
+
 ## [0.4.0] - 2022-04-07
 ### Fixes
 - Fixed a stacked borrows violation in the permutation functions. CI now runs the latest Miri with

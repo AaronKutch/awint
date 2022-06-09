@@ -1,6 +1,6 @@
 use core::cmp;
 
-use awint::{bw, Bits, ExtAwi};
+use awint::{bw, cc, Bits, ExtAwi, InlAwi};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
@@ -218,4 +218,37 @@ pub fn multi_bw(seed: u64) -> Option<()> {
         )?;
     }
     Some(())
+}
+
+#[test]
+pub fn u8_slice() {
+    let mut rng = &mut Xoshiro128StarStar::seed_from_u64(0);
+    let mut array = [0u8; 65];
+    for _ in 0..10 {
+        if (rng.next_u32() & 1) != 0 {
+            array.fill(rng.next_u32() as u8);
+        }
+        let w = ((rng.next_u32() as usize) % 258) + 1;
+        let mut x0 = ExtAwi::zero(bw(w));
+        let mut x1 = ExtAwi::zero(bw(w));
+        let inx = (rng.next_u32() as usize) % ((2 * (258 / 8)) + 1);
+        x0.u8_slice_assign(&array[..inx]);
+        assert!(x0.sig() <= (inx * 8));
+        for (i, byte) in array.iter().take(inx).enumerate() {
+            let r0 = cmp::min(i * 8, w);
+            let r1 = cmp::min(r0 + 8, w);
+            cc!(InlAwi::from_u8(*byte); .., x1[r0..r1]; ..8).unwrap();
+        }
+        assert_eq!(x0, x1);
+        x0.rand_assign_using(&mut rng).unwrap();
+        x0.to_u8_slice(&mut array[..inx]);
+        let mut byte = InlAwi::from_u8(0);
+        for (i, item) in array.iter().take(inx).enumerate() {
+            let r0 = cmp::min(i * 8, w);
+            let r1 = cmp::min(r0 + 8, w);
+            // automatically tests for zeros
+            cc!(zero: .., x0[r0..r1]; byte; ..8).unwrap();
+            assert_eq!(*item, byte.to_u8());
+        }
+    }
 }

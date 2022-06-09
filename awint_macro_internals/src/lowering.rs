@@ -40,6 +40,9 @@
 // indexes themselves
 //
 // (0x123u12[...]; ..64) can never succeed, there should probably be an error
+//
+// inlawi!(awi0[((i*8))..((i*8)+8)]).to_u8() there is an extra set of
+// parenthesis that could be eliminated
 
 use std::{fmt::Write, num::NonZeroUsize};
 

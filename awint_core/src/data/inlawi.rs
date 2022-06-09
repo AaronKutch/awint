@@ -116,6 +116,14 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         BW
     }
 
+    /// Returns the raw length of this type of `InlAwi` as a `usize`
+    #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn const_rlen() -> usize {
+        assert_inlawi_invariants::<BW, LEN>();
+        LEN
+    }
+
     /// The same as `Self::const_nzbw()` except that it takes `&self`, this
     /// exists to help with macros
     #[const_fn(cfg(feature = "const_support"))]
@@ -131,10 +139,9 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
-    #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn len(&self) -> usize {
-        self.const_as_ref().len()
+        Self::const_rlen() - 1
     }
 
     /// This is not intended for direct use, use `awint_macros::inlawi`
@@ -237,22 +244,41 @@ impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     }
 }
 
-// FIXME
-// maybe use const `From` in addition to this?
-/*impl InlAwi<8, 2> {
-    #[const_fn(cfg(feature = "const_support"))]
-    pub const fn from_u8(x: u8) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().u8_assign(x);
-        awi
-    }
+macro_rules! inlawi_from {
+    ($($w:expr, $u:ident $from_u:ident $u_assign:ident
+        $i:ident $from_i:ident $i_assign:ident);*;) => {
+        $(
+            impl InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+                #[const_fn(cfg(feature = "const_support"))]
+                pub const fn $from_u(x: $u) -> Self {
+                    let mut awi = Self::zero();
+                    awi.const_as_mut().$u_assign(x);
+                    awi
+                    //let mut raw = [0; {Bits::unstable_raw_digits($w)}];
+                    //raw[raw.len() - 1] = $w;
+                    //const_for!(i in {0..(Bits::unstable_raw_digits($w) - 1)}{
+                    //    raw[i] = (x >> (i * BITS)) as usize;
+                    //});
+                    //Self { raw }
+                }
+            }
+
+            impl InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+                #[const_fn(cfg(feature = "const_support"))]
+                pub const fn $from_i(x: $i) -> Self {
+                    let mut awi = Self::zero();
+                    awi.const_as_mut().$i_assign(x);
+                    awi
+                }
+            }
+        )*
+    };
 }
 
-impl InlAwi<64, 2> {
-    #[const_fn(cfg(feature = "const_support"))]
-    pub const fn from_u64(x: u64) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().u64_assign(x);
-        awi
-    }
-}*/
+inlawi_from!(
+    8, u8 from_u8 u8_assign i8 from_i8 i8_assign;
+    16, u16 from_u16 u16_assign i16 from_i16 i16_assign;
+    32, u32 from_u32 u32_assign i32 from_i32 i32_assign;
+    64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
+    128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
+);

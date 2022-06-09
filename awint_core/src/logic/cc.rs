@@ -23,6 +23,7 @@ impl Bits {
     /// `target_pointer_width` because it corresponds to whatever architecture
     /// the procedural macro crate is running for).
     #[doc(hidden)]
+    #[inline]
     pub const fn unstable_raw_digits(bw: usize) -> usize {
         raw_digits(bw)
     }
