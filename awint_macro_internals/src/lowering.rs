@@ -33,6 +33,8 @@
 // TODO
 // Known issues:
 //
+// there are more cases where we could avoid buffers
+//
 // `inlawi!(x[..1])` and other guaranteed width>=1 && (shl=0 || shl=bw-1) parts
 // should be infallible
 //

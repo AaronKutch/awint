@@ -29,7 +29,8 @@ system depending on these feature flags:
 - "rand_support" turns on a dependency to `rand_core` without its default features
 - "serde_support" turns on a dependency to `serde` without its default features
 
-Note: By default, "const_support" and "std" are turned on.
+Note: By default, "const_support" and "std" are turned on, use `default-features = false` and
+select specific features to avoid requiring nightly.
 
 NOTE: As of Rust 1.63, if you try to use "const_support" with the macros you may get strange
 `erroneous constant used` and `deref_mut` errors unless you add all of
@@ -38,12 +39,9 @@ NOTE: As of Rust 1.63, if you try to use "const_support" with the macros you may
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 ```
-to _all_ of the crate roots where you use the macros.
+to _all_ of the crate roots where you use the macros in `const` contexts.
 
 ## Planned Features
-
-Note: I have discovered a const workaround for all(?) cases that cause E0716 in the macros and will
-implement it in the coming months.
 
 These are currently unimplemented because of other developments and improvements that are being
 prioritized. Please open an issue or PR if you would like these implemented faster.
@@ -58,8 +56,6 @@ prioritized. Please open an issue or PR if you would like these implemented fast
    well optimized, but the serialization performance is currently very bad compared to what is
    possible.
 - Add custom allocator parameter to `ExtAwi`
-- Rewrite the parsing behind `awint_macros` to use `syn` (so that things like comments can be
-   inserted into the macros) and refactor the code generation function.
 - Certain formatting and serialization trait impls need more work.
-- Make the crates compile on stable. Almost every unstable feature used by these crates is some kind
-   of `const` feature, and will hopefully be stabilized soon.
+- Make "const_support" compile on stable. Almost every unstable feature used by these crates is some
+  kind of `const` feature, and will hopefully be stabilized soon.
