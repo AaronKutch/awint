@@ -335,6 +335,15 @@ y[97m, [0m..[97m; [0m
 [93mhelp:[0m append a filler-only concatenation such as "; ..64 ;" or "; ..var ;" that gives the macro needed information
 
 
+zero: ..=,; ..=, ..5, inl3590[..=], 
+Err:
+concatenations 0 and 1 have unbounded fillers aligned opposite each other, and no concatenation has a statically or dynamically determinable width
+zero[97m:[0m
+..=[97m, [0m[97m; [0m
+..=[97m, [0m..5[97m, [0minl3590[97m[[0m..=[97m][0m[97m, [0m[97m; [0m
+[93mhelp:[0m append a filler-only concatenation such as "; ..64 ;" or "; ..var ;" that gives the macro needed information
+
+
 0x123u12
 Ok:
 mu(lit(0x123_u12))

@@ -12,6 +12,8 @@ use crate::{
 pub enum FillerAlign {
     /// The concatenation has no fillers
     None,
+    /// If the concatenation is only a filler
+    Single,
     /// The concatenation can be aligned from the least significant bit
     Lsb,
     /// The concatenation can be aligned from the most significant bit
@@ -94,7 +96,11 @@ impl Concatenation {
                             })
                         }
                         if comp_i == 0 {
-                            self.filler_alignment = FillerAlign::Lsb;
+                            if concat_len == 1 {
+                                self.filler_alignment = FillerAlign::Single;
+                            } else {
+                                self.filler_alignment = FillerAlign::Lsb;
+                            }
                         } else if (comp_i + 1) == concat_len {
                             self.filler_alignment = FillerAlign::Msb;
                         } else {
@@ -184,9 +190,9 @@ pub fn stage4(
     for (concat_i, concat) in ast.cc.iter().enumerate() {
         let this_align = concat.filler_alignment;
         match this_align {
-            FillerAlign::None | FillerAlign::Multiple => (),
+            FillerAlign::None | FillerAlign::Single | FillerAlign::Multiple => (),
             FillerAlign::Lsb | FillerAlign::Msb | FillerAlign::Mid => {
-                if matches!(overall_alignment, FillerAlign::None) {
+                if matches!(overall_alignment, FillerAlign::None | FillerAlign::Single) {
                     overall_alignment = this_align
                 } else if overall_alignment != this_align {
                     alignment_change_i = concat_i;
@@ -284,7 +290,10 @@ pub fn stage4(
         // note: middle fillers have been accounted for, only opposite alignment
         // possible at this point
         for (concat_i, concat) in ast.cc.iter().enumerate() {
-            if !matches!(concat.filler_alignment, FillerAlign::None) {
+            if !matches!(
+                concat.filler_alignment,
+                FillerAlign::None | FillerAlign::Single
+            ) {
                 return Err(CCMacroError {
                     red_text: vec![],
                     error: format!(

@@ -407,7 +407,27 @@
 //! // have a width that can be determined statically by the macro
 //! //inlawi!(x);
 //!
+//! // because the second concatenation is only filler, no operations occur,
+//! // but the macro will be able to determine that the common width is 44.
 //! assert_eq!(inlawi!(x; ..44).unwrap(), inlawi!(-99i44));
+//!
+//! // `extawi!` and `cc!` can also run into the problem with unbounded
+//! // fillers, which will be explained later. We can additionally use a
+//! // dynamic range (but be sure to always use a static filler concatenation
+//! // if possible so that internal buffers can be on the stack).
+//!
+//! // error: ... no concatenation has a statically or dynamically determinable
+//! // width
+//! //let _ = cc!(zero: 1, .., 1010; .., y);
+//!
+//! let r = 16;
+//! let mut y = InlAwi::from_u8(0);
+//! cc!(zero:
+//!     1, .., 1010;
+//!     .., y;
+//!     ..r;
+//! ).unwrap();
+//! assert_eq!(y, InlAwi::from_u8(0b1010));
 //! ```
 //!
 //! We run into a problem when using fillers in the source concatenation of a
@@ -424,23 +444,25 @@
 //!
 //! // we introduce the initialization specifier, which can be one of "zero",
 //! // "umax", "imax", "imin", or "uone" corresponding to the standard
-//! // construction functions of `ExtAwi` and `InlAwi`
+//! // construction functions of `ExtAwi` and `InlAwi` (and you can add your
+//! // own initializations by implementing traits for `InlAwi` and `ExtAwi`
+//! // with functions matching the formats of the `InlAwi` constructors and the
+//! // hidden `panicking_` functions on `ExtAwi`)
 //! let x = extawi!(umax: ..8);
 //! assert_eq!(x, ExtAwi::umax(bw(8)));
 //!
-//! // another example of adding determinism
-//! let x = extawi!(-99i44);
+//! let mut x = extawi!(0u64);
+//! // equivalent to `x.umax_assign()`
+//! cc!(umax: ..; x);
+//! assert_eq!(x, ExtAwi::umax(bw(64)));
 //!
-//! // error: there is a only a source concatenation that has no statically
-//! // or dynamically determinable width
-//! //extawi!(umax: ..; x); //FIXME
-//!
+//! let mut x = extawi!(-99i44);
 //! // "umax" is all set bits, so we are sign extending this negative value
 //! let r = 128;
 //! assert_eq!(extawi!(umax: .., x; ..r).unwrap(), extawi!(-99i128));
-//! ```
 //!
-//! However, what happens if we
+//! assert_eq!(inlawi!(zero: 0xau4, ..4, 0xbu4, ..4), inlawi!(0xa0b0u16));
+//! ```
 //!
 //! ### Unbounded fillers
 //!
@@ -485,14 +507,14 @@
 //! ).unwrap();
 //! assert_eq!(y, extawi!(0x00321u20));
 //!
-//! let mut y = extawi!(umax: ..32);
-//! cc!(
+//! let mut y = extawi!(0u32);
+//! cc!(umax:
 //!     .., 0x321u12;
 //!     y;
 //! ).unwrap();
 //! assert_eq!(y, extawi!(0xffff_f321_u32));
 //!
-//! let mut y = extawi!(umax: ..8);
+//! let mut y = extawi!(0u8);
 //! assert!(cc!(.., 0x321u12; y).is_none());
 //!
 //! // The third case allows `y.bw()` to be any possible bitwidth. If
@@ -528,8 +550,8 @@
 //!
 //! // The macros are even smart enough to do this:
 //!
-//! let mut y = extawi!(umax: ..24);
-//! cc!(0x3u4, .., 0x21u8; y).unwrap();
+//! let mut y = extawi!(0u24);
+//! cc!(umax: 0x3u4, .., 0x21u8; y).unwrap();
 //! assert_eq!(y, extawi!(0x3fff21u24));
 //!
 //! // Note again that filler widths cannot be negative, and so this will cause

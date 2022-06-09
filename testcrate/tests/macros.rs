@@ -139,5 +139,13 @@ fn macro_successes() {
     let x = inlawi!(0x8_u5);
     let mut y = inlawi!(0u15);
     cc!(imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y).unwrap();
-    assert_eq!(y, inlawi!(0x247fu15))
+    assert_eq!(y, inlawi!(0x247fu15));
+    let mut x = inlawi!(0xffu8);
+    let mut y = inlawi!(0xfu4);
+    cc!(uone: ..; .., x; .., y).unwrap();
+    assert_eq!(x, inlawi!(1u8));
+    assert_eq!(y, inlawi!(1u4));
+    let mut x = extawi!(0u64);
+    assert_eq!(extawi!(umax: ..; x), ExtAwi::umax(bw(64)));
+    assert_eq!(x, ExtAwi::umax(bw(64)));
 }

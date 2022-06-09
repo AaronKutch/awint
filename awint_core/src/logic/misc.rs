@@ -242,8 +242,6 @@ impl Bits {
         Some(())
     }
 
-    // TODO optimize
-
     /// A specialization of [Bits::field] with `from` set to 0.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn field_to(&mut self, to: usize, rhs: &Self, width: usize) -> Option<()> {
