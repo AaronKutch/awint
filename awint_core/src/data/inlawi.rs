@@ -262,9 +262,7 @@ macro_rules! inlawi_from {
                     //});
                     //Self { raw }
                 }
-            }
 
-            impl InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
                 #[const_fn(cfg(feature = "const_support"))]
                 pub const fn $from_i(x: $i) -> Self {
                     let mut awi = Self::zero();

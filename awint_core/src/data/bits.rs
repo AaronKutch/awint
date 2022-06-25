@@ -485,7 +485,7 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_mut_bytes_full_width_nonportable(&'a mut self) -> &'a mut [u8] {
         let size_in_u8 = self.len() * BYTE_RATIO;
-        // Safety: Same reasoning as `as_bytes`
+        // Safety: Same reasoning as `as_bytes_full_width_nonportable`
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
     }
 

@@ -87,6 +87,12 @@ impl Bits {
         (self.len() * BITS) - self.unused()
     }
 
+    /// Returns the number of significant bits, `self.bw() - self.lz()`
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn sig(&self) -> usize {
+        self.bw() - self.lz()
+    }
+
     /// Returns the number of set ones
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn count_ones(&self) -> usize {
@@ -99,12 +105,6 @@ impl Bits {
             ones += x.count_ones() as usize;
         });
         ones
-    }
-
-    /// Returns the number of significant bits, `self.bw() - self.lz()`
-    #[const_fn(cfg(feature = "const_support"))]
-    pub const fn sig(&self) -> usize {
-        self.bw() - self.lz()
     }
 
     /// "Fielding" bitfields with targeted copy assigns. The bitwidths of `self`

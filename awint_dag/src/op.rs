@@ -59,6 +59,7 @@ pub enum Op {
     // (&self) -> usize
     Lz,
     Tz,
+    Sig,
     CountOnes,
 
     // (&mut self, rhs: &Self)
@@ -83,13 +84,19 @@ pub enum Op {
     Ile,
 
     Inc,
-    Dec,
-    Neg,
     IncCout,
+    Dec,
     DecCout,
+    Neg,
 
+    Get,
+    Set,
     LutSet,
     Field,
+    FieldTo,
+    FieldFrom,
+    FieldWidth,
+    FieldBit,
 }
 
 use std::num::NonZeroUsize;
@@ -109,8 +116,8 @@ impl Op {
             ZeroResizeOverflow(_) => "zero_reisze_overflow",
             SignResize(_) => "sign_resize",
             SignResizeOverflow(_) => "sign_resize_overflow",
-            Copy => "copy",
             Lut(_) => "lut",
+            Copy => "copy",
             Funnel => "funnel",
             UQuo => "uquo",
             URem => "urem",
@@ -132,6 +139,7 @@ impl Op {
             Msb => "msb",
             Lz => "lz",
             Tz => "tz",
+            Sig => "sig",
             CountOnes => "count_ones",
             Or => "or",
             And => "and",
@@ -155,8 +163,14 @@ impl Op {
             Dec => "dec",
             DecCout => "dec_cout",
             Neg => "neg",
+            Get => "get",
+            Set => "set",
             LutSet => "lut_set",
             Field => "field",
+            FieldTo => "field_to",
+            FieldFrom => "field_from",
+            FieldWidth => "field_width",
+            FieldBit => "field_bit",
         }
     }
 
@@ -205,7 +219,7 @@ impl Op {
 
             IsZero | IsUmax | IsImax | IsImin | IsUone | Lsb | Msb => v.push("x"),
 
-            Lz | Tz | CountOnes => v.push("x"),
+            Lz | Tz | Sig | CountOnes => v.push("x"),
 
             Or | And | Xor | Shl | Lshr | Ashr | Rotl | Rotr | Add | Sub | Rsb => {
                 v.push("lhs");
@@ -217,7 +231,7 @@ impl Op {
                 v.push("rhs");
             }
 
-            Inc | Dec | IncCout | DecCout => {
+            Inc | IncCout | Dec | DecCout => {
                 v.push("x");
                 v.push("cin");
             }
@@ -225,17 +239,32 @@ impl Op {
                 v.push("x");
                 v.push("neg");
             }
+            Get => {
+                v.push("x");
+                v.push("inx");
+            }
+            Set => {
+                v.push("x");
+                v.push("inx");
+                v.push("bit");
+            }
             LutSet => {
                 v.push("lut");
                 v.push("entry");
                 v.push("inx");
             }
-            Field => {
+            ref op @ (Field | FieldTo | FieldFrom | FieldWidth | FieldBit) => {
                 v.push("lhs");
-                v.push("to");
+                if !matches!(op, FieldFrom | FieldWidth) {
+                    v.push("to");
+                }
                 v.push("rhs");
-                v.push("from");
-                v.push("width");
+                if !matches!(op, FieldTo | FieldWidth) {
+                    v.push("from");
+                }
+                if *op != FieldBit {
+                    v.push("width");
+                }
             }
         }
         v
@@ -265,13 +294,17 @@ impl Op {
             | Msb
             | Lz
             | Tz
+            | Sig
             | CountOnes => 1,
 
             Resize(_) | Lut(_) | Funnel | UQuo | URem | IQuo | IRem | CinSum | UnsignedOverflow
             | SignedOverflow | Or | And | Xor | Shl | Lshr | Ashr | Rotl | Rotr | Add | Sub
-            | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile | Inc | IncCout | Dec | DecCout | Neg => 2,
+            | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile | Inc | IncCout | Dec | DecCout | Neg | Get => {
+                2
+            }
 
-            LutSet | MulAdd => 3,
+            MulAdd | LutSet | Set | FieldWidth => 3,
+            FieldTo | FieldFrom | FieldBit => 4,
             Field => 5,
         })
     }
@@ -307,7 +340,7 @@ impl Op {
 
             ZeroResize(nzbw) | SignResize(nzbw) => bw != nzbw.get(),
 
-            Lz | Tz | CountOnes => bw != BITS,
+            Lz | Tz | Sig | CountOnes => bw != BITS,
 
             Lsb
             | Msb
@@ -342,6 +375,8 @@ impl Op {
                     }
             }
             Funnel => (v[1] >= (BITS - 1)) || ((1usize << v[1]) != bw) || ((bw << 1) != v[0]),
+            Get => (bw != v[0]) || (v[1] != BITS),
+            Set => (bw != v[0]) || (v[1] != BITS) || (v[2] != 1),
             LutSet => {
                 (bw != v[0])
                     || if v[2] < BITS {
@@ -355,6 +390,10 @@ impl Op {
                     }
             }
             Field => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS) || (v[4] != BITS),
+            FieldTo => (bw != v[0]) || (v[2] != BITS) || (v[3] != BITS),
+            FieldFrom => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
+            FieldWidth => (bw != v[0]) || (v[2] != BITS),
+            FieldBit => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
         }
     }
 
@@ -385,6 +424,7 @@ impl Op {
             | Msb
             | Lz
             | Tz
+            | Sig
             | CountOnes
             | ZeroResizeOverflow(_)
             | SignResizeOverflow(_)
@@ -417,18 +457,29 @@ impl Op {
             | Neg
             | LutSet => false,
 
-            Shl | Lshr | Ashr | Rotl | Rotr => {
+            Shl | Lshr | Ashr | Rotl | Rotr | Get | Set => {
                 let s = v[1].const_as_ref().to_usize();
                 s >= bw
             }
-            Field => {
-                let to = v[1].const_as_ref().to_usize();
-                let from = v[3].const_as_ref().to_usize();
-                let width = v[4].const_as_ref().to_usize();
-                (width > bw)
-                    || (width > v[2].bw())
-                    || (to > (bw - width))
-                    || (from > (v[2].bw() - width))
+            op @ (Field | FieldTo | FieldFrom | FieldWidth | FieldBit) => {
+                let width = if *op == FieldBit {
+                    1
+                } else {
+                    v[v.len() - 1].const_as_ref().to_usize()
+                };
+                let (to, x) = if matches!(op, FieldFrom | FieldWidth) {
+                    (0, v[1].bw())
+                } else {
+                    (v[1].const_as_ref().to_usize(), v[2].bw())
+                };
+                let from = if matches!(op, FieldTo | FieldWidth) {
+                    0
+                } else if *op == FieldFrom {
+                    v[2].const_as_ref().to_usize()
+                } else {
+                    v[3].const_as_ref().to_usize()
+                };
+                (width > bw) || (width > x) || (to > (bw - width)) || (from > (x - width))
             }
         }
     }
@@ -556,6 +607,10 @@ impl Op {
             }
             Tz => {
                 e.usize_assign(v[0].tz());
+                Some(())
+            }
+            Sig => {
+                e.usize_assign(v[0].sig());
                 Some(())
             }
             CountOnes => {
@@ -735,6 +790,18 @@ impl Op {
                 e.bool_assign(tmp_awi3.sign_resize_assign(v[0]));
                 Some(())
             }
+            Get => {
+                let r = e.copy_assign(v[0]);
+                e.get(v[1].to_usize());
+                r
+            }
+            Set => {
+                if e.copy_assign(v[0]).is_some() {
+                    e.set(v[1].to_usize(), v[2].to_bool())
+                } else {
+                    None
+                }
+            }
             LutSet => {
                 if e.copy_assign(v[0]).is_some() {
                     e.lut_set(v[1], v[2])
@@ -745,6 +812,34 @@ impl Op {
             Field => {
                 if e.copy_assign(v[0]).is_some() {
                     e.field(v[1].to_usize(), v[2], v[3].to_usize(), v[4].to_usize())
+                } else {
+                    None
+                }
+            }
+            FieldTo => {
+                if e.copy_assign(v[0]).is_some() {
+                    e.field_to(v[1].to_usize(), v[2], v[4].to_usize())
+                } else {
+                    None
+                }
+            }
+            FieldFrom => {
+                if e.copy_assign(v[0]).is_some() {
+                    e.field_from(v[2], v[3].to_usize(), v[4].to_usize())
+                } else {
+                    None
+                }
+            }
+            FieldWidth => {
+                if e.copy_assign(v[0]).is_some() {
+                    e.field_width(v[2], v[4].to_usize())
+                } else {
+                    None
+                }
+            }
+            FieldBit => {
+                if e.copy_assign(v[0]).is_some() {
+                    e.field_bit(v[1].to_usize(), v[2], v[3].to_usize())
                 } else {
                     None
                 }

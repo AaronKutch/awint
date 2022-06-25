@@ -1,7 +1,7 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     num::NonZeroUsize,
-    ops::{Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
     rc::Rc,
 };
 
@@ -48,10 +48,12 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
+        assert_inlawi_invariants::<BW, LEN>();
         NonZeroUsize::new(BW).unwrap()
     }
 
     pub fn const_bw() -> usize {
+        assert_inlawi_invariants::<BW, LEN>();
         BW
     }
 
@@ -69,6 +71,11 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn const_as_mut(&mut self) -> &mut Bits {
         &mut self.0
+    }
+
+    pub fn const_raw_len() -> usize {
+        assert_inlawi_invariants::<BW, LEN>();
+        LEN
     }
 
     #[doc(hidden)]
@@ -119,6 +126,20 @@ impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
     }
 }
 
+impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
+    type Target = Bits;
+
+    fn deref(&self) -> &Self::Target {
+        self.const_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
+    fn deref_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
 impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
     type Output = Bits;
 
@@ -156,6 +177,35 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
         self.const_as_mut()
     }
 }
+
+macro_rules! inlawi_from {
+    ($($w:expr, $u:ident $from_u:ident $u_assign:ident
+        $i:ident $from_i:ident $i_assign:ident);*;) => {
+        $(
+            impl InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
+                pub fn $from_u(x: $u) -> Self {
+                    let mut awi = Self::zero();
+                    awi.const_as_mut().$u_assign(x);
+                    awi
+                }
+
+                pub fn $from_i(x: $i) -> Self {
+                    let mut awi = Self::zero();
+                    awi.const_as_mut().$i_assign(x);
+                    awi
+                }
+            }
+        )*
+    };
+}
+
+inlawi_from!(
+    8, u8 from_u8 u8_assign i8 from_i8 i8_assign;
+    16, u16 from_u16 u16_assign i16 from_i16 i16_assign;
+    32, u32 from_u32 u32_assign i32 from_i32 i32_assign;
+    64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
+    128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
+);
 
 /// Mimicking `awint_ext::ExtAwi`
 #[derive(Debug)]
@@ -266,6 +316,20 @@ impl ExtAwi {
 impl PartialEq for ExtAwi {
     fn eq(&self, other: &Self) -> bool {
         self.const_as_ref().eq(other.const_as_ref())
+    }
+}
+
+impl Deref for ExtAwi {
+    type Target = Bits;
+
+    fn deref(&self) -> &Self::Target {
+        self.const_as_ref()
+    }
+}
+
+impl DerefMut for ExtAwi {
+    fn deref_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
     }
 }
 

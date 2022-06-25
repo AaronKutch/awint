@@ -219,6 +219,7 @@ impl Bits {
     ref_self_output_usize!(
         lz Lz,
         tz Tz,
+        sig Sig,
         count_ones CountOnes,
     );
 
@@ -306,6 +307,19 @@ impl Bits {
         None
     }
 
+    pub fn get(&mut self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
+        Some(prim::bool::new(Get, vec![self.state(), inx.into().state()]))
+    }
+
+    pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
+        self.state = State::new(self.state_nzbw(), Set, vec![
+            self.state(),
+            inx.into().state(),
+            bit.into().state(),
+        ]);
+        Some(())
+    }
+
     pub fn field(
         &mut self,
         to: impl Into<prim::usize>,
@@ -319,6 +333,60 @@ impl Bits {
             rhs.state(),
             from.into().state(),
             width.into().state(),
+        ]);
+        Some(())
+    }
+
+    pub fn field_to(
+        &mut self,
+        to: impl Into<prim::usize>,
+        rhs: &Self,
+        width: impl Into<prim::usize>,
+    ) -> Option<()> {
+        self.state = State::new(self.state_nzbw(), FieldTo, vec![
+            self.state(),
+            to.into().state(),
+            rhs.state(),
+            width.into().state(),
+        ]);
+        Some(())
+    }
+
+    pub fn field_from(
+        &mut self,
+        rhs: &Self,
+        from: impl Into<prim::usize>,
+        width: impl Into<prim::usize>,
+    ) -> Option<()> {
+        self.state = State::new(self.state_nzbw(), FieldFrom, vec![
+            self.state(),
+            rhs.state(),
+            from.into().state(),
+            width.into().state(),
+        ]);
+        Some(())
+    }
+
+    pub fn field_width(&mut self, rhs: &Self, width: impl Into<prim::usize>) -> Option<()> {
+        self.state = State::new(self.state_nzbw(), FieldWidth, vec![
+            self.state(),
+            rhs.state(),
+            width.into().state(),
+        ]);
+        Some(())
+    }
+
+    pub fn field_bit(
+        &mut self,
+        to: impl Into<prim::usize>,
+        rhs: &Self,
+        from: impl Into<prim::usize>,
+    ) -> Option<()> {
+        self.state = State::new(self.state_nzbw(), FieldBit, vec![
+            self.state(),
+            to.into().state(),
+            rhs.state(),
+            from.into().state(),
         ]);
         Some(())
     }
@@ -420,26 +488,31 @@ impl Bits {
         ]);
         out
     }
+}
 
-    #[doc(hidden)]
-    pub fn unstable_lt_checks<const N: usize>(
-        _lt_checks: [(impl Into<prim::usize>, impl Into<prim::usize>); N],
+#[doc(hidden)]
+impl Bits {
+    #[must_use]
+    pub const fn must_use<T>(t: T) -> T {
+        t
+    }
+
+    pub const fn unstable_raw_digits(bw: usize) -> usize {
+        awint_internals::raw_digits(bw)
+    }
+
+    // TODO for now assume they pass
+
+    pub fn unstable_le_checks<const N: usize>(
+        _le_checks: [(impl Into<prim::usize>, impl Into<prim::usize>); N],
     ) -> Option<()> {
         Some(())
     }
 
-    #[doc(hidden)]
-    pub fn unstable_common_lt_checks<const N: usize>(
-        _common_lhs: impl Into<prim::usize>,
-        _rhss: [impl Into<prim::usize>; N],
-    ) -> Option<()> {
-        Some(())
-    }
-
-    #[doc(hidden)]
-    pub fn unstable_common_ne_checks<const N: usize>(
-        _common_lhs: impl Into<prim::usize>,
-        _rhss: [impl Into<prim::usize>; N],
+    pub fn unstable_common_checks<const N: usize, const M: usize>(
+        _common_cw: impl Into<prim::usize>,
+        _ge: [impl Into<prim::usize>; N],
+        _eq: [impl Into<prim::usize>; M],
     ) -> Option<()> {
         Some(())
     }
