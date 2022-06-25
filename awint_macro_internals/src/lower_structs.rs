@@ -256,6 +256,13 @@ impl<'a> Lower<'a> {
         if eq.is_empty() && ge.is_empty() {
             String::new()
         } else {
+            // this is to get type annotations working for `awint_dag` purposes
+            if eq.is_empty() {
+                eq += "0;0";
+            }
+            if ge.is_empty() {
+                ge += "0;0";
+            }
             format!(
                 "{}({},[{}],[{}]).is_some()",
                 self.fn_names.common_fn, self.names.cw, ge, eq
