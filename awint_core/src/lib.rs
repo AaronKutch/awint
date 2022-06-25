@@ -13,7 +13,6 @@
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_read))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_write))]
-#![cfg_attr(feature = "const_support", feature(const_intrinsic_copy))]
 #![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts))]
 #![cfg_attr(feature = "const_support", feature(const_swap))]
 #![cfg_attr(feature = "const_support", feature(const_option))]
