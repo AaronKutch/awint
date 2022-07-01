@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.0] - 2022-06-30
+### Additions
+- Added missing `from_...` and `From<...>` impls to `InlAwi` and `ExtAwi`
+
 ## [0.5.0] - 2022-06-09
 ### Fixes
 - Fixed that `to_u8_slice` on big endian platforms did not zero bytes beyond `self.bw()`. There was

@@ -1,6 +1,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(const_trait_impl)]
+#![allow(clippy::reversed_empty_ranges)]
 
 use awint::prelude::{bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
 
@@ -102,7 +103,6 @@ macro_rules! test_nonequal_bw {
 /// This test checks that all appropriate functions on `Bits` exist, are const,
 /// and checks `None` return cases.
 #[test]
-#[allow(clippy::reversed_empty_ranges)]
 const fn bits_functions() {
     // these macros also test the corresponding `InlAwi` functions
     let mut awi0 = inlawi!(zero: ..128);

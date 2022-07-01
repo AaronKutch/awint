@@ -13,6 +13,8 @@ pub enum EvalError {
     // wrong integer value of an operand, such as overshifting from a shift operation or going out
     // of bounds in a field operation
     InvalidOperandValue,
+    // Something needs a statically known bitwidth
+    NonStaticBitwidth,
     // A function on a operation was unimplemented
     Unimplemented,
     // Some other kind of brokenness, such as dependency edges not agreeing with operand edges

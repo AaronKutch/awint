@@ -44,6 +44,8 @@ impl PartialEq for Node {
 }
 */
 
+impl<P: PtrTrait> Node<P> {}
+
 impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
     fn debug_node(this: &Self) -> DebugNode<P> {
         let names = this.op.operand_names();

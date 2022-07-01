@@ -3,6 +3,7 @@
 use std::{
     borrow::Borrow,
     collections::{hash_map::Entry, HashMap},
+    num::NonZeroUsize,
     ops::{Index, IndexMut},
     rc::Rc,
 };
@@ -140,5 +141,21 @@ impl<P: PtrTrait> Dag<P> {
             }
         }
         v
+    }
+
+    pub fn get_bw<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {
+        if let Some(w) = self[ptr].nzbw {
+            Ok(w)
+        } else {
+            Err(EvalError::NonStaticBitwidth)
+        }
+    }
+
+    pub fn get_2ops<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<[Ptr<P>; 2], EvalError> {
+        if let [a, b] = self[ptr].ops[..] {
+            Ok([a, b])
+        } else {
+            Err(EvalError::WrongNumberOfOperands)
+        }
     }
 }
