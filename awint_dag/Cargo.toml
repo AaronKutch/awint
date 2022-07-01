@@ -19,5 +19,3 @@ triple_arena = "0.5"
 triple_arena_render = "0.5"
 
 [features]
-# This enables things such as an evaluating `PartialEq` on the mimicking types
-special_traits = []

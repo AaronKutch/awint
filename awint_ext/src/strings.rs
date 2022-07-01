@@ -206,14 +206,16 @@ impl ExtAwi {
         let tmp_bw = NonZeroUsize::new(
             // the +1 is for the shift left on `rem` and for possible `quo` increment overflow
             (sign.is_some() as usize)
-                .checked_add(bits_upper_bound(
-                    i_len
-                        .checked_add(f_len)
-                        .ok_or(Overflow)?
-                        .checked_add(exp_sub_f_len.unsigned_abs())
-                        .ok_or(Overflow)?,
-                    radix,
-                )?)
+                .checked_add(
+                    bits_upper_bound(
+                        i_len
+                            .checked_add(f_len)
+                            .ok_or(Overflow)?
+                            .checked_add(exp_sub_f_len.unsigned_abs())
+                            .ok_or(Overflow)?,
+                        radix,
+                    )?,
+                )
                 .ok_or(Overflow)?
                 .checked_add(fp.unsigned_abs())
                 .ok_or(Overflow)?

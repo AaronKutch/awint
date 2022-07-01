@@ -55,18 +55,3 @@ impl Bits {
         self
     }
 }
-
-#[cfg(feature = "special_traits")]
-impl PartialEq for Bits {
-    fn eq(&self, other: &Self) -> bool {
-        use crate::lowering::Dag;
-        let eq = self.const_eq(other).unwrap();
-        let mut dag = Dag::new(vec![eq.state()]);
-        dag.eval();
-        if let Op::Literal(ref b) = dag[dag.leaves()[0]].op {
-            b.to_bool()
-        } else {
-            false
-        }
-    }
-}

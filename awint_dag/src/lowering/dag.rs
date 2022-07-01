@@ -1,62 +1,53 @@
 //! This DAG is for lowering into a LUT-only DAG
 
 use std::{
+    borrow::Borrow,
     collections::{hash_map::Entry, HashMap},
     ops::{Index, IndexMut},
     rc::Rc,
 };
 
-use triple_arena::{Arena, Ptr};
+use triple_arena::{Arena, Ptr, PtrTrait};
 
-use super::EvalError;
 use crate::{
-    lowering::{Dag, Node, PtrEqRc, P0},
+    lowering::{EvalError, Node, PtrEqRc},
     mimick,
 };
 
-impl Index<Ptr<P0>> for Dag {
-    type Output = Node;
+#[derive(Debug)]
+pub struct Dag<P: PtrTrait> {
+    pub dag: Arena<P, Node<P>>,
+}
 
-    fn index(&self, index: Ptr<P0>) -> &Node {
-        self.dag.get(index).unwrap()
+impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
+    type Output = Node<P>;
+
+    fn index(&self, index: B) -> &Node<P> {
+        self.dag.get(*index.borrow()).unwrap()
     }
 }
 
-impl IndexMut<Ptr<P0>> for Dag {
-    fn index_mut(&mut self, index: Ptr<P0>) -> &mut Node {
-        self.dag.get_mut(index).unwrap()
+impl<P: PtrTrait, B: Borrow<Ptr<P>>> IndexMut<B> for Dag<P> {
+    fn index_mut(&mut self, index: B) -> &mut Node<P> {
+        self.dag.get_mut(*index.borrow()).unwrap()
     }
 }
 
-impl Index<&Ptr<P0>> for Dag {
-    type Output = Node;
-
-    fn index(&self, index: &Ptr<P0>) -> &Node {
-        self.dag.get(*index).unwrap()
-    }
-}
-
-impl IndexMut<&Ptr<P0>> for Dag {
-    fn index_mut(&mut self, index: &Ptr<P0>) -> &mut Node {
-        self.dag.get_mut(*index).unwrap()
-    }
-}
-
-impl Dag {
+impl<P: PtrTrait> Dag<P> {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
     /// version
     pub fn new(leaves: Vec<Rc<mimick::State>>) -> Self {
         // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<PtrEqRc, Ptr<P0>> = HashMap::new();
+        let mut lowerings: HashMap<PtrEqRc, Ptr<P>> = HashMap::new();
         // used later for when all nodes are allocated
-        let mut raisings: Vec<(Ptr<P0>, PtrEqRc)> = Vec::new();
+        let mut raisings: Vec<(Ptr<P>, PtrEqRc)> = Vec::new();
         // keep a frontier which will guarantee that the whole mimick DAG is explored,
         // and keep track of dependents
         let mut frontier = leaves;
-        let mut dag: Arena<P0, Node> = Arena::new();
+        let mut dag: Arena<P, Node<P>> = Arena::new();
         // because some nodes may not be in the arena yet, we have to bootstrap
         // dependencies by looking up the source later (source, sink)
-        let mut deps: Vec<(PtrEqRc, Ptr<P0>)> = Vec::new();
+        let mut deps: Vec<(PtrEqRc, Ptr<P>)> = Vec::new();
         while let Some(next) = frontier.pop() {
             match lowerings.entry(PtrEqRc(Rc::clone(&next))) {
                 Entry::Occupied(_) => (),
@@ -95,7 +86,7 @@ impl Dag {
     /// Note that if the DAG is evaluated, there may be invalid operand value
     /// errors.
     pub fn verify_integrity(&self) -> Result<(), EvalError> {
-        'outer: for p in self.list_ptrs() {
+        'outer: for p in self.ptrs() {
             let len = self[p].ops.len();
             if let Some(expected) = self[p].op.operands_len() {
                 if expected != len {
@@ -125,18 +116,14 @@ impl Dag {
     }
 
     /// Returns a list of pointers to all nodes in no particular order
-    pub fn list_ptrs(&self) -> Vec<Ptr<P0>> {
-        let mut v = vec![];
-        for (p, _) in &self.dag {
-            v.push(p);
-        }
-        v
+    pub fn ptrs(&self) -> Vec<Ptr<P>> {
+        self.dag.ptrs().collect()
     }
 
     /// Returns all source roots that have no operands
-    pub fn roots(&self) -> Vec<Ptr<P0>> {
+    pub fn roots(&self) -> Vec<Ptr<P>> {
         let mut v = Vec::new();
-        for p in self.list_ptrs() {
+        for p in self.ptrs() {
             if self[p].ops.is_empty() {
                 v.push(p);
             }
@@ -145,9 +132,9 @@ impl Dag {
     }
 
     /// Returns all sink leaves that have no dependents
-    pub fn leaves(&self) -> Vec<Ptr<P0>> {
+    pub fn leaves(&self) -> Vec<Ptr<P>> {
         let mut v = Vec::new();
-        for p in self.list_ptrs() {
+        for p in self.ptrs() {
             if self[p].deps.is_empty() {
                 v.push(p);
             }

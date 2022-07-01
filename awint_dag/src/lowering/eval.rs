@@ -1,14 +1,14 @@
-use triple_arena::Ptr;
+use triple_arena::{Ptr, PtrTrait};
 use Op::*;
 
 use crate::{
-    lowering::{Dag, EvalError, P0},
+    lowering::{Dag, EvalError},
     Op,
 };
 
 /// I don't expect `deps` to be too long, and some algorithms need `deps` to be
 /// in a vector anyway
-fn remove(v: &mut Vec<Ptr<P0>>, target: Ptr<P0>) {
+fn remove<P: PtrTrait>(v: &mut Vec<Ptr<P>>, target: Ptr<P>) {
     for i in 0..v.len() {
         if v[i] == target {
             v.swap_remove(i);
@@ -17,11 +17,11 @@ fn remove(v: &mut Vec<Ptr<P0>>, target: Ptr<P0>) {
     }
 }
 
-impl Dag {
+impl<P: PtrTrait> Dag<P> {
     /// Evaluates node, assumed to have an evaluatable operation with all
     /// operands being literals. Note that the DAG may be left in a bad state if
     /// an error is returned.
-    pub fn eval_node(&mut self, ptr: Ptr<P0>) -> Result<(), EvalError> {
+    pub fn eval_node(&mut self, ptr: Ptr<P>) -> Result<(), EvalError> {
         let op = std::mem::replace(&mut self[ptr].op, Op::Invalid);
         if matches!(op, Literal(_) | Invalid | Opaque) {
             return Err(EvalError::Unevaluatable)
@@ -82,8 +82,8 @@ impl Dag {
     /// Evaluates the DAG as much as is possible
     pub fn eval(&mut self) {
         // evaluatable values
-        let list = self.list_ptrs();
-        let mut eval: Vec<Ptr<P0>> = vec![];
+        let list = self.ptrs();
+        let mut eval: Vec<Ptr<P>> = vec![];
         for p in list {
             if matches!(self[p].op, Literal(_) | Invalid | Opaque) {
                 // skip unevaluatable values
