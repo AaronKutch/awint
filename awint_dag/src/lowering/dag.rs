@@ -79,8 +79,7 @@ impl<P: PtrTrait> Dag<P> {
                 dag[ptr].ops.push(lowerings[&PtrEqRc(rc.0.ops[i].clone())]);
             }
         }
-        let dag = Self { dag };
-        dag
+        Self { dag }
     }
 
     /// Checks that the DAG is not broken and that the bitwidth checks work.
@@ -170,5 +169,22 @@ impl<P: PtrTrait> Dag<P> {
         let res = self.verify_integrity();
         triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
         res
+    }
+
+    /// Always renders to file, and then returns errors
+    #[cfg(feature = "debug")]
+    pub fn eval_and_render_to_svg_file(
+        &mut self,
+        out_file: std::path::PathBuf,
+    ) -> Result<(), EvalError> {
+        let res0 = self.verify_integrity();
+        if res0.is_err() {
+            triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
+            res0
+        } else {
+            let res1 = self.eval();
+            triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
+            res1
+        }
     }
 }

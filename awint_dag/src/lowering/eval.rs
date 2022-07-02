@@ -18,16 +18,13 @@ fn remove<P: PtrTrait>(v: &mut Vec<Ptr<P>>, target: Ptr<P>) {
 }
 
 impl<P: PtrTrait> Dag<P> {
-    /// Evaluates node, assumed to have an evaluatable operation with all
-    /// operands being literals. Note that the DAG may be left in a bad state if
-    /// an error is returned.
+    /// Evaluates the node. Assumes the operands are all literals.
     pub fn eval_node(&mut self, ptr: Ptr<P>) -> Result<(), EvalError> {
-        let op = std::mem::replace(&mut self[ptr].op, Op::Invalid);
-        if matches!(op, Literal(_) | Invalid | Opaque) {
-            return Err(EvalError::Unevaluatable)
+        if matches!(self[ptr].op, Literal(_) | Invalid | Opaque) {
+            return Ok(())
         }
         // check number of operands
-        if let Some(expected) = op.operands_len() {
+        if let Some(expected) = self[ptr].op.operands_len() {
             if self[ptr].ops.len() != expected {
                 return Err(EvalError::WrongNumberOfOperands)
             }
@@ -51,12 +48,13 @@ impl<P: PtrTrait> Dag<P> {
         // check bitwidths and values
         if let Some(self_bw) = self[ptr].nzbw {
             let bitwidths: Vec<usize> = v.iter().map(|a| a.nzbw().get()).collect();
-            if op.check_bitwidths(self_bw.get(), &bitwidths) {
+            if self[ptr].op.check_bitwidths(self_bw.get(), &bitwidths) {
                 return Err(EvalError::WrongBitwidth)
             }
-            if op.check_values(self_bw, &v) {
+            if self[ptr].op.check_values(self_bw, &v) {
                 return Err(EvalError::InvalidOperandValue)
             }
+            let op = std::mem::replace(&mut self[ptr].op, Op::Invalid);
             if let Some(res) = op.eval(self_bw, &v) {
                 // remove operand edges
                 for op_i in 0..self[ptr].ops.len() {
@@ -74,13 +72,15 @@ impl<P: PtrTrait> Dag<P> {
                 // some kind of internal bug
                 return Err(EvalError::Other)
             }
+        } else {
+            return Err(EvalError::Unevaluatable)
         }
 
         Ok(())
     }
 
     /// Evaluates the DAG as much as is possible
-    pub fn eval(&mut self) {
+    pub fn eval(&mut self) -> Result<(), EvalError> {
         // evaluatable values
         let list = self.ptrs();
         let mut eval: Vec<Ptr<P>> = vec![];
@@ -102,13 +102,13 @@ impl<P: PtrTrait> Dag<P> {
         }
 
         while let Some(node) = eval.pop() {
-            self.eval_node(node).unwrap();
+            self.eval_node(node)?;
             // check all deps for newly evaluatable nodes
             for dep_i in 0..self[node].deps.len() {
                 let dep = self[node].deps[dep_i];
                 let mut evaluatable = true;
                 for op in &self[dep].ops {
-                    if !matches!(self[op].op, Literal(_)) {
+                    if !self[op].op.is_literal() {
                         evaluatable = false;
                         break
                     }
@@ -118,5 +118,6 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
         }
+        Ok(())
     }
 }

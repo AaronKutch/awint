@@ -1,4 +1,4 @@
-use std::{mem, num::NonZeroUsize, ptr, rc::Rc};
+use std::{fmt, mem, num::NonZeroUsize, ptr, rc::Rc};
 
 use crate::{
     common::{Lineage, Op, State},
@@ -12,7 +12,6 @@ use crate::{
 pub(in crate::mimick) struct InnerState(pub(crate) Rc<State>);
 
 /// Mimicking `awint_core::Bits`
-#[derive(Debug)]
 #[repr(transparent)] // for the transmute
 pub struct Bits {
     // use different names for the different raw `InnerState`s, or else Rust can think we are
@@ -108,5 +107,11 @@ impl Bits {
         // other `Rc`s that need the old state will keep it alive despite this one being
         // dropped
         let _: Rc<State> = mem::replace(&mut self._bits_raw[0].0, State::new(nzbw, op, ops));
+    }
+}
+
+impl fmt::Debug for Bits {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Bits({:?})", self._bits_raw[0].0)
     }
 }

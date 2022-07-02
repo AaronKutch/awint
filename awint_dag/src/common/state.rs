@@ -1,4 +1,4 @@
-use std::{num::NonZeroUsize, rc::Rc};
+use std::{fmt, num::NonZeroUsize, rc::Rc};
 
 use crate::common::Op;
 
@@ -7,7 +7,7 @@ use crate::common::Op;
 /// `Rc` pointers to `States`, so that they can change their state without
 /// borrowing issues or mutating `States` (which could be used as operands by
 /// other `States`).
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq)]
 pub struct State {
     /// Bitwidth
     pub nzbw: Option<NonZeroUsize>,
@@ -24,4 +24,15 @@ impl State {
 
     // Note: there is no `update` function, because we run into borrowing problems
     // when using a previous state to create a new one and replace the current
+}
+
+impl fmt::Debug for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // do not include `ops` field, if the `Rc`s are in a web it results in
+        // exponential growth
+        f.debug_struct("State")
+            .field("nzbw", &self.nzbw)
+            .field("op", &self.op)
+            .finish()
+    }
 }

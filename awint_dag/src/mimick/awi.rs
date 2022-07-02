@@ -1,5 +1,6 @@
 use std::{
     borrow::{Borrow, BorrowMut},
+    fmt,
     num::NonZeroUsize,
     ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
     rc::Rc,
@@ -14,7 +15,6 @@ use crate::{
 };
 
 /// Mimicking `awint_core::InlAwi`
-#[derive(Debug)]
 // Note: must use `Bits` instead of `State`, because we need to return
 // references
 pub struct InlAwi<const BW: usize, const LEN: usize> {
@@ -166,6 +166,26 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
     }
 }
 
+impl<const BW: usize, const LEN: usize> fmt::Debug for InlAwi<BW, LEN> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "InlAwi({:?})", self._inlawi_raw[0].0)
+    }
+}
+
+macro_rules! forward_inlawi_fmt {
+    ($($name:ident)*) => {
+        $(
+            impl<const BW: usize, const LEN: usize> fmt::$name for InlAwi<BW, LEN> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::Debug::fmt(self, f)
+                }
+            }
+        )*
+    };
+}
+
+forward_inlawi_fmt!(Display LowerHex UpperHex Octal Binary);
+
 impl InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
     pub fn from_bool(x: impl Into<prim::bool>) -> Self {
         let mut awi = Self::zero();
@@ -281,7 +301,6 @@ impl From<prim::isize> for UsizeInlAwi {
 }
 
 /// Mimicking `awint_ext::ExtAwi`
-#[derive(Debug)]
 pub struct ExtAwi {
     pub(in crate::mimick) _extawi_raw: [InnerState; 1],
 }
@@ -428,6 +447,14 @@ impl AsMut<Bits> for ExtAwi {
         self.const_as_mut()
     }
 }
+
+impl fmt::Debug for ExtAwi {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ExtAwi({:?})", self._extawi_raw[0].0)
+    }
+}
+
+forward_debug_fmt!(ExtAwi);
 
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {

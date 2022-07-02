@@ -1,6 +1,6 @@
-use std::{num::NonZeroUsize, ops::*, rc::Rc};
+use std::{fmt, num::NonZeroUsize, ops::*, rc::Rc};
 
-use awint_internals::{bw, BITS};
+use awint_internals::*;
 
 use crate::{
     common::{Lineage, Op, State},
@@ -66,7 +66,6 @@ macro_rules! prim {
         $(
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
-            #[derive(Debug)]
             pub struct $name(InlAwi<$bw, {crate::mimick::Bits::unstable_raw_digits($bw)}>);
 
             impl Lineage for $name {
@@ -97,6 +96,14 @@ macro_rules! prim {
                 }
             }
 
+            impl fmt::Debug for $name {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    write!(f, "{}({:?})", stringify!($name), self.0.state())
+                }
+            }
+
+            forward_debug_fmt!($name);
+
             unary!($name;
                 Not not not_assign,
             );
@@ -122,7 +129,6 @@ macro_rules! prim {
 
 /// Mimicking primitive of same name
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
 pub struct bool(InlAwi<1, { crate::mimick::Bits::unstable_raw_digits(1) }>);
 
 impl Lineage for bool {
@@ -152,6 +158,14 @@ impl Clone for bool {
         Self::new(Op::Copy, vec![self.state()])
     }
 }
+
+impl fmt::Debug for bool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "bool({:?})", self.0.state())
+    }
+}
+
+forward_debug_fmt!(bool);
 
 unary!(bool;
     Not not not_assign,
