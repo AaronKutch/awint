@@ -255,24 +255,6 @@ impl InlAwi<1, { Bits::unstable_raw_digits(1) }> {
     }
 }
 
-impl InlAwi<{ usize::BITS as usize }, { Bits::unstable_raw_digits(usize::BITS as usize) }> {
-    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
-    #[const_fn(cfg(feature = "const_support"))]
-    pub const fn from_usize(x: usize) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().usize_assign(x);
-        awi
-    }
-
-    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
-    #[const_fn(cfg(feature = "const_support"))]
-    pub const fn from_isize(x: isize) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().isize_assign(x);
-        awi
-    }
-}
-
 macro_rules! inlawi_from {
     ($($w:expr, $u:ident $from_u:ident $u_assign:ident
         $i:ident $from_i:ident $i_assign:ident);*;) => {
@@ -305,3 +287,24 @@ inlawi_from!(
     64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
     128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
 );
+
+pub(crate) type UsizeInlAwi =
+    InlAwi<{ usize::BITS as usize }, { Bits::unstable_raw_digits(usize::BITS as usize) }>;
+
+impl UsizeInlAwi {
+    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn from_usize(x: usize) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().usize_assign(x);
+        awi
+    }
+
+    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn from_isize(x: isize) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().isize_assign(x);
+        awi
+    }
+}

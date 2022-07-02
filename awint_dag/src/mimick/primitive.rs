@@ -3,8 +3,8 @@ use std::{num::NonZeroUsize, ops::*, rc::Rc};
 use awint_internals::{bw, BITS};
 
 use crate::{
-    mimick::{primitive as prim, Bits, Lineage, State},
-    Op,
+    common::{Lineage, Op, State},
+    mimick::{primitive as prim, InlAwi},
 };
 
 macro_rules! unary {
@@ -67,13 +67,9 @@ macro_rules! prim {
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
             #[derive(Debug)]
-            pub struct $name(Bits);
+            pub struct $name(InlAwi<$bw, {crate::mimick::Bits::unstable_raw_digits($bw)}>);
 
             impl Lineage for $name {
-                fn from_state(state: Rc<State>) -> Self {
-                    Self(Bits::from_state(state))
-                }
-
                 fn hidden_const_nzbw() -> Option<NonZeroUsize> {
                     Some(bw($bw))
                 }
@@ -85,7 +81,7 @@ macro_rules! prim {
 
             impl $name {
                 pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-                    Self(Bits::new(Self::hidden_const_nzbw().unwrap(), op, ops))
+                    Self(InlAwi::new(op, ops))
                 }
             }
 
@@ -124,31 +120,12 @@ macro_rules! prim {
     };
 }
 
-prim!(
-    usize UsizeAssign BITS,
-    isize IsizeAssign BITS,
-    u8 U8Assign 8,
-    i8 I8Assign 8,
-    u16 U16Assign 16,
-    i16 I16Assign 16,
-    u32 U32Assign 32,
-    i32 I32Assign 32,
-    u64 U64Assign 64,
-    i64 I64Assign 64,
-    u128 U128Assign 128,
-    i128 I128Assign 128,
-);
-
 /// Mimicking primitive of same name
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
-pub struct bool(Bits);
+pub struct bool(InlAwi<1, { crate::mimick::Bits::unstable_raw_digits(1) }>);
 
 impl Lineage for bool {
-    fn from_state(state: Rc<State>) -> Self {
-        Self(Bits::from_state(state))
-    }
-
     fn hidden_const_nzbw() -> Option<NonZeroUsize> {
         Some(bw(1))
     }
@@ -160,7 +137,7 @@ impl Lineage for bool {
 
 impl bool {
     pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self(Bits::new(Self::hidden_const_nzbw().unwrap(), op, ops))
+        Self(InlAwi::new(op, ops))
     }
 }
 
@@ -190,4 +167,19 @@ triop!(bool;
     BitOr bitor or_assign,
     BitAnd bitand and_assign,
     BitXor bitxor xor_assign,
+);
+
+prim!(
+    u8 U8Assign 8,
+    u16 U16Assign 16,
+    u32 U32Assign 32,
+    u64 U64Assign 64,
+    u128 U128Assign 128,
+    usize UsizeAssign BITS,
+    i8 I8Assign 8,
+    i16 I16Assign 16,
+    i32 I32Assign 32,
+    i64 I64Assign 64,
+    i128 I128Assign 128,
+    isize IsizeAssign BITS,
 );

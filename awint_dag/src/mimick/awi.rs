@@ -8,27 +8,26 @@ use std::{
 use awint_internals::*;
 
 use crate::{
-    mimick::{Bits, Lineage, State},
-    primitive as prim, Op,
+    common::{Lineage, Op, State},
+    mimick::{Bits, InnerState},
+    primitive as prim,
 };
 
 /// Mimicking `awint_core::InlAwi`
 #[derive(Debug)]
 // Note: must use `Bits` instead of `State`, because we need to return
 // references
-pub struct InlAwi<const BW: usize, const LEN: usize>(Bits);
+pub struct InlAwi<const BW: usize, const LEN: usize> {
+    pub(in crate::mimick) _inlawi_raw: [InnerState; 1],
+}
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
-    fn from_state(state: Rc<State>) -> Self {
-        Self(Bits::from_state(state))
-    }
-
     fn hidden_const_nzbw() -> Option<NonZeroUsize> {
         Some(NonZeroUsize::new(BW).unwrap())
     }
 
     fn state(&self) -> Rc<State> {
-        self.0.state()
+        Rc::clone(&self._inlawi_raw[0].0)
     }
 }
 
@@ -39,12 +38,15 @@ impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self::from_state(State::new(
-            Some(Self::hidden_const_nzbw().unwrap()),
-            op,
-            ops,
-        ))
+    pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
+        Self {
+            _inlawi_raw: [InnerState(State::new(
+                Some(Self::hidden_const_nzbw().unwrap()),
+                op,
+                ops,
+            ))],
+        }
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
@@ -65,14 +67,6 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         Self::const_bw()
     }
 
-    pub fn const_as_ref(&self) -> &Bits {
-        &self.0
-    }
-
-    pub fn const_as_mut(&mut self) -> &mut Bits {
-        &mut self.0
-    }
-
     pub fn const_raw_len() -> usize {
         assert_inlawi_invariants::<BW, LEN>();
         LEN
@@ -80,6 +74,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     #[doc(hidden)]
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
+        assert_inlawi_invariants::<BW, LEN>();
         Self::new(
             Op::Literal(awint_ext::ExtAwi::from_bits(
                 awint_core::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
@@ -171,21 +166,65 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
     }
 }
 
+impl InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
+    pub fn from_bool(x: impl Into<prim::bool>) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().bool_assign(x);
+        awi
+    }
+}
+
+impl From<bool> for InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
+    fn from(x: bool) -> Self {
+        Self::from_bool(x)
+    }
+}
+
+impl From<prim::bool> for InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
+    fn from(x: prim::bool) -> Self {
+        Self::from_bool(x)
+    }
+}
+
 macro_rules! inlawi_from {
     ($($w:expr, $u:ident $from_u:ident $u_assign:ident
         $i:ident $from_i:ident $i_assign:ident);*;) => {
         $(
             impl InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
-                pub fn $from_u(x: $u) -> Self {
+                pub fn $from_u(x: impl Into<prim::$u>) -> Self {
                     let mut awi = Self::zero();
                     awi.const_as_mut().$u_assign(x);
                     awi
                 }
 
-                pub fn $from_i(x: $i) -> Self {
+                pub fn $from_i(x: impl Into<prim::$i>) -> Self {
                     let mut awi = Self::zero();
                     awi.const_as_mut().$i_assign(x);
                     awi
+                }
+            }
+
+            impl From<$u> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
+                fn from(x: $u) -> Self {
+                    Self::$from_u(x)
+                }
+            }
+
+            impl From<$i> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
+                fn from(x: $i) -> Self {
+                    Self::$from_i(x)
+                }
+            }
+
+            impl From<prim::$u> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
+                fn from(x: prim::$u) -> Self {
+                    Self::$from_u(x)
+                }
+            }
+
+            impl From<prim::$i> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
+                fn from(x: prim::$i) -> Self {
+                    Self::$from_i(x)
                 }
             }
         )*
@@ -200,21 +239,60 @@ inlawi_from!(
     128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
 );
 
-/// Mimicking `awint_ext::ExtAwi`
-#[derive(Debug)]
-pub struct ExtAwi(Bits);
+type UsizeInlAwi =
+    InlAwi<{ usize::BITS as usize }, { Bits::unstable_raw_digits(usize::BITS as usize) }>;
 
-impl Lineage for ExtAwi {
-    fn from_state(state: Rc<State>) -> Self {
-        Self(Bits::from_state(state))
+impl UsizeInlAwi {
+    pub fn from_usize(x: impl Into<prim::usize>) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().usize_assign(x);
+        awi
     }
 
+    pub fn from_isize(x: impl Into<prim::isize>) -> Self {
+        let mut awi = Self::zero();
+        awi.const_as_mut().isize_assign(x);
+        awi
+    }
+}
+
+impl From<usize> for UsizeInlAwi {
+    fn from(x: usize) -> Self {
+        Self::from_usize(x)
+    }
+}
+
+impl From<isize> for UsizeInlAwi {
+    fn from(x: isize) -> Self {
+        Self::from_isize(x)
+    }
+}
+
+impl From<prim::usize> for UsizeInlAwi {
+    fn from(x: prim::usize) -> Self {
+        Self::from_usize(x)
+    }
+}
+
+impl From<prim::isize> for UsizeInlAwi {
+    fn from(x: prim::isize) -> Self {
+        Self::from_isize(x)
+    }
+}
+
+/// Mimicking `awint_ext::ExtAwi`
+#[derive(Debug)]
+pub struct ExtAwi {
+    pub(in crate::mimick) _extawi_raw: [InnerState; 1],
+}
+
+impl Lineage for ExtAwi {
     fn hidden_const_nzbw() -> Option<NonZeroUsize> {
         None
     }
 
     fn state(&self) -> Rc<State> {
-        self.0.state()
+        Rc::clone(&self._extawi_raw[0].0)
     }
 }
 
@@ -226,7 +304,9 @@ impl Clone for ExtAwi {
 
 impl ExtAwi {
     fn new(nzbw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self::from_state(State::new(Some(nzbw), op, ops))
+        Self {
+            _extawi_raw: [InnerState(State::new(Some(nzbw), op, ops))],
+        }
     }
 
     /*
@@ -241,14 +321,6 @@ impl ExtAwi {
 
     pub fn bw(&self) -> usize {
         self.nzbw().get()
-    }
-
-    pub fn const_as_ref(&self) -> &Bits {
-        &self.0
-    }
-
-    pub fn const_as_mut(&mut self) -> &mut Bits {
-        &mut self.0
     }
 
     pub fn from_bits(bits: &Bits) -> ExtAwi {
@@ -369,55 +441,42 @@ impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     }
 }
 
-impl From<bool> for ExtAwi {
-    fn from(x: bool) -> ExtAwi {
-        Self::new(prim::bool::hidden_const_nzbw().unwrap(), Op::Copy, vec![
-            prim::bool::from(x).state(),
-        ])
-    }
-}
-
-impl From<prim::bool> for ExtAwi {
-    fn from(x: prim::bool) -> ExtAwi {
-        Self::new(prim::bool::hidden_const_nzbw().unwrap(), Op::Copy, vec![
-            x.state()
-        ])
-    }
-}
-
-macro_rules! to_extawi {
-    ($($ty:ident, $assign:ident);*;) => {
+macro_rules! extawi_from {
+    ($($ty:ident, $from:ident);*;) => {
         $(
+            impl ExtAwi {
+                pub fn $from(x: impl Into<prim::$ty>) -> Self {
+                    Self::from(InlAwi::$from(x))
+                }
+            }
+
             impl From<$ty> for ExtAwi {
                 fn from(x: $ty) -> Self {
-                    Self::new(
-                        prim::$ty::hidden_const_nzbw().unwrap(),
-                        Op::Copy,
-                        vec![prim::$ty::from(x).state()]
-                    )
+                    Self::$from(x)
                 }
             }
 
             impl From<prim::$ty> for ExtAwi {
                 fn from(x: prim::$ty) -> Self {
-                    Self::new(prim::$ty::hidden_const_nzbw().unwrap(), Op::Copy, vec![x.state()])
+                    Self::$from(x)
                 }
             }
         )*
     };
 }
 
-to_extawi!(
-    usize, usize_assign;
-    isize, isize_assign;
-    u8, u8_assign;
-    i8, i8_assign;
-    u16, u16_assign;
-    i16, i16_assign;
-    u32, u32_assign;
-    i32, i32_assign;
-    u64, u64_assign;
-    i64, i64_assign;
-    u128, u128_assign;
-    i128, i128_assign;
+extawi_from!(
+    bool, from_bool;
+    u8, from_u8;
+    u16, from_u16;
+    u32, from_u32;
+    u64, from_u64;
+    u128, from_u128;
+    usize, from_usize;
+    i8, from_i8;
+    i16, from_i16;
+    i32, from_i32;
+    i64, from_i64;
+    i128, from_i128;
+    isize, from_isize;
 );

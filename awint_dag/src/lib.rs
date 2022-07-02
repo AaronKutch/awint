@@ -2,7 +2,7 @@
 //!
 //! **NOTE**: this is extremely WIP
 //!
-//! Requires `alloc`
+//! Requires `std`
 //!
 //! Outside of the core functionality which will be useful for big integer
 //! arithmetic in constrained environments, there is a secondary goal with this
@@ -17,12 +17,12 @@
 //! be called like normal and can have the typical compiler optimizations
 //! applied, while the DAG can be inspected for more complicated things.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
+pub mod common;
 pub mod lowering;
 pub mod mimick;
 pub use mimick::primitive;
-mod op;
-
-pub use op::Op;
 
 pub mod prelude {
     pub use crate::mimick::{Bits, ExtAwi, InlAwi};

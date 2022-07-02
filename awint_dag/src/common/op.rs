@@ -851,4 +851,8 @@ impl Op {
             Some(eval_awi)
         }
     }
+
+    pub fn is_literal(&self) -> bool {
+        matches!(self, Literal(_))
+    }
 }

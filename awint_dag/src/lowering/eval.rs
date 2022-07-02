@@ -2,8 +2,8 @@ use triple_arena::{Ptr, PtrTrait};
 use Op::*;
 
 use crate::{
+    common::Op,
     lowering::{Dag, EvalError},
-    Op,
 };
 
 /// I don't expect `deps` to be too long, and some algorithms need `deps` to be
@@ -91,7 +91,7 @@ impl<P: PtrTrait> Dag<P> {
             }
             let mut evaluatable = true;
             for op in &self[p].ops {
-                if !matches!(self[op].op, Literal(_)) {
+                if !self[op].op.is_literal() {
                     evaluatable = false;
                     break
                 }

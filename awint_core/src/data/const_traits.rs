@@ -3,6 +3,7 @@ use core::{
     ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
 };
 
+use super::inlawi::UsizeInlAwi;
 use crate::{Bits, InlAwi};
 
 impl<const BW: usize, const LEN: usize> const Deref for InlAwi<BW, LEN> {
@@ -72,24 +73,6 @@ impl const From<bool> for InlAwi<1, { Bits::unstable_raw_digits(1) }> {
     }
 }
 
-impl const From<usize>
-    for InlAwi<{ usize::BITS as usize }, { Bits::unstable_raw_digits(usize::BITS as usize) }>
-{
-    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
-    fn from(x: usize) -> Self {
-        Self::from_usize(x)
-    }
-}
-
-impl const From<isize>
-    for InlAwi<{ usize::BITS as usize }, { Bits::unstable_raw_digits(usize::BITS as usize) }>
-{
-    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
-    fn from(x: isize) -> Self {
-        Self::from_isize(x)
-    }
-}
-
 macro_rules! inlawi_from {
     ($($w:expr, $u:ident $from_u:ident $i:ident $from_i:ident);*;) => {
         $(
@@ -117,3 +100,17 @@ inlawi_from!(
     64, u64 from_u64 i64 from_i64;
     128, u128 from_u128 i128 from_i128;
 );
+
+impl const From<usize> for UsizeInlAwi {
+    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
+    fn from(x: usize) -> Self {
+        Self::from_usize(x)
+    }
+}
+
+impl const From<isize> for UsizeInlAwi {
+    /// Creates an `InlAwi` with the same bitwidth and bits as the integer
+    fn from(x: isize) -> Self {
+        Self::from_isize(x)
+    }
+}

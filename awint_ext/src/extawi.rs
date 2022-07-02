@@ -426,7 +426,7 @@ impl From<bool> for ExtAwi {
     }
 }
 
-macro_rules! to_extawi {
+macro_rules! extawi_from {
     ($($ty:ident, $assign:ident);*;) => {
         $(
             impl From<$ty> for ExtAwi {
@@ -440,7 +440,7 @@ macro_rules! to_extawi {
     };
 }
 
-to_extawi!(
+extawi_from!(
     u8, u8_assign;
     u16, u16_assign;
     u32, u32_assign;

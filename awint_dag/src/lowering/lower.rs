@@ -1,10 +1,12 @@
 //! Lowers everything into LUT form
 
+use std::num::NonZeroUsize;
+
 use triple_arena::{Ptr, PtrTrait};
 
 use crate::{
-    lowering::{Dag, EvalError},
-    Op::*,
+    common::Op::*,
+    lowering::{Dag, EvalError, Node},
 };
 
 impl<P: PtrTrait> Dag<P> {
@@ -17,8 +19,8 @@ impl<P: PtrTrait> Dag<P> {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque => return Err(EvalError::Unevaluatable),
             Lut(_) => {
-                let [lut, _inx] = self.get_2ops(ptr)?;
-                if !matches!(self[lut].op, Literal(_)) {
+                let [lut, inx] = self.get_2ops(ptr)?;
+                if !self[lut].op.is_literal() {
                     // Normalize. Complexity explodes really fast if trying
                     // to keep as a single LUT, lets use a meta LUT.
                     //
@@ -36,17 +38,18 @@ impl<P: PtrTrait> Dag<P> {
                     // s_0 = (!i_1) && (!i_0)
                     // s_1 = (!i_1) && i_0
                     // ...
-                    /*let mut signals = vec![];
+                    let mut signals = vec![];
                     let inx_w = self.get_bw(inx)?;
                     let num_rows = 1usize << inx_w.get();
+                    let nz_num_rows = NonZeroUsize::new(num_rows).unwrap();
                     for i in 0..num_rows {
                         signals.push(self.dag.insert(Node {
-                            nzbw: todo!(),
-                            op: todo!(),
+                            nzbw: Some(nz_num_rows),
+                            op: todo!(), //Literal(ExtAwi),
                             ops: todo!(),
                             deps: todo!(),
                         }));
-                    }*/
+                    }
                 }
             }
             _ => return Err(EvalError::Unimplemented),

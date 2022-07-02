@@ -1,14 +1,15 @@
 use std::{num::NonZeroUsize, rc::Rc};
 
 use triple_arena::{Ptr, PtrTrait};
+#[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
 
-use crate::{mimick, Op};
+use crate::common::{Op, State};
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
 #[derive(Debug, Hash, Clone, Eq)]
-pub struct PtrEqRc(pub Rc<mimick::State>);
+pub struct PtrEqRc(pub Rc<State>);
 
 impl PartialEq for PtrEqRc {
     fn eq(&self, other: &Self) -> bool {
@@ -46,8 +47,10 @@ impl PartialEq for Node {
 
 impl<P: PtrTrait> Node<P> {}
 
+#[cfg(feature = "debug")]
 impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
     fn debug_node(this: &Self) -> DebugNode<P> {
+        if this.op.is_literal() {}
         let names = this.op.operand_names();
         DebugNode {
             sources: this

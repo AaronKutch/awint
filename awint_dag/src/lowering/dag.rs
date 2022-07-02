@@ -11,8 +11,8 @@ use std::{
 use triple_arena::{Arena, Ptr, PtrTrait};
 
 use crate::{
+    common::State,
     lowering::{EvalError, Node, PtrEqRc},
-    mimick,
 };
 
 #[derive(Debug)]
@@ -37,7 +37,7 @@ impl<P: PtrTrait, B: Borrow<Ptr<P>>> IndexMut<B> for Dag<P> {
 impl<P: PtrTrait> Dag<P> {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
     /// version
-    pub fn new(leaves: Vec<Rc<mimick::State>>) -> Self {
+    pub fn new(leaves: Vec<Rc<State>>) -> Self {
         // keeps track if a mimick node is already tracked in the arena
         let mut lowerings: HashMap<PtrEqRc, Ptr<P>> = HashMap::new();
         // used later for when all nodes are allocated
@@ -157,5 +157,10 @@ impl<P: PtrTrait> Dag<P> {
         } else {
             Err(EvalError::WrongNumberOfOperands)
         }
+    }
+
+    #[cfg(feature = "debug")]
+    pub fn render_to_svg_file(&self, out_file: std::path::PathBuf) {
+        triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap()
     }
 }

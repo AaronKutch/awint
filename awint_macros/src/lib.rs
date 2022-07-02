@@ -725,11 +725,3 @@ pub fn extawi(input: TokenStream) -> TokenStream {
 // I considered `bits!` and `bits_mut!` macros, but they tend to run into weird
 // errors that would confuse people, better to have us decide and use the
 // storage types directly
-
-/*
-#[cfg(feature = "dag")]
-#[proc_macro_attribute]
-pub fn create_dag(attr: TokenStream, item: TokenStream) -> TokenStream {
-    // `attr` gets set to the variable name to which the DAG is set
-}
-*/

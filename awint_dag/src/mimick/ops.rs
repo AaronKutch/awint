@@ -5,15 +5,16 @@ use awint_internals::BITS;
 use Op::*;
 
 use crate::{
-    mimick::{Bits, Lineage, State},
-    primitive as prim, Op,
+    common::{Lineage, Op},
+    mimick::Bits,
+    primitive as prim,
 };
 
 macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self) {
-                self.state = State::new(self.state_nzbw(), $enum_var, vec![self.state()]);
+                self.update_state(self.state_nzbw(), $enum_var, vec![self.state()]);
             }
         )*
     };
@@ -24,7 +25,7 @@ macro_rules! binary {
         $(
             pub fn $fn_name(&mut self, rhs: &Self) -> Option<()> {
                 if self.bw() == rhs.bw() {
-                    self.state = State::new(
+                    self.update_state(
                         self.state_nzbw(),
                         $enum_var,
                         vec![self.state(), rhs.state()]
@@ -42,7 +43,7 @@ macro_rules! zero_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
-                self.state = State::new(
+                self.update_state(
                     Some(self.nzbw()),
                     ZeroResize(self.nzbw()),
                     vec![x.into().state()]
@@ -63,7 +64,7 @@ macro_rules! sign_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
-                self.state = State::new(
+                self.update_state(
                     self.state_nzbw(),
                     SignResize(self.nzbw()),
                     vec![x.into().state()]
@@ -122,7 +123,7 @@ macro_rules! shift {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self, s: impl Into<prim::usize>) -> Option<()> {
-                self.state = State::new(
+                self.update_state(
                     self.state_nzbw(),
                     $enum_var,
                     vec![self.state(), s.into().state()]
@@ -224,11 +225,11 @@ impl Bits {
     );
 
     pub fn opaque_assign(&mut self) {
-        self.state = State::new(self.state_nzbw(), Opaque, vec![self.state()]);
+        self.update_state(self.state_nzbw(), Opaque, vec![self.state()]);
     }
 
     pub fn zero_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::zero(self.nzbw())),
             vec![],
@@ -236,7 +237,7 @@ impl Bits {
     }
 
     pub fn umax_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::umax(self.nzbw())),
             vec![],
@@ -244,7 +245,7 @@ impl Bits {
     }
 
     pub fn imax_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::imax(self.nzbw())),
             vec![],
@@ -252,7 +253,7 @@ impl Bits {
     }
 
     pub fn imin_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::imin(self.nzbw())),
             vec![],
@@ -260,7 +261,7 @@ impl Bits {
     }
 
     pub fn uone_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::uone(self.nzbw())),
             vec![],
@@ -269,7 +270,7 @@ impl Bits {
 
     pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() == rhs.bw() {
-            self.state = State::new(self.state_nzbw(), Copy, vec![rhs.state()]);
+            self.update_state(self.state_nzbw(), Copy, vec![rhs.state()]);
             Some(())
         } else {
             None
@@ -280,7 +281,7 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
-                    self.state = State::new(self.state_nzbw(), Lut(self.nzbw()), vec![
+                    self.update_state(self.state_nzbw(), Lut(self.nzbw()), vec![
                         lut.state(),
                         inx.state(),
                     ]);
@@ -295,7 +296,7 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
                 if lut_len == self.bw() {
-                    self.state = State::new(self.state_nzbw(), LutSet, vec![
+                    self.update_state(self.state_nzbw(), LutSet, vec![
                         self.state(),
                         entry.state(),
                         inx.state(),
@@ -312,7 +313,7 @@ impl Bits {
     }
 
     pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), Set, vec![
+        self.update_state(self.state_nzbw(), Set, vec![
             self.state(),
             inx.into().state(),
             bit.into().state(),
@@ -327,7 +328,7 @@ impl Bits {
         from: impl Into<prim::usize>,
         width: impl Into<prim::usize>,
     ) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), Field, vec![
+        self.update_state(self.state_nzbw(), Field, vec![
             self.state(),
             to.into().state(),
             rhs.state(),
@@ -343,7 +344,7 @@ impl Bits {
         rhs: &Self,
         width: impl Into<prim::usize>,
     ) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), FieldTo, vec![
+        self.update_state(self.state_nzbw(), FieldTo, vec![
             self.state(),
             to.into().state(),
             rhs.state(),
@@ -358,7 +359,7 @@ impl Bits {
         from: impl Into<prim::usize>,
         width: impl Into<prim::usize>,
     ) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), FieldFrom, vec![
+        self.update_state(self.state_nzbw(), FieldFrom, vec![
             self.state(),
             rhs.state(),
             from.into().state(),
@@ -368,7 +369,7 @@ impl Bits {
     }
 
     pub fn field_width(&mut self, rhs: &Self, width: impl Into<prim::usize>) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), FieldWidth, vec![
+        self.update_state(self.state_nzbw(), FieldWidth, vec![
             self.state(),
             rhs.state(),
             width.into().state(),
@@ -382,7 +383,7 @@ impl Bits {
         rhs: &Self,
         from: impl Into<prim::usize>,
     ) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), FieldBit, vec![
+        self.update_state(self.state_nzbw(), FieldBit, vec![
             self.state(),
             to.into().state(),
             rhs.state(),
@@ -392,7 +393,7 @@ impl Bits {
     }
 
     pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<prim::bool>) {
-        self.state = State::new(self.state_nzbw(), Resize(self.nzbw()), vec![
+        self.update_state(self.state_nzbw(), Resize(self.nzbw()), vec![
             rhs.state(),
             extension.into().state(),
         ]);
@@ -400,7 +401,7 @@ impl Bits {
 
     pub fn zero_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(ZeroResizeOverflow(self.nzbw()), vec![rhs.state()]);
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             ZeroResize(self.nzbw()),
             vec![rhs.state()],
@@ -410,7 +411,7 @@ impl Bits {
 
     pub fn sign_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(SignResizeOverflow(self.nzbw()), vec![rhs.state()]);
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             SignResize(self.nzbw()),
             vec![rhs.state()],
@@ -425,25 +426,25 @@ impl Bits {
         {
             None
         } else {
-            self.state = State::new(self.state_nzbw(), Funnel, vec![rhs.state(), s.state()]);
+            self.update_state(self.state_nzbw(), Funnel, vec![rhs.state(), s.state()]);
             Some(())
         }
     }
 
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.state = State::new(quo.state_nzbw(), UQuo, vec![duo.state(), div.state()]);
-        rem.state = State::new(rem.state_nzbw(), URem, vec![duo.state(), div.state()]);
+        quo.update_state(quo.state_nzbw(), UQuo, vec![duo.state(), div.state()]);
+        rem.update_state(rem.state_nzbw(), URem, vec![duo.state(), div.state()]);
         Some(())
     }
 
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.state = State::new(quo.state_nzbw(), IQuo, vec![duo.state(), div.state()]);
-        rem.state = State::new(rem.state_nzbw(), IRem, vec![duo.state(), div.state()]);
+        quo.update_state(quo.state_nzbw(), IQuo, vec![duo.state(), div.state()]);
+        rem.update_state(rem.state_nzbw(), IRem, vec![duo.state(), div.state()]);
         Some(())
     }
 
     pub fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), MulAdd, vec![
+        self.update_state(self.state_nzbw(), MulAdd, vec![
             self.state(),
             lhs.state(),
             rhs.state(),
@@ -454,20 +455,20 @@ impl Bits {
     pub fn inc_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
         let out = prim::bool::new(IncCout, vec![self.state(), b.state()]);
-        self.state = State::new(self.state_nzbw(), Inc, vec![self.state(), b.state()]);
+        self.update_state(self.state_nzbw(), Inc, vec![self.state(), b.state()]);
         out
     }
 
     pub fn dec_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
         let out = prim::bool::new(DecCout, vec![self.state(), b.state()]);
-        self.state = State::new(self.state_nzbw(), Dec, vec![self.state(), b.state()]);
+        self.update_state(self.state_nzbw(), Dec, vec![self.state(), b.state()]);
         out
     }
 
     pub fn neg_assign(&mut self, neg: impl Into<prim::bool>) {
         let b = neg.into();
-        self.state = State::new(self.state_nzbw(), Neg, vec![self.state(), b.state()]);
+        self.update_state(self.state_nzbw(), Neg, vec![self.state(), b.state()]);
     }
 
     pub fn cin_sum_assign(
@@ -481,7 +482,7 @@ impl Bits {
             prim::bool::new(UnsignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
             prim::bool::new(SignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
         ));
-        self.state = State::new(self.state_nzbw(), CinSum, vec![
+        self.update_state(self.state_nzbw(), CinSum, vec![
             b.state(),
             lhs.state(),
             rhs.state(),
