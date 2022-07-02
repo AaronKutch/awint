@@ -58,6 +58,7 @@ impl<P: PtrTrait> Dag<P> {
                         op: next.op.clone(),
                         ops: Vec::new(),
                         deps: Vec::new(),
+                        err: None,
                     });
                     v.insert(sink);
                     for source in next.ops.clone() {
@@ -79,19 +80,18 @@ impl<P: PtrTrait> Dag<P> {
             }
         }
         let dag = Self { dag };
-        dag.verify_integrity().unwrap();
         dag
     }
 
     /// Checks that the DAG is not broken and that the bitwidth checks work.
     /// Note that if the DAG is evaluated, there may be invalid operand value
     /// errors.
-    pub fn verify_integrity(&self) -> Result<(), EvalError> {
+    pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
         'outer: for p in self.ptrs() {
             let len = self[p].ops.len();
             if let Some(expected) = self[p].op.operands_len() {
                 if expected != len {
-                    return Err(EvalError::WrongNumberOfOperands)
+                    self[p].err = Some(EvalError::WrongNumberOfOperands);
                 }
             }
             let mut bitwidths = vec![];
@@ -104,13 +104,18 @@ impl<P: PtrTrait> Dag<P> {
                     continue 'outer
                 }
                 if !self[op].deps.contains(&p) {
-                    return Err(EvalError::Other)
+                    self[p].err = Some(EvalError::InvalidPtr);
                 }
             }
             if let Some(nzbw) = self[p].nzbw {
                 if self[p].op.check_bitwidths(nzbw.get(), &bitwidths) {
-                    return Err(EvalError::WrongBitwidth)
+                    self[p].err = Some(EvalError::WrongBitwidth);
                 }
+            }
+        }
+        for v in self.dag.vals() {
+            if let Some(ref err) = v.err {
+                return Err(err.clone())
             }
         }
         Ok(())
@@ -159,8 +164,11 @@ impl<P: PtrTrait> Dag<P> {
         }
     }
 
+    /// Always renders to file, and then returns errors
     #[cfg(feature = "debug")]
-    pub fn render_to_svg_file(&self, out_file: std::path::PathBuf) {
-        triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap()
+    pub fn render_to_svg_file(&mut self, out_file: std::path::PathBuf) -> Result<(), EvalError> {
+        let res = self.verify_integrity();
+        triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
+        res
     }
 }

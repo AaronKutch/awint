@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EvalError {
     // Thrown if a `Literal`, `Invalid`, or `Opaque` node is attempted to be evaluated
     Unevaluatable,

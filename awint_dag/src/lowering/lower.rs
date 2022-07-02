@@ -48,6 +48,7 @@ impl<P: PtrTrait> Dag<P> {
                             op: todo!(), //Literal(ExtAwi),
                             ops: todo!(),
                             deps: todo!(),
+                            err: None,
                         }));
                     }
                 }

@@ -390,8 +390,8 @@ impl Op {
                     }
             }
             Field => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS) || (v[4] != BITS),
-            FieldTo => (bw != v[0]) || (v[2] != BITS) || (v[3] != BITS),
-            FieldFrom => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
+            FieldTo => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
+            FieldFrom => (bw != v[0]) || (v[2] != BITS) || (v[3] != BITS),
             FieldWidth => (bw != v[0]) || (v[2] != BITS),
             FieldBit => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
         }
@@ -818,21 +818,21 @@ impl Op {
             }
             FieldTo => {
                 if e.copy_assign(v[0]).is_some() {
-                    e.field_to(v[1].to_usize(), v[2], v[4].to_usize())
+                    e.field_to(v[1].to_usize(), v[2], v[3].to_usize())
                 } else {
                     None
                 }
             }
             FieldFrom => {
                 if e.copy_assign(v[0]).is_some() {
-                    e.field_from(v[2], v[3].to_usize(), v[4].to_usize())
+                    e.field_from(v[1], v[2].to_usize(), v[3].to_usize())
                 } else {
                     None
                 }
             }
             FieldWidth => {
                 if e.copy_assign(v[0]).is_some() {
-                    e.field_width(v[2], v[4].to_usize())
+                    e.field_width(v[1], v[2].to_usize())
                 } else {
                     None
                 }

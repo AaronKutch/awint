@@ -3,8 +3,12 @@ use std::{num::NonZeroUsize, rc::Rc};
 use triple_arena::{Ptr, PtrTrait};
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
+use Op::*;
 
-use crate::common::{Op, State};
+use crate::{
+    common::{Op, State},
+    lowering::EvalError,
+};
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
@@ -27,6 +31,7 @@ pub struct Node<P: PtrTrait> {
     pub ops: Vec<Ptr<P>>,
     /// Dependent nodes that use this one as a source
     pub deps: Vec<Ptr<P>>,
+    pub err: Option<EvalError>,
 }
 
 /*
@@ -50,9 +55,8 @@ impl<P: PtrTrait> Node<P> {}
 #[cfg(feature = "debug")]
 impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
     fn debug_node(this: &Self) -> DebugNode<P> {
-        if this.op.is_literal() {}
         let names = this.op.operand_names();
-        DebugNode {
+        let mut res = DebugNode {
             sources: this
                 .ops
                 .iter()
@@ -60,16 +64,27 @@ impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
                 .map(|(i, p)| {
                     (
                         *p,
-                        if let Some(s) = names.get(i) {
-                            (*s).to_owned()
+                        if names.len() > 1 {
+                            names[i].to_owned()
                         } else {
                             String::new()
                         },
                     )
                 })
                 .collect(),
-            center: vec![this.op.operation_name().to_owned()],
+            center: if let Literal(ref awi) = this.op {
+                vec![format!("{}", awi)]
+            } else {
+                vec![this.op.operation_name().to_owned()]
+            },
             sinks: vec![],
+        };
+        if let Some(ref err) = this.err {
+            res.center.push(format!("ERROR: {:?}", err));
         }
+        if let Some(w) = this.nzbw {
+            res.center.push(format!("{}", w));
+        }
+        res
     }
 }
