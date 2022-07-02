@@ -11,13 +11,14 @@ use std::{
 use triple_arena::{Arena, Ptr, PtrTrait};
 
 use crate::{
-    common::State,
+    common::{Op, State},
     lowering::{EvalError, Node, PtrEqRc},
 };
 
 #[derive(Debug)]
 pub struct Dag<P: PtrTrait> {
     pub dag: Arena<P, Node<P>>,
+    pub leaves: Vec<Ptr<P>>,
 }
 
 impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
@@ -44,7 +45,7 @@ impl<P: PtrTrait> Dag<P> {
         let mut raisings: Vec<(Ptr<P>, PtrEqRc)> = Vec::new();
         // keep a frontier which will guarantee that the whole mimick DAG is explored,
         // and keep track of dependents
-        let mut frontier = leaves;
+        let mut frontier = leaves.clone();
         let mut dag: Arena<P, Node<P>> = Arena::new();
         // because some nodes may not be in the arena yet, we have to bootstrap
         // dependencies by looking up the source later (source, sink)
@@ -79,7 +80,30 @@ impl<P: PtrTrait> Dag<P> {
                 dag[ptr].ops.push(lowerings[&PtrEqRc(rc.0.ops[i].clone())]);
             }
         }
-        Self { dag }
+        // We face a problem where we want to keep active references to the input
+        // `leaves` even if one leaf is in the computation tree of another (and
+        // simplifications could destroy the value there). We face another problem in
+        // the algorithms where they would have to consider both `deps` and
+        // `Dag.leaves` for liveness and rerouting. To solve both these, we add an extra
+        // `Opaque` layer, and then only `Opaque` handling needs to consider external
+        // liveness.
+        let mut real_leaves = vec![];
+        for leaf in leaves {
+            let ptr = lowerings[&PtrEqRc(leaf)];
+            let node = dag.insert(Node {
+                nzbw: dag[ptr].nzbw,
+                op: Op::Opaque,
+                ops: vec![ptr],
+                deps: vec![],
+                err: None,
+            });
+            dag[ptr].deps.push(node);
+            real_leaves.push(node);
+        }
+        Self {
+            dag,
+            leaves: real_leaves,
+        }
     }
 
     /// Checks that the DAG is not broken and that the bitwidth checks work.
@@ -112,6 +136,11 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
         }
+        for p in self.leaves() {
+            if self.dag.get(*p).is_none() {
+                return Err(EvalError::InvalidPtr)
+            }
+        }
         for v in self.dag.vals() {
             if let Some(ref err) = v.err {
                 return Err(err.clone())
@@ -137,14 +166,8 @@ impl<P: PtrTrait> Dag<P> {
     }
 
     /// Returns all sink leaves that have no dependents
-    pub fn leaves(&self) -> Vec<Ptr<P>> {
-        let mut v = Vec::new();
-        for p in self.ptrs() {
-            if self[p].deps.is_empty() {
-                v.push(p);
-            }
-        }
-        v
+    pub fn leaves(&self) -> &[Ptr<P>] {
+        &self.leaves
     }
 
     pub fn get_bw<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {
