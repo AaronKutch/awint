@@ -375,7 +375,7 @@ impl Op {
                     }
             }
             Funnel => (v[1] >= (BITS - 1)) || ((1usize << v[1]) != bw) || ((bw << 1) != v[0]),
-            Get => (bw != v[0]) || (v[1] != BITS),
+            Get => (bw != 1) || (v[1] != BITS),
             Set => (bw != v[0]) || (v[1] != BITS) || (v[2] != 1),
             LutSet => {
                 (bw != v[0])
@@ -457,27 +457,28 @@ impl Op {
             | Neg
             | LutSet => false,
 
-            Shl | Lshr | Ashr | Rotl | Rotr | Get | Set => {
-                let s = v[1].const_as_ref().to_usize();
+            Shl | Lshr | Ashr | Rotl | Rotr => {
+                let s = v[1].to_usize();
                 s >= bw
             }
+            Get | Set => v[1].to_usize() >= v[0].bw(),
             op @ (Field | FieldTo | FieldFrom | FieldWidth | FieldBit) => {
                 let width = if *op == FieldBit {
                     1
                 } else {
-                    v[v.len() - 1].const_as_ref().to_usize()
+                    v[v.len() - 1].to_usize()
                 };
                 let (to, x) = if matches!(op, FieldFrom | FieldWidth) {
                     (0, v[1].bw())
                 } else {
-                    (v[1].const_as_ref().to_usize(), v[2].bw())
+                    (v[1].to_usize(), v[2].bw())
                 };
                 let from = if matches!(op, FieldTo | FieldWidth) {
                     0
                 } else if *op == FieldFrom {
-                    v[2].const_as_ref().to_usize()
+                    v[2].to_usize()
                 } else {
-                    v[3].const_as_ref().to_usize()
+                    v[3].to_usize()
                 };
                 (width > bw) || (width > x) || (to > (bw - width)) || (from > (x - width))
             }
@@ -791,9 +792,12 @@ impl Op {
                 Some(())
             }
             Get => {
-                let r = e.copy_assign(v[0]);
-                e.get(v[1].to_usize());
-                r
+                if let Some(b) = v[0].get(v[1].to_usize()) {
+                    e.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
             }
             Set => {
                 if e.copy_assign(v[0]).is_some() {

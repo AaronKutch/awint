@@ -54,8 +54,7 @@ impl<P: PtrTrait> Dag<P> {
             if self[ptr].op.check_values(self_bw, &v) {
                 return Err(EvalError::InvalidOperandValue)
             }
-            let op = std::mem::replace(&mut self[ptr].op, Op::Invalid);
-            if let Some(res) = op.eval(self_bw, &v) {
+            if let Some(res) = self[ptr].op.eval(self_bw, &v) {
                 // remove operand edges
                 for op_i in 0..self[ptr].ops.len() {
                     let op = self[ptr].ops[op_i];
@@ -102,7 +101,10 @@ impl<P: PtrTrait> Dag<P> {
         }
 
         while let Some(node) = eval.pop() {
-            self.eval_node(node)?;
+            if let Err(e) = self.eval_node(node) {
+                self[node].err = Some(e.clone());
+                return Err(e)
+            }
             // check all deps for newly evaluatable nodes
             for dep_i in 0..self[node].deps.len() {
                 let dep = self[node].deps[dep_i];

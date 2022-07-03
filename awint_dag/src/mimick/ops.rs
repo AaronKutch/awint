@@ -308,7 +308,7 @@ impl Bits {
         None
     }
 
-    pub fn get(&mut self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
+    pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
         Some(prim::bool::new(Get, vec![self.state(), inx.into().state()]))
     }
 
