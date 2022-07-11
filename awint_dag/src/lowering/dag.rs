@@ -173,7 +173,10 @@ impl<P: PtrTrait> Dag<P> {
                     continue 'outer
                 }
                 if !self[op].deps.contains(&p) {
-                    self[p].err = Some(EvalError::InvalidPtr);
+                    self[p].err = Some(EvalError::OtherString(format!(
+                        "{:?} does not have {:?} as a dependent",
+                        self[op], self[p]
+                    )));
                 }
             }
             if let Some(nzbw) = self[p].nzbw {
@@ -314,9 +317,10 @@ impl<P: PtrTrait> Dag<P> {
                     self[root]
                 )))
             }
+            let graft_point = self[ptr].ops[i];
             // change to a `Copy` or else we have to do a lot of linear lookups
             self[root].op = Copy;
-            let graft_point = self[ptr].ops[i];
+            self[root].ops.push(graft_point);
             let dep_i = self[graft_point]
                 .deps
                 .iter()
@@ -328,6 +332,7 @@ impl<P: PtrTrait> Dag<P> {
         let new_op = self.strip_opaque_leaf(leaf)?;
         for i in 0..self[ptr].deps.len() {
             let graft_point = self[ptr].deps[i];
+            self[new_op].deps.push(graft_point);
             let op_i = self[graft_point]
                 .ops
                 .iter()
