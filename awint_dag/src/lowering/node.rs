@@ -23,6 +23,8 @@ impl PartialEq for PtrEqRc {
     }
 }
 
+// TODO I know the `ops` and `deps` naming is not optimal, there are too many
+// clashes and misnomers
 #[derive(Debug)]
 pub struct Node<P: PtrTrait> {
     /// Bitwidth

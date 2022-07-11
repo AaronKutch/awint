@@ -2,6 +2,8 @@
 pub enum EvalError {
     // Thrown if a `Literal`, `Invalid`, or `Opaque` node is attempted to be evaluated
     Unevaluatable,
+    // An `Opaque` node was expected
+    ExpectedOpaque,
     // wrong number of operands
     WrongNumberOfOperands,
     // An operand points nowhere, so the DAG is broken
@@ -18,5 +20,6 @@ pub enum EvalError {
     // A function on a operation was unimplemented
     Unimplemented,
     // Some other kind of brokenness, such as dependency edges not agreeing with operand edges
-    Other,
+    OtherStr(&'static str),
+    OtherString(String),
 }

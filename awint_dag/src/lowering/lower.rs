@@ -17,7 +17,7 @@ impl<P: PtrTrait> Dag<P> {
         match start_op {
             Literal(_) => return Ok(true),
             Invalid => return Err(EvalError::Unevaluatable),
-            Opaque => return Err(EvalError::Unevaluatable),
+            Opaque => return Ok(false),
             Lut(out_w) => {
                 let [lut, inx] = self.get_2ops(ptr)?;
                 if !self[lut].op.is_literal() {
@@ -25,7 +25,7 @@ impl<P: PtrTrait> Dag<P> {
                     let lut = ExtAwi::opaque(self.get_bw(lut)?);
                     let inx = ExtAwi::opaque(self.get_bw(inx)?);
                     dynamic_to_static_lut(&mut out, &lut, &inx);
-                    self.graft(ptr, vec![lut.state(), inx.state()], vec![out.state()])?;
+                    self.graft(ptr, out.state(), vec![lut.state(), inx.state()])?;
                 }
             }
             _ => return Err(EvalError::Unimplemented),
@@ -34,10 +34,11 @@ impl<P: PtrTrait> Dag<P> {
     }
 
     /// Note: `eval` should be before and after
-    pub fn lower(&mut self) {
+    pub fn lower(&mut self) -> Result<(), EvalError> {
         let list = self.ptrs();
         for p in list {
-            self.lower_node(p).unwrap();
+            self.lower_node(p)?;
         }
+        Ok(())
     }
 }

@@ -69,7 +69,7 @@ impl<P: PtrTrait> Dag<P> {
                 let _ = std::mem::replace(&mut self[ptr].op, Op::Literal(res));
             } else {
                 // some kind of internal bug
-                return Err(EvalError::Other)
+                return Err(EvalError::OtherStr("eval bug"))
             }
         } else {
             return Err(EvalError::Unevaluatable)
