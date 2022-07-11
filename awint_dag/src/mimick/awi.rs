@@ -14,9 +14,9 @@ use crate::{
     primitive as prim,
 };
 
-/// Mimicking `awint_core::InlAwi`
-// Note: must use `Bits` instead of `State`, because we need to return
-// references
+/// Mimicking `awint_core::InlAwi`.
+///
+/// Note: `inlawi!(opaque: ..64)` just works
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     pub(in crate::mimick) _inlawi_raw: [InnerState; 1],
 }
@@ -301,6 +301,8 @@ impl From<prim::isize> for UsizeInlAwi {
 }
 
 /// Mimicking `awint_ext::ExtAwi`
+///
+/// Note: `extawi!(opaque: ..64)` just works
 pub struct ExtAwi {
     pub(in crate::mimick) _extawi_raw: [InnerState; 1],
 }
@@ -368,6 +370,11 @@ impl ExtAwi {
 
     pub fn uone(bw: NonZeroUsize) -> Self {
         Self::new(bw, Op::Literal(awint_ext::ExtAwi::uone(bw)), vec![])
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_opaque(bw: usize) -> Self {
+        Self::opaque(NonZeroUsize::new(bw).unwrap())
     }
 
     #[doc(hidden)]

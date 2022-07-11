@@ -18,6 +18,7 @@
 //! applied, while the DAG can be inspected for more complicated things.
 
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(clippy::needless_range_loop)]
 
 pub mod common;
 pub mod lowering;

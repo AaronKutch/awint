@@ -10,4 +10,4 @@ pub use error::*;
 pub use eval::*;
 pub use lower::*;
 pub use meta::*;
-pub use node::*;
+pub use node::{Node, PtrEqRc};

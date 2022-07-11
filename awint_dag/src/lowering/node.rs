@@ -1,14 +1,16 @@
 use std::{num::NonZeroUsize, rc::Rc};
 
-use triple_arena::{Ptr, PtrTrait};
+use triple_arena::{ptr_trait_struct_with_gen, Ptr, PtrTrait};
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
-use Op::*;
 
 use crate::{
     common::{Op, State},
     lowering::EvalError,
 };
+
+// used in some internal algorithms
+ptr_trait_struct_with_gen!(P0);
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
@@ -72,7 +74,7 @@ impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
                     )
                 })
                 .collect(),
-            center: if let Literal(ref awi) = this.op {
+            center: if let Op::Literal(ref awi) = this.op {
                 vec![format!("{}", awi)]
             } else {
                 vec![this.op.operation_name().to_owned()]

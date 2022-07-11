@@ -99,12 +99,24 @@ pub enum Op {
     FieldBit,
 }
 
-use std::num::NonZeroUsize;
+use std::{mem, num::NonZeroUsize};
 
 use awint_internals::BITS;
 use Op::*;
 
+impl Default for Op {
+    fn default() -> Self {
+        Invalid
+    }
+}
+
 impl Op {
+    /// This replaces `self` with `Invalid` and moves out literals without
+    /// cloning them
+    pub fn take(&mut self) -> Self {
+        mem::take(self)
+    }
+
     /// Returns the name of the operation
     pub fn operation_name(&self) -> &'static str {
         match *self {
