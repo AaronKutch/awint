@@ -7,19 +7,17 @@ use crate::common::Op;
 /// `Rc` pointers to `States`, so that they can change their state without
 /// borrowing issues or mutating `States` (which could be used as operands by
 /// other `States`).
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, Default, PartialEq, Eq)]
 pub struct State {
     /// Bitwidth
     pub nzbw: Option<NonZeroUsize>,
     /// Operation
-    pub op: Op,
-    /// Operands
-    pub ops: Vec<Rc<Self>>,
+    pub op: Op<Rc<Self>>,
 }
 
 impl State {
-    pub fn new(nzbw: Option<NonZeroUsize>, op: Op, ops: Vec<Rc<State>>) -> Rc<Self> {
-        Rc::new(Self { nzbw, op, ops })
+    pub fn new(nzbw: Option<NonZeroUsize>, op: Op<Rc<Self>>) -> Rc<Self> {
+        Rc::new(Self { nzbw, op })
     }
 
     // Note: there is no `update` function, because we run into borrowing problems

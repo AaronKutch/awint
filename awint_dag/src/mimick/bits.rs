@@ -103,10 +103,10 @@ impl Bits {
         self
     }
 
-    pub fn update_state(&mut self, nzbw: Option<NonZeroUsize>, op: Op, ops: Vec<Rc<State>>) {
+    pub fn update_state(&mut self, nzbw: Option<NonZeroUsize>, op: Op<Rc<State>>) {
         // other `Rc`s that need the old state will keep it alive despite this one being
         // dropped
-        let _: Rc<State> = mem::replace(&mut self._bits_raw[0].0, State::new(nzbw, op, ops));
+        let _: Rc<State> = mem::replace(&mut self._bits_raw[0].0, State::new(nzbw, op));
     }
 }
 

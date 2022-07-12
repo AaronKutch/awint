@@ -4,8 +4,6 @@ pub enum EvalError {
     Unevaluatable,
     // An `Opaque` node was expected
     ExpectedOpaque,
-    // wrong number of operands
-    WrongNumberOfOperands,
     // An operand points nowhere, so the DAG is broken
     InvalidPtr,
     // an operand is not a `Literal`

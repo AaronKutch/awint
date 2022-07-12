@@ -79,20 +79,20 @@ macro_rules! prim {
             }
 
             impl $name {
-                pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-                    Self(InlAwi::new(op, ops))
+                pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+                    Self(InlAwi::new(op))
                 }
             }
 
             impl From<core::primitive::$name> for $name {
                 fn from(x: core::primitive::$name) -> Self {
-                    Self::new(Op::Literal(awint_ext::ExtAwi::from(x)), vec![])
+                    Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
                 }
             }
 
             impl Clone for $name {
                 fn clone(&self) -> Self {
-                    Self::new(Op::Copy, vec![self.state()])
+                    Self::new(Op::Copy([self.state()]))
                 }
             }
 
@@ -142,20 +142,20 @@ impl Lineage for bool {
 }
 
 impl bool {
-    pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
-        Self(InlAwi::new(op, ops))
+    pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+        Self(InlAwi::new(op))
     }
 }
 
 impl From<core::primitive::bool> for bool {
     fn from(x: core::primitive::bool) -> Self {
-        Self::new(Op::Literal(awint_ext::ExtAwi::from(x)), vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
     }
 }
 
 impl Clone for bool {
     fn clone(&self) -> Self {
-        Self::new(Op::Copy, vec![self.state()])
+        Self::new(Op::Copy([self.state()]))
     }
 }
 

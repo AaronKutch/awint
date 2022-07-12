@@ -4,10 +4,7 @@ use triple_arena::{ptr_trait_struct_with_gen, Ptr, PtrTrait};
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
 
-use crate::{
-    common::{Op, State},
-    lowering::EvalError,
-};
+use crate::common::{EvalError, Op, State};
 
 // used in some internal algorithms
 ptr_trait_struct_with_gen!(P0);
@@ -23,18 +20,12 @@ impl PartialEq for PtrEqRc {
     }
 }
 
-// TODO I know the `ops` and `deps` naming is not optimal, there are too many
-// clashes and misnomers
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Node<P: PtrTrait> {
     /// Bitwidth
     pub nzbw: Option<NonZeroUsize>,
     /// Operation
-    pub op: Op,
-    /// Operands
-    pub ops: Vec<Ptr<P>>,
-    /// Dependent nodes that use this one as a source
-    pub deps: Vec<Ptr<P>>,
+    pub op: Op<Ptr<P>>,
     pub err: Option<EvalError>,
 }
 
@@ -62,7 +53,8 @@ impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
         let names = this.op.operand_names();
         let mut res = DebugNode {
             sources: this
-                .ops
+                .op
+                .operands()
                 .iter()
                 .enumerate()
                 .map(|(i, p)| {

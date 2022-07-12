@@ -11,10 +11,9 @@ use std::{
 use triple_arena::{Arena, Ptr, PtrTrait};
 use Op::*;
 
-use super::node::P0;
 use crate::{
-    common::{Op, State},
-    lowering::{EvalError, Node, PtrEqRc},
+    common::{EvalError, Op, State},
+    lowering::{Node, PtrEqRc},
 };
 
 #[derive(Debug)]
@@ -23,7 +22,6 @@ pub struct Dag<P: PtrTrait> {
     pub roots: Vec<Ptr<P>>,
     pub leaves: Vec<Ptr<P>>,
     pub noted_roots: Vec<Ptr<P>>,
-    pub noted_leaves: Vec<Ptr<P>>,
 }
 
 impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
@@ -44,81 +42,113 @@ impl<P: PtrTrait> Dag<P> {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
     /// version. The optional `roots` make the `Dag` keep track of select nodes
     /// in `noted_roots`, which must be `Opaque` nodes.
-    pub fn new(leaves: Vec<Rc<State>>, roots: Vec<Rc<State>>) -> (Self, Result<(), EvalError>) {
+    pub fn new(leaves: &[Rc<State>], roots: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
+        let mut res = Self {
+            dag: Arena::new(),
+            roots: vec![],
+            leaves: vec![],
+            noted_roots: vec![],
+        };
+        let err = res.add_group(leaves, roots);
+        (res, err)
+    }
+
+    /// All of the `roots` should be `Opaque`s. `roots` does not have to contain
+    /// all actual roots, just roots that need to be noted and preserved through
+    /// optimizations. All of the `roots` should be include at least one of the
+    /// `leaves` in their DAG. Note: the leaves and all their preceding
+    /// nodes should not share with previously existing nodes in this DAG or
+    /// else there will be duplication.
+    pub fn add_group(
+        &mut self,
+        leaves: &[Rc<State>],
+        roots: &[Rc<State>],
+    ) -> Result<(), EvalError> {
         // keeps track if a mimick node is already tracked in the arena
         let mut lowerings: HashMap<PtrEqRc, Ptr<P>> = HashMap::new();
-        // used later for when all nodes are allocated
-        let mut raisings: Vec<(Ptr<P>, PtrEqRc)> = Vec::new();
-        // keep a frontier which will guarantee that the whole mimick DAG is explored,
-        // and keep track of dependents
-        let mut frontier = leaves.clone();
-        let mut dag: Arena<P, Node<P>> = Arena::new();
-        // because some nodes may not be in the arena yet, we have to bootstrap
-        // dependencies by looking up the source later (source, sink)
-        let mut deps: Vec<(PtrEqRc, Ptr<P>)> = Vec::new();
-        while let Some(next) = frontier.pop() {
-            match lowerings.entry(PtrEqRc(Rc::clone(&next))) {
+        // DFS from leaves to avoid much allocation, but we need the hashmap to avoid
+        // retracking
+        let mut path: Vec<(usize, Ptr<P>, PtrEqRc)> = vec![];
+        for leaf in leaves {
+            let mut enter_loop = false;
+            match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
                 Entry::Occupied(_) => (),
                 Entry::Vacant(v) => {
-                    let sink = dag.insert(Node {
-                        nzbw: next.nzbw,
-                        op: next.op.clone(),
-                        ops: Vec::new(),
-                        deps: Vec::new(),
-                        err: None,
-                    });
-                    v.insert(sink);
-                    for source in next.ops.clone() {
-                        deps.push((PtrEqRc(Rc::clone(&source)), sink));
-                        frontier.push(source);
+                    let p = self.dag.insert(Node::default());
+                    v.insert(p);
+                    path.push((0, p, PtrEqRc(Rc::clone(leaf))));
+                    enter_loop = true;
+                }
+            }
+            if enter_loop {
+                loop {
+                    let (current_i, current_p, current_rc) = path.last().unwrap();
+                    if let Some(t) = Op::translate_root(&self[current_p].op) {
+                        // reached a root
+                        self[current_p].op = t;
+                        path.pop().unwrap();
+                        if let Some((i, ..)) = path.last_mut() {
+                            *i += 1;
+                        } else {
+                            break
+                        }
+                    } else {
+                        let t_ops = self[current_p].op.operands();
+                        if *current_i >= t_ops.len() {
+                            // all operands should be ready
+                            self[current_p].op = Op::translate(
+                                &current_rc.0.op,
+                                |lhs: &mut [Ptr<P>], rhs: &[Rc<State>]| {
+                                    for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                                        *lhs = lowerings[&PtrEqRc(Rc::clone(rhs))];
+                                    }
+                                },
+                            );
+                            path.pop().unwrap();
+                            if let Some((i, ..)) = path.last_mut() {
+                                *i += 1;
+                            } else {
+                                break
+                            }
+                        } else {
+                            // check next operand
+                            match lowerings
+                                .entry(PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])))
+                            {
+                                Entry::Occupied(_) => {
+                                    // already explored
+                                    path.pop().unwrap();
+                                    if let Some((i, ..)) = path.last_mut() {
+                                        *i += 1;
+                                    } else {
+                                        break
+                                    }
+                                }
+                                Entry::Vacant(v) => {
+                                    let p = self.dag.insert(Node::default());
+                                    v.insert(p);
+                                    path.push((
+                                        0,
+                                        p,
+                                        PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])),
+                                    ));
+                                }
+                            }
+                        }
                     }
-                    raisings.push((sink, PtrEqRc(Rc::clone(&next))));
                 }
             }
         }
-        // set all dependents
-        for dep in &deps {
-            dag[lowerings[&dep.0]].deps.push(dep.1);
-        }
-        // set all operands
-        for (ptr, rc) in raisings {
-            for i in 0..rc.0.ops.len() {
-                dag[ptr].ops.push(lowerings[&PtrEqRc(rc.0.ops[i].clone())]);
-            }
-        }
-        // We face a problem where we want to keep active references to the input
-        // `leaves` even if one leaf is in the computation tree of another (and
-        // simplifications could destroy the value there). We face another problem in
-        // the algorithms where they would have to consider both `deps` and
-        // `Dag.leaves` for liveness and rerouting. To solve both these, we add an extra
-        // `Opaque` layer, and then only `Opaque` handling needs to consider external
-        // liveness. The `Opaque` layer needs to be added unconditionally or else
-        // algorithms may not be able to determine what is added `Opaque` nodes and what
-        // isn't.
-        let mut noted_leaves = vec![];
-        for leaf in leaves {
-            let ptr = lowerings[&PtrEqRc(leaf)];
-            let node = dag.insert(Node {
-                nzbw: dag[ptr].nzbw,
-                op: Op::Opaque,
-                ops: vec![ptr],
-                deps: vec![],
-                err: None,
-            });
-            dag[ptr].deps.push(node);
-            noted_leaves.push(node);
-        }
         // handle noted roots
         let mut err = Ok(());
-        let mut noted_roots = vec![];
-        for (i, root) in roots.into_iter().enumerate() {
-            match lowerings.entry(PtrEqRc(root)) {
+        for (i, root) in roots.iter().enumerate() {
+            match lowerings.entry(PtrEqRc(Rc::clone(root))) {
                 Entry::Occupied(o) => {
-                    if !matches!(dag[o.get()].op, Opaque) {
-                        dag[o.get()].err = Some(EvalError::ExpectedOpaque);
+                    if !matches!(self.dag[o.get()].op, Opaque(_)) {
+                        self.dag[o.get()].err = Some(EvalError::ExpectedOpaque);
                         err = Err(EvalError::ExpectedOpaque);
                     }
-                    noted_roots.push(*o.get());
+                    self.noted_roots.push(*o.get());
                 }
                 Entry::Vacant(_) => {
                     err = Err(EvalError::OtherString(format!(
@@ -128,59 +158,21 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
         }
-        let mut roots = vec![];
-        for p in dag.ptrs() {
-            if dag[p].ops.is_empty() {
-                roots.push(p);
+        for p in self.dag.ptrs() {
+            if self.dag[p].op.num_operands() == 0 {
+                self.roots.push(p);
             }
         }
-        let mut leaves = vec![];
-        for p in dag.ptrs() {
-            if dag[p].deps.is_empty() {
-                leaves.push(p);
-            }
-        }
-        (
-            Self {
-                dag,
-                roots,
-                leaves,
-                noted_leaves,
-                noted_roots,
-            },
-            err,
-        )
+        err
     }
 
     /// Checks that the DAG is not broken and that the bitwidth checks work.
     /// Note that if the DAG is evaluated, there may be invalid operand value
     /// errors.
     pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
-        'outer: for p in self.ptrs() {
-            let len = self[p].ops.len();
-            if let Some(expected) = self[p].op.operands_len() {
-                if expected != len {
-                    self[p].err = Some(EvalError::WrongNumberOfOperands);
-                }
-            }
-            let mut bitwidths = vec![];
-            for i in 0..self[p].ops.len() {
-                let op = self[p].ops[i];
-                if let Some(nzbw) = self[op].nzbw {
-                    bitwidths.push(nzbw.get());
-                } else {
-                    // can't do anything
-                    continue 'outer
-                }
-                if !self[op].deps.contains(&p) {
-                    self[p].err = Some(EvalError::OtherString(format!(
-                        "{:?} does not have {:?} as a dependent",
-                        self[op], self[p]
-                    )));
-                }
-            }
+        for p in self.ptrs() {
             if let Some(nzbw) = self[p].nzbw {
-                if self[p].op.check_bitwidths(nzbw.get(), &bitwidths) {
+                if self[p].op.check_bitwidths(nzbw.get()) {
                     self[p].err = Some(EvalError::WrongBitwidth);
                 }
             }
@@ -196,11 +188,6 @@ impl<P: PtrTrait> Dag<P> {
             }
         }
         for p in &self.noted_roots {
-            if self.dag.get(*p).is_none() {
-                return Err(EvalError::InvalidPtr)
-            }
-        }
-        for p in &self.noted_leaves {
             if self.dag.get(*p).is_none() {
                 return Err(EvalError::InvalidPtr)
             }
@@ -236,20 +223,19 @@ impl<P: PtrTrait> Dag<P> {
         }
     }
 
-    pub fn get_2ops<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<[Ptr<P>; 2], EvalError> {
-        if let [a, b] = self[ptr].ops[..] {
-            Ok([a, b])
-        } else {
-            Err(EvalError::WrongNumberOfOperands)
-        }
-    }
-
     pub fn strip_opaque_leaf<B: Borrow<Ptr<P>>>(&mut self, ptr: B) -> Result<Ptr<P>, EvalError> {
         let ptr = *ptr.borrow();
-        if matches!(&self[ptr].op, Opaque) && (self[ptr].ops.len() == 1) {
-            let res = Ok(self[ptr].ops[0]);
-            self.dag.remove(ptr).unwrap();
-            res
+        if let Opaque(ref v) = self[ptr].op {
+            if v.len() == 1 {
+                let res = Ok(v[0]);
+                self.dag.remove(ptr).unwrap();
+                res
+            } else {
+                Err(EvalError::OtherString(format!(
+                    "opaque leaf does not have 1 operand: {:?}",
+                    self[ptr]
+                )))
+            }
         } else {
             Err(EvalError::OtherString(format!(
                 "is not opaque leaf: {:?}",
@@ -265,83 +251,15 @@ impl<P: PtrTrait> Dag<P> {
         &mut self,
         ptr: Ptr<P>,
         leaf: Rc<State>,
-        roots: Vec<Rc<State>>,
+        roots: &[Rc<State>],
     ) -> Result<(), EvalError> {
-        let (mut dag, err) = Dag::<P0>::new(vec![leaf], roots);
+        let err = self.add_group(&[leaf], roots);
         //dag.render_to_svg_file(std::path::PathBuf::from("debug.svg")).unwrap();
         err?;
-        dag.verify_integrity()?;
-        dag.eval()?;
-        self.graft_dag(ptr, dag)
-    }
-
-    /// Uses the noted leaf and noted roots of `dag` to replace the interfaces
-    /// of the nodes using `ptr`
-    pub fn graft_dag<Q: PtrTrait>(
-        &mut self,
-        ptr: Ptr<P>,
-        mut dag: Dag<Q>,
-    ) -> Result<(), EvalError> {
-        if dag.noted_leaves.len() != 1 {
-            return Err(EvalError::OtherStr("the number of noted_leaves is not 1"))
-        }
-        let noted_leaf = dag.noted_leaves[0];
-        if dag.noted_roots.len() != self[ptr].ops.len() {
-            return Err(EvalError::OtherStr(
-                "the number of noted_leaves does not equal the number of operands",
-            ))
-        }
-        // first lower without ops or deps and get a backwards translation
-        let mut translate = Arena::<Q, Ptr<P>>::new();
-        translate.clone_from_with(&dag.dag, |_, _| Ptr::invalid());
-        for (q, node) in &mut dag.dag {
-            translate[q] = self.dag.insert(Node {
-                nzbw: node.nzbw,
-                op: node.op.take(),
-                deps: vec![],
-                ops: vec![],
-                err: node.err.take(),
-            });
-        }
-        // connect internals
-        for (q, mut node) in dag.dag.drain() {
-            self[translate[q]].ops = node.ops.drain(..).map(|q| translate[q]).collect();
-            self[translate[q]].deps = node.deps.drain(..).map(|q| translate[q]).collect();
-        }
-        // connect interfaces, remove opaques
-        for i in 0..dag.noted_roots.len() {
-            let root = translate[dag.noted_roots[i]];
-            if !(matches!(&self[root].op, Opaque) && self[root].ops.is_empty()) {
-                return Err(EvalError::OtherString(format!(
-                    "is not opaque root: {:?}",
-                    self[root]
-                )))
-            }
-            let graft_point = self[ptr].ops[i];
-            // change to a `Copy` or else we have to do a lot of linear lookups
-            self[root].op = Copy;
-            self[root].ops.push(graft_point);
-            let dep_i = self[graft_point]
-                .deps
-                .iter()
-                .position(|p| *p == ptr)
-                .unwrap();
-            self[graft_point].deps[dep_i] = root;
-        }
-        let leaf = translate[noted_leaf];
-        let new_op = self.strip_opaque_leaf(leaf)?;
-        for i in 0..self[ptr].deps.len() {
-            let graft_point = self[ptr].deps[i];
-            self[new_op].deps.push(graft_point);
-            let op_i = self[graft_point]
-                .ops
-                .iter()
-                .position(|p| *p == ptr)
-                .unwrap();
-            self[graft_point].ops[op_i] = new_op;
-        }
-        // remove old node
-        self.dag.remove(ptr).unwrap();
+        self.verify_integrity()?;
+        //dag.eval()?; //TODO eval just part
+        // TODO graft internal
+        //self.graft_dag(ptr, dag)
         Ok(())
     }
 
@@ -364,9 +282,11 @@ impl<P: PtrTrait> Dag<P> {
             triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
             res0
         } else {
-            let res1 = self.eval();
+            // TODO
+            //let res1 = self.eval();
             triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
-            res1
+            //res1
+            Ok(())
         }
     }
 }

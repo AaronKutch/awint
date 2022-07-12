@@ -1,188 +1,229 @@
-use awint_core::Bits;
+use std::{
+    cmp,
+    fmt::{self, Debug},
+    hash, mem,
+    num::NonZeroUsize,
+};
+
 use awint_ext::ExtAwi;
+use Op::*;
+
+use crate::common::EvalError;
 
 /// Mimicking operation
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum Op {
-    // literal assign
-    Literal(ExtAwi),
-
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
+pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> {
     // A state used transiently by some algorithms, will cause errors if reached
+    #[default]
     Invalid,
 
     // represents an unknown, arbitrary, or opaque-boxed source or sink (can have any number of
-    // operands and dependents)
-    Opaque,
+    // operands)
+    Opaque(Vec<T>),
+
+    // literal assign
+    Literal(ExtAwi),
 
     // the bitwidth value
     //Bw,
+
+    // note: we encourage common assembly code paths by putting the arrays first
 
     // These do not require the value of `self`, but do need the bitwidth. Note: only the overflow
     // variants actually need this in the current implementation of `awint_dag` that stores
     // bitwidth information in nodes, but I am making `Op` this way ahead of time, because of
     // future changes that may calculate bitwidth during evaluation.
-    Resize(NonZeroUsize),
-    ZeroResize(NonZeroUsize),
-    SignResize(NonZeroUsize),
-    ZeroResizeOverflow(NonZeroUsize),
-    SignResizeOverflow(NonZeroUsize),
-    Lut(NonZeroUsize),
+    Resize([T; 2], NonZeroUsize),
+    ZeroResize([T; 1], NonZeroUsize),
+    SignResize([T; 1], NonZeroUsize),
+    ZeroResizeOverflow([T; 1], NonZeroUsize),
+    SignResizeOverflow([T; 1], NonZeroUsize),
+    Lut([T; 2], NonZeroUsize),
 
     // these are special because although they take `&mut self`, the value of `self` is completely
     // overridden, so there is no dependency on `self.op()`.
     // I'm not sure what to do about dynamic `None` cases which would depend on `self`
-    Copy,
-    Funnel,
-    UQuo,
-    URem,
-    IQuo,
-    IRem,
-    MulAdd,
-    CinSum,
-    UnsignedOverflow,
-    SignedOverflow,
+    Copy([T; 1]),
+    Funnel([T; 2]),
+    UQuo([T; 2]),
+    URem([T; 2]),
+    IQuo([T; 2]),
+    IRem([T; 2]),
+    MulAdd([T; 3]),
+    CinSum([T; 3]),
+    UnsignedOverflow([T; 3]),
+    SignedOverflow([T; 3]),
 
     // (&mut self)
-    Not,
-    Rev,
-    Abs,
+    Not([T; 1]),
+    Rev([T; 1]),
+    Abs([T; 1]),
 
     // (&self) -> bool
-    IsZero,
-    IsUmax,
-    IsImax,
-    IsImin,
-    IsUone,
-    Lsb,
-    Msb,
+    IsZero([T; 1]),
+    IsUmax([T; 1]),
+    IsImax([T; 1]),
+    IsImin([T; 1]),
+    IsUone([T; 1]),
+    Lsb([T; 1]),
+    Msb([T; 1]),
 
     // (&self) -> usize
-    Lz,
-    Tz,
-    Sig,
-    CountOnes,
+    Lz([T; 1]),
+    Tz([T; 1]),
+    Sig([T; 1]),
+    CountOnes([T; 1]),
 
     // (&mut self, rhs: &Self)
-    Or,
-    And,
-    Xor,
-    Shl,
-    Lshr,
-    Ashr,
-    Rotl,
-    Rotr,
-    Add,
-    Sub,
-    Rsb,
+    Or([T; 2]),
+    And([T; 2]),
+    Xor([T; 2]),
+    Shl([T; 2]),
+    Lshr([T; 2]),
+    Ashr([T; 2]),
+    Rotl([T; 2]),
+    Rotr([T; 2]),
+    Add([T; 2]),
+    Sub([T; 2]),
+    Rsb([T; 2]),
 
     // (&self, rhs: &Self) -> Option<bool>
-    Eq,
-    Ne,
-    Ult,
-    Ule,
-    Ilt,
-    Ile,
+    Eq([T; 2]),
+    Ne([T; 2]),
+    Ult([T; 2]),
+    Ule([T; 2]),
+    Ilt([T; 2]),
+    Ile([T; 2]),
 
-    Inc,
-    IncCout,
-    Dec,
-    DecCout,
-    Neg,
+    Inc([T; 2]),
+    IncCout([T; 2]),
+    Dec([T; 2]),
+    DecCout([T; 2]),
+    Neg([T; 2]),
 
-    Get,
-    Set,
-    LutSet,
-    Field,
-    FieldTo,
-    FieldFrom,
-    FieldWidth,
-    FieldBit,
+    Get([T; 2]),
+    Set([T; 3]),
+    LutSet([T; 3]),
+    // prevent all `Op<T>` from needing to be more than `[T;4]` in size
+    Field(Box<[T; 5]>),
+    FieldTo([T; 4]),
+    FieldFrom([T; 4]),
+    FieldWidth([T; 3]),
+    FieldBit([T; 4]),
 }
 
-use std::{mem, num::NonZeroUsize};
-
-use awint_internals::BITS;
-use Op::*;
-
-impl Default for Op {
-    fn default() -> Self {
-        Invalid
-    }
+macro_rules! map1 {
+    ($map:ident, $v:ident) => {{
+        let mut res = [Default::default()];
+        $map(&mut res, $v);
+        res
+    }};
+}
+macro_rules! map2 {
+    ($map:ident, $v:ident) => {{
+        let mut res = [Default::default(), Default::default()];
+        $map(&mut res, $v);
+        res
+    }};
+}
+macro_rules! map3 {
+    ($map:ident, $v:ident) => {{
+        let mut res = [Default::default(), Default::default(), Default::default()];
+        $map(&mut res, $v);
+        res
+    }};
+}
+macro_rules! map4 {
+    ($map:ident, $v:ident) => {{
+        let mut res = [
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        ];
+        $map(&mut res, $v);
+        res
+    }};
 }
 
-impl Op {
+impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
     /// This replaces `self` with `Invalid` and moves out literals without
     /// cloning them
     pub fn take(&mut self) -> Self {
         mem::take(self)
     }
 
+    /// Returns if `self` is a `Literal`
+    pub fn is_literal(&self) -> bool {
+        matches!(self, Literal(_))
+    }
+
     /// Returns the name of the operation
     pub fn operation_name(&self) -> &'static str {
         match *self {
-            Literal(_) => "literal",
             Invalid => "invalid",
-            Opaque => "opaque",
-            Resize(_) => "resize",
-            ZeroResize(_) => "zero_resize",
-            ZeroResizeOverflow(_) => "zero_reisze_overflow",
-            SignResize(_) => "sign_resize",
-            SignResizeOverflow(_) => "sign_resize_overflow",
-            Lut(_) => "lut",
-            Copy => "copy",
-            Funnel => "funnel",
-            UQuo => "uquo",
-            URem => "urem",
-            IQuo => "iquo",
-            IRem => "irem",
-            MulAdd => "mul_add",
-            CinSum => "cin_sum",
-            UnsignedOverflow => "unsigned_overflow",
-            SignedOverflow => "signed_overflow",
-            Not => "not",
-            Rev => "rev",
-            Abs => "abs",
-            IsZero => "is_zero",
-            IsUmax => "is_umax",
-            IsImax => "is_imax",
-            IsImin => "is_imin",
-            IsUone => "is_uone",
-            Lsb => "lsb",
-            Msb => "msb",
-            Lz => "lz",
-            Tz => "tz",
-            Sig => "sig",
-            CountOnes => "count_ones",
-            Or => "or",
-            And => "and",
-            Xor => "xor",
-            Shl => "shl",
-            Lshr => "lshr",
-            Ashr => "ashr",
-            Rotl => "rotl",
-            Rotr => "rotr",
-            Add => "add",
-            Sub => "sub",
-            Rsb => "rsb",
-            Eq => "eq",
-            Ne => "ne",
-            Ult => "ult",
-            Ule => "ule",
-            Ilt => "ilt",
-            Ile => "ile",
-            Inc => "inc",
-            IncCout => "inc_cout",
-            Dec => "dec",
-            DecCout => "dec_cout",
-            Neg => "neg",
-            Get => "get",
-            Set => "set",
-            LutSet => "lut_set",
-            Field => "field",
-            FieldTo => "field_to",
-            FieldFrom => "field_from",
-            FieldWidth => "field_width",
-            FieldBit => "field_bit",
+            Opaque(_) => "opaque",
+            Literal(_) => "literal",
+            Resize(..) => "resize",
+            ZeroResize(..) => "zero_resize",
+            ZeroResizeOverflow(..) => "zero_reisze_overflow",
+            SignResize(..) => "sign_resize",
+            SignResizeOverflow(..) => "sign_resize_overflow",
+            Lut(..) => "lut",
+            Copy(_) => "copy",
+            Funnel(_) => "funnel",
+            UQuo(_) => "uquo",
+            URem(_) => "urem",
+            IQuo(_) => "iquo",
+            IRem(_) => "irem",
+            MulAdd(_) => "mul_add",
+            CinSum(_) => "cin_sum",
+            UnsignedOverflow(_) => "unsigned_overflow",
+            SignedOverflow(_) => "signed_overflow",
+            Not(_) => "not",
+            Rev(_) => "rev",
+            Abs(_) => "abs",
+            IsZero(_) => "is_zero",
+            IsUmax(_) => "is_umax",
+            IsImax(_) => "is_imax",
+            IsImin(_) => "is_imin",
+            IsUone(_) => "is_uone",
+            Lsb(_) => "lsb",
+            Msb(_) => "msb",
+            Lz(_) => "lz",
+            Tz(_) => "tz",
+            Sig(_) => "sig",
+            CountOnes(_) => "count_ones",
+            Or(_) => "or",
+            And(_) => "and",
+            Xor(_) => "xor",
+            Shl(_) => "shl",
+            Lshr(_) => "lshr",
+            Ashr(_) => "ashr",
+            Rotl(_) => "rotl",
+            Rotr(_) => "rotr",
+            Add(_) => "add",
+            Sub(_) => "sub",
+            Rsb(_) => "rsb",
+            Eq(_) => "eq",
+            Ne(_) => "ne",
+            Ult(_) => "ult",
+            Ule(_) => "ule",
+            Ilt(_) => "ilt",
+            Ile(_) => "ile",
+            Inc(_) => "inc",
+            IncCout(_) => "inc_cout",
+            Dec(_) => "dec",
+            DecCout(_) => "dec_cout",
+            Neg(_) => "neg",
+            Get(_) => "get",
+            Set(_) => "set",
+            LutSet(_) => "lut_set",
+            Field(_) => "field",
+            FieldTo(_) => "field_to",
+            FieldFrom(_) => "field_from",
+            FieldWidth(_) => "field_width",
+            FieldBit(_) => "field_bit",
         }
     }
 
@@ -191,90 +232,93 @@ impl Op {
         let mut v = vec![];
         // add common "lhs"
         match *self {
-            Literal(_) | Invalid | Opaque => (),
+            Invalid | Opaque(_) | Literal(_) => (),
 
-            Resize(_) => {
+            Resize(..) => {
                 v.push("x");
                 v.push("extension");
             }
-            Copy
-            | ZeroResize(_)
-            | SignResize(_)
-            | ZeroResizeOverflow(_)
-            | SignResizeOverflow(_) => {
+            Copy(_)
+            | ZeroResize(..)
+            | SignResize(..)
+            | ZeroResizeOverflow(..)
+            | SignResizeOverflow(..) => {
                 v.push("x");
             }
-            Lut(_) => {
+            Lut(..) => {
                 v.push("lut");
                 v.push("inx")
             }
-            Funnel => {
+            Funnel(_) => {
                 v.push("x");
                 v.push("s");
             }
-            UQuo | URem | IQuo | IRem => {
+            UQuo(_) | URem(_) | IQuo(_) | IRem(_) => {
                 v.push("duo");
                 v.push("div");
             }
-            MulAdd => {
+            MulAdd(_) => {
                 v.push("add");
                 v.push("lhs");
                 v.push("rhs");
             }
-            CinSum | UnsignedOverflow | SignedOverflow => {
+            CinSum(_) | UnsignedOverflow(_) | SignedOverflow(_) => {
                 v.push("cin");
                 v.push("lhs");
                 v.push("rhs");
             }
 
-            Not | Rev | Abs => v.push("x"),
+            Not(_) | Rev(_) | Abs(_) => v.push("x"),
 
-            IsZero | IsUmax | IsImax | IsImin | IsUone | Lsb | Msb => v.push("x"),
+            IsZero(_) | IsUmax(_) | IsImax(_) | IsImin(_) | IsUone(_) | Lsb(_) | Msb(_) => {
+                v.push("x")
+            }
 
-            Lz | Tz | Sig | CountOnes => v.push("x"),
+            Lz(_) | Tz(_) | Sig(_) | CountOnes(_) => v.push("x"),
 
-            Or | And | Xor | Shl | Lshr | Ashr | Rotl | Rotr | Add | Sub | Rsb => {
+            Or(_) | And(_) | Xor(_) | Shl(_) | Lshr(_) | Ashr(_) | Rotl(_) | Rotr(_) | Add(_)
+            | Sub(_) | Rsb(_) => {
                 v.push("lhs");
                 v.push("rhs")
             }
 
-            Eq | Ne | Ult | Ule | Ilt | Ile => {
+            Eq(_) | Ne(_) | Ult(_) | Ule(_) | Ilt(_) | Ile(_) => {
                 v.push("lhs");
                 v.push("rhs");
             }
 
-            Inc | IncCout | Dec | DecCout => {
+            Inc(_) | IncCout(_) | Dec(_) | DecCout(_) => {
                 v.push("x");
                 v.push("cin");
             }
-            Neg => {
+            Neg(_) => {
                 v.push("x");
                 v.push("neg");
             }
-            Get => {
+            Get(_) => {
                 v.push("x");
                 v.push("inx");
             }
-            Set => {
+            Set(_) => {
                 v.push("x");
                 v.push("inx");
                 v.push("bit");
             }
-            LutSet => {
+            LutSet(_) => {
                 v.push("lut");
                 v.push("entry");
                 v.push("inx");
             }
-            ref op @ (Field | FieldTo | FieldFrom | FieldWidth | FieldBit) => {
+            ref op @ (Field(_) | FieldTo(_) | FieldFrom(_) | FieldWidth(_) | FieldBit(_)) => {
                 v.push("lhs");
-                if !matches!(op, FieldFrom | FieldWidth) {
+                if !matches!(op, FieldFrom(_) | FieldWidth(_)) {
                     v.push("to");
                 }
                 v.push("rhs");
-                if !matches!(op, FieldTo | FieldWidth) {
+                if !matches!(op, FieldTo(_) | FieldWidth(_)) {
                     v.push("from");
                 }
-                if *op != FieldBit {
+                if !matches!(op, FieldBit(_)) {
                     v.push("width");
                 }
             }
@@ -282,60 +326,340 @@ impl Op {
         v
     }
 
-    /// Returns the expected number of operands for the given operation. `None`
-    /// is returned if there can be any number of operands
-    pub fn operands_len(&self) -> Option<usize> {
-        Some(match self {
-            Invalid | Opaque => return None,
-            Literal(_) => 0,
-
-            ZeroResize(_)
-            | SignResize(_)
-            | ZeroResizeOverflow(_)
-            | SignResizeOverflow(_)
-            | Copy
-            | Not
-            | Rev
-            | Abs
-            | IsZero
-            | IsUmax
-            | IsImax
-            | IsImin
-            | IsUone
-            | Lsb
-            | Msb
-            | Lz
-            | Tz
-            | Sig
-            | CountOnes => 1,
-
-            Resize(_) | Lut(_) | Funnel | UQuo | URem | IQuo | IRem | CinSum | UnsignedOverflow
-            | SignedOverflow | Or | And | Xor | Shl | Lshr | Ashr | Rotl | Rotr | Add | Sub
-            | Rsb | Eq | Ne | Ult | Ule | Ilt | Ile | Inc | IncCout | Dec | DecCout | Neg | Get => {
-                2
-            }
-
-            MulAdd | LutSet | Set | FieldWidth => 3,
-            FieldTo | FieldFrom | FieldBit => 4,
-            Field => 5,
-        })
+    pub fn operands(&self) -> &[T] {
+        match self {
+            Invalid => &[],
+            Opaque(v) => v,
+            Literal(_) => &[],
+            Resize(v, _) => v,
+            ZeroResize(v, _) => v,
+            SignResize(v, _) => v,
+            ZeroResizeOverflow(v, _) => v,
+            SignResizeOverflow(v, _) => v,
+            Lut(v, _) => v,
+            Copy(v) => v,
+            Funnel(v) => v,
+            UQuo(v) => v,
+            URem(v) => v,
+            IQuo(v) => v,
+            IRem(v) => v,
+            MulAdd(v) => v,
+            CinSum(v) => v,
+            UnsignedOverflow(v) => v,
+            SignedOverflow(v) => v,
+            Not(v) => v,
+            Rev(v) => v,
+            Abs(v) => v,
+            IsZero(v) => v,
+            IsUmax(v) => v,
+            IsImax(v) => v,
+            IsImin(v) => v,
+            IsUone(v) => v,
+            Lsb(v) => v,
+            Msb(v) => v,
+            Lz(v) => v,
+            Tz(v) => v,
+            Sig(v) => v,
+            CountOnes(v) => v,
+            Or(v) => v,
+            And(v) => v,
+            Xor(v) => v,
+            Shl(v) => v,
+            Lshr(v) => v,
+            Ashr(v) => v,
+            Rotl(v) => v,
+            Rotr(v) => v,
+            Add(v) => v,
+            Sub(v) => v,
+            Rsb(v) => v,
+            Eq(v) => v,
+            Ne(v) => v,
+            Ult(v) => v,
+            Ule(v) => v,
+            Ilt(v) => v,
+            Ile(v) => v,
+            Inc(v) => v,
+            IncCout(v) => v,
+            Dec(v) => v,
+            DecCout(v) => v,
+            Neg(v) => v,
+            Get(v) => v,
+            Set(v) => v,
+            LutSet(v) => v,
+            Field(v) => v.as_ref(),
+            FieldTo(v) => v,
+            FieldFrom(v) => v,
+            FieldWidth(v) => v,
+            FieldBit(v) => v,
+        }
     }
 
-    /// Checks validity of bitwidths. Assumes that errors from
-    /// `expected_operands_len` have already been caught. `self_bw` is bitwidth
-    /// of the `self` operand, and `v` is a vector of the bitwidths of the rest
-    /// of the operands. Returns `true` if a bitwidth is zero or a mismatch
-    /// error has occured.
-    pub fn check_bitwidths(&self, self_bw: usize, v: &[usize]) -> bool {
-        if self_bw == 0 || v.iter().any(|e| *e == 0) {
+    pub fn operands_mut(&mut self) -> &mut [T] {
+        match self {
+            Invalid => &mut [],
+            Opaque(v) => v,
+            Literal(_) => &mut [],
+            Resize(v, _) => v,
+            ZeroResize(v, _) => v,
+            SignResize(v, _) => v,
+            ZeroResizeOverflow(v, _) => v,
+            SignResizeOverflow(v, _) => v,
+            Lut(v, _) => v,
+            Copy(v) => v,
+            Funnel(v) => v,
+            UQuo(v) => v,
+            URem(v) => v,
+            IQuo(v) => v,
+            IRem(v) => v,
+            MulAdd(v) => v,
+            CinSum(v) => v,
+            UnsignedOverflow(v) => v,
+            SignedOverflow(v) => v,
+            Not(v) => v,
+            Rev(v) => v,
+            Abs(v) => v,
+            IsZero(v) => v,
+            IsUmax(v) => v,
+            IsImax(v) => v,
+            IsImin(v) => v,
+            IsUone(v) => v,
+            Lsb(v) => v,
+            Msb(v) => v,
+            Lz(v) => v,
+            Tz(v) => v,
+            Sig(v) => v,
+            CountOnes(v) => v,
+            Or(v) => v,
+            And(v) => v,
+            Xor(v) => v,
+            Shl(v) => v,
+            Lshr(v) => v,
+            Ashr(v) => v,
+            Rotl(v) => v,
+            Rotr(v) => v,
+            Add(v) => v,
+            Sub(v) => v,
+            Rsb(v) => v,
+            Eq(v) => v,
+            Ne(v) => v,
+            Ult(v) => v,
+            Ule(v) => v,
+            Ilt(v) => v,
+            Ile(v) => v,
+            Inc(v) => v,
+            IncCout(v) => v,
+            Dec(v) => v,
+            DecCout(v) => v,
+            Neg(v) => v,
+            Get(v) => v,
+            Set(v) => v,
+            LutSet(v) => v,
+            Field(v) => v.as_mut(),
+            FieldTo(v) => v,
+            FieldFrom(v) => v,
+            FieldWidth(v) => v,
+            FieldBit(v) => v,
+        }
+    }
+
+    pub fn num_operands(&self) -> usize {
+        self.operands().len()
+    }
+
+    /// Some variants have a bitwidth field that can be mutated with this
+    pub fn self_bitwidth_mut(&mut self) -> Option<&mut NonZeroUsize> {
+        match self {
+            Invalid => None,
+            Opaque(_) => None,
+            Literal(_) => None,
+            Resize(_, w) => Some(w),
+            ZeroResize(_, w) => Some(w),
+            SignResize(_, w) => Some(w),
+            ZeroResizeOverflow(_, w) => Some(w),
+            SignResizeOverflow(_, w) => Some(w),
+            Lut(_, w) => Some(w),
+            Copy(_) => None,
+            Funnel(_) => None,
+            UQuo(_) => None,
+            URem(_) => None,
+            IQuo(_) => None,
+            IRem(_) => None,
+            MulAdd(_) => None,
+            CinSum(_) => None,
+            UnsignedOverflow(_) => None,
+            SignedOverflow(_) => None,
+            Not(_) => None,
+            Rev(_) => None,
+            Abs(_) => None,
+            IsZero(_) => None,
+            IsUmax(_) => None,
+            IsImax(_) => None,
+            IsImin(_) => None,
+            IsUone(_) => None,
+            Lsb(_) => None,
+            Msb(_) => None,
+            Lz(_) => None,
+            Tz(_) => None,
+            Sig(_) => None,
+            CountOnes(_) => None,
+            Or(_) => None,
+            And(_) => None,
+            Xor(_) => None,
+            Shl(_) => None,
+            Lshr(_) => None,
+            Ashr(_) => None,
+            Rotl(_) => None,
+            Rotr(_) => None,
+            Add(_) => None,
+            Sub(_) => None,
+            Rsb(_) => None,
+            Eq(_) => None,
+            Ne(_) => None,
+            Ult(_) => None,
+            Ule(_) => None,
+            Ilt(_) => None,
+            Ile(_) => None,
+            Inc(_) => None,
+            IncCout(_) => None,
+            Dec(_) => None,
+            DecCout(_) => None,
+            Neg(_) => None,
+            Get(_) => None,
+            Set(_) => None,
+            LutSet(_) => None,
+            Field(_) => None,
+            FieldTo(_) => None,
+            FieldFrom(_) => None,
+            FieldWidth(_) => None,
+            FieldBit(_) => None,
+        }
+    }
+
+    /// If `this` has no operands (including `Opaque`s with empty `Vec`s) then
+    /// this translation succeeds.
+    pub fn translate_root<U: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq>(
+        this: &Op<U>,
+    ) -> Option<Self> {
+        match this {
+            Invalid => Some(Invalid),
+            Opaque(v) => {
+                if v.is_empty() {
+                    Some(Opaque(vec![]))
+                } else {
+                    None
+                }
+            }
+            Literal(lit) => Some(Literal(lit.clone())),
+            _ => None,
+        }
+    }
+
+    // this is structured this way to avoid excessive allocations after the initial
+    // mimick stage
+    pub fn translate<
+        U: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq,
+        F: FnMut(&mut [T], &[U]),
+    >(
+        this: &Op<U>,
+        map: F,
+    ) -> Self {
+        let mut m = map;
+        match this {
+            Invalid => Invalid,
+            Opaque(v) => {
+                let mut res = Opaque(vec![Default::default(); v.len()]);
+                m(res.operands_mut(), this.operands());
+                res
+            }
+            Literal(lit) => Literal(lit.clone()),
+            Resize(v, w) => Resize(map2!(m, v), *w),
+            ZeroResize(v, w) => ZeroResize(map1!(m, v), *w),
+            SignResize(v, w) => SignResize(map1!(m, v), *w),
+            ZeroResizeOverflow(v, w) => ZeroResizeOverflow(map1!(m, v), *w),
+            SignResizeOverflow(v, w) => SignResizeOverflow(map1!(m, v), *w),
+            Lut(v, w) => Lut(map2!(m, v), *w),
+            Copy(v) => Copy(map1!(m, v)),
+            Funnel(v) => Funnel(map2!(m, v)),
+            UQuo(v) => UQuo(map2!(m, v)),
+            URem(v) => URem(map2!(m, v)),
+            IQuo(v) => IQuo(map2!(m, v)),
+            IRem(v) => IRem(map2!(m, v)),
+            MulAdd(v) => MulAdd(map3!(m, v)),
+            CinSum(v) => CinSum(map3!(m, v)),
+            UnsignedOverflow(v) => UnsignedOverflow(map3!(m, v)),
+            SignedOverflow(v) => SignedOverflow(map3!(m, v)),
+            Not(v) => Not(map1!(m, v)),
+            Rev(v) => Rev(map1!(m, v)),
+            Abs(v) => Abs(map1!(m, v)),
+            IsZero(v) => IsZero(map1!(m, v)),
+            IsUmax(v) => IsUmax(map1!(m, v)),
+            IsImax(v) => IsImax(map1!(m, v)),
+            IsImin(v) => IsImin(map1!(m, v)),
+            IsUone(v) => IsUone(map1!(m, v)),
+            Lsb(v) => Lsb(map1!(m, v)),
+            Msb(v) => Msb(map1!(m, v)),
+            Lz(v) => Lz(map1!(m, v)),
+            Tz(v) => Tz(map1!(m, v)),
+            Sig(v) => Sig(map1!(m, v)),
+            CountOnes(v) => CountOnes(map1!(m, v)),
+            Or(v) => Or(map2!(m, v)),
+            And(v) => And(map2!(m, v)),
+            Xor(v) => Xor(map2!(m, v)),
+            Shl(v) => Shl(map2!(m, v)),
+            Lshr(v) => Lshr(map2!(m, v)),
+            Ashr(v) => Ashr(map2!(m, v)),
+            Rotl(v) => Rotl(map2!(m, v)),
+            Rotr(v) => Rotr(map2!(m, v)),
+            Add(v) => Add(map2!(m, v)),
+            Sub(v) => Sub(map2!(m, v)),
+            Rsb(v) => Rsb(map2!(m, v)),
+            Eq(v) => Eq(map2!(m, v)),
+            Ne(v) => Ne(map2!(m, v)),
+            Ult(v) => Ult(map2!(m, v)),
+            Ule(v) => Ule(map2!(m, v)),
+            Ilt(v) => Ilt(map2!(m, v)),
+            Ile(v) => Ile(map2!(m, v)),
+            Inc(v) => Inc(map2!(m, v)),
+            IncCout(v) => IncCout(map2!(m, v)),
+            Dec(v) => Dec(map2!(m, v)),
+            DecCout(v) => DecCout(map2!(m, v)),
+            Neg(v) => Neg(map2!(m, v)),
+            Get(v) => Get(map2!(m, v)),
+            Set(v) => Set(map3!(m, v)),
+            LutSet(v) => LutSet(map3!(m, v)),
+            Field(_) => {
+                let mut res = Field(Box::new([
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                ]));
+                m(res.operands_mut(), this.operands());
+                res
+            }
+            FieldTo(v) => FieldTo(map4!(m, v)),
+            FieldFrom(v) => FieldFrom(map4!(m, v)),
+            FieldWidth(v) => FieldWidth(map3!(m, v)),
+            FieldBit(v) => FieldBit(map4!(m, v)),
+        }
+    }
+}
+
+impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
+    // Checks validity of bitwidths. `self_bw` is bitwidth
+    // of the `self` operand. Returns `true` if a bitwidth is zero or a mismatch
+    // error has occured.
+    pub fn check_bitwidths(&self, self_bw: usize) -> bool {
+        if self_bw == 0 {
             return true
         }
         let bw = self_bw;
         match self {
-            Literal(_) | Invalid | Opaque => false,
+            /*Literal(_) | Invalid(_) | Opaque(_) => false,
 
-            Copy | Not | Rev | Neg | Abs | UQuo | URem | IQuo | IRem | MulAdd | Or | And | Xor
-            | Add | Sub | Rsb => {
+            Copy(_) | Not(_) | Rev(_) | Neg(_) | Abs(_) | UQuo(_) | URem(_) | IQuo(_) | IRem(_) | MulAdd(_) | Or(_) | And(_) | Xor(_)
+            | Add(_) | Sub(_) | Rsb(_) => {
                 let mut b = false;
                 for x in v {
                     if *x != bw {
@@ -346,35 +670,35 @@ impl Op {
                 b
             }
 
-            Eq | Ne | Ult | Ule | Ilt | Ile => (bw != 1) || (v[0] != v[1]),
+            Eq(_) | Ne(_) | Ult(_) | Ule(_) | Ilt(_) | Ile(_) => (bw != 1) || (v[0] != v[1]),
 
-            Resize(nzbw) => (bw != nzbw.get()) || (v[0] != 1),
+            Resize(_, nzbw) => (bw != nzbw.get()) || (v[0] != 1),
 
-            ZeroResize(nzbw) | SignResize(nzbw) => bw != nzbw.get(),
+            ZeroResize(_, nzbw) | SignResize(_, nzbw) => bw != nzbw.get(),
 
-            Lz | Tz | Sig | CountOnes => bw != BITS,
+            Lz(_) | Tz(_) | Sig(_) | CountOnes(_) => bw != BITS,
 
-            Lsb
-            | Msb
-            | IsZero
-            | IsUmax
-            | IsImax
-            | IsImin
-            | IsUone
+            Lsb(_)
+            | Msb(_)
+            | IsZero(_)
+            | IsUmax(_)
+            | IsImax(_)
+            | IsImin(_)
+            | IsUone(_)
             | ZeroResizeOverflow(_)
             | SignResizeOverflow(_) => bw != 1,
 
-            IncCout | DecCout => (bw != 1) || (v[1] != 1),
+            IncCout(_) | DecCout(_) => (bw != 1) || (v[1] != 1),
 
-            Shl | Lshr | Ashr | Rotl | Rotr => (bw != v[0]) || (v[1] != BITS),
+            Shl(_) | Lshr(_) | Ashr(_) | Rotl(_) | Rotr(_) => (bw != v[0]) || (v[1] != BITS),
 
-            CinSum => (v[0] != 1) || (bw != v[1]) || (bw != v[2]),
+            CinSum(_) => (v[0] != 1) || (bw != v[1]) || (bw != v[2]),
 
-            UnsignedOverflow | SignedOverflow => (bw != 1) || (v[0] != v[1]),
+            UnsignedOverflow(_) | SignedOverflow(_) => (bw != 1) || (v[0] != v[1]),
 
-            Inc | Dec => (bw != v[0]) || (v[1] != 1),
+            Inc(_) | Dec(_) => (bw != v[0]) || (v[1] != 1),
 
-            Lut(nzbw) => {
+            Lut(_, nzbw) => {
                 (bw != nzbw.get())
                     || if v[1] < BITS {
                         if let Some(lut_len) = (1usize << v[1]).checked_mul(bw) {
@@ -386,10 +710,10 @@ impl Op {
                         true
                     }
             }
-            Funnel => (v[1] >= (BITS - 1)) || ((1usize << v[1]) != bw) || ((bw << 1) != v[0]),
-            Get => (bw != 1) || (v[1] != BITS),
-            Set => (bw != v[0]) || (v[1] != BITS) || (v[2] != 1),
-            LutSet => {
+            Funnel(_) => (v[1] >= (BITS - 1)) || ((1usize << v[1]) != bw) || ((bw << 1) != v[0]),
+            Get(_) => (bw != 1) || (v[1] != BITS),
+            Set(_) => (bw != v[0]) || (v[1] != BITS) || (v[2] != 1),
+            LutSet(_) => {
                 (bw != v[0])
                     || if v[2] < BITS {
                         if let Some(lut_len) = (1usize << v[2]).checked_mul(v[1]) {
@@ -401,91 +725,93 @@ impl Op {
                         true
                     }
             }
-            Field => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS) || (v[4] != BITS),
-            FieldTo => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
-            FieldFrom => (bw != v[0]) || (v[2] != BITS) || (v[3] != BITS),
-            FieldWidth => (bw != v[0]) || (v[2] != BITS),
-            FieldBit => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
+            Field(_) => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS) || (v[4] != BITS),
+            FieldTo(_) => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
+            FieldFrom(_) => (bw != v[0]) || (v[2] != BITS) || (v[3] != BITS),
+            FieldWidth(_) => (bw != v[0]) || (v[2] != BITS),
+            FieldBit(_) => (bw != v[0]) || (v[1] != BITS) || (v[3] != BITS),
+            */
+            _ => todo!(),
         }
     }
 
-    /// Checks that the values of operands are correct. Assumes that errors from
-    /// `expected_operands_len` and `check_bitwidths` have already been caught.
-    /// `self_bw` is the bitwidth of the `self` operand, and `ops` is a vector
-    /// of all the literal operands.
-    pub fn check_values(&self, self_bw: NonZeroUsize, ops: &[ExtAwi]) -> bool {
+    // Checks that the values of operands are correct. Assumes that errors from
+    // `expected_operands_len` and `check_bitwidths` have already been caught.
+    // `self_bw` is the bitwidth of the `self` operand, and `ops` is a vector
+    // of all the literal operands.
+    /*pub fn check_values(&self, self_bw: NonZeroUsize, ops: &[ExtAwi]) -> bool {
         let v = ops;
         let bw = self_bw.get();
         match self {
             Literal(_)
-            | Invalid
-            | Opaque
+            | Invalid(_)
+            | Opaque(_)
             | Resize(_)
             | ZeroResize(_)
             | SignResize(_)
-            | Copy
-            | Not
-            | Rev
-            | Abs
-            | IsZero
-            | IsUmax
-            | IsImax
-            | IsImin
-            | IsUone
-            | Lsb
-            | Msb
-            | Lz
-            | Tz
-            | Sig
-            | CountOnes
+            | Copy(_)
+            | Not(_)
+            | Rev(_)
+            | Abs(_)
+            | IsZero(_)
+            | IsUmax(_)
+            | IsImax(_)
+            | IsImin(_)
+            | IsUone(_)
+            | Lsb(_)
+            | Msb(_)
+            | Lz(_)
+            | Tz(_)
+            | Sig(_)
+            | CountOnes(_)
             | ZeroResizeOverflow(_)
             | SignResizeOverflow(_)
             | Lut(_)
-            | Funnel
-            | UQuo
-            | URem
-            | IQuo
-            | IRem
-            | MulAdd
-            | CinSum
-            | UnsignedOverflow
-            | SignedOverflow
-            | Or
-            | And
-            | Xor
-            | Add
-            | Sub
-            | Rsb
-            | Eq
-            | Ne
-            | Ult
-            | Ule
-            | Ilt
-            | Ile
-            | Inc
-            | IncCout
-            | Dec
-            | DecCout
-            | Neg
-            | LutSet => false,
+            | Funnel(_)
+            | UQuo(_)
+            | URem(_)
+            | IQuo(_)
+            | IRem(_)
+            | MulAdd(_)
+            | CinSum(_)
+            | UnsignedOverflow(_)
+            | SignedOverflow(_)
+            | Or(_)
+            | And(_)
+            | Xor(_)
+            | Add(_)
+            | Sub(_)
+            | Rsb(_)
+            | Eq(_)
+            | Ne(_)
+            | Ult(_)
+            | Ule(_)
+            | Ilt(_)
+            | Ile(_)
+            | Inc(_)
+            | IncCout(_)
+            | Dec(_)
+            | DecCout(_)
+            | Neg(_)
+            | LutSet(_) => false,
 
-            Shl | Lshr | Ashr | Rotl | Rotr => {
+            Shl(_) | Lshr(_) | Ashr(_) | Rotl(_) | Rotr(_) => {
                 let s = v[1].to_usize();
                 s >= bw
             }
-            Get | Set => v[1].to_usize() >= v[0].bw(),
-            op @ (Field | FieldTo | FieldFrom | FieldWidth | FieldBit) => {
+            Get(_) | Set(_) => v[1].to_usize() >= v[0].bw(),
+            op @ (Field(_) | FieldTo(_) | FieldFrom(_) | FieldWidth(_) | FieldBit(_)) => {
                 let width = if *op == FieldBit {
                     1
                 } else {
                     v[v.len() - 1].to_usize()
                 };
-                let (to, x) = if matches!(op, FieldFrom | FieldWidth) {
+                let (to, x) = if matches!(op, FieldFrom(_) | FieldWidth(_)) {
                     (0, v[1].bw())
                 } else {
                     (v[1].to_usize(), v[2].bw())
                 };
-                let from = if matches!(op, FieldTo | FieldWidth) {
+                let from = if matches!(op, FieldTo(_) | FieldWidth(_)) {
                     0
                 } else if *op == FieldFrom {
                     v[2].to_usize()
@@ -495,11 +821,11 @@ impl Op {
                 (width > bw) || (width > x) || (to > (bw - width)) || (from > (x - width))
             }
         }
-    }
+    }*/
 
     /// Evaluates the result of this operation, given `self_bw` and literal
     /// operands.
-    pub fn eval(&self, self_bw: NonZeroUsize, ops: &[ExtAwi]) -> Option<ExtAwi> {
+    pub fn eval(&self, self_bw: NonZeroUsize, ops: &[ExtAwi]) -> Result<ExtAwi, EvalError> {
         let mut eval_awi = ExtAwi::zero(self_bw);
         let e = eval_awi.const_as_mut();
         let mut tmp_awi = ExtAwi::zero(e.nzbw());
@@ -509,16 +835,21 @@ impl Op {
         let mut tmp_awi2 = ExtAwi::zero(e.nzbw());
         let t2 = tmp_awi2.const_as_mut();
 
-        let mut v: Vec<&Bits> = vec![];
-        for op in ops {
-            v.push(op.const_as_ref());
+        macro_rules! check_bw {
+            ($lhs:expr, $rhs:expr) => {
+                if $lhs != $rhs {
+                    return Err(EvalError::WrongBitwidth)
+                }
+            };
         }
+
         let option = match self {
+            Invalid => return Err(EvalError::Unevaluatable),
+            Opaque(_) => return Err(EvalError::Unevaluatable),
             Literal(ref lit) => e.copy_assign(lit.const_as_ref()),
-            Invalid => None,
-            Opaque => None,
-            Resize(_) => {
-                e.resize_assign(v[0], v[1].to_bool());
+            /*Resize([a, b], w) => {
+                check_bw!(*w, self_bw);
+                e.resize_assign(a, b.to_bool());
                 Some(())
             }
             ZeroResize(_) => {
@@ -529,33 +860,33 @@ impl Op {
                 e.sign_resize_assign(v[0]);
                 Some(())
             }
-            Copy => e.copy_assign(v[0]),
+            Copy(_) => e.copy_assign(v[0]),
             Lut(_) => e.lut(v[0], v[1]),
-            Funnel => e.funnel(v[0], v[1]),
-            UQuo => Bits::udivide(e, t, v[0], v[1]),
-            URem => Bits::udivide(t, e, v[0], v[1]),
-            IQuo => {
+            Funnel(_) => e.funnel(v[0], v[1]),
+            UQuo(_) => Bits::udivide(e, t, v[0], v[1]),
+            URem(_) => Bits::udivide(t, e, v[0], v[1]),
+            IQuo(_) => {
                 t1.copy_assign(v[0])?;
                 t2.copy_assign(v[1])?;
                 Bits::idivide(e, t, t1, t2)
             }
-            IRem => {
+            IRem(_) => {
                 t1.copy_assign(v[0])?;
                 t2.copy_assign(v[1])?;
                 Bits::idivide(t, e, t1, t2)
             }
-            MulAdd => {
+            MulAdd(_) => {
                 e.copy_assign(v[0])?;
                 e.mul_add_assign(v[1], v[2])
             }
-            CinSum => {
+            CinSum(_) => {
                 if e.cin_sum_assign(v[0].to_bool(), v[1], v[2]).is_some() {
                     Some(())
                 } else {
                     None
                 }
             }
-            UnsignedOverflow => {
+            UnsignedOverflow(_) => {
                 if let Some((o, _)) = t.cin_sum_assign(v[0].to_bool(), v[1], v[2]) {
                     e.bool_assign(o);
                     Some(())
@@ -563,7 +894,7 @@ impl Op {
                     None
                 }
             }
-            SignedOverflow => {
+            SignedOverflow(_) => {
                 if let Some((_, o)) = t.cin_sum_assign(v[0].to_bool(), v[1], v[2]) {
                     e.bool_assign(o);
                     Some(())
@@ -571,80 +902,80 @@ impl Op {
                     None
                 }
             }
-            Not => {
+            Not(_) => {
                 let r = e.copy_assign(v[0]);
                 e.not_assign();
                 r
             }
-            Rev => {
+            Rev(_) => {
                 let r = e.copy_assign(v[0]);
                 e.rev_assign();
                 r
             }
-            Abs => {
+            Abs(_) => {
                 let r = e.copy_assign(v[0]);
                 e.abs_assign();
                 r
             }
-            IsZero => {
+            IsZero(_) => {
                 e.bool_assign(v[0].is_zero());
                 Some(())
             }
-            IsUmax => {
+            IsUmax(_) => {
                 e.bool_assign(v[0].is_umax());
                 Some(())
             }
-            IsImax => {
+            IsImax(_) => {
                 e.bool_assign(v[0].is_imax());
                 Some(())
             }
-            IsImin => {
+            IsImin(_) => {
                 e.bool_assign(v[0].is_imin());
                 Some(())
             }
-            IsUone => {
+            IsUone(_) => {
                 e.bool_assign(v[0].is_uone());
                 Some(())
             }
-            Lsb => {
+            Lsb(_) => {
                 e.bool_assign(v[0].lsb());
                 Some(())
             }
-            Msb => {
+            Msb(_) => {
                 e.bool_assign(v[0].msb());
                 Some(())
             }
-            Lz => {
+            Lz(_) => {
                 e.usize_assign(v[0].lz());
                 Some(())
             }
-            Tz => {
+            Tz(_) => {
                 e.usize_assign(v[0].tz());
                 Some(())
             }
-            Sig => {
+            Sig(_) => {
                 e.usize_assign(v[0].sig());
                 Some(())
             }
-            CountOnes => {
+            CountOnes(_) => {
                 e.usize_assign(v[0].count_ones());
                 Some(())
             }
-            Or => {
+            Or(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.or_assign(v[1])
                 } else {
                     None
                 }
             }
-            And => {
+            And(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.and_assign(v[1])
                 } else {
                     None
                 }
             }
-            Xor => {
+            Xor(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.xor_assign(v[1])
                 } else {
@@ -652,63 +983,63 @@ impl Op {
                 }
             }
 
-            Shl => {
+            Shl(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.shl_assign(v[1].to_usize())
                 } else {
                     None
                 }
             }
-            Lshr => {
+            Lshr(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.lshr_assign(v[1].to_usize())
                 } else {
                     None
                 }
             }
-            Ashr => {
+            Ashr(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.ashr_assign(v[1].to_usize())
                 } else {
                     None
                 }
             }
-            Rotl => {
+            Rotl(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.rotl_assign(v[1].to_usize())
                 } else {
                     None
                 }
             }
-            Rotr => {
+            Rotr(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.rotr_assign(v[1].to_usize())
                 } else {
                     None
                 }
             }
-            Add => {
+            Add(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.add_assign(v[1])
                 } else {
                     None
                 }
             }
-            Sub => {
+            Sub(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.sub_assign(v[1])
                 } else {
                     None
                 }
             }
-            Rsb => {
+            Rsb(_) => {
                 if let Some(()) = e.copy_assign(v[0]) {
                     e.rsb_assign(v[1])
                 } else {
                     None
                 }
             }
-            Eq => {
+            Eq(_) => {
                 if let Some(b) = v[0].const_eq(v[1]) {
                     e.bool_assign(b);
                     Some(())
@@ -716,7 +1047,7 @@ impl Op {
                     None
                 }
             }
-            Ne => {
+            Ne(_) => {
                 if let Some(b) = v[0].const_ne(v[1]) {
                     e.bool_assign(b);
                     Some(())
@@ -724,7 +1055,7 @@ impl Op {
                     None
                 }
             }
-            Ult => {
+            Ult(_) => {
                 if let Some(b) = v[0].ult(v[1]) {
                     e.bool_assign(b);
                     Some(())
@@ -732,7 +1063,7 @@ impl Op {
                     None
                 }
             }
-            Ule => {
+            Ule(_) => {
                 if let Some(b) = v[0].ule(v[1]) {
                     e.bool_assign(b);
                     Some(())
@@ -740,7 +1071,7 @@ impl Op {
                     None
                 }
             }
-            Ilt => {
+            Ilt(_) => {
                 if let Some(b) = v[0].ilt(v[1]) {
                     e.bool_assign(b);
                     Some(())
@@ -748,7 +1079,7 @@ impl Op {
                     None
                 }
             }
-            Ile => {
+            Ile(_) => {
                 if let Some(b) = v[0].ile(v[1]) {
                     e.bool_assign(b);
                     Some(())
@@ -756,7 +1087,7 @@ impl Op {
                     None
                 }
             }
-            Inc => {
+            Inc(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.inc_assign(v[1].to_bool());
                     Some(())
@@ -764,7 +1095,7 @@ impl Op {
                     None
                 }
             }
-            Dec => {
+            Dec(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.dec_assign(v[1].to_bool());
                     Some(())
@@ -772,12 +1103,12 @@ impl Op {
                     None
                 }
             }
-            Neg => {
+            Neg(_) => {
                 let r = e.copy_assign(v[0]);
                 e.neg_assign(v[1].to_bool());
                 r
             }
-            IncCout => {
+            IncCout(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.bool_assign(t.inc_assign(v[1].to_bool()));
                     Some(())
@@ -785,7 +1116,7 @@ impl Op {
                     None
                 }
             }
-            DecCout => {
+            DecCout(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.bool_assign(t.dec_assign(v[1].to_bool()));
                     Some(())
@@ -793,17 +1124,17 @@ impl Op {
                     None
                 }
             }
-            ZeroResizeOverflow(nzbw) => {
+            ZeroResizeOverflow(_,nzbw) => {
                 let mut tmp_awi3 = ExtAwi::zero(*nzbw);
                 e.bool_assign(tmp_awi3.zero_resize_assign(v[0]));
                 Some(())
             }
-            SignResizeOverflow(nzbw) => {
+            SignResizeOverflow(_,nzbw) => {
                 let mut tmp_awi3 = ExtAwi::zero(*nzbw);
                 e.bool_assign(tmp_awi3.sign_resize_assign(v[0]));
                 Some(())
             }
-            Get => {
+            Get(_) => {
                 if let Some(b) = v[0].get(v[1].to_usize()) {
                     e.bool_assign(b);
                     Some(())
@@ -811,64 +1142,61 @@ impl Op {
                     None
                 }
             }
-            Set => {
+            Set(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.set(v[1].to_usize(), v[2].to_bool())
                 } else {
                     None
                 }
             }
-            LutSet => {
+            LutSet(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.lut_set(v[1], v[2])
                 } else {
                     None
                 }
             }
-            Field => {
+            Field(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.field(v[1].to_usize(), v[2], v[3].to_usize(), v[4].to_usize())
                 } else {
                     None
                 }
             }
-            FieldTo => {
+            FieldTo(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.field_to(v[1].to_usize(), v[2], v[3].to_usize())
                 } else {
                     None
                 }
             }
-            FieldFrom => {
+            FieldFrom(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.field_from(v[1], v[2].to_usize(), v[3].to_usize())
                 } else {
                     None
                 }
             }
-            FieldWidth => {
+            FieldWidth(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.field_width(v[1], v[2].to_usize())
                 } else {
                     None
                 }
             }
-            FieldBit => {
+            FieldBit(_) => {
                 if e.copy_assign(v[0]).is_some() {
                     e.field_bit(v[1].to_usize(), v[2], v[3].to_usize())
                 } else {
                     None
                 }
-            }
+            }*/
+            _ => todo!(),
         };
         if option.is_none() {
-            None
+            Err(EvalError::WrongBitwidth)
         } else {
-            Some(eval_awi)
+            Ok(eval_awi)
         }
-    }
-
-    pub fn is_literal(&self) -> bool {
-        matches!(self, Literal(_))
     }
 }

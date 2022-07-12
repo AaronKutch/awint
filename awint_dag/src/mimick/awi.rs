@@ -33,18 +33,17 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
     fn clone(&self) -> Self {
-        Self::new(Op::Copy, vec![self.state()])
+        Self::new(Op::Copy([self.state()]))
     }
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub(crate) fn new(op: Op, ops: Vec<Rc<State>>) -> Self {
+    pub(crate) fn new(op: Op<Rc<State>>) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
             _inlawi_raw: [InnerState(State::new(
                 Some(Self::hidden_const_nzbw().unwrap()),
                 op,
-                ops,
             ))],
         }
     }
@@ -75,42 +74,39 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(
-            Op::Literal(awint_ext::ExtAwi::from_bits(
-                awint_core::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
-            )),
-            vec![],
-        )
+        Self::new(Op::Literal(awint_ext::ExtAwi::from_bits(
+            awint_core::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
+        )))
     }
 
     pub fn opaque() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Opaque, vec![])
+        Self::new(Op::Opaque(vec![]))
     }
 
     pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::zero(bw(BW))), vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::zero(bw(BW))))
     }
 
     pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::umax(bw(BW))), vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::umax(bw(BW))))
     }
 
     pub fn imax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::imax(bw(BW))), vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::imax(bw(BW))))
     }
 
     pub fn imin() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::imin(bw(BW))), vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::imin(bw(BW))))
     }
 
     pub fn uone() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::uone(bw(BW))), vec![])
+        Self::new(Op::Literal(awint_ext::ExtAwi::uone(bw(BW))))
     }
 }
 
@@ -319,14 +315,14 @@ impl Lineage for ExtAwi {
 
 impl Clone for ExtAwi {
     fn clone(&self) -> Self {
-        Self::new(self.nzbw(), Op::Copy, vec![self.state()])
+        Self::new(self.nzbw(), Op::Copy([self.state()]))
     }
 }
 
 impl ExtAwi {
-    fn new(nzbw: NonZeroUsize, op: Op, ops: Vec<Rc<State>>) -> Self {
+    fn new(nzbw: NonZeroUsize, op: Op<Rc<State>>) -> Self {
         Self {
-            _extawi_raw: [InnerState(State::new(Some(nzbw), op, ops))],
+            _extawi_raw: [InnerState(State::new(Some(nzbw), op))],
         }
     }
 
@@ -345,31 +341,31 @@ impl ExtAwi {
     }
 
     pub fn from_bits(bits: &Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Copy, vec![bits.state()])
+        Self::new(bits.nzbw(), Op::Copy([bits.state()]))
     }
 
     pub fn opaque(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Opaque, vec![])
+        Self::new(bw, Op::Opaque(vec![]))
     }
 
     pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::zero(bw)), vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::zero(bw)))
     }
 
     pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::umax(bw)), vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::umax(bw)))
     }
 
     pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imax(bw)), vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imax(bw)))
     }
 
     pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imin(bw)), vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imin(bw)))
     }
 
     pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::uone(bw)), vec![])
+        Self::new(bw, Op::Literal(awint_ext::ExtAwi::uone(bw)))
     }
 
     #[doc(hidden)]
@@ -465,13 +461,13 @@ forward_debug_fmt!(ExtAwi);
 
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Copy, vec![bits.state()])
+        Self::new(bits.nzbw(), Op::Copy([bits.state()]))
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::Copy, vec![awi.state()])
+        Self::new(awi.nzbw(), Op::Copy([awi.state()]))
     }
 }
 
