@@ -8,6 +8,8 @@ pub enum EvalError {
     InvalidPtr,
     // an operand is not a `Literal`
     NonliteralOperand,
+    // A typical `Bits` operation failed
+    EvalFailure,
     // wrong bitwidths of operands
     WrongBitwidth,
     // wrong integer value of an operand, such as overshifting from a shift operation or going out

@@ -8,6 +8,8 @@ use std::{
     rc::Rc,
 };
 
+use awint_core::Bits;
+use awint_internals::BITS;
 use triple_arena::{Arena, Ptr, PtrTrait};
 use Op::*;
 
@@ -19,7 +21,6 @@ use crate::{
 #[derive(Debug)]
 pub struct Dag<P: PtrTrait> {
     pub dag: Arena<P, Node<P>>,
-    pub roots: Vec<Ptr<P>>,
     pub leaves: Vec<Ptr<P>>,
     pub noted_roots: Vec<Ptr<P>>,
 }
@@ -45,7 +46,6 @@ impl<P: PtrTrait> Dag<P> {
     pub fn new(leaves: &[Rc<State>], roots: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
             dag: Arena::new(),
-            roots: vec![],
             leaves: vec![],
             noted_roots: vec![],
         };
@@ -158,11 +158,6 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
         }
-        for p in self.dag.ptrs() {
-            if self.dag[p].op.num_operands() == 0 {
-                self.roots.push(p);
-            }
-        }
         err
     }
 
@@ -170,18 +165,6 @@ impl<P: PtrTrait> Dag<P> {
     /// Note that if the DAG is evaluated, there may be invalid operand value
     /// errors.
     pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
-        for p in self.ptrs() {
-            if let Some(nzbw) = self[p].nzbw {
-                if self[p].op.check_bitwidths(nzbw.get()) {
-                    self[p].err = Some(EvalError::WrongBitwidth);
-                }
-            }
-        }
-        for p in self.roots() {
-            if self.dag.get(*p).is_none() {
-                return Err(EvalError::InvalidPtr)
-            }
-        }
         for p in self.leaves() {
             if self.dag.get(*p).is_none() {
                 return Err(EvalError::InvalidPtr)
@@ -205,14 +188,46 @@ impl<P: PtrTrait> Dag<P> {
         self.dag.ptrs().collect()
     }
 
-    /// Returns all source roots that have no operands
-    pub fn roots(&self) -> &[Ptr<P>] {
-        &self.roots
-    }
-
     /// Returns all sink leaves that have no dependents
     pub fn leaves(&self) -> &[Ptr<P>] {
         &self.leaves
+    }
+
+    /// Assumes `ptr` is a literal
+    pub fn lit(&self, ptr: Ptr<P>) -> &Bits {
+        if let Literal(ref lit) = self[ptr].op {
+            lit
+        } else {
+            panic!("node was not a literal")
+        }
+    }
+
+    /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
+    /// bitwidth 1.
+    pub fn bool(&self, ptr: Ptr<P>) -> Result<bool, EvalError> {
+        if let Literal(ref lit) = self[ptr].op {
+            if lit.bw() == 1 {
+                Ok(lit.to_bool())
+            } else {
+                Err(EvalError::WrongBitwidth)
+            }
+        } else {
+            panic!("node was not a literal")
+        }
+    }
+
+    /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
+    /// bitwidth `usize::BITS`.
+    pub fn usize(&self, ptr: Ptr<P>) -> Result<usize, EvalError> {
+        if let Literal(ref lit) = self[ptr].op {
+            if lit.bw() == BITS {
+                Ok(lit.to_usize())
+            } else {
+                Err(EvalError::WrongBitwidth)
+            }
+        } else {
+            panic!("node was not a literal")
+        }
     }
 
     pub fn get_bw<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {

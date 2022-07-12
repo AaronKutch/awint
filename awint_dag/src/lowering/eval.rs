@@ -1,3 +1,5 @@
+use awint_core::Bits;
+use awint_ext::ExtAwi;
 use triple_arena::{Ptr, PtrTrait};
 use Op::*;
 
@@ -7,104 +9,469 @@ use crate::{
 };
 
 impl<P: PtrTrait> Dag<P> {
-    /// Evaluates the node. Assumes the operands are all literals.
-    pub fn eval_node(&mut self, ptr: Ptr<P>) -> Result<(), EvalError> {
-        if matches!(self[ptr].op, Invalid | Opaque(_) | Literal(_)) {
-            return Ok(())
-        }
-        /*let mut v: Vec<awint_ext::ExtAwi> = vec![];
-        for i in 0..self[ptr].ops.len() {
-            let input_ptr = self[ptr].ops[i];
-            let input = if let Some(node) = self.dag.get(input_ptr) {
-                node
-            } else {
-                return Err(EvalError::InvalidPtr)
+    /// Assumes the node itself is evaluatable and all sources for `node` are
+    /// literals
+    pub fn eval_node(&mut self, node: Ptr<P>) -> Result<(), EvalError> {
+        macro_rules! check_bw {
+            ($lhs:expr, $rhs:expr) => {
+                if $lhs != $rhs {
+                    return Err(EvalError::WrongBitwidth)
+                }
             };
-            if let Literal(ref lit) = input.op {
-                v.push(lit.clone());
-            } else {
-                return Err(EvalError::NonliteralOperand)
-            }
         }
+        let op = self[node].op.take();
+        let self_w = if let Some(w) = self[node].nzbw {
+            w
+        } else {
+            return Err(EvalError::NonStaticBitwidth)
+        };
+        // TODO weird bitwidth cases here
+        let mut r = ExtAwi::zero(self_w);
+        let option = match op {
+            Invalid => return Err(EvalError::Unevaluatable),
+            Opaque(_) => return Err(EvalError::Unevaluatable),
+            Literal(_) => return Err(EvalError::Unevaluatable),
+            Resize([a, b], w) => {
+                check_bw!(w, self_w);
+                r.resize_assign(self.lit(a), self.bool(b)?);
+                Some(())
+            }
+            ZeroResize([a], w) => {
+                check_bw!(w, self_w);
+                r.zero_resize_assign(self.lit(a));
+                Some(())
+            }
+            SignResize([a], w) => {
+                check_bw!(w, self_w);
+                r.sign_resize_assign(self.lit(a));
+                Some(())
+            }
+            Copy([a]) => r.copy_assign(self.lit(a)),
+            Lut([a, b], w) => {
+                check_bw!(w, self_w);
+                r.lut(self.lit(a), self.lit(b))
+            }
+            Funnel([a, b]) => r.funnel(self.lit(a), self.lit(b)),
+            CinSum([a, b, c]) => {
+                if r.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
+                    .is_some()
+                {
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Not([a]) => {
+                let e = r.copy_assign(self.lit(a));
+                r.not_assign();
+                e
+            }
+            Rev([a]) => {
+                let e = r.copy_assign(self.lit(a));
+                r.rev_assign();
+                e
+            }
+            Abs([a]) => {
+                let e = r.copy_assign(self.lit(a));
+                r.abs_assign();
+                e
+            }
+            IsZero([a]) => {
+                r.bool_assign(self.lit(a).is_zero());
+                Some(())
+            }
+            IsUmax([a]) => {
+                r.bool_assign(self.lit(a).is_umax());
+                Some(())
+            }
+            IsImax([a]) => {
+                r.bool_assign(self.lit(a).is_imax());
+                Some(())
+            }
+            IsImin([a]) => {
+                r.bool_assign(self.lit(a).is_imin());
+                Some(())
+            }
+            IsUone([a]) => {
+                r.bool_assign(self.lit(a).is_uone());
+                Some(())
+            }
+            Lsb([a]) => {
+                r.bool_assign(self.lit(a).lsb());
+                Some(())
+            }
+            Msb([a]) => {
+                r.bool_assign(self.lit(a).msb());
+                Some(())
+            }
+            Lz([a]) => {
+                r.usize_assign(self.lit(a).lz());
+                Some(())
+            }
+            Tz([a]) => {
+                r.usize_assign(self.lit(a).tz());
+                Some(())
+            }
+            Sig([a]) => {
+                r.usize_assign(self.lit(a).sig());
+                Some(())
+            }
+            CountOnes([a]) => {
+                r.usize_assign(self.lit(a).count_ones());
+                Some(())
+            }
+            Or([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.or_assign(self.lit(b))
+                } else {
+                    None
+                }
+            }
+            And([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.and_assign(self.lit(b))
+                } else {
+                    None
+                }
+            }
+            Xor([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.xor_assign(self.lit(b))
+                } else {
+                    None
+                }
+            }
+            Shl([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.shl_assign(self.usize(b)?)
+                } else {
+                    None
+                }
+            }
+            Lshr([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.lshr_assign(self.usize(b)?)
+                } else {
+                    None
+                }
+            }
+            Ashr([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.ashr_assign(self.usize(b)?)
+                } else {
+                    None
+                }
+            }
+            Rotl([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.rotl_assign(self.usize(b)?)
+                } else {
+                    None
+                }
+            }
+            Rotr([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.rotr_assign(self.usize(b)?)
+                } else {
+                    None
+                }
+            }
+            Add([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.add_assign(self.lit(b))
+                } else {
+                    None
+                }
+            }
+            Sub([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.sub_assign(self.lit(b))
+                } else {
+                    None
+                }
+            }
+            Rsb([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.rsb_assign(self.lit(b))
+                } else {
+                    None
+                }
+            }
+            Eq([a, b]) => {
+                if let Some(b) = self.lit(a).const_eq(self.lit(b)) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Ne([a, b]) => {
+                if let Some(b) = self.lit(a).const_ne(self.lit(b)) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Ult([a, b]) => {
+                if let Some(b) = self.lit(a).ult(self.lit(b)) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Ule([a, b]) => {
+                if let Some(b) = self.lit(a).ule(self.lit(b)) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Ilt([a, b]) => {
+                if let Some(b) = self.lit(a).ilt(self.lit(b)) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Ile([a, b]) => {
+                if let Some(b) = self.lit(a).ile(self.lit(b)) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Inc([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.inc_assign(self.bool(b)?);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Dec([a, b]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.dec_assign(self.bool(b)?);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Neg([a, b]) => {
+                let e = r.copy_assign(self.lit(a));
+                r.neg_assign(self.bool(b)?);
+                e
+            }
+            ZeroResizeOverflow([a], w) => {
+                let mut tmp_awi = ExtAwi::zero(w);
+                r.bool_assign(tmp_awi.zero_resize_assign(self.lit(a)));
+                Some(())
+            }
+            SignResizeOverflow([a], w) => {
+                let mut tmp_awi = ExtAwi::zero(w);
+                r.bool_assign(tmp_awi.sign_resize_assign(self.lit(a)));
+                Some(())
+            }
+            Get([a, b]) => {
+                if let Some(b) = self.lit(a).get(self.usize(b)?) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            Set([a, b, c]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.set(self.usize(b)?, self.bool(c)?)
+                } else {
+                    None
+                }
+            }
+            LutSet([a, b, c]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.lut_set(self.lit(b), self.lit(c))
+                } else {
+                    None
+                }
+            }
+            Field(v) => {
+                if r.copy_assign(self.lit(v[0])).is_some() {
+                    r.field(
+                        self.usize(v[1])?,
+                        self.lit(v[2]),
+                        self.usize(v[3])?,
+                        self.usize(v[4])?,
+                    )
+                } else {
+                    None
+                }
+            }
+            FieldTo([a, b, c, d]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.field_to(self.usize(b)?, self.lit(c), self.usize(d)?)
+                } else {
+                    None
+                }
+            }
+            FieldFrom([a, b, c, d]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.field_from(self.lit(b), self.usize(c)?, self.usize(d)?)
+                } else {
+                    None
+                }
+            }
+            FieldWidth([a, b, c]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.field_width(self.lit(b), self.usize(c)?)
+                } else {
+                    None
+                }
+            }
+            FieldBit([a, b, c, d]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.field_bit(self.usize(b)?, self.lit(c), self.usize(d)?)
+                } else {
+                    None
+                }
+            }
+            MulAdd([a, b, c]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.mul_add_assign(self.lit(b), self.lit(c))
+                } else {
+                    None
+                }
+            }
+            op @ (UQuo(_) | URem(_) | UnsignedOverflow(_) | SignedOverflow(_) | IncCout(_)
+            | DecCout(_)) => {
+                // need extra temporary
+                let mut t = ExtAwi::zero(self_w);
+                match op {
+                    UQuo([a, b]) => Bits::udivide(&mut r, &mut t, self.lit(a), self.lit(b)),
+                    URem([a, b]) => Bits::udivide(&mut t, &mut r, self.lit(a), self.lit(b)),
+                    UnsignedOverflow([a, b, c]) => {
+                        if let Some((o, _)) =
+                            t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
+                        {
+                            r.bool_assign(o);
+                            Some(())
+                        } else {
+                            None
+                        }
+                    }
+                    SignedOverflow([a, b, c]) => {
+                        if let Some((_, o)) =
+                            t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
+                        {
+                            r.bool_assign(o);
+                            Some(())
+                        } else {
+                            None
+                        }
+                    }
+                    IncCout([a, b]) => {
+                        if r.copy_assign(self.lit(a)).is_some() {
+                            r.bool_assign(t.inc_assign(self.bool(b)?));
+                            Some(())
+                        } else {
+                            None
+                        }
+                    }
+                    DecCout([a, b]) => {
+                        if r.copy_assign(self.lit(a)).is_some() {
+                            r.bool_assign(t.dec_assign(self.bool(b)?));
+                            Some(())
+                        } else {
+                            None
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            op @ (IQuo(_) | IRem(_)) => {
+                let mut t = ExtAwi::zero(self_w);
+                let mut t0 = ExtAwi::zero(self_w);
+                let mut t1 = ExtAwi::zero(self_w);
+                match op {
+                    IQuo([a, b]) => {
+                        if let (Some(()), Some(())) =
+                            (t0.copy_assign(self.lit(a)), t1.copy_assign(self.lit(b)))
+                        {
+                            Bits::idivide(&mut r, &mut t, &mut t0, &mut t1)
+                        } else {
+                            None
+                        }
+                    }
+                    IRem([a, b]) => {
+                        if let (Some(()), Some(())) =
+                            (t0.copy_assign(self.lit(a)), t1.copy_assign(self.lit(b)))
+                        {
+                            Bits::idivide(&mut t, &mut r, &mut t0, &mut t1)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        };
+        if option.is_none() {
+            Err(EvalError::EvalFailure)
+        } else {
+            self[node].op = Literal(r);
+            Ok(())
+        }
+    }
 
-        // check bitwidths and values
-        if let Some(self_bw) = self[ptr].nzbw {
-            if self[ptr].op.check_bitwidths(self_bw.get()) {
-                return Err(EvalError::WrongBitwidth)
-            }
-            if self[ptr].op.check_values(self_bw, &v) {
-                return Err(EvalError::InvalidOperandValue)
-            }
-            if let Some(res) = self[ptr].op.eval(self_bw, &v) {
-                // remove operand edges
-                for op_i in 0..self[ptr].ops.len() {
-                    let op = self[ptr].ops[op_i];
-                    remove(&mut self[op].deps, ptr);
-                    // only if the node is not being used by something else do we remove it
-                    if self[op].deps.is_empty() {
-                        self.dag.remove(op);
+    /// Evaluates the tree leading to `leaf` as much as possible
+    pub fn eval_tree(&mut self, leaf: Ptr<P>) -> Result<(), EvalError> {
+        // DFS from leaf to roots
+        // the bool is set to false when an unevaluatabe node is in the sources
+        let mut path: Vec<(usize, Ptr<P>, bool)> = vec![(0, leaf, true)];
+        loop {
+            let (i, p, b) = path[path.len() - 1];
+            let ops = self[p].op.operands();
+            if ops.is_empty() {
+                // reached a root
+                path.pop().unwrap();
+                if path.is_empty() {
+                    break
+                }
+                path.last_mut().unwrap().0 += 1;
+                if !self[p].op.is_literal() {
+                    // is an `Invalid` or `Opaque`
+                    path.last_mut().unwrap().2 = false;
+                }
+            } else if i >= ops.len() {
+                // checked all sources
+                path.pop().unwrap();
+                if b {
+                    if let Err(e) = self.eval_node(p) {
+                        self[p].err = Some(e.clone());
+                        return Err(e)
                     }
                 }
-                self[ptr].ops.clear();
-                // make literal
-                let _ = std::mem::replace(&mut self[ptr].op, Op::Literal(res));
+                if path.is_empty() {
+                    break
+                }
+                if !b {
+                    path.last_mut().unwrap().2 = false;
+                }
             } else {
-                // some kind of internal bug
-                return Err(EvalError::OtherStr("eval bug"))
+                path.push((0, ops[i], true));
             }
-        } else {
-            return Err(EvalError::Unevaluatable)
-        }*/
-
+        }
         Ok(())
     }
 
-    // FIXME how we accomplish this without backedges is that we start with a leaf
-    // as a target and work backwards until reaching roots, keeping a record of
-    // the frontier and using counters at the node level
-
     // Evaluates the DAG as much as is possible
-    /*pub fn eval(&mut self) -> Result<(), EvalError> {
-        // evaluatable values
-        let list = self.ptrs();
-        let mut eval: Vec<Ptr<P>> = vec![];
-        for p in list {
-            if matches!(self[p].op, Invalid | Opaque(_) | Literal(_)) {
-                // skip unevaluatable values
-                continue
-            }
-            let mut evaluatable = true;
-            for op in self[p].op.operands() {
-                if !self[op].op.is_literal() {
-                    evaluatable = false;
-                    break
-                }
-            }
-            if evaluatable {
-                eval.push(p);
-            }
-        }
-
-        while let Some(node) = eval.pop() {
-            if let Err(e) = self.eval_node(node) {
-                self[node].err = Some(e.clone());
-                return Err(e)
-            }
-            // check all deps for newly evaluatable nodes
-            for dep_i in 0..self[node].deps.len() {
-                let dep = self[node].deps[dep_i];
-                let mut evaluatable = true;
-                for op in &self[dep].ops {
-                    if !self[op].op.is_literal() {
-                        evaluatable = false;
-                        break
-                    }
-                }
-                if evaluatable {
-                    eval.push(dep);
-                }
-            }
+    pub fn eval(&mut self) -> Result<(), EvalError> {
+        for i in 0..self.leaves().len() {
+            self.eval_tree(self.leaves()[i])?
         }
         Ok(())
-    }*/
+    }
 }
