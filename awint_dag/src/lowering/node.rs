@@ -26,6 +26,8 @@ pub struct Node<P: PtrTrait> {
     pub nzbw: Option<NonZeroUsize>,
     /// Operation
     pub op: Op<Ptr<P>>,
+    /// Number of dependents
+    pub rc: usize,
     pub err: Option<EvalError>,
 }
 

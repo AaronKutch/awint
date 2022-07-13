@@ -10,7 +10,7 @@ use crate::{
 
 impl<P: PtrTrait> Dag<P> {
     /// Assumes the node itself is evaluatable and all sources for `node` are
-    /// literals
+    /// literals. Note: decrements dependents but does not remove dead nodes.
     pub fn eval_node(&mut self, node: Ptr<P>) -> Result<(), EvalError> {
         macro_rules! check_bw {
             ($lhs:expr, $rhs:expr) => {
@@ -20,6 +20,13 @@ impl<P: PtrTrait> Dag<P> {
             };
         }
         let op = self[node].op.take();
+        for source in op.operands() {
+            self[source].rc = if let Some(x) = self[source].rc.checked_sub(1) {
+                x
+            } else {
+                return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+            };
+        }
         let self_w = if let Some(w) = self[node].nzbw {
             w
         } else {
@@ -473,5 +480,14 @@ impl<P: PtrTrait> Dag<P> {
             self.eval_tree(self.leaves()[i])?
         }
         Ok(())
+    }
+
+    pub fn cull(&mut self) {
+        // cull unused nodes
+        for p in self.ptrs() {
+            if self[p].rc == 0 {
+                self.dag.remove(p).unwrap();
+            }
+        }
     }
 }
