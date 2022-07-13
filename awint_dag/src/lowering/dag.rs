@@ -71,9 +71,19 @@ impl<P: PtrTrait> Dag<P> {
         let mut path: Vec<(usize, Ptr<P>, PtrEqRc)> = vec![];
         for leaf in leaves {
             let enter_loop = match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
-                Entry::Occupied(_) => false,
+                Entry::Occupied(o) => {
+                    // keep
+                    self[o.get()].rc += 1;
+                    self.leaves.push(*o.get());
+                    false
+                }
                 Entry::Vacant(v) => {
-                    let p = self.dag.insert(Node::default());
+                    let mut n = Node::default();
+                    // keep leaves
+                    n.rc += 1;
+                    n.nzbw = leaf.nzbw;
+                    let p = self.dag.insert(n);
+                    self.leaves.push(p);
                     v.insert(p);
                     path.push((0, p, PtrEqRc(Rc::clone(leaf))));
                     true
@@ -114,8 +124,9 @@ impl<P: PtrTrait> Dag<P> {
                             match lowerings
                                 .entry(PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])))
                             {
-                                Entry::Occupied(_) => {
+                                Entry::Occupied(o) => {
                                     // already explored
+                                    self[o.get()].rc += 1;
                                     path.pop().unwrap();
                                     if let Some((i, ..)) = path.last_mut() {
                                         *i += 1;
@@ -124,7 +135,10 @@ impl<P: PtrTrait> Dag<P> {
                                     }
                                 }
                                 Entry::Vacant(v) => {
-                                    let p = self.dag.insert(Node::default());
+                                    let mut n = Node::default();
+                                    n.rc += 1;
+                                    n.nzbw = current_rc.0.nzbw;
+                                    let p = self.dag.insert(n);
                                     v.insert(p);
                                     path.push((
                                         0,
@@ -143,10 +157,6 @@ impl<P: PtrTrait> Dag<P> {
         for (i, root) in roots.iter().enumerate() {
             match lowerings.entry(PtrEqRc(Rc::clone(root))) {
                 Entry::Occupied(o) => {
-                    if !matches!(self[o.get()].op, Opaque(_)) {
-                        self[o.get()].err = Some(EvalError::ExpectedOpaque);
-                        err = Err(EvalError::ExpectedOpaque);
-                    }
                     self[o.get()].rc += 1;
                     self.noted_roots.push(*o.get());
                 }
@@ -157,10 +167,6 @@ impl<P: PtrTrait> Dag<P> {
                     )));
                 }
             }
-        }
-        // put virtual dependencies on leaves
-        for leaf in leaves {
-            self[lowerings[&PtrEqRc(Rc::clone(leaf))]].rc += 1;
         }
         err
     }

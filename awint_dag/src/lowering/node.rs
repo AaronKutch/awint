@@ -83,6 +83,7 @@ impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
         if let Some(w) = this.nzbw {
             res.center.push(format!("{}", w));
         }
+        //res.center.push(format!("rc: {}", this.rc));
         res
     }
 }
