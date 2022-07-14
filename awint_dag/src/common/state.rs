@@ -30,7 +30,7 @@ impl fmt::Debug for State {
         // exponential growth
         f.debug_struct("State")
             .field("nzbw", &self.nzbw)
-            .field("op", &self.op)
+            .field("op", &self.op.operation_name())
             .finish()
     }
 }

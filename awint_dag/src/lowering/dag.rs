@@ -92,9 +92,11 @@ impl<P: PtrTrait> Dag<P> {
             if enter_loop {
                 loop {
                     let (current_i, current_p, current_rc) = path.last().unwrap();
+                    let u_ops = current_rc.0.op.operands();
                     if let Some(t) = Op::translate_root(&current_rc.0.op) {
                         // reached a root
                         self[current_p].op = t;
+                        self[current_p].nzbw = current_rc.0.nzbw;
                         path.pop().unwrap();
                         if let Some((i, ..)) = path.last_mut() {
                             *i += 1;
@@ -102,7 +104,6 @@ impl<P: PtrTrait> Dag<P> {
                             break
                         }
                     } else {
-                        let u_ops = current_rc.0.op.operands();
                         if *current_i >= u_ops.len() {
                             // all operands should be ready
                             self[current_p].op = Op::translate(
@@ -113,6 +114,7 @@ impl<P: PtrTrait> Dag<P> {
                                     }
                                 },
                             );
+                            self[current_p].nzbw = current_rc.0.nzbw;
                             path.pop().unwrap();
                             if let Some((i, ..)) = path.last_mut() {
                                 *i += 1;
@@ -127,7 +129,6 @@ impl<P: PtrTrait> Dag<P> {
                                 Entry::Occupied(o) => {
                                     // already explored
                                     self[o.get()].rc += 1;
-                                    path.pop().unwrap();
                                     if let Some((i, ..)) = path.last_mut() {
                                         *i += 1;
                                     } else {
@@ -137,7 +138,6 @@ impl<P: PtrTrait> Dag<P> {
                                 Entry::Vacant(v) => {
                                     let mut n = Node::default();
                                     n.rc += 1;
-                                    n.nzbw = current_rc.0.nzbw;
                                     let p = self.dag.insert(n);
                                     v.insert(p);
                                     path.push((
