@@ -21,8 +21,10 @@ use crate::{
 #[derive(Debug)]
 pub struct Dag<P: PtrTrait> {
     pub dag: Arena<P, Node<P>>,
-    pub leaves: Vec<Ptr<P>>,
-    pub noted_roots: Vec<Ptr<P>>,
+    /// for keeping nodes alive and having an ordered list for identification
+    pub noted: Vec<Ptr<P>>,
+    /// A kind of generation counter tracking the highest `visit_num` number
+    pub visit_gen: u64,
 }
 
 impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
@@ -41,28 +43,28 @@ impl<P: PtrTrait, B: Borrow<Ptr<P>>> IndexMut<B> for Dag<P> {
 
 impl<P: PtrTrait> Dag<P> {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
-    /// version. The optional `roots` make the `Dag` keep track of select nodes
-    /// in `noted_roots`, which must be `Opaque` nodes.
-    pub fn new(leaves: &[Rc<State>], roots: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
+    /// version. The optional `note`s should be included in the DAG reachable
+    /// from the `leaves`, and should be `Opaque` if they should remain
+    /// unmutated through optimizations.
+    pub fn new(leaves: &[Rc<State>], noted: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
             dag: Arena::new(),
-            leaves: vec![],
-            noted_roots: vec![],
+            noted: vec![],
+            visit_gen: 0,
         };
-        let err = res.add_group(leaves, roots);
+        let err = res.add_group(leaves, noted, None);
         (res, err)
     }
 
-    /// All of the `roots` should be `Opaque`s. `roots` does not have to contain
-    /// all actual roots, just roots that need to be noted and preserved through
-    /// optimizations. All of the `roots` should be include at least one of the
-    /// `leaves` in their DAG. Note: the leaves and all their preceding
-    /// nodes should not share with previously existing nodes in this DAG or
-    /// else there will be duplication.
+    /// All of the `note`s should be reachable from the `leaves`. If `added` is
+    /// supplied then new nodes will be added to it. Note: the leaves and
+    /// all their preceding nodes should not share with previously existing
+    /// nodes in this DAG or else there will be duplication.
     pub fn add_group(
         &mut self,
         leaves: &[Rc<State>],
-        roots: &[Rc<State>],
+        noted: &[Rc<State>],
+        mut added: Option<&mut Vec<Ptr<P>>>,
     ) -> Result<(), EvalError> {
         // keeps track if a mimick node is already tracked in the arena
         let mut lowerings: HashMap<PtrEqRc, Ptr<P>> = HashMap::new();
@@ -74,7 +76,6 @@ impl<P: PtrTrait> Dag<P> {
                 Entry::Occupied(o) => {
                     // keep
                     self[o.get()].rc += 1;
-                    self.leaves.push(*o.get());
                     false
                 }
                 Entry::Vacant(v) => {
@@ -83,8 +84,10 @@ impl<P: PtrTrait> Dag<P> {
                     n.rc += 1;
                     n.nzbw = leaf.nzbw;
                     let p = self.dag.insert(n);
-                    self.leaves.push(p);
                     v.insert(p);
+                    if let Some(ref mut v) = added {
+                        v.push(p);
+                    }
                     path.push((0, p, PtrEqRc(Rc::clone(leaf))));
                     true
                 }
@@ -103,66 +106,67 @@ impl<P: PtrTrait> Dag<P> {
                         } else {
                             break
                         }
-                    } else {
-                        if *current_i >= u_ops.len() {
-                            // all operands should be ready
-                            self[current_p].op = Op::translate(
-                                &current_rc.0.op,
-                                |lhs: &mut [Ptr<P>], rhs: &[Rc<State>]| {
-                                    for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                        *lhs = lowerings[&PtrEqRc(Rc::clone(rhs))];
-                                    }
-                                },
-                            );
-                            self[current_p].nzbw = current_rc.0.nzbw;
-                            path.pop().unwrap();
-                            if let Some((i, ..)) = path.last_mut() {
-                                *i += 1;
-                            } else {
-                                break
-                            }
+                    } else if *current_i >= u_ops.len() {
+                        // all operands should be ready
+                        self[current_p].op = Op::translate(
+                            &current_rc.0.op,
+                            |lhs: &mut [Ptr<P>], rhs: &[Rc<State>]| {
+                                for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                                    *lhs = lowerings[&PtrEqRc(Rc::clone(rhs))];
+                                }
+                            },
+                        );
+                        self[current_p].nzbw = current_rc.0.nzbw;
+                        path.pop().unwrap();
+                        if let Some((i, ..)) = path.last_mut() {
+                            *i += 1;
                         } else {
-                            // check next operand
-                            match lowerings
-                                .entry(PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])))
-                            {
-                                Entry::Occupied(o) => {
-                                    // already explored
-                                    self[o.get()].rc += 1;
-                                    if let Some((i, ..)) = path.last_mut() {
-                                        *i += 1;
-                                    } else {
-                                        break
-                                    }
+                            break
+                        }
+                    } else {
+                        // check next operand
+                        match lowerings
+                            .entry(PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])))
+                        {
+                            Entry::Occupied(o) => {
+                                // already explored
+                                self[o.get()].rc += 1;
+                                if let Some((i, ..)) = path.last_mut() {
+                                    *i += 1;
+                                } else {
+                                    break
                                 }
-                                Entry::Vacant(v) => {
-                                    let mut n = Node::default();
-                                    n.rc += 1;
-                                    let p = self.dag.insert(n);
-                                    v.insert(p);
-                                    path.push((
-                                        0,
-                                        p,
-                                        PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])),
-                                    ));
+                            }
+                            Entry::Vacant(v) => {
+                                let mut n = Node::default();
+                                n.rc += 1;
+                                let p = self.dag.insert(n);
+                                v.insert(p);
+                                if let Some(ref mut v) = added {
+                                    v.push(p);
                                 }
+                                path.push((
+                                    0,
+                                    p,
+                                    PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])),
+                                ));
                             }
                         }
                     }
                 }
             }
         }
-        // handle noted roots
+        // handle the noted
         let mut err = Ok(());
-        for (i, root) in roots.iter().enumerate() {
+        for (i, root) in noted.iter().enumerate() {
             match lowerings.entry(PtrEqRc(Rc::clone(root))) {
                 Entry::Occupied(o) => {
                     self[o.get()].rc += 1;
-                    self.noted_roots.push(*o.get());
+                    self.noted.push(*o.get());
                 }
                 Entry::Vacant(_) => {
                     err = Err(EvalError::OtherString(format!(
-                        "root {} is not included in DAG reached by the leaves",
+                        "note {} is not included in DAG reached by the leaves",
                         i
                     )));
                 }
@@ -171,36 +175,24 @@ impl<P: PtrTrait> Dag<P> {
         err
     }
 
-    /// Checks that the DAG is not broken and that the bitwidth checks work.
-    /// Note that if the DAG is evaluated, there may be invalid operand value
-    /// errors.
     pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
-        for p in self.leaves() {
-            if self.dag.get(*p).is_none() {
-                return Err(EvalError::InvalidPtr)
-            }
-        }
-        for p in &self.noted_roots {
-            if self.dag.get(*p).is_none() {
-                return Err(EvalError::InvalidPtr)
-            }
-        }
         for v in self.dag.vals() {
             if let Some(ref err) = v.err {
                 return Err(err.clone())
             }
         }
+        for p in &self.noted {
+            if self.dag.get(*p).is_none() {
+                return Err(EvalError::InvalidPtr)
+            }
+        }
+        // TODO there should be more checks
         Ok(())
     }
 
     /// Returns a list of pointers to all nodes in no particular order
     pub fn ptrs(&self) -> Vec<Ptr<P>> {
         self.dag.ptrs().collect()
-    }
-
-    /// Returns all sink leaves that have no dependents
-    pub fn leaves(&self) -> &[Ptr<P>] {
-        &self.leaves
     }
 
     /// Assumes `ptr` is a literal
@@ -248,43 +240,59 @@ impl<P: PtrTrait> Dag<P> {
         }
     }
 
-    pub fn strip_opaque_leaf<B: Borrow<Ptr<P>>>(&mut self, ptr: B) -> Result<Ptr<P>, EvalError> {
-        let ptr = *ptr.borrow();
-        if let Opaque(ref v) = self[ptr].op {
-            if v.len() == 1 {
-                let res = Ok(v[0]);
-                self.dag.remove(ptr).unwrap();
-                res
-            } else {
-                Err(EvalError::OtherString(format!(
-                    "opaque leaf does not have 1 operand: {:?}",
-                    self[ptr]
-                )))
-            }
-        } else {
-            Err(EvalError::OtherString(format!(
-                "is not opaque leaf: {:?}",
-                self[ptr]
-            )))
-        }
-    }
-
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
-    /// replaced by a set of lowered `Rc<State>` nodes with interfaces `ops` and
-    /// `deps` corresponding to the original interfaces.
+    /// replaced by a set of lowered `Rc<State>` nodes with interfaces `output`
+    /// and `operands` corresponding to the original interfaces.
     pub fn graft(
         &mut self,
         ptr: Ptr<P>,
-        leaf: Rc<State>,
-        roots: &[Rc<State>],
+        list: &mut Vec<Ptr<P>>,
+        output_and_operands: &[Rc<State>],
     ) -> Result<(), EvalError> {
-        let err = self.add_group(&[leaf], roots);
+        if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
+            return Err(EvalError::WrongNumberOfOperands)
+        }
+        for (i, op) in self[ptr].op.operands().iter().enumerate() {
+            if self[op].nzbw != output_and_operands[i + 1].nzbw {
+                return Err(EvalError::OtherString(format!(
+                    "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of {:?}",
+                    i,
+                    output_and_operands[i + 1].nzbw,
+                    self[op].nzbw
+                )))
+            }
+            if !output_and_operands[i + 1].op.is_opaque() {
+                return Err(EvalError::ExpectedOpaque)
+            }
+        }
+        if self[ptr].nzbw != output_and_operands[0].nzbw {
+            return Err(EvalError::WrongBitwidth)
+        }
+        let err = self.add_group(
+            &[Rc::clone(&output_and_operands[0])],
+            output_and_operands,
+            Some(list),
+        );
         //dag.render_to_svg_file(std::path::PathBuf::from("debug.svg")).unwrap();
         err?;
         self.verify_integrity()?;
-        self.eval_tree(*self.leaves.last().unwrap())?;
-        // TODO graft internal
-        //self.graft_dag(ptr, dag)
+        let start = self.noted.len() - output_and_operands.len();
+        self.eval_tree(self.noted[start])?;
+        // graft inputs
+        for i in 0..(output_and_operands.len() - 1) {
+            let grafted = self.noted[start + i + 1];
+            let graftee = self[ptr].op.operands()[i];
+            // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
+            // needing to change all the operands of potentially many internal nodes.
+
+            self[grafted].op = Copy([graftee]);
+        }
+        // graft output
+        let output_p = self.noted[start];
+        let output_node = self.dag.remove(output_p).unwrap();
+        self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
+        // remove the temporary noted nodes
+        self.noted.drain(start..);
         Ok(())
     }
 
@@ -294,24 +302,5 @@ impl<P: PtrTrait> Dag<P> {
         let res = self.verify_integrity();
         triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
         res
-    }
-
-    /// Always renders to file, and then returns errors
-    #[cfg(feature = "debug")]
-    pub fn eval_and_render_to_svg_file(
-        &mut self,
-        out_file: std::path::PathBuf,
-    ) -> Result<(), EvalError> {
-        let res0 = self.verify_integrity();
-        if res0.is_err() {
-            triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
-            res0
-        } else {
-            // TODO
-            //let res1 = self.eval();
-            triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
-            //res1
-            Ok(())
-        }
     }
 }

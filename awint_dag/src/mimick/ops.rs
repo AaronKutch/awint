@@ -317,13 +317,13 @@ impl Bits {
     ) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
-            Field(Box::new([
+            Field([
                 self.state(),
                 to.into().state(),
                 rhs.state(),
                 from.into().state(),
                 width.into().state(),
-            ])),
+            ]),
         );
         Some(())
     }

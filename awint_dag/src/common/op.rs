@@ -99,8 +99,7 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
     Get([T; 2]),
     Set([T; 3]),
     LutSet([T; 3]),
-    // prevent all `Op<T>` from needing to be more than `[T;4]` in size
-    Field(Box<[T; 5]>),
+    Field([T; 5]),
     FieldTo([T; 4]),
     FieldFrom([T; 4]),
     FieldWidth([T; 3]),
@@ -151,6 +150,11 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
     /// Returns if `self` is a `Literal`
     pub fn is_literal(&self) -> bool {
         matches!(self, Literal(_))
+    }
+
+    /// Returns if `self` is an `Opaque`
+    pub fn is_opaque(&self) -> bool {
+        matches!(self, Opaque(_))
     }
 
     /// Returns the name of the operation
@@ -623,13 +627,13 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Set(v) => Set(map3!(m, v)),
             LutSet(v) => LutSet(map3!(m, v)),
             Field(_) => {
-                let mut res = Field(Box::new([
+                let mut res = Field([
                     Default::default(),
                     Default::default(),
                     Default::default(),
                     Default::default(),
                     Default::default(),
-                ]));
+                ]);
                 m(res.operands_mut(), this.operands());
                 res
             }

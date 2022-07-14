@@ -27,8 +27,10 @@ pub struct Node<P: PtrTrait> {
     /// Operation
     pub op: Op<Ptr<P>>,
     /// Number of dependents
-    pub rc: usize,
+    pub rc: u64,
     pub err: Option<EvalError>,
+    /// Used in algorithms to check for visitation
+    pub visit_num: u64,
 }
 
 /*

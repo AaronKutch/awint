@@ -435,6 +435,8 @@ impl<P: PtrTrait> Dag<P> {
 
     /// Evaluates the tree leading to `leaf` as much as possible
     pub fn eval_tree(&mut self, leaf: Ptr<P>) -> Result<(), EvalError> {
+        self.visit_gen += 1;
+        let gen = self.visit_gen;
         // DFS from leaf to roots
         // the bool is set to false when an unevaluatabe node is in the sources
         let mut path: Vec<(usize, Ptr<P>, bool)> = vec![(0, leaf, true)];
@@ -468,16 +470,17 @@ impl<P: PtrTrait> Dag<P> {
                     path.last_mut().unwrap().2 = false;
                 }
             } else {
-                path.push((0, ops[i], true));
+                let next_p = ops[i];
+                if self[next_p].visit_num == gen {
+                    // peek at node for evaluatableness but do not visit node, this prevents
+                    // exponential growth
+                    path.last_mut().unwrap().0 += 1;
+                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
+                } else {
+                    self[next_p].visit_num = gen;
+                    path.push((0, next_p, true));
+                }
             }
-        }
-        Ok(())
-    }
-
-    // Evaluates the DAG as much as is possible
-    pub fn eval(&mut self) -> Result<(), EvalError> {
-        for i in 0..self.leaves().len() {
-            self.eval_tree(self.leaves()[i])?
         }
         Ok(())
     }
