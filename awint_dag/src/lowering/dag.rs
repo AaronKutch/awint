@@ -280,7 +280,6 @@ impl<P: PtrTrait> Dag<P> {
         err?;
         self.verify_integrity()?;
         let start = self.noted.len() - output_and_operands.len();
-        self.eval_tree(self.noted[start])?;
         // graft inputs
         for i in 0..(output_and_operands.len() - 1) {
             let grafted = self.noted[start + i + 1];
@@ -297,6 +296,9 @@ impl<P: PtrTrait> Dag<P> {
         self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
         // remove the temporary noted nodes
         self.noted.drain(start..);
+        // this is very important to prevent infinite cycles where literals are not
+        // being propogated and eliminating nodes
+        self.eval_tree(ptr)?;
         Ok(())
     }
 

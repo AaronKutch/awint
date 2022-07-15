@@ -1,13 +1,12 @@
 //! Lowers everything into LUT form
 
-use awint_macros::inlawi;
 use triple_arena::{Ptr, PtrTrait};
 
 use super::{dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set, resize};
 use crate::{
     common::{EvalError, Lineage, Op::*},
     lowering::Dag,
-    mimick::{ExtAwi, InlAwi, Bits},
+    mimick::{ExtAwi},
 };
 
 impl<P: PtrTrait> Dag<P> {
@@ -23,6 +22,7 @@ impl<P: PtrTrait> Dag<P> {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => (),
             Literal(_) => (),
+            Copy(_) => (),
             Lut([lut, inx], out_w) => {
                 if !self[lut].op.is_literal() {
                     let mut out = ExtAwi::zero(out_w);
@@ -45,43 +45,42 @@ impl<P: PtrTrait> Dag<P> {
                     let bits = ExtAwi::opaque(self.get_bw(bits)?);
                     let inx = ExtAwi::opaque(self.get_bw(inx)?);
                     let bit = ExtAwi::opaque(self.get_bw(bit)?);
-                    let mut out = bits.clone();
-                    dynamic_to_static_set(&mut out, &inx, &bit);
-                    self.graft(ptr, list, &[out.state(), bits.state(), inx.state(), bit.state()])?;
+                    let out = dynamic_to_static_set(&bits, &inx, &bit);
+                    self.graft(ptr, list, &[
+                        out.state(),
+                        bits.state(),
+                        inx.state(),
+                        bit.state(),
+                    ])?;
                 }
             }
-            // FIXME need autopropogation of literals in nodes
-            /*FieldBit([lhs, to, rhs, from]) => {
+            FieldBit([lhs, to, rhs, from]) => {
                 let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
                 let from = ExtAwi::opaque(self.get_bw(from)?);
                 let bit = rhs.get(from.to_usize()).unwrap();
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let lhs_awi = ExtAwi::opaque(self.get_bw(lhs)?);
                 let to = ExtAwi::opaque(self.get_bw(to)?);
-                let mut out = lhs.clone();
+                let mut out = ExtAwi::zero(self.get_bw(lhs)?);
                 out.set(to.to_usize(), bit);
-                self.graft(ptr, list, &[out.state(), lhs.state(), to.state(), rhs.state(), from.state()])?;
-            }*/
+                self.graft(ptr, list, &[
+                    out.state(),
+                    lhs_awi.state(),
+                    to.state(),
+                    rhs.state(),
+                    from.state(),
+                ])?;
+            }
             ZeroResize([x], w) => {
-                if self[x].nzbw == Some(w) {
-                    self[ptr].op = Copy([x]);
-                } else {
-                    let mut out = ExtAwi::opaque(w);
-                    let x = ExtAwi::opaque(self.get_bw(x)?);
-                    resize(&mut out, &x, false);
-                    self.graft(ptr, list, &[out.state(), x.state()])?;
-                }
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let out = resize(&x, w, false);
+                self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             SignResize([x], w) => {
-                if self[x].nzbw == Some(w) {
-                    self[ptr].op = Copy([x]);
-                } else {
-                    let mut out = ExtAwi::opaque(w);
-                    let x = ExtAwi::opaque(self.get_bw(x)?);
-                    resize(&mut out, &x, true);
-                    self.graft(ptr, list, &[out.state(), x.state()])?;
-                }
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let out = resize(&x, w, true);
+                self.graft(ptr, list, &[out.state(), x.state()])?;
             }
-            _ => return Err(EvalError::Unimplemented),
+            op @ _ => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         Ok(())
     }

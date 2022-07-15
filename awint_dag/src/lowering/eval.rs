@@ -442,6 +442,11 @@ impl<P: PtrTrait> Dag<P> {
         let mut path: Vec<(usize, Ptr<P>, bool)> = vec![(0, leaf, true)];
         loop {
             let (i, p, b) = path[path.len() - 1];
+            /*if !self.dag.contains(p) {
+                self.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
+                    .unwrap();
+                panic!();
+            }*/
             let ops = self[p].op.operands();
             if ops.is_empty() {
                 // reached a root
