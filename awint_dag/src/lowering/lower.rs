@@ -1,12 +1,13 @@
 //! Lowers everything into LUT form
 
+use awint_macros::inlawi;
 use triple_arena::{Ptr, PtrTrait};
 
 use super::{dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set, resize};
 use crate::{
     common::{EvalError, Lineage, Op::*},
     lowering::Dag,
-    mimick::ExtAwi,
+    mimick::{ExtAwi, InlAwi, Bits},
 };
 
 impl<P: PtrTrait> Dag<P> {
@@ -41,13 +42,25 @@ impl<P: PtrTrait> Dag<P> {
             }
             Set([bits, inx, bit]) => {
                 if !self[inx].op.is_literal() {
-                    let mut bits = ExtAwi::opaque(self.get_bw(bits)?);
+                    let bits = ExtAwi::opaque(self.get_bw(bits)?);
                     let inx = ExtAwi::opaque(self.get_bw(inx)?);
                     let bit = ExtAwi::opaque(self.get_bw(bit)?);
-                    dynamic_to_static_set(&mut bits, &inx, &bit);
-                    self.graft(ptr, list, &[bits.state(), inx.state(), bit.state()])?;
+                    let mut out = bits.clone();
+                    dynamic_to_static_set(&mut out, &inx, &bit);
+                    self.graft(ptr, list, &[out.state(), bits.state(), inx.state(), bit.state()])?;
                 }
             }
+            // FIXME need autopropogation of literals in nodes
+            /*FieldBit([lhs, to, rhs, from]) => {
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let from = ExtAwi::opaque(self.get_bw(from)?);
+                let bit = rhs.get(from.to_usize()).unwrap();
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let to = ExtAwi::opaque(self.get_bw(to)?);
+                let mut out = lhs.clone();
+                out.set(to.to_usize(), bit);
+                self.graft(ptr, list, &[out.state(), lhs.state(), to.state(), rhs.state(), from.state()])?;
+            }*/
             ZeroResize([x], w) => {
                 if self[x].nzbw == Some(w) {
                     self[ptr].op = Copy([x]);
