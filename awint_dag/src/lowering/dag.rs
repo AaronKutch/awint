@@ -268,6 +268,9 @@ impl<P: PtrTrait> Dag<P> {
         if self[ptr].nzbw != output_and_operands[0].nzbw {
             return Err(EvalError::WrongBitwidth)
         }
+        // get length before adding group, the output node we remove will be put at this
+        // address
+        let list_len = list.len();
         let err = self.add_group(
             &[Rc::clone(&output_and_operands[0])],
             output_and_operands,
@@ -290,6 +293,7 @@ impl<P: PtrTrait> Dag<P> {
         // graft output
         let output_p = self.noted[start];
         let output_node = self.dag.remove(output_p).unwrap();
+        assert_eq!(list.swap_remove(list_len), output_p);
         self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
         // remove the temporary noted nodes
         self.noted.drain(start..);
