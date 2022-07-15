@@ -1,14 +1,12 @@
 //! Lowers everything into LUT form
 
-use awint_core::bw;
-use awint_macros::{inlawi, inlawi_ty};
 use triple_arena::{Ptr, PtrTrait};
 
 use super::{dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set, resize};
 use crate::{
     common::{EvalError, Lineage, Op::*},
     lowering::Dag,
-    mimick::{Bits, ExtAwi, InlAwi},
+    mimick::ExtAwi,
 };
 
 impl<P: PtrTrait> Dag<P> {
@@ -52,32 +50,22 @@ impl<P: PtrTrait> Dag<P> {
             }
             ZeroResize([x], w) => {
                 if self[x].nzbw == Some(w) {
-                    self[x].op = Copy([x]);
+                    self[ptr].op = Copy([x]);
+                } else {
+                    let mut out = ExtAwi::opaque(w);
+                    let x = ExtAwi::opaque(self.get_bw(x)?);
+                    resize(&mut out, &x, false);
+                    self.graft(ptr, list, &[out.state(), x.state()])?;
                 }
-                let mut out = ExtAwi::opaque(w);
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                resize(&mut out, &x, false);
-                self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             SignResize([x], w) => {
                 if self[x].nzbw == Some(w) {
-                    self[x].op = Copy([x]);
-                }
-                let mut out = ExtAwi::opaque(w);
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                resize(&mut out, &x, true);
-                self.graft(ptr, list, &[out.state(), x.state()])?;
-            }
-            Or([lhs, _]) => {
-                if self[lhs].nzbw == Some(bw(1)) {
-                    let mut out = <inlawi_ty!(1)>::zero();
-                    let lhs = <inlawi_ty!(1)>::opaque();
-                    let rhs = <inlawi_ty!(1)>::opaque();
-                    let mut tmp = <inlawi_ty!(2)>::zero();
-                    tmp.set(0, lhs.to_bool()).unwrap();
-                    tmp.set(1, rhs.to_bool()).unwrap();
-                    out.lut(&inlawi!(1110), &tmp).unwrap();
-                    self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
+                    self[ptr].op = Copy([x]);
+                } else {
+                    let mut out = ExtAwi::opaque(w);
+                    let x = ExtAwi::opaque(self.get_bw(x)?);
+                    resize(&mut out, &x, true);
+                    self.graft(ptr, list, &[out.state(), x.state()])?;
                 }
             }
             _ => return Err(EvalError::Unimplemented),
