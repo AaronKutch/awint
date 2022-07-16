@@ -191,7 +191,14 @@ fn main() {
         "umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1",
     );
     cc(&mut s, "imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y");
-    cc(&mut s, "zero: ..; .., x; .., y");
+    cc(&mut s, "zero: ..; .., x[..r0]; .., y[..r1]");
+    // note: this is slightly different from an earlier one
+    dynamic_cc(&mut s, "imax: ..; .., x; .., y");
+    dynamic_cc(&mut s, "imin: ..r");
+    dynamic_cc(&mut s, "imin: ..8");
+    dynamic_cc(&mut s, "imin: y");
+    static_cc(&mut s, "imin: y; ..8");
+    cc(&mut s, "imin: y");
 
     let mut f = OpenOptions::new()
         .truncate(true)

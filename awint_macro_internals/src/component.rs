@@ -17,7 +17,13 @@ pub enum ComponentType {
     Filler,
 }
 
-#[derive(Debug, Clone)]
+impl Default for ComponentType {
+    fn default() -> Self {
+        Self::Unparsed
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct Component {
     pub txt: Ptr<PText>,
     pub mid_txt: Option<Ptr<PText>>,

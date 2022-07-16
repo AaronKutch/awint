@@ -43,7 +43,7 @@ pub fn i128_try_parse(s: &[char]) -> Option<i128> {
 
 /// Usize and/or String Bound. If `s.is_empty()`, then there is no arbitrary
 /// string in the bound and the base value is 0. `x` is added on to the value.
-#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Hash, Clone, PartialEq, Eq)]
 pub struct Usb {
     pub s: Vec<char>,
     pub x: i128,
@@ -102,7 +102,7 @@ impl Usb {
     }
 }
 
-#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Hash, Clone, PartialEq, Eq)]
 pub struct Usbr {
     pub start: Option<Usb>,
     pub end: Option<Usb>,

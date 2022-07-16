@@ -131,10 +131,7 @@ fn macro_successes() {
     let r1 = 7;
     assert_eq!(cc!(0x123u12[r0..r1]), Some(()));
     let e = 2;
-    assert_eq!(
-        extawi!(uone:  ..=, ; ..=18, ..e, ..=, ).unwrap(),
-        extawi!(0x1_u21)
-    );
+    assert_eq!(extawi!(uone:  ..=, ; ..=18, ..e, ..=, ), extawi!(0x1_u21));
     let r = 3;
     let x = inlawi!(0x8_u5);
     let mut y = inlawi!(0u15);
@@ -142,10 +139,28 @@ fn macro_successes() {
     assert_eq!(y, inlawi!(0x247fu15));
     let mut x = inlawi!(0xffu8);
     let mut y = inlawi!(0xfu4);
-    cc!(uone: ..; .., x; .., y).unwrap();
+    cc!(uone: ..; .., x; .., y);
     assert_eq!(x, inlawi!(1u8));
     assert_eq!(y, inlawi!(1u4));
     let mut x = extawi!(0u64);
     assert_eq!(extawi!(umax: ..; x), ExtAwi::umax(bw(64)));
     assert_eq!(x, ExtAwi::umax(bw(64)));
+    let r0 = 0;
+    let r1 = 0;
+    let mut x = inlawi!(0u4);
+    let mut y = inlawi!(0u8);
+    assert!(cc!(zero: ..; .., x[..r0]; .., y[..r1]).is_some());
+    assert_eq!(extawi!(imax: ..; .., x; .., y), extawi!(0x7fu8));
+    assert_eq!(x, inlawi!(0xfu4));
+    assert_eq!(y, inlawi!(0x7fu8));
+    let r = 0;
+    assert!(extawi!(imin: ..r).is_none());
+    let r = 2;
+    assert_eq!(extawi!(imin: ..r), Some(extawi!(10)));
+    assert_eq!(extawi!(imin: ..2), extawi!(10));
+    assert_eq!(inlawi!(imin: ..2), inlawi!(10));
+    let y = inlawi!(0u8);
+    let _: () = cc!(imin: y);
+    assert_eq!(y, inlawi!(0u8));
+    let _: () = cc!(imin: ..r);
 }

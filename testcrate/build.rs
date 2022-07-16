@@ -21,9 +21,6 @@ use rand_xoshiro::{
     Xoshiro128StarStar,
 };
 
-// Note: I would like 1000 tests, but the compiler on GitHub
-// Actions is acting up and returning exit code 255
-
 // number of tests generated
 const NUM_TESTS: usize = 1000;
 // should be plenty to test all edge cases

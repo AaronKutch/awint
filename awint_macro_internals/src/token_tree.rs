@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use triple_arena::{Arena, Ptr};
 
-use crate::{Concatenation, PText};
+use crate::{Concatenation, FillerAlign, PText};
 
 // Previous implementation attempts all resulted in having to parse the same
 // things multiple times. We must use a custom tree, and different structs can
@@ -86,7 +86,7 @@ pub enum Text {
     Group(Delimiter, Ptr<PText>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Ast {
     pub txt: Arena<PText, Vec<Text>>,
     pub txt_root: Ptr<PText>,
@@ -94,6 +94,8 @@ pub struct Ast {
     pub cc: Vec<Concatenation>,
     pub common_bw: Option<NonZeroUsize>,
     pub deterministic_width: bool,
+    pub guaranteed_nonzero_width: bool,
+    pub overall_alignment: FillerAlign,
 }
 
 impl Ast {

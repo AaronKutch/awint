@@ -171,24 +171,33 @@ fn from_primitive() {
     assert_eq!(ExtAwi::from_u32(u32::MAX), extawi!(umax: ..32));
     assert_eq!(ExtAwi::from_u64(u64::MAX), extawi!(umax: ..64));
     assert_eq!(ExtAwi::from_u128(u128::MAX), extawi!(umax: ..128));
-    assert_eq!(ExtAwi::from_usize(usize::MAX), extawi!(umax: ..BITS));
+    assert_eq!(
+        ExtAwi::from_usize(usize::MAX),
+        extawi!(umax: ..BITS).unwrap()
+    );
     assert_eq!(ExtAwi::from_i8(i8::MAX), extawi!(imax: ..8));
     assert_eq!(ExtAwi::from_i16(i16::MAX), extawi!(imax: ..16));
     assert_eq!(ExtAwi::from_i32(i32::MAX), extawi!(imax: ..32));
     assert_eq!(ExtAwi::from_i64(i64::MAX), extawi!(imax: ..64));
     assert_eq!(ExtAwi::from_i128(i128::MAX), extawi!(imax: ..128));
-    assert_eq!(ExtAwi::from_isize(isize::MAX), extawi!(imax: ..BITS));
+    assert_eq!(
+        ExtAwi::from_isize(isize::MAX),
+        extawi!(imax: ..BITS).unwrap()
+    );
     assert_eq!(ExtAwi::from(true), extawi!(umax: ..1));
     assert_eq!(ExtAwi::from(u8::MAX), extawi!(umax: ..8));
     assert_eq!(ExtAwi::from(u16::MAX), extawi!(umax: ..16));
     assert_eq!(ExtAwi::from(u32::MAX), extawi!(umax: ..32));
     assert_eq!(ExtAwi::from(u64::MAX), extawi!(umax: ..64));
     assert_eq!(ExtAwi::from(u128::MAX), extawi!(umax: ..128));
-    assert_eq!(ExtAwi::from(usize::MAX), extawi!(umax: ..BITS));
+    assert_eq!(ExtAwi::from(usize::MAX), extawi!(umax: ..BITS).unwrap());
     assert_eq!(ExtAwi::from(i8::MAX), extawi!(imax: ..8));
     assert_eq!(ExtAwi::from(i16::MAX), extawi!(imax: ..16));
     assert_eq!(ExtAwi::from(i32::MAX), extawi!(imax: ..32));
     assert_eq!(ExtAwi::from(i64::MAX), extawi!(imax: ..64));
     assert_eq!(ExtAwi::from(i128::MAX), extawi!(imax: ..128));
-    assert_eq!(ExtAwi::from_isize(isize::MAX), extawi!(imax: ..BITS));
+    assert_eq!(
+        ExtAwi::from_isize(isize::MAX),
+        extawi!(imax: ..BITS).unwrap()
+    );
 }
