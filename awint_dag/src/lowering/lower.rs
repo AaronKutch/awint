@@ -58,13 +58,13 @@ impl<P: PtrTrait> Dag<P> {
                 let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
                 let from = ExtAwi::opaque(self.get_bw(from)?);
                 let bit = rhs.get(from.to_usize()).unwrap();
-                let lhs_awi = ExtAwi::opaque(self.get_bw(lhs)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
                 let to = ExtAwi::opaque(self.get_bw(to)?);
-                let mut out = ExtAwi::zero(self.get_bw(lhs)?);
+                let mut out = lhs.clone();
                 out.set(to.to_usize(), bit);
                 self.graft(ptr, list, &[
                     out.state(),
-                    lhs_awi.state(),
+                    lhs.state(),
                     to.state(),
                     rhs.state(),
                     from.state(),

@@ -20,7 +20,7 @@ const N: u32 = if cfg!(miri) {
     // TODO increase
     1000
 } else {
-    10
+    100000
 };
 
 ptr_trait_struct_with_gen!(P0);
@@ -180,14 +180,13 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 2 {
+        match rng.next_u32() % 6 {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
                 let lut = m.next(out_w * (1 << inx_w));
                 let lut_a = m.get_num(lut);
                 let inx_a = m.get_num(inx);
-                dbg!(m.get_mut_num(out).bw(), lut_a.bw(), inx_a.bw());
                 m.get_mut_num(out).lut(&lut_a, &inx_a).unwrap();
                 let lut_b = m.get_dag(lut);
                 let inx_b = m.get_dag(inx);
@@ -205,6 +204,55 @@ fn dag_fuzzing() {
                 let inx_b = m.get_dag(inx);
                 m.get_mut_dag(out)
                     .bool_assign(bits_b.get(inx_b.to_usize()).unwrap());
+            }
+            2 => {
+                let (bits_w, bits) = m.next1_5();
+                let inx = m.next_usize(bits_w);
+                let bit = m.next(1);
+                let inx_a = m.get_num(inx);
+                let bit_a = m.get_num(bit);
+                m.get_mut_num(bits)
+                    .set(inx_a.to_usize(), bit_a.to_bool())
+                    .unwrap();
+                let inx_b = m.get_dag(inx);
+                let bit_b = m.get_dag(bit);
+                m.get_mut_dag(bits)
+                    .set(inx_b.to_usize(), bit_b.to_bool())
+                    .unwrap();
+            }
+            3 => {
+                let (lhs_w, lhs) = m.next1_5();
+                let to = m.next_usize(lhs_w);
+                let (rhs_w, rhs) = m.next1_5();
+                let from = m.next_usize(rhs_w);
+                let to_a = m.get_num(to);
+                let rhs_a = m.get_num(rhs);
+                let from_a = m.get_num(from);
+                m.get_mut_num(lhs)
+                    .field_bit(to_a.to_usize(), &rhs_a, from_a.to_usize())
+                    .unwrap();
+                let to_b = m.get_dag(to);
+                let rhs_b = m.get_dag(rhs);
+                let from_b = m.get_dag(from);
+                m.get_mut_dag(lhs)
+                    .field_bit(to_b.to_usize(), &rhs_b, from_b.to_usize())
+                    .unwrap();
+            }
+            4 => {
+                let lhs = m.next1_5().1;
+                let rhs = m.next1_5().1;
+                let rhs_a = m.get_num(rhs);
+                m.get_mut_num(lhs).zero_resize_assign(&rhs_a);
+                let rhs_b = m.get_dag(rhs);
+                m.get_mut_dag(lhs).zero_resize_assign(&rhs_b);
+            }
+            5 => {
+                let lhs = m.next1_5().1;
+                let rhs = m.next1_5().1;
+                let rhs_a = m.get_num(rhs);
+                m.get_mut_num(lhs).sign_resize_assign(&rhs_a);
+                let rhs_b = m.get_dag(rhs);
+                m.get_mut_dag(lhs).sign_resize_assign(&rhs_b);
             }
             _ => unreachable!(),
         }
