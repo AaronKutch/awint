@@ -15,6 +15,8 @@ use crate::mimick::{Bits, ExtAwi, InlAwi};
 pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
     let num = cap.unwrap_or_else(|| 1usize << inx.bw());
     let mut signals = vec![];
+    let lut0 = inlawi!(0100);
+    let lut1 = inlawi!(1000);
     for i in 0..num {
         let mut signal = inlawi!(1);
         for j in 0..inx.bw() {
@@ -23,9 +25,9 @@ pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
             tmp.set(1, signal.to_bool());
             // depending on the `j`th bit of `i`, keep the signal line true
             if (i & (1 << j)) == 0 {
-                signal.lut(&inlawi!(0100), &tmp).unwrap();
+                signal.lut(&lut0, &tmp).unwrap();
             } else {
-                signal.lut(&inlawi!(1000), &tmp).unwrap();
+                signal.lut(&lut1, &tmp).unwrap();
             }
         }
         signals.push(signal);
@@ -57,6 +59,7 @@ pub fn dynamic_to_static_lut(out: &mut Bits, table: &Bits, inx: &Bits) {
     // if this is broken it breaks a lot of stuff
     assert!(table.bw() == (out.bw().checked_mul(1 << inx.bw()).unwrap()));
     let signals = selector(inx, None);
+    let lut = inlawi!(1111_1000);
     for j in 0..out.bw() {
         let mut column = inlawi!(0);
         for (i, signal) in signals.iter().enumerate() {
@@ -65,7 +68,7 @@ pub fn dynamic_to_static_lut(out: &mut Bits, table: &Bits, inx: &Bits) {
             tmp.set(1, table.get((i * out.bw()) + j).unwrap()).unwrap();
             tmp.set(2, column.to_bool()).unwrap();
             // if the column is set or both the cell and signal are set
-            column.lut(&inlawi!(1111_1000), &tmp).unwrap();
+            column.lut(&lut, &tmp).unwrap();
         }
         out.set(j, column.to_bool()).unwrap();
     }
@@ -73,6 +76,7 @@ pub fn dynamic_to_static_lut(out: &mut Bits, table: &Bits, inx: &Bits) {
 
 pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
     let signals = selector(inx, Some(bits.bw()));
+    let lut = inlawi!(1111_1000);
     let mut out = inlawi!(0);
     for (i, signal) in signals.iter().enumerate() {
         let mut tmp = inlawi!(000);
@@ -80,7 +84,7 @@ pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
         tmp.set(1, bits.get(i).unwrap()).unwrap();
         tmp.set(2, out.to_bool()).unwrap();
         // horizontally OR the product of the signals and `bits`
-        out.lut(&inlawi!(1111_1000), &tmp).unwrap();
+        out.lut(&lut, &tmp).unwrap();
     }
     out
 }
@@ -88,6 +92,7 @@ pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
 pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
     let signals = selector(inx, Some(bits.bw()));
     let mut out = ExtAwi::zero(bits.nzbw());
+    let lut = inlawi!(1101_1000);
     for (i, signal) in signals.iter().enumerate() {
         let mut tmp0 = inlawi!(000);
         tmp0.set(0, signal.to_bool()).unwrap();
@@ -95,7 +100,7 @@ pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
         tmp0.set(2, bit.get(i).unwrap()).unwrap();
         let mut tmp1 = inlawi!(0);
         // multiplex between using `bits` or the `bit` depending on the signal
-        tmp1.lut(&inlawi!(1101_1000), &tmp0).unwrap();
+        tmp1.lut(&lut, &tmp0).unwrap();
         out.set(i, tmp1.to_bool()).unwrap();
     }
     out
@@ -149,4 +154,31 @@ pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> ExtAwi {
         out.set(i, tmp.to_bool());
     }
     out
+}
+
+pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), inlawi_ty!(1)) {
+    assert_eq!(cin.bw(), 1);
+    assert_eq!(lhs.bw(), rhs.bw());
+    let bw = lhs.bw();
+    // full adder
+    let lut = inlawi!(1110_1001_1001_0100);
+    let mut out = ExtAwi::zero(lhs.nzbw());
+    let mut carry = InlAwi::from(cin.to_bool());
+    for i in 0..bw {
+        let mut carry_sum = inlawi!(00);
+        let mut inx = inlawi!(000);
+        inx.set(0, carry.to_bool()).unwrap();
+        inx.set(1, lhs.get(i).unwrap()).unwrap();
+        inx.set(2, rhs.get(i).unwrap()).unwrap();
+        carry_sum.lut(&lut, &inx).unwrap();
+        out.set(i, carry_sum.get(0).unwrap()).unwrap();
+        carry.bool_assign(carry_sum.get(1).unwrap());
+    }
+    let mut signed_overflow = inlawi!(0);
+    let mut inx = inlawi!(000);
+    inx.set(0, lhs.get(bw - 1).unwrap()).unwrap();
+    inx.set(1, rhs.get(bw - 1).unwrap()).unwrap();
+    inx.set(2, out.get(bw - 1).unwrap()).unwrap();
+    signed_overflow.lut(&inlawi!(0001_1000), &inx).unwrap();
+    (out, carry, signed_overflow)
 }

@@ -4,8 +4,8 @@ use awint_macros::inlawi;
 use triple_arena::{Ptr, PtrTrait};
 
 use super::{
-    bitwise, bitwise_not, dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set,
-    resize,
+    bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
+    dynamic_to_static_set, resize,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*},
@@ -106,6 +106,42 @@ impl<P: PtrTrait> Dag<P> {
                 let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
                 let out = bitwise(&lhs, &rhs, inlawi!(0110));
                 self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            CinSum([cin, lhs, rhs]) => {
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let out = cin_sum(&cin, &lhs, &rhs).0;
+                self.graft(ptr, list, &[
+                    out.state(),
+                    cin.state(),
+                    lhs.state(),
+                    rhs.state(),
+                ])?;
+            }
+            UnsignedOverflow([cin, lhs, rhs]) => {
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let out = cin_sum(&cin, &lhs, &rhs).1;
+                self.graft(ptr, list, &[
+                    out.state(),
+                    cin.state(),
+                    lhs.state(),
+                    rhs.state(),
+                ])?;
+            }
+            SignedOverflow([cin, lhs, rhs]) => {
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let out = cin_sum(&cin, &lhs, &rhs).2;
+                self.graft(ptr, list, &[
+                    out.state(),
+                    cin.state(),
+                    lhs.state(),
+                    rhs.state(),
+                ])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }

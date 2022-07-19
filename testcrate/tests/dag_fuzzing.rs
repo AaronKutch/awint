@@ -180,7 +180,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 8 {
+        match rng.next_u32() % 9 {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
@@ -279,6 +279,34 @@ fn dag_fuzzing() {
                     }
                     _ => unreachable!(),
                 }
+            }
+            8 => {
+                let cin = m.next(1);
+                let (lhs_w, lhs) = m.next1_5();
+                let rhs = m.next(lhs_w);
+                let out = m.next(lhs_w);
+                let unsigned = m.next(1);
+                let signed = m.next(1);
+
+                let cin_a = m.get_num(cin);
+                let lhs_a = m.get_num(lhs);
+                let rhs_a = m.get_num(rhs);
+                let overflow = m
+                    .get_mut_num(out)
+                    .cin_sum_assign(cin_a.to_bool(), &lhs_a, &rhs_a)
+                    .unwrap();
+                m.get_mut_num(unsigned).bool_assign(overflow.0);
+                m.get_mut_num(signed).bool_assign(overflow.1);
+
+                let cin_b = m.get_dag(cin);
+                let lhs_b = m.get_dag(lhs);
+                let rhs_b = m.get_dag(rhs);
+                let overflow = m
+                    .get_mut_dag(out)
+                    .cin_sum_assign(cin_b.to_bool(), &lhs_b, &rhs_b)
+                    .unwrap();
+                m.get_mut_dag(unsigned).bool_assign(overflow.0);
+                m.get_mut_dag(signed).bool_assign(overflow.1);
             }
             _ => unreachable!(),
         }

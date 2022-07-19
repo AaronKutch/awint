@@ -355,50 +355,49 @@ impl<P: PtrTrait> Dag<P> {
                     None
                 }
             }
-            op @ (UQuo(_) | URem(_) | UnsignedOverflow(_) | SignedOverflow(_) | IncCout(_)
-            | DecCout(_)) => {
-                // need extra temporary
+            UQuo([a, b]) => {
                 let mut t = ExtAwi::zero(self_w);
-                match op {
-                    UQuo([a, b]) => Bits::udivide(&mut r, &mut t, self.lit(a), self.lit(b)),
-                    URem([a, b]) => Bits::udivide(&mut t, &mut r, self.lit(a), self.lit(b)),
-                    UnsignedOverflow([a, b, c]) => {
-                        if let Some((o, _)) =
-                            t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
-                        {
-                            r.bool_assign(o);
-                            Some(())
-                        } else {
-                            None
-                        }
-                    }
-                    SignedOverflow([a, b, c]) => {
-                        if let Some((_, o)) =
-                            t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
-                        {
-                            r.bool_assign(o);
-                            Some(())
-                        } else {
-                            None
-                        }
-                    }
-                    IncCout([a, b]) => {
-                        if r.copy_assign(self.lit(a)).is_some() {
-                            r.bool_assign(t.inc_assign(self.bool(b)?));
-                            Some(())
-                        } else {
-                            None
-                        }
-                    }
-                    DecCout([a, b]) => {
-                        if r.copy_assign(self.lit(a)).is_some() {
-                            r.bool_assign(t.dec_assign(self.bool(b)?));
-                            Some(())
-                        } else {
-                            None
-                        }
-                    }
-                    _ => unreachable!(),
+                Bits::udivide(&mut r, &mut t, self.lit(a), self.lit(b))
+            }
+            URem([a, b]) => {
+                let mut t = ExtAwi::zero(self_w);
+                Bits::udivide(&mut t, &mut r, self.lit(a), self.lit(b))
+            }
+            UnsignedOverflow([a, b, c]) => {
+                // note that `self_w` and `self.get_bw(a)` are both 1
+                let mut t = ExtAwi::zero(self.get_bw(b)?);
+                if let Some((o, _)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
+                    r.bool_assign(o);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            SignedOverflow([a, b, c]) => {
+                let mut t = ExtAwi::zero(self.get_bw(b)?);
+                if let Some((_, o)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
+                    r.bool_assign(o);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            IncCout([a, b]) => {
+                let mut t = ExtAwi::zero(self.get_bw(a)?);
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.bool_assign(t.inc_assign(self.bool(b)?));
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            DecCout([a, b]) => {
+                let mut t = ExtAwi::zero(self.get_bw(a)?);
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.bool_assign(t.dec_assign(self.bool(b)?));
+                    Some(())
+                } else {
+                    None
                 }
             }
             op @ (IQuo(_) | IRem(_)) => {
