@@ -17,7 +17,10 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// "bits". "bw" is the bitwidth in decimal, and "bits" are an unsigned
     /// hexadecimal string equivalent to what would be generated from
     /// `ExtAwi::bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)`
-    /// from the `awint_ext` crate. No allocation happens on `awint`'s side.
+    /// from the `awint_ext` crate.
+    ///
+    /// Note that there is clever use of buffers to avoid allocation on
+    /// `awint`'s side when serializing `InlAwi`s.
     ///
     /// ```
     /// // Example using the `ron` crate. Note that it
