@@ -46,6 +46,10 @@ impl<P: PtrTrait> Dag<P> {
     /// version. The optional `note`s should be included in the DAG reachable
     /// from the `leaves`, and should be `Opaque` if they should remain
     /// unmutated through optimizations.
+    ///
+    /// If an error occurs, the DAG (which may be in an unfinished or completely
+    /// broken state) is still returned along with the error enum, so that debug
+    /// tools like `render_to_svg_file` can be used.
     pub fn new(leaves: &[Rc<State>], noted: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
             dag: Arena::new(),

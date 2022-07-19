@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use awint_core::Bits;
 use awint_ext::ExtAwi;
 use triple_arena::{Ptr, PtrTrait};
@@ -32,7 +34,8 @@ impl<P: PtrTrait> Dag<P> {
         } else {
             return Err(EvalError::NonStaticBitwidth)
         };
-        // TODO weird bitwidth cases here
+        // need this for errors
+        let op_err = op.clone();
         let mut r = ExtAwi::zero(self_w);
         let option = match op {
             Invalid => return Err(EvalError::Unevaluatable),
@@ -426,7 +429,15 @@ impl<P: PtrTrait> Dag<P> {
             }
         };
         if option.is_none() {
-            Err(EvalError::EvalFailure)
+            let operands = op_err.operands();
+            let mut s = String::new();
+            for op in operands {
+                write!(s, "{:?}, ", self[op]).unwrap();
+            }
+            Err(EvalError::OtherString(format!(
+                "evaluation failure on operation {:?} ({})",
+                op_err, s
+            )))
         } else {
             self[node].op = Literal(r);
             Ok(())

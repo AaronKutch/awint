@@ -33,6 +33,7 @@ fn construction() {
 }
 
 #[test]
+#[allow(clippy::let_unit_value)]
 fn macro_successes() {
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);

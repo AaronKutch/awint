@@ -52,7 +52,10 @@ y_0 = (s_0 && x_0_0) || (s_1 && x_0_1) || ...
 y_1 = (s_0 && x_1_0) || (s_1 && x_1_1) || ...
 ...
 */
-pub fn dynamic_to_static_lut(out: &mut Bits, inx: &Bits, table: &Bits) {
+pub fn dynamic_to_static_lut(out: &mut Bits, table: &Bits, inx: &Bits) {
+    //dbg!(table.bw(), out.bw(), inx.bw());
+    // if this is broken it breaks a lot of stuff
+    assert!(table.bw() == (out.bw().checked_mul(1 << inx.bw()).unwrap()));
     let signals = selector(inx, None);
     for j in 0..out.bw() {
         let mut column = inlawi!(0);

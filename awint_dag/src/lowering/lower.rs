@@ -6,7 +6,7 @@ use super::{dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set,
 use crate::{
     common::{EvalError, Lineage, Op::*},
     lowering::Dag,
-    mimick::{ExtAwi},
+    mimick::ExtAwi,
 };
 
 impl<P: PtrTrait> Dag<P> {
@@ -80,7 +80,7 @@ impl<P: PtrTrait> Dag<P> {
                 let out = resize(&x, w, true);
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
-            op @ _ => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
+            op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         Ok(())
     }

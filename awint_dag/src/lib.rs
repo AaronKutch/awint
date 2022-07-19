@@ -19,6 +19,7 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::comparison_chain)]
 
 pub mod common;
 pub mod lowering;

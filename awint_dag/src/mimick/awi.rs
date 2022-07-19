@@ -326,6 +326,13 @@ impl ExtAwi {
         }
     }
 
+    /// Used by tests for getting a clone with no `Op::Copy` inbetween
+    pub fn unstable_clone_identical(&self) -> Self {
+        Self {
+            _extawi_raw: [InnerState(self.state())],
+        }
+    }
+
     /*
     pub fn bw(&self) -> prim::usize {
         prim::usize::new(BwAssign, vec![self.state()])
@@ -462,6 +469,12 @@ forward_debug_fmt!(ExtAwi);
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {
         Self::new(bits.nzbw(), Op::Copy([bits.state()]))
+    }
+}
+
+impl From<&awint_core::Bits> for ExtAwi {
+    fn from(bits: &awint_core::Bits) -> ExtAwi {
+        Self::new(bits.nzbw(), Op::Literal(awint_ext::ExtAwi::from(bits)))
     }
 }
 
