@@ -180,7 +180,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 6 {
+        match rng.next_u32() % 8 {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
@@ -253,6 +253,32 @@ fn dag_fuzzing() {
                 m.get_mut_num(lhs).sign_resize_assign(&rhs_a);
                 let rhs_b = m.get_dag(rhs);
                 m.get_mut_dag(lhs).sign_resize_assign(&rhs_b);
+            }
+            6 => {
+                let x = m.next1_5().1;
+                m.get_mut_num(x).not_assign();
+                m.get_mut_dag(x).not_assign();
+            }
+            7 => {
+                let (lhs_w, lhs) = m.next1_5();
+                let rhs = m.next(lhs_w);
+                let rhs_a = m.get_num(rhs);
+                let rhs_b = m.get_dag(rhs);
+                match rng.next_u32() % 3 {
+                    0 => {
+                        m.get_mut_num(lhs).or_assign(&rhs_a);
+                        m.get_mut_dag(lhs).or_assign(&rhs_b);
+                    }
+                    1 => {
+                        m.get_mut_num(lhs).and_assign(&rhs_a);
+                        m.get_mut_dag(lhs).and_assign(&rhs_b);
+                    }
+                    2 => {
+                        m.get_mut_num(lhs).xor_assign(&rhs_a);
+                        m.get_mut_dag(lhs).xor_assign(&rhs_b);
+                    }
+                    _ => unreachable!(),
+                }
             }
             _ => unreachable!(),
         }

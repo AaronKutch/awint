@@ -1,12 +1,16 @@
 //! Lowers everything into LUT form
 
+use awint_macros::inlawi;
 use triple_arena::{Ptr, PtrTrait};
 
-use super::{dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set, resize};
+use super::{
+    bitwise, bitwise_not, dynamic_to_static_get, dynamic_to_static_lut, dynamic_to_static_set,
+    resize,
+};
 use crate::{
     common::{EvalError, Lineage, Op::*},
     lowering::Dag,
-    mimick::ExtAwi,
+    mimick::{Bits, ExtAwi, InlAwi},
 };
 
 impl<P: PtrTrait> Dag<P> {
@@ -79,6 +83,29 @@ impl<P: PtrTrait> Dag<P> {
                 let x = ExtAwi::opaque(self.get_bw(x)?);
                 let out = resize(&x, w, true);
                 self.graft(ptr, list, &[out.state(), x.state()])?;
+            }
+            Not([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let out = bitwise_not(&x);
+                self.graft(ptr, list, &[out.state(), x.state()])?;
+            }
+            Or([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let out = bitwise(&lhs, &rhs, inlawi!(1110));
+                self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            And([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let out = bitwise(&lhs, &rhs, inlawi!(1000));
+                self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Xor([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let out = bitwise(&lhs, &rhs, inlawi!(0110));
+                self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }

@@ -125,3 +125,28 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
     }
     out
 }
+
+pub fn bitwise_not(x: &Bits) -> ExtAwi {
+    let mut out = ExtAwi::zero(x.nzbw());
+    for i in 0..x.bw() {
+        let mut tmp = inlawi!(0);
+        let inx = InlAwi::from(x.get(i).unwrap());
+        tmp.lut(&inlawi!(01), &inx).unwrap();
+        out.set(i, tmp.to_bool());
+    }
+    out
+}
+
+pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> ExtAwi {
+    assert_eq!(lhs.bw(), rhs.bw());
+    let mut out = ExtAwi::zero(lhs.nzbw());
+    for i in 0..lhs.bw() {
+        let mut tmp = inlawi!(0);
+        let mut inx = inlawi!(00);
+        inx.set(0, lhs.get(i).unwrap()).unwrap();
+        inx.set(1, rhs.get(i).unwrap()).unwrap();
+        tmp.lut(&lut, &inx).unwrap();
+        out.set(i, tmp.to_bool());
+    }
+    out
+}
