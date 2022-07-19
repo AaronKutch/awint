@@ -5,7 +5,7 @@ use triple_arena::{Ptr, PtrTrait};
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, resize,
+    dynamic_to_static_set, incrementer, resize,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*},
@@ -107,6 +107,30 @@ impl<P: PtrTrait> Dag<P> {
                 let out = bitwise(&lhs, &rhs, inlawi!(0110));
                 self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
             }
+            Inc([x, cin]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let out = incrementer(&x, &cin, false).0;
+                self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
+            }
+            IncCout([x, cin]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let out = incrementer(&x, &cin, false).1;
+                self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
+            }
+            Dec([x, cin]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let out = incrementer(&x, &cin, true).0;
+                self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
+            }
+            DecCout([x, cin]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let out = incrementer(&x, &cin, true).1;
+                self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
+            }
             CinSum([cin, lhs, rhs]) => {
                 let cin = ExtAwi::opaque(self.get_bw(cin)?);
                 let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
@@ -148,7 +172,8 @@ impl<P: PtrTrait> Dag<P> {
         Ok(())
     }
 
-    /// Note: `eval` should be before and after this call
+    /// Lowers all nodes in the DAG. Note: `eval` should be before and after
+    /// this call for efficiency.
     pub fn lower(&mut self) -> Result<(), EvalError> {
         let mut list = self.ptrs();
         let mut unimplemented = false;

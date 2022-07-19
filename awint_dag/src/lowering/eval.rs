@@ -384,7 +384,7 @@ impl<P: PtrTrait> Dag<P> {
             }
             IncCout([a, b]) => {
                 let mut t = ExtAwi::zero(self.get_bw(a)?);
-                if r.copy_assign(self.lit(a)).is_some() {
+                if t.copy_assign(self.lit(a)).is_some() {
                     r.bool_assign(t.inc_assign(self.bool(b)?));
                     Some(())
                 } else {
@@ -393,7 +393,7 @@ impl<P: PtrTrait> Dag<P> {
             }
             DecCout([a, b]) => {
                 let mut t = ExtAwi::zero(self.get_bw(a)?);
-                if r.copy_assign(self.lit(a)).is_some() {
+                if t.copy_assign(self.lit(a)).is_some() {
                     r.bool_assign(t.dec_assign(self.bool(b)?));
                     Some(())
                 } else {

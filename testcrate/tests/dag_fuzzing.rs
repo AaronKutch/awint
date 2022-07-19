@@ -180,7 +180,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 9 {
+        match rng.next_u32() % 10 {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
@@ -281,6 +281,24 @@ fn dag_fuzzing() {
                 }
             }
             8 => {
+                let x = m.next1_5().1;
+                let cin = m.next(1);
+                let cout = m.next(1);
+                let cin_a = m.get_num(cin);
+                let cin_b = m.get_dag(cin);
+                let out_a;
+                let out_b;
+                if (rng.next_u32() & 1) == 0 {
+                    out_a = m.get_mut_num(x).inc_assign(cin_a.to_bool());
+                    out_b = m.get_mut_dag(x).inc_assign(cin_b.to_bool());
+                } else {
+                    out_a = m.get_mut_num(x).dec_assign(cin_a.to_bool());
+                    out_b = m.get_mut_dag(x).dec_assign(cin_b.to_bool());
+                }
+                m.get_mut_num(cout).bool_assign(out_a);
+                m.get_mut_dag(cout).bool_assign(out_b);
+            }
+            9 => {
                 let cin = m.next(1);
                 let (lhs_w, lhs) = m.next1_5();
                 let rhs = m.next(lhs_w);

@@ -156,6 +156,28 @@ pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> ExtAwi {
     out
 }
 
+pub fn incrementer(x: &Bits, cin: &Bits, dec: bool) -> (ExtAwi, inlawi_ty!(1)) {
+    assert_eq!(cin.bw(), 1);
+    // half adder or subtractor
+    let lut = if dec {
+        inlawi!(1110_1001)
+    } else {
+        inlawi!(1001_0100)
+    };
+    let mut out = ExtAwi::zero(x.nzbw());
+    let mut carry = InlAwi::from(cin.to_bool());
+    for i in 0..x.bw() {
+        let mut carry_sum = inlawi!(00);
+        let mut inx = inlawi!(00);
+        inx.set(0, carry.to_bool()).unwrap();
+        inx.set(1, x.get(i).unwrap()).unwrap();
+        carry_sum.lut(&lut, &inx).unwrap();
+        out.set(i, carry_sum.get(0).unwrap()).unwrap();
+        carry.bool_assign(carry_sum.get(1).unwrap());
+    }
+    (out, carry)
+}
+
 pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), inlawi_ty!(1)) {
     assert_eq!(cin.bw(), 1);
     assert_eq!(lhs.bw(), rhs.bw());
