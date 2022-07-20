@@ -7,8 +7,10 @@ impl Bits {
     // this is tested by `awint_test/tests/rand.rs`
 
     /// Randomly-assigns `self` using a `rand_core::RngCore` random number
-    /// generator. This works by calling `RngCore::try_fill_bytes` on
-    /// `self.as_mut_bytes`, clearing unused bits, and returning the result.
+    /// generator. This works by calling `RngCore::try_fill_bytes` and uses
+    /// platform independent methods such that if a pseudorandom generator is
+    /// used, it should always produce the same results when tried on the same
+    /// sequence of different bitwidth `Bits`.
     ///
     /// ```
     /// // Example using the `rand_xoshiro` crate.
@@ -17,9 +19,9 @@ impl Bits {
     ///
     /// let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     /// let mut awi = inlawi!(0u100);
-    /// awi.const_as_mut().rand_assign_using(&mut rng).unwrap();
+    /// awi.rand_assign_using(&mut rng).unwrap();
     /// assert_eq!(awi, inlawi!(0x5ab77d3629a089d75dec9045du100));
-    /// awi.const_as_mut().rand_assign_using(&mut rng).unwrap();
+    /// awi.rand_assign_using(&mut rng).unwrap();
     /// assert_eq!(awi, inlawi!(0x4c25a514060dea0565c95a8dau100));
     /// ```
     pub fn rand_assign_using<R>(&mut self, rng: &mut R) -> Result<(), rand_core::Error>

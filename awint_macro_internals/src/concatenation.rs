@@ -10,7 +10,9 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FillerAlign {
-    /// The concatenation has no fillers
+    /// The concatenation has no unbounded fillers, or in the case of multiple
+    /// concatenations there is a mix of the `None` cases and `Single | Lsb |
+    /// Msb | Mid | Multiple` cases.
     None,
     /// If the concatenation is only a filler
     Single,
@@ -20,11 +22,18 @@ pub enum FillerAlign {
     Msb,
     /// The filler is in the middle
     Mid,
-    /// For multiple concatenations, multiple alignments
+    /// For multiple concatenations, all are not `None` and there are two or
+    /// more of `Lsb | Msb | Mid`
     Multiple,
 }
 
-#[derive(Debug, Clone)]
+impl Default for FillerAlign {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct Concatenation {
     pub txt: Ptr<PText>,
     pub comps: Vec<Component>,
@@ -33,6 +42,7 @@ pub struct Concatenation {
     // even if `total_bw` is not statically known, this concatenation width could be known from
     // this concatentation alone at runtime
     pub deterministic_width: bool,
+    pub guaranteed_nonzero_width: bool,
     // concatenation width
     pub cw: Option<Ptr<PCWidth>>,
 }
@@ -45,6 +55,8 @@ impl Concatenation {
         self.deterministic_width = true;
         for (comp_i, comp) in self.comps.iter().enumerate() {
             if let Some(var_w) = comp.range.static_width() {
+                // zero static widths not allowed
+                self.guaranteed_nonzero_width = true;
                 if let Some(ref mut w) = cumulative_bw {
                     *w = w.checked_add(i128_to_usize(var_w).unwrap()).unwrap();
                 }
@@ -66,7 +78,11 @@ impl Concatenation {
                         })
                     }
                 }
-                Variable => (),
+                Variable => {
+                    if comp.has_full_range() {
+                        self.guaranteed_nonzero_width = true;
+                    }
+                }
                 Filler => {
                     // unbounded filler handling
                     if comp.range.end.is_none() {
@@ -183,21 +199,26 @@ pub fn stage4(
     static_width: bool,
 ) -> Result<(), CCMacroError> {
     let mut overall_alignment = ast.cc[0].filler_alignment;
-    let mut alignment_change_i = 0;
     let mut deterministic = ast.cc[0].deterministic_width;
     let mut common_bw = ast.cc[0].static_width;
     let mut original_common_i = 0;
     for (concat_i, concat) in ast.cc.iter().enumerate() {
+        ast.guaranteed_nonzero_width |= concat.guaranteed_nonzero_width;
         let this_align = concat.filler_alignment;
-        match this_align {
-            FillerAlign::None | FillerAlign::Single | FillerAlign::Multiple => (),
-            FillerAlign::Lsb | FillerAlign::Msb | FillerAlign::Mid => {
-                if matches!(overall_alignment, FillerAlign::None | FillerAlign::Single) {
-                    overall_alignment = this_align
-                } else if overall_alignment != this_align {
-                    alignment_change_i = concat_i;
-                    overall_alignment = FillerAlign::Multiple
+        if this_align == FillerAlign::None {
+            overall_alignment = FillerAlign::None;
+        } else {
+            match overall_alignment {
+                FillerAlign::None => (),
+                FillerAlign::Single => {
+                    overall_alignment = this_align;
                 }
+                align @ (FillerAlign::Lsb | FillerAlign::Msb | FillerAlign::Mid) => {
+                    if (this_align != FillerAlign::Single) && (this_align != align) {
+                        overall_alignment = FillerAlign::Multiple
+                    }
+                }
+                FillerAlign::Multiple => (),
             }
         }
         deterministic |= concat.deterministic_width;
@@ -289,30 +310,36 @@ pub fn stage4(
     if (!deterministic) && matches!(overall_alignment, FillerAlign::Multiple) {
         // note: middle fillers have been accounted for, only opposite alignment
         // possible at this point
-        for (concat_i, concat) in ast.cc.iter().enumerate() {
-            if !matches!(
-                concat.filler_alignment,
-                FillerAlign::None | FillerAlign::Single
-            ) {
-                return Err(CCMacroError {
-                    red_text: vec![],
-                    error: format!(
-                        "concatenations {} and {} have unbounded fillers aligned opposite each \
-                         other, and no concatenation has a statically or dynamically determinable \
-                         width",
-                        concat_i, alignment_change_i
-                    ),
-                    help: Some(
-                        "append a filler-only concatenation such as \"; ..64 ;\" or \"; ..var ;\" \
-                         that gives the macro needed information"
-                            .to_owned(),
-                    ),
-                })
+        for concat_i in 0..ast.cc.len() {
+            let i_filler = ast.cc[concat_i].filler_alignment;
+            if !matches!(i_filler, FillerAlign::None | FillerAlign::Single) {
+                for concat_j in (concat_i + 1)..ast.cc.len() {
+                    let j_filler = ast.cc[concat_j].filler_alignment;
+                    if !matches!(j_filler, FillerAlign::None | FillerAlign::Single)
+                        && (i_filler != j_filler)
+                    {
+                        return Err(CCMacroError {
+                            red_text: vec![],
+                            error: format!(
+                                "concatenations {} and {} have unbounded fillers aligned opposite \
+                                 each other, and no concatenation has a statically or dynamically \
+                                 determinable width",
+                                concat_i, concat_j
+                            ),
+                            help: Some(
+                                "append a filler-only concatenation such as \"; ..64 ;\" or \"; \
+                                 ..var ;\" that gives the macro needed information"
+                                    .to_owned(),
+                            ),
+                        })
+                    }
+                }
             }
         }
     }
     ast.common_bw = common_bw;
     ast.deterministic_width = deterministic;
+    ast.overall_alignment = overall_alignment;
     Ok(())
 }
 

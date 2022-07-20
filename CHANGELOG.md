@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0] - 2022-07-20
+### Fixes
+- Fixed that the infallibility of some macros was being calculated wrong. A few macros now return
+  `Option`s to prevent hidden panics and other macros have become infallible.
+- Fixed `const_support` for Rust 1.64
+
+### Additions
+- Added missing `from_...` and `From<...>` impls to `InlAwi` and `ExtAwi`
+
 ## [0.5.0] - 2022-06-09
 ### Fixes
 - Fixed that `to_u8_slice` on big endian platforms did not zero bytes beyond `self.bw()`. There was

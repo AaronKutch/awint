@@ -485,7 +485,7 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn as_mut_bytes_full_width_nonportable(&'a mut self) -> &'a mut [u8] {
         let size_in_u8 = self.len() * BYTE_RATIO;
-        // Safety: Same reasoning as `as_bytes`
+        // Safety: Same reasoning as `as_bytes_full_width_nonportable`
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
     }
 
@@ -658,64 +658,64 @@ impl<'a> Bits {
     }
 }
 
-/// Forwards to the `LowerHex` impl. We cannot use decimal because it would
-/// require allocation.
 impl fmt::Debug for Bits {
+    /// Forwards to the `LowerHex` impl. We cannot use decimal because it would
+    /// require allocation.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::LowerHex::fmt(self, f)
     }
 }
 
-/// Forwards to the `Debug` impl
 impl fmt::Display for Bits {
+    /// Forwards to the `Debug` impl
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
     }
 }
 
-/// Lowercase hexadecimal formatting.
-///
-/// ```
-/// use awint::{Bits, InlAwi, inlawi};
-/// assert_eq!(format!("{:x}", inlawi!(0xfedcba9876543210u100)), "0xfedcba98_76543210_u100");
-/// ```
 impl fmt::LowerHex for Bits {
+    /// Lowercase hexadecimal formatting.
+    ///
+    /// ```
+    /// use awint::{Bits, InlAwi, inlawi};
+    /// assert_eq!(format!("{:x}", inlawi!(0xfedcba9876543210u100)), "0xfedcba98_76543210_u100");
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_hexadecimal(f, false)
     }
 }
 
-/// Uppercase hexadecimal formatting.
-///
-/// ```
-/// use awint::{Bits, InlAwi, inlawi};
-/// assert_eq!(format!("{:X}", inlawi!(0xFEDCBA9876543210u100)), "0xFEDCBA98_76543210_u100");
-/// ```
 impl fmt::UpperHex for Bits {
+    /// Uppercase hexadecimal formatting.
+    ///
+    /// ```
+    /// use awint::{Bits, InlAwi, inlawi};
+    /// assert_eq!(format!("{:X}", inlawi!(0xFEDCBA9876543210u100)), "0xFEDCBA98_76543210_u100");
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_hexadecimal(f, true)
     }
 }
 
-/// Octal formatting.
-///
-/// ```
-/// use awint::{Bits, InlAwi, inlawi};
-/// assert_eq!(format!("{:o}", inlawi!(0o776543210u100)), "0o7_76543210_u100");
-/// ```
 impl fmt::Octal for Bits {
+    /// Octal formatting.
+    ///
+    /// ```
+    /// use awint::{Bits, InlAwi, inlawi};
+    /// assert_eq!(format!("{:o}", inlawi!(0o776543210u100)), "0o7_76543210_u100");
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_octal(f)
     }
 }
 
-/// Binary formatting.
-///
-/// ```
-/// use awint::{inlawi, Bits, InlAwi};
-/// assert_eq!(format!("{:b}", inlawi!(11000101)), "0b11000101_u8");
-/// ```
 impl fmt::Binary for Bits {
+    /// Binary formatting.
+    ///
+    /// ```
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(format!("{:b}", inlawi!(11000101)), "0b11000101_u8");
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_binary(f)
     }

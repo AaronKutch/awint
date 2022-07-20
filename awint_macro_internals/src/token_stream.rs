@@ -1,9 +1,8 @@
 use std::{collections::VecDeque, mem};
 
 use proc_macro2::{TokenStream, TokenTree};
-use triple_arena::{Arena, Ptr};
 
-use crate::{Ast, Component, Concatenation, Text, Usbr};
+use crate::{Ast, Component, Concatenation, Text};
 
 /// Parses `input` `TokenStream` into "raw" concatenations of components in
 /// `Vec<char>` strings
@@ -15,14 +14,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
     // `Debug` representations, but I can't use that without a major breakage
     // risk).
 
-    let mut ast = Ast {
-        txt: Arena::new(),
-        txt_root: Ptr::invalid(),
-        txt_init: None,
-        cc: vec![],
-        common_bw: None,
-        deterministic_width: false,
-    };
+    let mut ast = Ast::default();
     let mut s = Vec::<char>::new();
     // traverse the tree
     let mut stack: Vec<(VecDeque<TokenTree>, proc_macro2::Delimiter)> =
@@ -156,11 +148,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
             Text::Group(crate::Delimiter::Concatenation, p_concat) => {
                 let mut concat = Concatenation {
                     txt: p_concat,
-                    comps: vec![],
-                    filler_alignment: crate::FillerAlign::None,
-                    static_width: None,
-                    deterministic_width: false,
-                    cw: None,
+                    ..Default::default()
                 };
                 let c_len = ast.txt[p_concat].len();
                 for comp_i in 0..c_len {
@@ -168,13 +156,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                         Text::Group(crate::Delimiter::Component, p_comp) => {
                             concat.comps.push(Component {
                                 txt: p_comp,
-                                mid_txt: None,
-                                range_txt: None,
-                                c_type: crate::component::ComponentType::Unparsed,
-                                range: Usbr::unbounded(),
-                                bind: None,
-                                width: None,
-                                start: None,
+                                ..Default::default()
                             });
                         }
                         _ => unreachable!(),

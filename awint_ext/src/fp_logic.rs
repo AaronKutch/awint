@@ -14,15 +14,6 @@ fn itousize(i: isize) -> Option<usize> {
     usize::try_from(i).ok()
 }
 
-/// TODO replace by std lib abs_diff when it stabilizes
-fn abs_diff(x: isize, y: isize) -> usize {
-    if x < y {
-        y.wrapping_sub(x) as usize
-    } else {
-        x.wrapping_sub(y) as usize
-    }
-}
-
 /// These functions are associated to avoid name clashes.
 ///
 /// Note: Adding new functions to `FP` is a WIP
@@ -73,7 +64,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             return
         }
         let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
-        let diff = abs_diff(lbb.0, rbb.0);
+        let diff = lbb.0.abs_diff(rbb.0);
         // the fielding will start from 0 in one argument and end at `diff` in the other
         let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
         this.const_as_mut()
@@ -115,7 +106,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             return (true, true)
         }
         let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
-        let diff = abs_diff(lbb.0, rbb.0);
+        let diff = lbb.0.abs_diff(rbb.0);
         let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
         this.const_as_mut()
             .field(to, rhs.const_as_ref(), from, width)

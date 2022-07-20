@@ -4,8 +4,8 @@ use awint_ext::ExtAwi;
 use triple_arena::Ptr;
 
 use crate::{
-    chars_to_string, Ast, BiMap, Component, ComponentType, Concatenation, EitherResult, FnNames,
-    Names, PBind, PCWidth, PVal, PWidth, Usb,
+    chars_to_string, Ast, BiMap, Component, ComponentType, Concatenation, EitherResult,
+    FillerAlign, FnNames, Names, PBind, PCWidth, PVal, PWidth, Usb,
 };
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
@@ -183,7 +183,10 @@ impl<'a> Lower<'a> {
                 v.push(w);
             }
         }
-        concat.cw = Some(self.cw.insert(CWidth(v), false).either());
+        // `v` can be empty in cases like `extawi!(umax: ..; ..8)`
+        if !v.is_empty() {
+            concat.cw = Some(self.cw.insert(CWidth(v), false).either());
+        }
     }
 
     /// Checks that ranges aren't reversed and the upper bounds are not beyond
@@ -221,41 +224,54 @@ impl<'a> Lower<'a> {
     /// negative widths for nondeterministic cases and that deterministic concat
     /// widths are equal to the common bitwidth
     pub fn lower_common_checks(&mut self, ast: &Ast) -> String {
+        if matches!(
+            ast.overall_alignment,
+            FillerAlign::Single | FillerAlign::Lsb | FillerAlign::Msb
+        ) {
+            // always infallible except potentially with respect to 0 bitwidth return
+            // situations which is handled elsewhere
+            return String::new()
+        }
         let mut ge = String::new();
         let mut eq = String::new();
         for concat in &ast.cc {
-            if (concat.comps.len() == 1) && concat.comps[0].is_unbounded_filler() {
-                continue
-            }
             if concat.static_width.is_none() {
-                let cw = concat.cw.unwrap();
-                *self.cw.a_get_mut(cw) = true;
-                if concat.deterministic_width {
-                    let mut set_dynamic_width = false;
-                    if self.dynamic_width.is_none() {
-                        self.dynamic_width = Some(cw);
-                        set_dynamic_width = true;
-                    }
-                    // we can avoid comparing the same value against itself, however the second
-                    // condition handles cases like `inlawi!(a; ..64)` where the dynamic width might
-                    // not be equal to the static width we expect
-                    if (!set_dynamic_width) || ast.common_bw.is_some() {
-                        if !eq.is_empty() {
-                            eq += ",";
+                if let Some(cw) = concat.cw {
+                    *self.cw.a_get_mut(cw) = true;
+                    if concat.deterministic_width {
+                        let mut set_dynamic_width = false;
+                        if self.dynamic_width.is_none() {
+                            self.dynamic_width = Some(cw);
+                            set_dynamic_width = true;
                         }
-                        write!(eq, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+                        // we can avoid comparing the same value against itself, however the second
+                        // condition handles cases like `inlawi!(a; ..64)` where the dynamic width
+                        // might not be equal to the static width we expect
+                        if (!set_dynamic_width) || ast.common_bw.is_some() {
+                            if !eq.is_empty() {
+                                eq += ",";
+                            }
+                            write!(eq, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+                        }
+                    } else {
+                        if !ge.is_empty() {
+                            ge += ",";
+                        }
+                        write!(ge, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                     }
-                } else {
-                    if !ge.is_empty() {
-                        ge += ",";
-                    }
-                    write!(ge, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
                 }
             }
         }
         if eq.is_empty() && ge.is_empty() {
             String::new()
         } else {
+            // this is to get type annotations working for `awint_dag` purposes
+            if eq.is_empty() {
+                eq += "0;0";
+            }
+            if ge.is_empty() {
+                ge += "0;0";
+            }
             format!(
                 "{}({},[{}],[{}]).is_some()",
                 self.fn_names.common_fn, self.names.cw, ge, eq

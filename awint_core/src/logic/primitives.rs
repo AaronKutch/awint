@@ -1,6 +1,3 @@
-// The ranges in macros are sometimes empty
-#![allow(clippy::reversed_empty_ranges)]
-
 use awint_internals::*;
 use const_fn::const_fn;
 
@@ -88,12 +85,12 @@ macro_rules! bits_assign {
 /// will be used if `self.bw()` is larger than the primitive bitwidth.
 impl Bits {
     bits_assign!(
-        usize_assign, usize, isize_assign, isize;
         u8_assign, u8, i8_assign, i8;
         u16_assign, u16, i16_assign, i16;
         u32_assign, u32, i32_assign, i32;
         u64_assign, u64, i64_assign, i64;
         u128_assign, u128, i128_assign, i128;
+        usize_assign, usize, isize_assign, isize;
     );
 
     #[const_fn(cfg(feature = "const_support"))]
@@ -164,12 +161,12 @@ macro_rules! bits_convert {
 /// be used if `self.bw()` is smaller than the primitive bitwidth.
 impl Bits {
     bits_convert!(
-        to_usize, usize, to_isize, isize;
         to_u8, u8, to_i8, i8;
         to_u16, u16, to_i16, i16;
         to_u32, u32, to_i32, i32;
         to_u64, u64, to_i64, i64;
         to_u128, u128, to_i128, i128;
+        to_usize, usize, to_isize, isize;
     );
 
     #[const_fn(cfg(feature = "const_support"))]
@@ -178,8 +175,8 @@ impl Bits {
     }
 }
 
-/// Returns the least significant bit
 impl From<&Bits> for bool {
+    /// Returns the least significant bit
     fn from(x: &Bits) -> bool {
         x.to_bool()
     }
@@ -188,17 +185,15 @@ impl From<&Bits> for bool {
 macro_rules! from_bits {
     ($($uX:ident, $to_u:ident, $iX:ident, $to_i:ident);*;) => {
         $(
-            /// Zero-resizes the `Bits` to this integer
-            #[allow(clippy::reversed_empty_ranges)]
             impl From<&Bits> for $uX {
+                /// Zero-resizes the `Bits` to this integer
                 fn from(x: &Bits) -> Self {
                     x.$to_u()
                 }
             }
 
-            /// Sign-resizes the `Bits` to this integer
-            #[allow(clippy::reversed_empty_ranges)]
             impl From<&Bits> for $iX {
+                /// Sign-resizes the `Bits` to this integer
                 fn from(x: &Bits) -> Self {
                     x.$to_i()
                 }
@@ -208,10 +203,10 @@ macro_rules! from_bits {
 }
 
 from_bits!(
-    usize, to_usize, isize, to_isize;
     u8, to_u8, i8, to_i8;
     u16, to_u16, i16, to_i16;
     u32, to_u32, i32, to_i32;
     u64, to_u64, i64, to_i64;
     u128, to_u128, i128, to_i128;
+    usize, to_usize, isize, to_isize;
 );

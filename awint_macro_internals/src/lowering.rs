@@ -62,8 +62,10 @@ pub fn cc_macro_code_gen<
     mut code_gen: CodeGen<'_, F0, F1, F2>,
     names: Names,
 ) -> String {
+    let is_returning = code_gen.return_type.is_some();
+
     // first check for simple infallible constant return
-    if code_gen.return_type.is_some() && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
+    if is_returning && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
         let comp = &ast.cc[0].comps[0];
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
@@ -113,7 +115,8 @@ pub fn cc_macro_code_gen<
             }
         }
     }
-    need_buffer |= code_gen.return_type.is_some();
+    // the buffer is the same as the thing we are returning
+    need_buffer |= is_returning;
     if code_gen.return_type.is_none() && no_vars {
         // for cases like `cc!(r0..r1)` or `cc!(0x123u12[r0..r1])`
         need_buffer = false;
@@ -125,9 +128,18 @@ pub fn cc_macro_code_gen<
     }
     let lt_checks = l.lower_le_checks();
     let common_checks = l.lower_common_checks(&ast);
-    let infallible = lt_checks.is_empty() && common_checks.is_empty();
 
-    let construction = if code_gen.return_type.is_some() || need_buffer {
+    let common_infallible = lt_checks.is_empty() && common_checks.is_empty();
+
+    // edge case: `extawi!(zero: ..r)` is infallible with respect to range and
+    // common checks but is fallible with respect to nonzero width
+    let infallible = if is_returning {
+        common_infallible && ast.guaranteed_nonzero_width
+    } else {
+        common_infallible
+    };
+
+    let construction = if need_buffer {
         let mut s = vec![];
         if let Some(init) = ast.txt_init {
             ast.chars_assign_subtree(&mut s, init);
@@ -147,7 +159,7 @@ pub fn cc_macro_code_gen<
 
     let fielding = l.lower_fielding(&ast, source_has_filler, need_buffer);
 
-    let returning = match (code_gen.return_type.is_some(), infallible) {
+    let returning = match (is_returning, infallible) {
         (false, false) => "Some(())".to_owned(),
         (false, true) => String::new(),
         (true, false) => format!("Some({})", names.awi),
@@ -158,15 +170,27 @@ pub fn cc_macro_code_gen<
     // inner code consisting of the zero check, construction of returning or
     // buffers, fielding, and return values
     let mut inner0 = format!("{}{}{}", construction, fielding, returning);
-    if !infallible {
-        if code_gen.return_type.is_some() {
-            // checking if common width is zero
-            inner0 = format!("if {} != 0 {{\n{}\n}}else{{None}}", names.cw, inner0);
-        } else {
-            // Non-construction macros can have a zero concatenation bitwidth, but we have
-            // to avoid creating the buffer.
-            inner0 = format!("if {} != 0 {{\n{}\n}}else{{Some(())}}", names.cw, inner0);
-        }
+
+    // very tricky
+    if !ast.guaranteed_nonzero_width {
+        if is_returning {
+            if infallible {
+                // do nothing
+            } else {
+                // avoid creating the return value and return `None` because it is a condition
+                // of construction macros
+                inner0 = format!("if {} != 0 {{\n{}\n}}else{{None}}", names.cw, inner0);
+            }
+        } else if need_buffer {
+            if infallible {
+                // overall infallible but we need to avoid creating the buffer
+                inner0 = format!("if {} != 0 {{\n{}\n}}", names.cw, inner0);
+            } else {
+                // overall fallible, but this is not a construction macro, but we need to avoid
+                // creating the buffer
+                inner0 = format!("if {} != 0 {{\n{}\n}}else{{Some(())}}", names.cw, inner0);
+            }
+        } // else do nothing because there is no buffer
     }
 
     // concat width checks

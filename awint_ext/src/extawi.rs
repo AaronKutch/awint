@@ -381,7 +381,43 @@ impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     }
 }
 
-/// Creates an `ExtAwi` with one bit set to this `bool`
+macro_rules! extawi_from_ty {
+    ($($ty:ident $from:ident $assign:ident);*;) => {
+        $(
+            /// Creates an `ExtAwi` with the same bitwidth and bits as the integer
+            pub fn $from(x: $ty) -> Self {
+                let mut tmp = ExtAwi::zero(bw($ty::BITS as usize));
+                tmp.const_as_mut().$assign(x);
+                tmp
+            }
+        )*
+    };
+}
+
+impl ExtAwi {
+    extawi_from_ty!(
+        u8 from_u8 u8_assign;
+        u16 from_u16 u16_assign;
+        u32 from_u32 u32_assign;
+        u64 from_u64 u64_assign;
+        u128 from_u128 u128_assign;
+        usize from_usize usize_assign;
+        i8 from_i8 i8_assign;
+        i16 from_i16 i16_assign;
+        i32 from_i32 i32_assign;
+        i64 from_i64 i64_assign;
+        i128 from_i128 i128_assign;
+        isize from_isize isize_assign;
+    );
+
+    /// Creates an `ExtAwi` with one bit set to this `bool`
+    pub fn from_bool(x: bool) -> Self {
+        let mut tmp = ExtAwi::zero(bw(1));
+        tmp.const_as_mut().bool_assign(x);
+        tmp
+    }
+}
+
 impl From<bool> for ExtAwi {
     fn from(x: bool) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bw(1));
@@ -390,11 +426,9 @@ impl From<bool> for ExtAwi {
     }
 }
 
-macro_rules! to_extawi {
+macro_rules! extawi_from {
     ($($ty:ident, $assign:ident);*;) => {
         $(
-            /// Creates an `ExtAwi` with the same bitwidth and bits as the integer
-            #[allow(clippy::reversed_empty_ranges)]
             impl From<$ty> for ExtAwi {
                 fn from(x: $ty) -> Self {
                     let mut tmp = ExtAwi::zero(bw($ty::BITS as usize));
@@ -406,17 +440,17 @@ macro_rules! to_extawi {
     };
 }
 
-to_extawi!(
-    usize, usize_assign;
-    isize, isize_assign;
+extawi_from!(
     u8, u8_assign;
-    i8, i8_assign;
     u16, u16_assign;
-    i16, i16_assign;
     u32, u32_assign;
-    i32, i32_assign;
     u64, u64_assign;
-    i64, i64_assign;
     u128, u128_assign;
+    usize, usize_assign;
+    i8, i8_assign;
+    i16, i16_assign;
+    i32, i32_assign;
+    i64, i64_assign;
     i128, i128_assign;
+    isize, isize_assign;
 );

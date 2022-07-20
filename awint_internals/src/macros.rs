@@ -197,3 +197,38 @@ macro_rules! subdigits_mut {
         }
     }
 }
+
+#[macro_export]
+macro_rules! forward_debug_fmt {
+    ($name:ident) => {
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(self, f)
+            }
+        }
+
+        impl fmt::LowerHex for $name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(self, f)
+            }
+        }
+
+        impl fmt::UpperHex for $name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(self, f)
+            }
+        }
+
+        impl fmt::Octal for $name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(self, f)
+            }
+        }
+
+        impl fmt::Binary for $name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(self, f)
+            }
+        }
+    };
+}

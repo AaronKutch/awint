@@ -5,15 +5,16 @@ use awint_internals::BITS;
 use Op::*;
 
 use crate::{
-    mimick::{Bits, Lineage, State},
-    primitive as prim, Op,
+    common::{Lineage, Op},
+    mimick::Bits,
+    primitive as prim,
 };
 
 macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self) {
-                self.state = State::new(self.state_nzbw(), $enum_var, vec![self.state()]);
+                self.update_state(self.state_nzbw(), $enum_var([self.state()]));
             }
         )*
     };
@@ -24,10 +25,9 @@ macro_rules! binary {
         $(
             pub fn $fn_name(&mut self, rhs: &Self) -> Option<()> {
                 if self.bw() == rhs.bw() {
-                    self.state = State::new(
+                    self.update_state(
                         self.state_nzbw(),
-                        $enum_var,
-                        vec![self.state(), rhs.state()]
+                        $enum_var([self.state(), rhs.state()])
                     );
                     Some(())
                 } else {
@@ -42,17 +42,15 @@ macro_rules! zero_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
-                self.state = State::new(
+                self.update_state(
                     Some(self.nzbw()),
-                    ZeroResize(self.nzbw()),
-                    vec![x.into().state()]
+                    ZeroResize([x.into().state()],self.nzbw()),
                 );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
                 prim::$prim::new(
-                    ZeroResize(prim::$prim::hidden_const_nzbw().unwrap()),
-                    vec![self.state()]
+                    ZeroResize([self.state()], prim::$prim::hidden_const_nzbw().unwrap()),
                 )
             }
         )*
@@ -63,17 +61,15 @@ macro_rules! sign_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
-                self.state = State::new(
+                self.update_state(
                     self.state_nzbw(),
-                    SignResize(self.nzbw()),
-                    vec![x.into().state()]
+                    SignResize([x.into().state()], self.nzbw()),
                 );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
                 prim::$prim::new(
-                    SignResize(prim::$prim::hidden_const_nzbw().unwrap()),
-                    vec![self.state()]
+                    SignResize([self.state()], prim::$prim::hidden_const_nzbw().unwrap()),
                 )
             }
         )*
@@ -84,7 +80,7 @@ macro_rules! ref_self_output_bool {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&self) -> prim::bool {
-                prim::bool::new($enum_var, vec![self.state()])
+                prim::bool::new($enum_var([self.state()]))
             }
         )*
     };
@@ -95,7 +91,7 @@ macro_rules! compare {
         $(
             pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
                 if self.bw() == rhs.bw() {
-                    Some(prim::bool::new($enum_var, vec![self.state(), rhs.state()]))
+                    Some(prim::bool::new($enum_var([self.state(), rhs.state()])))
                 } else {
                     None
                 }
@@ -109,7 +105,7 @@ macro_rules! compare_reversed {
         $(
             pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
                 if self.bw() == rhs.bw() {
-                    Some(prim::bool::new($enum_var, vec![rhs.state(), self.state()]))
+                    Some(prim::bool::new($enum_var([rhs.state(), self.state()])))
                 } else {
                     None
                 }
@@ -122,10 +118,9 @@ macro_rules! shift {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self, s: impl Into<prim::usize>) -> Option<()> {
-                self.state = State::new(
+                self.update_state(
                     self.state_nzbw(),
-                    $enum_var,
-                    vec![self.state(), s.into().state()]
+                    $enum_var([self.state(), s.into().state()])
                 );
                 Some(())
             }
@@ -137,7 +132,7 @@ macro_rules! ref_self_output_usize {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&self) -> prim::usize {
-                prim::usize::new($enum_var, vec![self.state()])
+                prim::usize::new($enum_var([self.state()]))
             }
         )*
     };
@@ -219,56 +214,52 @@ impl Bits {
     ref_self_output_usize!(
         lz Lz,
         tz Tz,
+        sig Sig,
         count_ones CountOnes,
     );
 
     pub fn opaque_assign(&mut self) {
-        self.state = State::new(self.state_nzbw(), Opaque, vec![self.state()]);
+        self.update_state(self.state_nzbw(), Opaque(vec![self.state()]));
     }
 
     pub fn zero_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::zero(self.nzbw())),
-            vec![],
         );
     }
 
     pub fn umax_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::umax(self.nzbw())),
-            vec![],
         );
     }
 
     pub fn imax_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::imax(self.nzbw())),
-            vec![],
         );
     }
 
     pub fn imin_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::imin(self.nzbw())),
-            vec![],
         );
     }
 
     pub fn uone_assign(&mut self) {
-        self.state = State::new(
+        self.update_state(
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::uone(self.nzbw())),
-            vec![],
         );
     }
 
     pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() == rhs.bw() {
-            self.state = State::new(self.state_nzbw(), Copy, vec![rhs.state()]);
+            self.update_state(self.state_nzbw(), Copy([rhs.state()]));
             Some(())
         } else {
             None
@@ -279,10 +270,10 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
-                    self.state = State::new(self.state_nzbw(), Lut(self.nzbw()), vec![
-                        lut.state(),
-                        inx.state(),
-                    ]);
+                    self.update_state(
+                        self.state_nzbw(),
+                        Lut([lut.state(), inx.state()], self.nzbw()),
+                    );
                     return Some(())
                 }
             }
@@ -294,16 +285,27 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
                 if lut_len == self.bw() {
-                    self.state = State::new(self.state_nzbw(), LutSet, vec![
-                        self.state(),
-                        entry.state(),
-                        inx.state(),
-                    ]);
+                    self.update_state(
+                        self.state_nzbw(),
+                        LutSet([self.state(), entry.state(), inx.state()]),
+                    );
                     return Some(())
                 }
             }
         }
         None
+    }
+
+    pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
+        Some(prim::bool::new(Get([self.state(), inx.into().state()])))
+    }
+
+    pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            Set([self.state(), inx.into().state(), bit.into().state()]),
+        );
+        Some(())
     }
 
     pub fn field(
@@ -313,40 +315,97 @@ impl Bits {
         from: impl Into<prim::usize>,
         width: impl Into<prim::usize>,
     ) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), Field, vec![
-            self.state(),
-            to.into().state(),
-            rhs.state(),
-            from.into().state(),
-            width.into().state(),
-        ]);
+        self.update_state(
+            self.state_nzbw(),
+            Field([
+                self.state(),
+                to.into().state(),
+                rhs.state(),
+                from.into().state(),
+                width.into().state(),
+            ]),
+        );
+        Some(())
+    }
+
+    pub fn field_to(
+        &mut self,
+        to: impl Into<prim::usize>,
+        rhs: &Self,
+        width: impl Into<prim::usize>,
+    ) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            FieldTo([
+                self.state(),
+                to.into().state(),
+                rhs.state(),
+                width.into().state(),
+            ]),
+        );
+        Some(())
+    }
+
+    pub fn field_from(
+        &mut self,
+        rhs: &Self,
+        from: impl Into<prim::usize>,
+        width: impl Into<prim::usize>,
+    ) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            FieldFrom([
+                self.state(),
+                rhs.state(),
+                from.into().state(),
+                width.into().state(),
+            ]),
+        );
+        Some(())
+    }
+
+    pub fn field_width(&mut self, rhs: &Self, width: impl Into<prim::usize>) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            FieldWidth([self.state(), rhs.state(), width.into().state()]),
+        );
+        Some(())
+    }
+
+    pub fn field_bit(
+        &mut self,
+        to: impl Into<prim::usize>,
+        rhs: &Self,
+        from: impl Into<prim::usize>,
+    ) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            FieldBit([
+                self.state(),
+                to.into().state(),
+                rhs.state(),
+                from.into().state(),
+            ]),
+        );
         Some(())
     }
 
     pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<prim::bool>) {
-        self.state = State::new(self.state_nzbw(), Resize(self.nzbw()), vec![
-            rhs.state(),
-            extension.into().state(),
-        ]);
+        self.update_state(
+            self.state_nzbw(),
+            Resize([rhs.state(), extension.into().state()], self.nzbw()),
+        );
     }
 
     pub fn zero_resize_assign(&mut self, rhs: &Self) -> prim::bool {
-        let b = prim::bool::new(ZeroResizeOverflow(self.nzbw()), vec![rhs.state()]);
-        self.state = State::new(
-            self.state_nzbw(),
-            ZeroResize(self.nzbw()),
-            vec![rhs.state()],
-        );
+        let b = prim::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
+        self.update_state(self.state_nzbw(), ZeroResize([rhs.state()], self.nzbw()));
         b
     }
 
     pub fn sign_resize_assign(&mut self, rhs: &Self) -> prim::bool {
-        let b = prim::bool::new(SignResizeOverflow(self.nzbw()), vec![rhs.state()]);
-        self.state = State::new(
-            self.state_nzbw(),
-            SignResize(self.nzbw()),
-            vec![rhs.state()],
-        );
+        let b = prim::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
+        self.update_state(self.state_nzbw(), SignResize([rhs.state()], self.nzbw()));
         b
     }
 
@@ -357,49 +416,48 @@ impl Bits {
         {
             None
         } else {
-            self.state = State::new(self.state_nzbw(), Funnel, vec![rhs.state(), s.state()]);
+            self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()]));
             Some(())
         }
     }
 
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.state = State::new(quo.state_nzbw(), UQuo, vec![duo.state(), div.state()]);
-        rem.state = State::new(rem.state_nzbw(), URem, vec![duo.state(), div.state()]);
+        quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]));
+        rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
         Some(())
     }
 
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.state = State::new(quo.state_nzbw(), IQuo, vec![duo.state(), div.state()]);
-        rem.state = State::new(rem.state_nzbw(), IRem, vec![duo.state(), div.state()]);
+        quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]));
+        rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
         Some(())
     }
 
     pub fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        self.state = State::new(self.state_nzbw(), MulAdd, vec![
-            self.state(),
-            lhs.state(),
-            rhs.state(),
-        ]);
+        self.update_state(
+            self.state_nzbw(),
+            MulAdd([self.state(), lhs.state(), rhs.state()]),
+        );
         Some(())
     }
 
     pub fn inc_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
-        let out = prim::bool::new(IncCout, vec![self.state(), b.state()]);
-        self.state = State::new(self.state_nzbw(), Inc, vec![self.state(), b.state()]);
+        let out = prim::bool::new(IncCout([self.state(), b.state()]));
+        self.update_state(self.state_nzbw(), Inc([self.state(), b.state()]));
         out
     }
 
     pub fn dec_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
         let b = cin.into();
-        let out = prim::bool::new(DecCout, vec![self.state(), b.state()]);
-        self.state = State::new(self.state_nzbw(), Dec, vec![self.state(), b.state()]);
+        let out = prim::bool::new(DecCout([self.state(), b.state()]));
+        self.update_state(self.state_nzbw(), Dec([self.state(), b.state()]));
         out
     }
 
     pub fn neg_assign(&mut self, neg: impl Into<prim::bool>) {
         let b = neg.into();
-        self.state = State::new(self.state_nzbw(), Neg, vec![self.state(), b.state()]);
+        self.update_state(self.state_nzbw(), Neg([self.state(), b.state()]));
     }
 
     pub fn cin_sum_assign(
@@ -410,36 +468,40 @@ impl Bits {
     ) -> Option<(prim::bool, prim::bool)> {
         let b = cin.into();
         let out = Some((
-            prim::bool::new(UnsignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
-            prim::bool::new(SignedOverflow, vec![b.state(), lhs.state(), rhs.state()]),
+            prim::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
+            prim::bool::new(SignedOverflow([b.state(), lhs.state(), rhs.state()])),
         ));
-        self.state = State::new(self.state_nzbw(), CinSum, vec![
-            b.state(),
-            lhs.state(),
-            rhs.state(),
-        ]);
+        self.update_state(
+            self.state_nzbw(),
+            CinSum([b.state(), lhs.state(), rhs.state()]),
+        );
         out
     }
+}
 
-    #[doc(hidden)]
-    pub fn unstable_lt_checks<const N: usize>(
-        _lt_checks: [(impl Into<prim::usize>, impl Into<prim::usize>); N],
+#[doc(hidden)]
+impl Bits {
+    #[must_use]
+    pub const fn must_use<T>(t: T) -> T {
+        t
+    }
+
+    pub const fn unstable_raw_digits(bw: usize) -> usize {
+        awint_internals::raw_digits(bw)
+    }
+
+    // TODO for now assume they pass
+
+    pub fn unstable_le_checks<const N: usize>(
+        _le_checks: [(impl Into<prim::usize>, impl Into<prim::usize>); N],
     ) -> Option<()> {
         Some(())
     }
 
-    #[doc(hidden)]
-    pub fn unstable_common_lt_checks<const N: usize>(
-        _common_lhs: impl Into<prim::usize>,
-        _rhss: [impl Into<prim::usize>; N],
-    ) -> Option<()> {
-        Some(())
-    }
-
-    #[doc(hidden)]
-    pub fn unstable_common_ne_checks<const N: usize>(
-        _common_lhs: impl Into<prim::usize>,
-        _rhss: [impl Into<prim::usize>; N],
+    pub fn unstable_common_checks<const N: usize, const M: usize>(
+        _common_cw: impl Into<prim::usize>,
+        _ge: [impl Into<prim::usize>; N],
+        _eq: [impl Into<prim::usize>; M],
     ) -> Option<()> {
         Some(())
     }
