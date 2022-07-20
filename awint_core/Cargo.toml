@@ -1,6 +1,6 @@
 [package]
 name = "awint_core"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -12,7 +12,7 @@ keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
 [dependencies]
-awint_internals = { version = "0.5.0", path = "../awint_internals", default-features = false }
+awint_internals = { version = "0.6.0", path = "../awint_internals", default-features = false }
 const_fn = "0.4"
 rand_core = { version = "0.6", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, optional = true }

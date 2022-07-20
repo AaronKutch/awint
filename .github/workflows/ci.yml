@@ -1,6 +1,6 @@
 name: Awint CI
 
-on: []
+on: ['pull_request']
 
 env:
   # NOTE: do not set RUSTFLAGS here, because it overwrites

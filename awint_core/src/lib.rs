@@ -13,7 +13,7 @@
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_read))]
 #![cfg_attr(feature = "const_support", feature(const_ptr_write))]
-#![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts))]
+#![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts_mut))]
 #![cfg_attr(feature = "const_support", feature(const_swap))]
 #![cfg_attr(feature = "const_support", feature(const_option))]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
@@ -28,6 +28,8 @@
 #![allow(clippy::manual_range_contains)]
 // we need certain hot loops to stay separate
 #![allow(clippy::branches_sharing_code)]
+// TODO when clippy issue 9175 is fixed remove
+#![allow(clippy::question_mark)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub use awint_internals::{bw, SerdeError};

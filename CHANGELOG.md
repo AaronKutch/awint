@@ -4,6 +4,7 @@
 ### Fixes
 - Fixed that the infallibility of some macros was being calculated wrong. A few macros now return
   `Option`s to prevent hidden panics and other macros have become infallible.
+- Fixed `const_support` for Rust 1.64
 
 ### Additions
 - Added missing `from_...` and `From<...>` impls to `InlAwi` and `ExtAwi`
