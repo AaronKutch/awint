@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.6.0] - 2022-06-30
+## [0.6.0] - 2022-07-20
 ### Fixes
 - Fixed that the infallibility of some macros was being calculated wrong. A few macros now return
   `Option`s to prevent hidden panics and other macros have become infallible.
