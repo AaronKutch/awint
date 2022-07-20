@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     common::{EvalError, Lineage, Op::*},
-    lowering::Dag,
+    lowering::{negator, Dag},
     mimick::{Bits, ExtAwi, InlAwi},
 };
 
@@ -82,6 +82,16 @@ impl<P: PtrTrait> Dag<P> {
             SignResize([x], w) => {
                 let x = ExtAwi::opaque(self.get_bw(x)?);
                 let out = resize(&x, w, true);
+                self.graft(ptr, list, &[out.state(), x.state()])?;
+            }
+            Lsb([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let out = x.get(0).unwrap();
+                self.graft(ptr, list, &[out.state(), x.state()])?;
+            }
+            Msb([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let out = x.get(x.bw() - 1).unwrap();
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             Not([x]) => {
@@ -166,6 +176,19 @@ impl<P: PtrTrait> Dag<P> {
                     lhs.state(),
                     rhs.state(),
                 ])?;
+            }
+            Neg([x, neg]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let neg = ExtAwi::opaque(self.get_bw(neg)?);
+                assert_eq!(neg.bw(), 1);
+                let out = negator(&x, &neg);
+                self.graft(ptr, list, &[out.state(), x.state(), neg.state()])?;
+            }
+            Abs([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let mut out = x.clone();
+                out.neg_assign(x.msb());
+                self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }

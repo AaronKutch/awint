@@ -204,3 +204,22 @@ pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), in
     signed_overflow.lut(&inlawi!(0001_1000), &inx).unwrap();
     (out, carry, signed_overflow)
 }
+
+pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
+    assert_eq!(neg.bw(), 1);
+    // half adder with input inversion control
+    let lut = inlawi!(0100_1001_1001_0100);
+    let mut out = ExtAwi::zero(x.nzbw());
+    let mut carry = InlAwi::from(neg.to_bool());
+    for i in 0..x.bw() {
+        let mut carry_sum = inlawi!(00);
+        let mut inx = inlawi!(000);
+        inx.set(0, carry.to_bool()).unwrap();
+        inx.set(1, x.get(i).unwrap()).unwrap();
+        inx.set(2, neg.to_bool()).unwrap();
+        carry_sum.lut(&lut, &inx).unwrap();
+        out.set(i, carry_sum.get(0).unwrap()).unwrap();
+        carry.bool_assign(carry_sum.get(1).unwrap());
+    }
+    out
+}

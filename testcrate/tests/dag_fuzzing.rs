@@ -20,7 +20,7 @@ const N: u32 = if cfg!(miri) {
     // TODO increase
     1000
 } else {
-    100000
+    10000
 };
 
 ptr_trait_struct_with_gen!(P0);
@@ -180,7 +180,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 10 {
+        match rng.next_u32() % 12 {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
@@ -325,6 +325,34 @@ fn dag_fuzzing() {
                     .unwrap();
                 m.get_mut_dag(unsigned).bool_assign(overflow.0);
                 m.get_mut_dag(signed).bool_assign(overflow.1);
+            }
+            10 => {
+                let x = m.next1_5().1;
+                let out = m.next(1);
+                if (rng.next_u32() & 1) == 0 {
+                    let a = m.get_num(x).lsb();
+                    m.get_mut_num(out).bool_assign(a);
+                    let b = m.get_dag(x).lsb();
+                    m.get_mut_dag(out).bool_assign(b);
+                } else {
+                    let a = m.get_num(x).msb();
+                    m.get_mut_num(out).bool_assign(a);
+                    let b = m.get_dag(x).msb();
+                    m.get_mut_dag(out).bool_assign(b);
+                }
+            }
+            11 => {
+                let x = m.next1_5().1;
+                if (rng.next_u32() & 1) == 0 {
+                    let neg = m.next(1);
+                    let a = m.get_num(neg).to_bool();
+                    m.get_mut_num(x).neg_assign(a);
+                    let b = m.get_dag(neg).to_bool();
+                    m.get_mut_dag(x).neg_assign(b);
+                } else {
+                    m.get_mut_num(x).abs_assign();
+                    m.get_mut_dag(x).abs_assign();
+                }
             }
             _ => unreachable!(),
         }
