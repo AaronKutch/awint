@@ -77,16 +77,12 @@ impl<P: PtrTrait> Dag<P> {
         let mut path: Vec<(usize, Ptr<P>, PtrEqRc)> = vec![];
         for leaf in leaves {
             let enter_loop = match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
-                Entry::Occupied(o) => {
-                    // keep
-                    self[o.get()].rc += 1;
-                    false
-                }
+                Entry::Occupied(_) => false,
                 Entry::Vacant(v) => {
-                    let mut n = Node::default();
-                    // keep leaves
-                    n.rc += 1;
-                    n.nzbw = leaf.nzbw;
+                    let n = Node {
+                        nzbw: leaf.nzbw,
+                        ..Default::default()
+                    };
                     let p = self.dag.insert(n);
                     v.insert(p);
                     if let Some(ref mut v) = added {
@@ -297,7 +293,9 @@ impl<P: PtrTrait> Dag<P> {
         let output_p = self.noted[start];
         let output_node = self.dag.remove(output_p).unwrap();
         assert_eq!(list.swap_remove(list_len), output_p);
-        self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
+        let old_output = self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
+        // preserve original reference count
+        self[ptr].rc = old_output.rc;
         // remove the temporary noted nodes
         self.noted.drain(start..);
         // this is very important to prevent infinite cycles where literals are not

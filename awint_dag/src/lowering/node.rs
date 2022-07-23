@@ -72,10 +72,12 @@ impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
                     )
                 })
                 .collect(),
-            center: if let Op::Literal(ref awi) = this.op {
-                vec![format!("{}", awi)]
-            } else {
-                vec![this.op.operation_name().to_owned()]
+            center: match this.op {
+                Op::Literal(ref awi) => vec![format!("{}", awi)],
+                Op::StaticLut(_, ref awi) => vec![format!("lut {}", awi)],
+                Op::StaticGet(_, inx) => vec![format!("get {}", inx)],
+                Op::StaticSet(_, inx) => vec![format!("set {}", inx)],
+                _ => vec![this.op.operation_name().to_owned()],
             },
             sinks: vec![],
         };

@@ -147,6 +147,7 @@ impl Mem {
             res?;
             let leaf = dag.noted[0];
             dag.eval_tree(leaf)?;
+            dag.cull();
             if let Op::Literal(ref lit) = dag[leaf].op {
                 if pair.num != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
