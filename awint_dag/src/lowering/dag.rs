@@ -296,6 +296,8 @@ impl<P: PtrTrait> Dag<P> {
         let old_output = self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
         // preserve original reference count
         self[ptr].rc = old_output.rc;
+        // relist because there are cases where this node needs to be reprocessed
+        list.push(ptr);
         // remove the temporary noted nodes
         self.noted.drain(start..);
         // this is very important to prevent infinite cycles where literals are not
