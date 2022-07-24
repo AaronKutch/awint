@@ -22,6 +22,11 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
     // literal assign
     Literal(ExtAwi),
 
+    // Static versions of `Lut`, `Get`, and `Set`
+    StaticLut([T; 1], ExtAwi),
+    StaticGet([T; 1], usize),
+    StaticSet([T; 2], usize),
+
     // the bitwidth value
     //Bw,
 
@@ -163,6 +168,9 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Invalid => "invalid",
             Opaque(_) => "opaque",
             Literal(_) => "literal",
+            StaticLut(..) => "static_lut",
+            StaticGet(..) => "static_get",
+            StaticSet(..) => "static_set",
             Resize(..) => "resize",
             ZeroResize(..) => "zero_resize",
             ZeroResizeOverflow(..) => "zero_reisze_overflow",
@@ -232,6 +240,12 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         // add common "lhs"
         match *self {
             Invalid | Opaque(_) | Literal(_) => (),
+            StaticLut(..) => v.push("inx"),
+            StaticGet(..) => v.push("x"),
+            StaticSet(..) => {
+                v.push("x");
+                v.push("b")
+            }
 
             Resize(..) => {
                 v.push("x");
@@ -330,6 +344,9 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Invalid => &[],
             Opaque(v) => v,
             Literal(_) => &[],
+            StaticLut(v, _) => v,
+            StaticGet(v, _) => v,
+            StaticSet(v, _) => v,
             Resize(v, _) => v,
             ZeroResize(v, _) => v,
             SignResize(v, _) => v,
@@ -398,6 +415,9 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Invalid => &mut [],
             Opaque(v) => v,
             Literal(_) => &mut [],
+            StaticLut(v, _) => v,
+            StaticGet(v, _) => v,
+            StaticSet(v, _) => v,
             Resize(v, _) => v,
             ZeroResize(v, _) => v,
             SignResize(v, _) => v,
@@ -471,6 +491,9 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Invalid => None,
             Opaque(_) => None,
             Literal(_) => None,
+            StaticLut(..) => None,
+            StaticGet(..) => None,
+            StaticSet(..) => None,
             Resize(_, w) => Some(w),
             ZeroResize(_, w) => Some(w),
             SignResize(_, w) => Some(w),
@@ -571,6 +594,9 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
                 res
             }
             Literal(lit) => Literal(lit.clone()),
+            StaticLut(v, table) => StaticLut(map1!(m, v), table.clone()),
+            StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
+            StaticSet(v, inx) => StaticSet(map2!(m, v), *inx),
             Resize(v, w) => Resize(map2!(m, v), *w),
             ZeroResize(v, w) => ZeroResize(map1!(m, v), *w),
             SignResize(v, w) => SignResize(map1!(m, v), *w),

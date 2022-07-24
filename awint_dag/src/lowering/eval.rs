@@ -41,6 +41,22 @@ impl<P: PtrTrait> Dag<P> {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => return Err(EvalError::Unevaluatable),
             Literal(_) => return Err(EvalError::Unevaluatable),
+            StaticLut([a], lit) => r.lut(&lit, self.lit(a)),
+            StaticGet([a], inx) => {
+                if let Some(b) = self.lit(a).get(inx) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            StaticSet([a, b], inx) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.set(inx, self.bool(b)?)
+                } else {
+                    None
+                }
+            }
             Resize([a, b], w) => {
                 check_bw!(w, self_w);
                 r.resize_assign(self.lit(a), self.bool(b)?);
@@ -500,10 +516,23 @@ impl<P: PtrTrait> Dag<P> {
         Ok(())
     }
 
+    /// Cull unused nodes
     pub fn cull(&mut self) {
-        // cull unused nodes
-        for p in self.ptrs() {
-            if self[p].rc == 0 {
+        let mut v = self.ptrs();
+        while let Some(p) = v.pop() {
+            let mut delete = false;
+            if let Some(node) = self.dag.get(p) {
+                if node.rc == 0 {
+                    delete = true;
+                }
+            }
+            if delete {
+                for i in 0..self[p].op.num_operands() {
+                    let op = self[p].op.operands()[i];
+                    self[op].rc -= 1;
+                    // this will eventually cull whole trees if they are separate
+                    v.push(op);
+                }
                 self.dag.remove(p).unwrap();
             }
         }

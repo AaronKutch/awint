@@ -147,6 +147,7 @@ impl Mem {
             res?;
             let leaf = dag.noted[0];
             dag.eval_tree(leaf)?;
+            dag.cull();
             if let Op::Literal(ref lit) = dag[leaf].op {
                 if pair.num != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
@@ -363,6 +364,5 @@ fn dag_fuzzing() {
     let (mut dag, res) = Dag::<P0>::new(&[dag.state()], &[dag.state()]);
     dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg")).unwrap();
     res.unwrap();*/
-    //dbg!(m);
     //panic!();
 }

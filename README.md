@@ -46,6 +46,7 @@ to _all_ of the crate roots where you use the macros in `const` contexts.
 These are currently unimplemented because of other developments and improvements that are being
 prioritized. Please open an issue or PR if you would like these implemented faster.
 
+- A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track
    of leading zeros and ones to speed up operations on very large bitwidth integers with small

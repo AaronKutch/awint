@@ -14,9 +14,9 @@ use crate::{
 };
 
 impl<P: PtrTrait> Dag<P> {
-    /// Lowers everything down to `Invalid`, `Opaque`, `Copy`, `Get` with static
-    /// indexes, `Set` with static indexes, and `Lut`s with static tables. If
-    /// unlowered nodes were produced they are added to `list`
+    /// Lowers everything down to `Invalid`, `Opaque`, `Copy`, `StaticGet`,
+    /// `StaticSet`, and `StaticLut`. If unlowered nodes were produced they
+    /// are added to `list`
     pub fn lower_node(&mut self, ptr: Ptr<P>, list: &mut Vec<Ptr<P>>) -> Result<(), EvalError> {
         if !self.dag.contains(ptr) {
             return Err(EvalError::InvalidPtr)
@@ -27,8 +27,14 @@ impl<P: PtrTrait> Dag<P> {
             Opaque(_) => (),
             Literal(_) => (),
             Copy(_) => (),
+            StaticLut(..) => (),
+            StaticGet(..) => (),
+            StaticSet(..) => (),
             Lut([lut, inx], out_w) => {
-                if !self[lut].op.is_literal() {
+                if self[lut].op.is_literal() {
+                    self[ptr].op = StaticLut([inx], awint_ext::ExtAwi::from(self.lit(lut)));
+                    self[lut].rc -= 1;
+                } else {
                     let mut out = ExtAwi::zero(out_w);
                     let lut = ExtAwi::opaque(self.get_bw(lut)?);
                     let inx = ExtAwi::opaque(self.get_bw(inx)?);
@@ -37,7 +43,10 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
             Get([bits, inx]) => {
-                if !self[inx].op.is_literal() {
+                if self[inx].op.is_literal() {
+                    self[ptr].op = StaticGet([bits], self.usize(inx).unwrap());
+                    self[inx].rc -= 1;
+                } else {
                     let bits = ExtAwi::opaque(self.get_bw(bits)?);
                     let inx = ExtAwi::opaque(self.get_bw(inx)?);
                     let out = dynamic_to_static_get(&bits, &inx);
@@ -45,7 +54,10 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
             Set([bits, inx, bit]) => {
-                if !self[inx].op.is_literal() {
+                if self[inx].op.is_literal() {
+                    self[ptr].op = StaticSet([bits, bit], self.usize(inx).unwrap());
+                    self[inx].rc -= 1;
+                } else {
                     let bits = ExtAwi::opaque(self.get_bw(bits)?);
                     let inx = ExtAwi::opaque(self.get_bw(inx)?);
                     let bit = ExtAwi::opaque(self.get_bw(bit)?);
