@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 
-use triple_arena::{Arena, Ptr};
+use triple_arena::Arena;
 
 use crate::{Concatenation, FillerAlign, PText};
 
@@ -83,14 +83,14 @@ impl Delimiter {
 #[derive(Debug, Clone)]
 pub enum Text {
     Chars(Vec<char>),
-    Group(Delimiter, Ptr<PText>),
+    Group(Delimiter, PText),
 }
 
 #[derive(Debug, Default)]
 pub struct Ast {
     pub txt: Arena<PText, Vec<Text>>,
-    pub txt_root: Ptr<PText>,
-    pub txt_init: Option<Ptr<PText>>,
+    pub txt_root: PText,
+    pub txt_init: Option<PText>,
     pub cc: Vec<Concatenation>,
     pub common_bw: Option<NonZeroUsize>,
     pub deterministic_width: bool,
@@ -100,8 +100,8 @@ pub struct Ast {
 
 impl Ast {
     /// Converts the subtrees of `txt` into their combined `Vec<char>` form
-    pub fn chars_assign_subtree(&self, chars: &mut Vec<char>, txt: Ptr<PText>) {
-        let mut stack: Vec<(Ptr<PText>, usize)> = vec![(txt, 0)];
+    pub fn chars_assign_subtree(&self, chars: &mut Vec<char>, txt: PText) {
+        let mut stack: Vec<(PText, usize)> = vec![(txt, 0)];
         loop {
             let last = stack.len() - 1;
             if let Some(txt) = self.txt[stack[last].0].get(stack[last].1) {

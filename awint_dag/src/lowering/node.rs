@@ -1,13 +1,13 @@
 use std::{num::NonZeroUsize, rc::Rc};
 
-use triple_arena::{ptr_trait_struct_with_gen, Ptr, PtrTrait};
+use triple_arena::{ptr_struct, Ptr};
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
 
 use crate::common::{EvalError, Op, State};
 
 // used in some internal algorithms
-ptr_trait_struct_with_gen!(P0);
+ptr_struct!(P0);
 
 /// Defines equality using Rc::ptr_eq
 #[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
@@ -21,11 +21,11 @@ impl PartialEq for PtrEqRc {
 }
 
 #[derive(Debug, Default)]
-pub struct Node<P: PtrTrait> {
+pub struct Node<P: Ptr> {
     /// Bitwidth
     pub nzbw: Option<NonZeroUsize>,
     /// Operation
-    pub op: Op<Ptr<P>>,
+    pub op: Op<P>,
     /// Number of dependents
     pub rc: u64,
     pub err: Option<EvalError>,
@@ -49,10 +49,10 @@ impl PartialEq for Node {
 }
 */
 
-impl<P: PtrTrait> Node<P> {}
+impl<P: Ptr> Node<P> {}
 
 #[cfg(feature = "debug")]
-impl<P: PtrTrait> DebugNodeTrait<P> for Node<P> {
+impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
     fn debug_node(this: &Self) -> DebugNode<P> {
         let names = this.op.operand_names();
         let mut res = DebugNode {

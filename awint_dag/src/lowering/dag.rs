@@ -10,7 +10,7 @@ use std::{
 
 use awint_core::Bits;
 use awint_internals::BITS;
-use triple_arena::{Arena, Ptr, PtrTrait};
+use triple_arena::{Arena, Ptr};
 use Op::*;
 
 use crate::{
@@ -19,15 +19,15 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Dag<P: PtrTrait> {
+pub struct Dag<P: Ptr> {
     pub dag: Arena<P, Node<P>>,
     /// for keeping nodes alive and having an ordered list for identification
-    pub noted: Vec<Ptr<P>>,
+    pub noted: Vec<P>,
     /// A kind of generation counter tracking the highest `visit_num` number
     pub visit_gen: u64,
 }
 
-impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
+impl<P: Ptr, B: Borrow<P>> Index<B> for Dag<P> {
     type Output = Node<P>;
 
     fn index(&self, index: B) -> &Node<P> {
@@ -35,13 +35,13 @@ impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
     }
 }
 
-impl<P: PtrTrait, B: Borrow<Ptr<P>>> IndexMut<B> for Dag<P> {
+impl<P: Ptr, B: Borrow<P>> IndexMut<B> for Dag<P> {
     fn index_mut(&mut self, index: B) -> &mut Node<P> {
         self.dag.get_mut(*index.borrow()).unwrap()
     }
 }
 
-impl<P: PtrTrait> Dag<P> {
+impl<P: Ptr> Dag<P> {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
     /// version. The optional `note`s should be included in the DAG reachable
     /// from the `leaves`, and should be `Opaque` if they should remain
@@ -68,13 +68,13 @@ impl<P: PtrTrait> Dag<P> {
         &mut self,
         leaves: &[Rc<State>],
         noted: &[Rc<State>],
-        mut added: Option<&mut Vec<Ptr<P>>>,
+        mut added: Option<&mut Vec<P>>,
     ) -> Result<(), EvalError> {
         // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<PtrEqRc, Ptr<P>> = HashMap::new();
+        let mut lowerings: HashMap<PtrEqRc, P> = HashMap::new();
         // DFS from leaves to avoid much allocation, but we need the hashmap to avoid
         // retracking
-        let mut path: Vec<(usize, Ptr<P>, PtrEqRc)> = vec![];
+        let mut path: Vec<(usize, P, PtrEqRc)> = vec![];
         for leaf in leaves {
             let enter_loop = match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
                 Entry::Occupied(_) => false,
@@ -108,14 +108,12 @@ impl<P: PtrTrait> Dag<P> {
                         }
                     } else if *current_i >= u_ops.len() {
                         // all operands should be ready
-                        self[current_p].op = Op::translate(
-                            &current_rc.0.op,
-                            |lhs: &mut [Ptr<P>], rhs: &[Rc<State>]| {
+                        self[current_p].op =
+                            Op::translate(&current_rc.0.op, |lhs: &mut [P], rhs: &[Rc<State>]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
                                     *lhs = lowerings[&PtrEqRc(Rc::clone(rhs))];
                                 }
-                            },
-                        );
+                            });
                         self[current_p].nzbw = current_rc.0.nzbw;
                         path.pop().unwrap();
                         if let Some((i, ..)) = path.last_mut() {
@@ -191,12 +189,12 @@ impl<P: PtrTrait> Dag<P> {
     }
 
     /// Returns a list of pointers to all nodes in no particular order
-    pub fn ptrs(&self) -> Vec<Ptr<P>> {
+    pub fn ptrs(&self) -> Vec<P> {
         self.dag.ptrs().collect()
     }
 
     /// Assumes `ptr` is a literal
-    pub fn lit(&self, ptr: Ptr<P>) -> &Bits {
+    pub fn lit(&self, ptr: P) -> &Bits {
         if let Literal(ref lit) = self[ptr].op {
             lit
         } else {
@@ -206,7 +204,7 @@ impl<P: PtrTrait> Dag<P> {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth 1.
-    pub fn bool(&self, ptr: Ptr<P>) -> Result<bool, EvalError> {
+    pub fn bool(&self, ptr: P) -> Result<bool, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == 1 {
                 Ok(lit.to_bool())
@@ -220,7 +218,7 @@ impl<P: PtrTrait> Dag<P> {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth `usize::BITS`.
-    pub fn usize(&self, ptr: Ptr<P>) -> Result<usize, EvalError> {
+    pub fn usize(&self, ptr: P) -> Result<usize, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == BITS {
                 Ok(lit.to_usize())
@@ -232,7 +230,7 @@ impl<P: PtrTrait> Dag<P> {
         }
     }
 
-    pub fn get_bw<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {
+    pub fn get_bw<B: Borrow<P>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {
         if let Some(w) = self[ptr].nzbw {
             Ok(w)
         } else {
@@ -245,8 +243,8 @@ impl<P: PtrTrait> Dag<P> {
     /// and `operands` corresponding to the original interfaces.
     pub fn graft(
         &mut self,
-        ptr: Ptr<P>,
-        list: &mut Vec<Ptr<P>>,
+        ptr: P,
+        list: &mut Vec<P>,
         output_and_operands: &[Rc<State>],
     ) -> Result<(), EvalError> {
         if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {

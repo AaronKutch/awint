@@ -1,7 +1,6 @@
 use std::num::NonZeroUsize;
 
 use awint_ext::ExtAwi;
-use triple_arena::Ptr;
 
 use crate::{
     i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PCWidth,
@@ -35,7 +34,7 @@ impl Default for FillerAlign {
 
 #[derive(Debug, Default, Clone)]
 pub struct Concatenation {
-    pub txt: Ptr<PText>,
+    pub txt: PText,
     pub comps: Vec<Component>,
     pub filler_alignment: FillerAlign,
     pub static_width: Option<NonZeroUsize>,
@@ -44,11 +43,11 @@ pub struct Concatenation {
     pub deterministic_width: bool,
     pub guaranteed_nonzero_width: bool,
     // concatenation width
-    pub cw: Option<Ptr<PCWidth>>,
+    pub cw: Option<PCWidth>,
 }
 
 impl Concatenation {
-    pub fn check(&mut self, concat_i: usize, concat_txt: Ptr<PText>) -> Result<(), CCMacroError> {
+    pub fn check(&mut self, concat_i: usize, concat_txt: PText) -> Result<(), CCMacroError> {
         let concat_len = self.comps.len();
         // start by assuming yes
         let mut cumulative_bw = Some(0usize);

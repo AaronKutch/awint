@@ -1,7 +1,6 @@
 use std::{mem, num::NonZeroUsize, str::FromStr};
 
 use awint_ext::ExtAwi;
-use triple_arena::Ptr;
 use ComponentType::*;
 
 use crate::{
@@ -25,14 +24,14 @@ impl Default for ComponentType {
 
 #[derive(Debug, Default, Clone)]
 pub struct Component {
-    pub txt: Ptr<PText>,
-    pub mid_txt: Option<Ptr<PText>>,
-    pub range_txt: Option<Ptr<PText>>,
+    pub txt: PText,
+    pub mid_txt: Option<PText>,
+    pub range_txt: Option<PText>,
     pub c_type: ComponentType,
     pub range: Usbr,
-    pub bind: Option<Ptr<PBind>>,
-    pub width: Option<Ptr<PWidth>>,
-    pub start: Option<Ptr<PVal>>,
+    pub bind: Option<PBind>,
+    pub width: Option<PWidth>,
+    pub start: Option<PVal>,
 }
 
 impl Component {

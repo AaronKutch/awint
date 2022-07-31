@@ -49,6 +49,7 @@
 use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::ExtAwi;
+use triple_arena::Ptr;
 
 use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, EitherResult, Lower, Names};
 
@@ -205,7 +206,7 @@ pub fn cc_macro_code_gen<
         format!("let {}={}usize;\n", names.cw, bw)
     } else if let Some(p_cw) = l.dynamic_width {
         *l.cw.a_get_mut(p_cw) = true;
-        let s = format!("let {}={}_{};\n", names.cw, names.cw, p_cw.get_raw());
+        let s = format!("let {}={}_{};\n", names.cw, names.cw, p_cw.inx());
         s
     } else {
         // for the case with all unbounded fillers, find the max bitwidth for the buffer
@@ -220,7 +221,7 @@ pub fn cc_macro_code_gen<
             }
             let p_cw = concat.cw.unwrap();
             *l.cw.a_get_mut(p_cw) = true;
-            write!(s, "{}_{}", names.cw, p_cw.get_raw()).unwrap();
+            write!(s, "{}_{}", names.cw, p_cw.inx()).unwrap();
         }
         format!("let {}={}([{}]);\n", names.cw, fn_names.max_fn, s)
     };

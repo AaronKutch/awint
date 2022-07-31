@@ -11,7 +11,7 @@ use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
 };
-use triple_arena::{ptr_trait_struct_with_gen, Arena, Ptr};
+use triple_arena::{ptr_struct, Arena};
 
 // miri is just here to check that the unsized deref hacks are working
 const N: u32 = if cfg!(miri) {
@@ -23,7 +23,7 @@ const N: u32 = if cfg!(miri) {
     10000
 };
 
-ptr_trait_struct_with_gen!(P0);
+ptr_struct!(P0);
 
 #[derive(Debug, Clone)]
 struct Pair {
@@ -45,7 +45,7 @@ struct Mem {
     a: Arena<P0, Pair>,
     // The outer Vec has 65 Vecs for all the supported bitwidths (there is a dummy 0 bitwidth Vec
     // and one for each of 1..=64), the inner Vecs are unsorted and used for random querying
-    v: Vec<Vec<Ptr<P0>>>,
+    v: Vec<Vec<P0>>,
     rng: Xoshiro128StarStar,
 }
 
@@ -78,7 +78,7 @@ impl Mem {
     }*/
 
     /// Randomly creates a new pair or gets an existing one under the `cap`
-    pub fn next_capped(&mut self, w: usize, cap: usize) -> Ptr<P0> {
+    pub fn next_capped(&mut self, w: usize, cap: usize) -> P0 {
         let try_query = (self.rng.next_u32() % 4) != 0;
         if try_query && (!self.v[w].is_empty()) {
             let p = self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()];
@@ -96,7 +96,7 @@ impl Mem {
     }
 
     /// Randomly creates a new pair or gets an existing one
-    pub fn next(&mut self, w: usize) -> Ptr<P0> {
+    pub fn next(&mut self, w: usize) -> P0 {
         let try_query = (self.rng.next_u32() % 4) != 0;
         if try_query && (!self.v[w].is_empty()) {
             self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()]
@@ -111,12 +111,12 @@ impl Mem {
 
     /// Calls `next` with a random integer in 1..5, returning a tuple of the
     /// width chosen and the Ptr to what `next` returned.
-    pub fn next1_5(&mut self) -> (usize, Ptr<P0>) {
+    pub fn next1_5(&mut self) -> (usize, P0) {
         let w = ((self.rng.next_u32() as usize) % 4) + 1;
         (w, self.next(w))
     }
 
-    pub fn next_usize(&mut self, cap: usize) -> Ptr<P0> {
+    pub fn next_usize(&mut self, cap: usize) -> P0 {
         self.next_capped(BITS, cap)
     }
 
@@ -124,19 +124,19 @@ impl Mem {
     // of mixed internal mutability is too much. We can't get the signature of
     // `Index` to work in any case.
 
-    pub fn get_num(&self, inx: Ptr<P0>) -> num::ExtAwi {
+    pub fn get_num(&self, inx: P0) -> num::ExtAwi {
         self.a[inx].num.clone()
     }
 
-    pub fn get_dag(&self, inx: Ptr<P0>) -> dag::ExtAwi {
+    pub fn get_dag(&self, inx: P0) -> dag::ExtAwi {
         self.a[inx].dag.unstable_clone_identical()
     }
 
-    pub fn get_mut_num(&mut self, inx: Ptr<P0>) -> &mut num::ExtAwi {
+    pub fn get_mut_num(&mut self, inx: P0) -> &mut num::ExtAwi {
         &mut self.a[inx].num
     }
 
-    pub fn get_mut_dag(&mut self, inx: Ptr<P0>) -> &mut dag::ExtAwi {
+    pub fn get_mut_dag(&mut self, inx: P0) -> &mut dag::ExtAwi {
         &mut self.a[inx].dag
     }
 

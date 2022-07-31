@@ -1,7 +1,5 @@
 use std::{collections::HashSet, fmt::Write, iter};
 
-use triple_arena::Ptr;
-
 use crate::{chars_to_string, Ast, Delimiter, PText, Text};
 
 /// Wrap `s` in ANSI delimiters for terminal colors.
@@ -12,13 +10,13 @@ pub fn color_text(s: &str, c: u8) -> String {
 
 #[derive(Debug, Default, Clone)]
 pub struct CCMacroError {
-    pub red_text: Vec<Ptr<PText>>,
+    pub red_text: Vec<PText>,
     pub error: String,
     pub help: Option<String>,
 }
 
 impl CCMacroError {
-    pub fn new(error: String, red_text: Ptr<PText>) -> Self {
+    pub fn new(error: String, red_text: PText) -> Self {
         Self {
             red_text: vec![red_text],
             error,
@@ -39,7 +37,7 @@ impl CCMacroError {
         let mut s = String::new();
         let mut color_line = String::new();
         // efficiency is not going to matter on terminal errors
-        let red_text: HashSet<Ptr<PText>> = self.red_text.iter().copied().collect();
+        let red_text: HashSet<PText> = self.red_text.iter().copied().collect();
 
         if let Some(txt_init) = ast.txt_init {
             let mut init = vec![];
@@ -52,7 +50,7 @@ impl CCMacroError {
         let extend = |color_line: &mut String, color_lvl: &Option<usize>, len: usize| {
             color_line.extend(iter::repeat(if color_lvl.is_some() { '^' } else { ' ' }).take(len))
         };
-        let mut stack: Vec<(Ptr<PText>, usize)> = vec![(ast.txt_root, 0)];
+        let mut stack: Vec<(PText, usize)> = vec![(ast.txt_root, 0)];
         loop {
             let last = stack.len() - 1;
             if let Some(txt) = ast.txt[stack[last].0].get(stack[last].1) {

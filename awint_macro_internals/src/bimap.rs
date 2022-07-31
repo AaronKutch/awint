@@ -4,7 +4,7 @@ use std::{
     hash::Hash,
 };
 
-use triple_arena::{Arena, Ptr, PtrTrait};
+use triple_arena::{Arena, Ptr};
 
 /// For results that have the same `Ok` and `Err` types
 pub trait EitherResult {
@@ -29,7 +29,7 @@ impl<S> EitherResult for Result<S, S> {
 ///
 /// Iteration over the arena is deterministic.
 #[derive(Debug)]
-pub struct BiMap<P: PtrTrait, T: Clone + Eq + Hash, A> {
+pub struct BiMap<P: Ptr, T: Clone + Eq + Hash, A> {
     // TODO we need a more unified structure that can eliminate the extra `T` with internal
     // memoization. In particular `insert_with` needs better optimization, maybe there needs to be
     // a "staged entry" for progressively inserting at different steps (start with &T to check for
@@ -37,12 +37,12 @@ pub struct BiMap<P: PtrTrait, T: Clone + Eq + Hash, A> {
     // BTrees with higher radix trees and caches and quick defragmentation.
 
     // forwards lookup and set property
-    map: HashMap<T, Ptr<P>>,
+    map: HashMap<T, P>,
     // backwards lookup and determinism
     arena: Arena<P, (T, A)>,
 }
 
-impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
+impl<P: Ptr, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
@@ -59,7 +59,7 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
         &mut self.arena
     }
 
-    pub fn contains(&self, t: &T) -> Option<Ptr<P>> {
+    pub fn contains(&self, t: &T) -> Option<P> {
         self.map.get(t).copied()
     }
 
@@ -82,11 +82,7 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
     /// If `t` is already contained, it and `a` are not inserted. Returns `None`
     /// if inserted a new entry (use `F` to get the new `Ptr<P>`), else returns
     /// the `Ptr<P>` to an already existing `t`.
-    pub fn insert_with<F: FnOnce(Ptr<P>) -> A>(
-        &mut self,
-        t: T,
-        associate: F,
-    ) -> Result<Ptr<P>, Ptr<P>> {
+    pub fn insert_with<F: FnOnce(P) -> A>(&mut self, t: T, associate: F) -> Result<P, P> {
         match self.map.entry(t.clone()) {
             Entry::Occupied(o) => Err(*o.get()),
             Entry::Vacant(v) => {
@@ -97,25 +93,25 @@ impl<P: PtrTrait, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
         }
     }
 
-    pub fn insert(&mut self, t: T, a: A) -> Result<Ptr<P>, Ptr<P>> {
+    pub fn insert(&mut self, t: T, a: A) -> Result<P, P> {
         self.insert_with(t, |_| a)
     }
 
-    pub fn t_get<B: Borrow<T>>(&self, t: B) -> (Ptr<P>, &(T, A)) {
+    pub fn t_get<B: Borrow<T>>(&self, t: B) -> (P, &(T, A)) {
         let p = self.map[t.borrow()];
         (p, &self.arena[p])
     }
 
-    pub fn p_get<B: Borrow<Ptr<P>>>(&self, p: B) -> &(T, A) {
+    pub fn p_get<B: Borrow<P>>(&self, p: B) -> &(T, A) {
         &self.arena[p]
     }
 
-    pub fn a_get_mut<B: Borrow<Ptr<P>>>(&mut self, p: B) -> &mut A {
+    pub fn a_get_mut<B: Borrow<P>>(&mut self, p: B) -> &mut A {
         &mut self.arena[p].1
     }
 }
 
-impl<P: PtrTrait, T: Clone + Eq + Hash, A> Default for BiMap<P, T, A> {
+impl<P: Ptr, T: Clone + Eq + Hash, A> Default for BiMap<P, T, A> {
     fn default() -> Self {
         Self::new()
     }
