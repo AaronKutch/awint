@@ -4,27 +4,12 @@ use awint_core::Bits;
 use awint_ext::ExtAwi;
 use triple_arena::ptr_struct;
 
-#[cfg(debug_assertions)]
-ptr_struct!(PText);
-#[cfg(debug_assertions)]
-ptr_struct!(PBind);
-#[cfg(debug_assertions)]
-ptr_struct!(PVal);
-#[cfg(debug_assertions)]
-ptr_struct!(PWidth);
-#[cfg(debug_assertions)]
-ptr_struct!(PCWidth);
+#[cfg(feature = "debug")]
+ptr_struct!(PText; PBind; PVal; PWidth; PCWidth);
 
-#[cfg(not(debug_assertions))]
-ptr_struct!(PText());
-#[cfg(not(debug_assertions))]
-ptr_struct!(PBind());
-#[cfg(not(debug_assertions))]
-ptr_struct!(PVal());
-#[cfg(not(debug_assertions))]
-ptr_struct!(PWidth());
-#[cfg(not(debug_assertions))]
-ptr_struct!(PCWidth());
+// we should never need 4 billion entries for these macros
+#[cfg(not(feature = "debug"))]
+ptr_struct!(PText[u32](); PBind[u32](); PVal[u32](); PWidth[u32](); PCWidth[u32]());
 
 pub fn i128_to_usize(x: i128) -> Result<usize, String> {
     usize::try_from(x).map_err(|_| "`usize::try_from` overflow".to_owned())

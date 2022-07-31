@@ -5,7 +5,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-awint_macro_internals = { path = "../awint_macro_internals" }
+# the "debug" feature enabled here is a test for the flag and the generation counters it enables
+awint_macro_internals = { path = "../awint_macro_internals", features = ["debug"] }
 
 [dev-dependencies]
 awint = { path = "../awint", features = ["std", "rand_support", "serde_support"] }
