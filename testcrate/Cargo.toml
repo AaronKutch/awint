@@ -15,7 +15,7 @@ awint_internals = { path = "../awint_internals" }
 awint_macros = { path = "../awint_macros" }
 rand_xoshiro = "0.6"
 ron = "0.7"
-triple_arena = "0.5"
+triple_arena = "0.6"
 
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }

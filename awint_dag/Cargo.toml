@@ -16,8 +16,8 @@ awint_core = { version = "0.6.0", path = "../awint_core", default-features = fal
 awint_ext = { version = "0.6.0", path = "../awint_ext", default-features = false }
 awint_internals = { version = "0.6.0", path = "../awint_internals", default-features = false }
 awint_macros = { version = "0.6.0", path = "../awint_macros", default-features = false }
-triple_arena = "0.5"
-triple_arena_render = { version = "0.5", optional = true }
+triple_arena = "0.6"
+triple_arena_render = { version = "0.6", optional = true }
 
 [features]
 debug = ["triple_arena_render"]
