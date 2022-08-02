@@ -181,7 +181,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 12 {
+        match rng.next_u32() % 13 {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
@@ -354,6 +354,18 @@ fn dag_fuzzing() {
                     m.get_mut_num(x).abs_assign();
                     m.get_mut_dag(x).abs_assign();
                 }
+            }
+            12 => {
+                let w = 1 << (((m.rng.next_u32() as usize) % 2) + 1);
+                let lhs = m.next(w);
+                let rhs = m.next(w * 2);
+                let s = m.next(w.trailing_zeros() as usize);
+                let a = m.get_num(rhs);
+                let a_s = m.get_num(s);
+                m.get_mut_num(lhs).funnel(&a, &a_s).unwrap();
+                let b = m.get_dag(rhs);
+                let b_s = m.get_dag(s);
+                m.get_mut_dag(lhs).funnel(&b, &b_s).unwrap();
             }
             _ => unreachable!(),
         }

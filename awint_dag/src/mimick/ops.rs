@@ -297,14 +297,29 @@ impl Bits {
     }
 
     pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
-        Some(prim::bool::new(Get([self.state(), inx.into().state()])))
+        let inx = inx.into().state();
+        if let Literal(ref lit) = inx.op {
+            // optimization for the meta lowering
+            Some(prim::bool::new(StaticGet([self.state()], lit.to_usize())))
+        } else {
+            Some(prim::bool::new(Get([self.state(), inx])))
+        }
     }
 
     pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
-        self.update_state(
-            self.state_nzbw(),
-            Set([self.state(), inx.into().state(), bit.into().state()]),
-        );
+        let inx = inx.into().state();
+        if let Literal(ref lit) = inx.op {
+            // optimization for the meta lowering
+            self.update_state(
+                self.state_nzbw(),
+                StaticSet([self.state(), bit.into().state()], lit.to_usize()),
+            );
+        } else {
+            self.update_state(
+                self.state_nzbw(),
+                Set([self.state(), inx, bit.into().state()]),
+            );
+        }
         Some(())
     }
 

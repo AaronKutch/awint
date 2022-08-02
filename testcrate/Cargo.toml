@@ -9,7 +9,7 @@ publish = false
 awint_macro_internals = { path = "../awint_macro_internals", features = ["debug"] }
 
 [dev-dependencies]
-awint = { path = "../awint", features = ["std", "rand_support", "serde_support"] }
+awint = { path = "../awint", features = ["std", "rand_support", "serde_support", "dag"] }
 awint_dag = { path = "../awint_dag", features = ["debug"] }
 awint_internals = { path = "../awint_internals" }
 awint_macros = { path = "../awint_macros" }

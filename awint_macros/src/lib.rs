@@ -665,7 +665,7 @@ use awint_macro_internals::{
 };
 use proc_macro::TokenStream;
 
-/// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
+/// Specifies an `InlAwi` _type_ in terms of its bitwidth
 #[proc_macro]
 pub fn inlawi_ty(input: TokenStream) -> TokenStream {
     let bw = input

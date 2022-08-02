@@ -521,6 +521,18 @@ impl Bits {
     /// field is assigned to `self` from `rhs` starting from the bit position
     /// `s`. The shift cannot overflow because of the restriction on the
     /// bitwidth of `s`.
+    ///
+    /// ```
+    /// use awint::prelude::*;
+    /// let mut lhs = inlawi!(0xffff_ffffu32);
+    /// let mut rhs = inlawi!(0xfedc_ba98_7654_3210u64);
+    /// // `lhs.bw()` must be a power of two, `s.bw()` here is
+    /// // `log_2(32) == 5`. The value of `s` is set to what bit
+    /// // of `rhs` should be the starting bit for `lhs`.
+    /// let mut s = inlawi!(12u5);
+    /// lhs.funnel(&rhs, &s).unwrap();
+    /// assert_eq!(lhs, inlawi!(0xa9876543_u32))
+    /// ```
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         // because we later call `s.to_usize()` and assume it fits within `s.bw()`

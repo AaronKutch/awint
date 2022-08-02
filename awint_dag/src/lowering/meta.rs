@@ -130,6 +130,49 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
     out
 }
 
+/// Given the diagonal control lines and input of a crossbar with output width
+/// s.t. `input.bw() + out.bw() - 1 = signals.bw()`, returns the output. The
+/// `i`th input bit and `j`th output bit are controlled by the `out.bw()
+/// - 1 + i - j`th control line. `signal_range` uses a virtual `..` range of the
+///   possible signals.
+pub fn crossbar(
+    output: &mut Bits,
+    input: &Bits,
+    signals: &[inlawi_ty!(1)],
+    signal_range: (usize, usize),
+) {
+    assert!(signal_range.0 < signal_range.1);
+    assert_eq!(signal_range.1 - signal_range.0, signals.len());
+    for j in 0..output.bw() {
+        // output bar for ORing
+        let mut out_bar = inlawi!(0);
+        for i in 0..input.bw() {
+            let signal_inx = output.bw() - 1 + i - j;
+            if (signal_inx >= signal_range.0) && (signal_inx < signal_range.1) {
+                let mut inx = inlawi!(000);
+                inx.set(0, input.get(i).unwrap()).unwrap();
+                inx.set(1, signals[signal_inx - signal_range.0].to_bool())
+                    .unwrap();
+                inx.set(2, out_bar.to_bool()).unwrap();
+                out_bar.lut(&inlawi!(1111_1000), &inx).unwrap();
+            }
+        }
+        output.set(j, out_bar.to_bool());
+    }
+}
+
+pub fn funnel(x: &Bits, s: &Bits) -> ExtAwi {
+    assert_eq!(x.bw() & 1, 0);
+    assert_eq!(x.bw() / 2, 1 << s.bw());
+    let mut out = ExtAwi::zero(NonZeroUsize::new(x.bw() / 2).unwrap());
+    let signals = selector(s, None);
+    // select zero should connect the zeroeth crossbars, so the offset is `0 - 0 +
+    // out.bw() - 1`
+    let range = (out.bw() - 1, out.bw() - 1 + out.bw());
+    crossbar(&mut out, x, &signals, range);
+    out
+}
+
 pub fn bitwise_not(x: &Bits) -> ExtAwi {
     let mut out = ExtAwi::zero(x.nzbw());
     for i in 0..x.bw() {

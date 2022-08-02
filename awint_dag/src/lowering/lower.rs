@@ -5,7 +5,7 @@ use triple_arena::Ptr;
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, incrementer, resize,
+    dynamic_to_static_set, funnel, incrementer, resize,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*},
@@ -105,6 +105,12 @@ impl<P: Ptr> Dag<P> {
                 let x = ExtAwi::opaque(self.get_bw(x)?);
                 let out = x.get(x.bw() - 1).unwrap();
                 self.graft(ptr, list, &[out.state(), x.state()])?;
+            }
+            Funnel([x, s]) => {
+                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let s = ExtAwi::opaque(self.get_bw(s)?);
+                let out = funnel(&x, &s);
+                self.graft(ptr, list, &[out.state(), x.state(), s.state()])?;
             }
             Not([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x)?);

@@ -13,11 +13,10 @@ pub use awint_macros::*;
 /// Reexports every user-intended macro, structure, and function except for
 /// `SerdeError`.
 pub mod prelude {
-    pub use awint_macros::*;
-
-    pub use crate::{bw, cc, Bits, InlAwi};
+    pub use awint_core::{bw, Bits, InlAwi};
     #[cfg(feature = "alloc")]
-    pub use crate::{ExtAwi, FPType, FP};
+    pub use awint_ext::{ExtAwi, FPType, FP};
+    pub use awint_macros::*;
 }
 
 #[cfg(feature = "awint_dag")]
