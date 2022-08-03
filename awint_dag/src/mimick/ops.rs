@@ -300,7 +300,11 @@ impl Bits {
         let inx = inx.into().state();
         if let Literal(ref lit) = inx.op {
             // optimization for the meta lowering
-            Some(prim::bool::new(StaticGet([self.state()], lit.to_usize())))
+            let inx = lit.to_usize();
+            if inx >= self.bw() {
+                panic!("index of {} is out of bounds of bw {}", inx, self.bw());
+            }
+            Some(prim::bool::new(StaticGet([self.state()], inx)))
         } else {
             Some(prim::bool::new(Get([self.state(), inx])))
         }
@@ -310,9 +314,13 @@ impl Bits {
         let inx = inx.into().state();
         if let Literal(ref lit) = inx.op {
             // optimization for the meta lowering
+            let inx = lit.to_usize();
+            if inx >= self.bw() {
+                panic!("index of {} is out of bounds of bw {}", inx, self.bw());
+            }
             self.update_state(
                 self.state_nzbw(),
-                StaticSet([self.state(), bit.into().state()], lit.to_usize()),
+                StaticSet([self.state(), bit.into().state()], inx),
             );
         } else {
             self.update_state(

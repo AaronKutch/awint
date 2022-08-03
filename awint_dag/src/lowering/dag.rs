@@ -307,7 +307,7 @@ impl<P: Ptr> Dag<P> {
         self.noted.drain(start..);
         // this is very important to prevent infinite cycles where literals are not
         // being propogated and eliminating nodes
-        self.eval_tree(ptr)?;
+        self.eval_tree_visit(ptr, self.visit_gen)?;
         Ok(())
     }
 

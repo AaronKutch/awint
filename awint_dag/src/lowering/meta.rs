@@ -111,7 +111,7 @@ pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
         let mut tmp0 = inlawi!(000);
         tmp0.set(0, signal.to_bool()).unwrap();
         tmp0.set(1, bit.to_bool()).unwrap();
-        tmp0.set(2, bit.get(i).unwrap()).unwrap();
+        tmp0.set(2, bits.get(i).unwrap()).unwrap();
         let mut tmp1 = inlawi!(0);
         // multiplex between using `bits` or the `bit` depending on the signal
         tmp1.lut(&lut, &tmp0).unwrap();
