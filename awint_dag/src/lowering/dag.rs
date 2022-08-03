@@ -22,7 +22,7 @@ use crate::{
 pub struct Dag<P: Ptr> {
     pub dag: Arena<P, Node<P>>,
     /// for keeping nodes alive and having an ordered list for identification
-    pub noted: Vec<P>,
+    pub noted: Vec<Option<P>>,
     /// A kind of generation counter tracking the highest `visit_num` number
     pub visit_gen: u64,
 }
@@ -60,10 +60,12 @@ impl<P: Ptr> Dag<P> {
         (res, err)
     }
 
-    /// All of the `note`s should be reachable from the `leaves`. If `added` is
-    /// supplied then new nodes will be added to it. Note: the leaves and
-    /// all their preceding nodes should not share with previously existing
-    /// nodes in this DAG or else there will be duplication.
+    /// Adds the `leaves` and their source trees to `self`. For each `noted`
+    /// node in order, the translated node is pushed to `self.noted` or `None`
+    /// is pushed if it is not found in the source trees.The visit numbers of
+    /// all the added nodes are set to `self.visit_gen`. Note: the leaves
+    /// and all their preceding nodes should not share with previously
+    /// existing nodes in this DAG or else there will be duplication.
     pub fn add_group(
         &mut self,
         leaves: &[Rc<State>],
@@ -79,11 +81,12 @@ impl<P: Ptr> Dag<P> {
             let enter_loop = match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
                 Entry::Occupied(_) => false,
                 Entry::Vacant(v) => {
-                    let n = Node {
+                    let p = self.dag.insert_with(|this_p| Node {
                         nzbw: leaf.nzbw,
+                        visit: self.visit_gen,
+                        this_p,
                         ..Default::default()
-                    };
-                    let p = self.dag.insert(n);
+                    });
                     v.insert(p);
                     if let Some(ref mut v) = added {
                         v.push(p);
@@ -136,9 +139,11 @@ impl<P: Ptr> Dag<P> {
                                 }
                             }
                             Entry::Vacant(v) => {
-                                let mut n = Node::default();
-                                n.rc += 1;
-                                let p = self.dag.insert(n);
+                                let p = self.dag.insert_with(|this_p| Node {
+                                    rc: 1,
+                                    this_p,
+                                    ..Default::default()
+                                });
                                 v.insert(p);
                                 if let Some(ref mut v) = added {
                                     v.push(p);
@@ -155,22 +160,18 @@ impl<P: Ptr> Dag<P> {
             }
         }
         // handle the noted
-        let mut err = Ok(());
-        for (i, root) in noted.iter().enumerate() {
+        for root in noted {
             match lowerings.entry(PtrEqRc(Rc::clone(root))) {
                 Entry::Occupied(o) => {
                     self[o.get()].rc += 1;
-                    self.noted.push(*o.get());
+                    self.noted.push(Some(*o.get()));
                 }
                 Entry::Vacant(_) => {
-                    err = Err(EvalError::OtherString(format!(
-                        "note {} is not included in DAG reached by the leaves",
-                        i
-                    )));
+                    self.noted.push(None);
                 }
             }
         }
-        err
+        Ok(())
     }
 
     pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
@@ -179,7 +180,7 @@ impl<P: Ptr> Dag<P> {
                 return Err(err.clone())
             }
         }
-        for p in &self.noted {
+        for p in self.noted.iter().flatten() {
             if self.dag.get(*p).is_none() {
                 return Err(EvalError::InvalidPtr)
             }
@@ -274,21 +275,27 @@ impl<P: Ptr> Dag<P> {
             output_and_operands,
             Some(list),
         );
-        //dag.render_to_svg_file(std::path::PathBuf::from("debug.svg")).unwrap();
+        //self.render_to_svg_file(std::path::PathBuf::from("debug.svg"))
+        //    .unwrap();
         err?;
-        self.verify_integrity()?;
+        //self.verify_integrity()?;
         let start = self.noted.len() - output_and_operands.len();
         // graft inputs
         for i in 0..(output_and_operands.len() - 1) {
             let grafted = self.noted[start + i + 1];
             let graftee = self[ptr].op.operands()[i];
-            // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
-            // needing to change all the operands of potentially many internal nodes.
+            if let Some(grafted) = grafted {
+                // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
+                // needing to change all the operands of potentially many internal nodes.
 
-            self[grafted].op = Copy([graftee]);
+                self[grafted].op = Copy([graftee]);
+            } else {
+                // else the operand is not used because it was optimized away
+                self[graftee].rc = self[graftee].rc.checked_sub(1).unwrap();
+            }
         }
         // graft output
-        let output_p = self.noted[start];
+        let output_p = self.noted[start].unwrap();
         let output_node = self.dag.remove(output_p).unwrap();
         assert_eq!(list.swap_remove(list_len), output_p);
         let old_output = self.dag.replace_and_keep_gen(ptr, output_node).unwrap();

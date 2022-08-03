@@ -76,6 +76,7 @@ impl<P: Ptr> Dag<P> {
                 let bit = rhs.get(from.to_usize()).unwrap();
                 let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
                 let to = ExtAwi::opaque(self.get_bw(to)?);
+                // keep `lhs` the same, `out` has the set bit
                 let mut out = lhs.clone();
                 out.set(to.to_usize(), bit);
                 self.graft(ptr, list, &[

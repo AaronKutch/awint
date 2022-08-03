@@ -459,7 +459,9 @@ impl<P: Ptr> Dag<P> {
         }
     }
 
-    /// Evaluates the tree leading to `leaf` as much as possible
+    /// Evaluates the source tree of `leaf` as much as possible. Note that this
+    /// evaluates the entire source tree of `leaf`, see `eval_tree_visit` for
+    /// more specific evaluation.
     pub fn eval_tree(&mut self, leaf: P) -> Result<(), EvalError> {
         self.visit_gen += 1;
         let gen = self.visit_gen;
@@ -502,14 +504,69 @@ impl<P: Ptr> Dag<P> {
                 }
             } else {
                 let next_p = ops[i];
-                if self[next_p].visit_num == gen {
+                if self[next_p].visit == gen {
                     // peek at node for evaluatableness but do not visit node, this prevents
                     // exponential growth
                     path.last_mut().unwrap().0 += 1;
                     path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
                 } else {
-                    self[next_p].visit_num = gen;
+                    self[next_p].visit = gen;
                     path.push((0, next_p, true));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Evaluates the source tree of `leaf` to only nodes with `visit`.
+    pub fn eval_tree_visit(&mut self, leaf: P, visit: u64) -> Result<(), EvalError> {
+        self.visit_gen += 1;
+        let gen = self.visit_gen;
+        // DFS from leaf to roots
+        // the bool is set to false when an unevaluatabe node is in the sources
+        let mut path: Vec<(usize, P, bool)> = vec![(0, leaf, true)];
+        loop {
+            let (i, p, b) = path[path.len() - 1];
+            let ops = self[p].op.operands();
+            if ops.is_empty() {
+                // reached a root
+                path.pop().unwrap();
+                if path.is_empty() {
+                    break
+                }
+                path.last_mut().unwrap().0 += 1;
+                if !self[p].op.is_literal() {
+                    // is an `Invalid` or `Opaque`
+                    path.last_mut().unwrap().2 = false;
+                }
+            } else if i >= ops.len() {
+                // checked all sources
+                path.pop().unwrap();
+                if b {
+                    if let Err(e) = self.eval_node(p) {
+                        self[p].err = Some(e.clone());
+                        return Err(e)
+                    }
+                }
+                if path.is_empty() {
+                    break
+                }
+                if !b {
+                    path.last_mut().unwrap().2 = false;
+                }
+            } else {
+                let next_p = ops[i];
+                let next_visit = self[next_p].visit;
+                if next_visit == gen {
+                    // peek at node for evaluatableness but do not visit node
+                    path.last_mut().unwrap().0 += 1;
+                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
+                } else if next_visit == visit {
+                    self[next_p].visit = gen;
+                    path.push((0, next_p, true));
+                } else {
+                    path.last_mut().unwrap().0 += 1;
+                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
                 }
             }
         }

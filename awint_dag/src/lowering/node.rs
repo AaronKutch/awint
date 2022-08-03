@@ -30,7 +30,9 @@ pub struct Node<P: Ptr> {
     pub rc: u64,
     pub err: Option<EvalError>,
     /// Used in algorithms to check for visitation
-    pub visit_num: u64,
+    pub visit: u64,
+    /// `Ptr` to self
+    pub this_p: P,
 }
 
 /*
@@ -87,7 +89,11 @@ impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
         if let Some(w) = this.nzbw {
             res.center.push(format!("{}", w));
         }
-        //res.center.push(format!("rc: {}", this.rc));
+        if this.this_p == Ptr::invalid() {
+            res.center.push("Invalid".to_owned());
+        } else {
+            res.center.push(format!("{:?}", this.this_p));
+        }
         res
     }
 }

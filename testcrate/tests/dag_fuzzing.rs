@@ -145,7 +145,7 @@ impl Mem {
         for pair in self.a.vals() {
             let (mut dag, res) = Dag::<P0>::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
-            let leaf = dag.noted[0];
+            let leaf = dag.noted[0].unwrap();
             dag.eval_tree(leaf)?;
             dag.cull();
             if let Op::Literal(ref lit) = dag[leaf].op {
@@ -162,7 +162,7 @@ impl Mem {
         for pair in self.a.vals() {
             let (mut dag, res) = Dag::<P0>::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
-            let leaf = dag.noted[0];
+            let leaf = dag.noted[0].unwrap();
             dag.lower()?;
             dag.eval_tree(leaf)?;
             if let Op::Literal(ref lit) = dag[leaf].op {
@@ -181,7 +181,8 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        match rng.next_u32() % 13 {
+        let next_op = rng.next_u32() % 13;
+        match next_op {
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();

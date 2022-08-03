@@ -11,15 +11,24 @@ use crate::mimick::{Bits, ExtAwi, InlAwi};
 
 /// Given `inx.bw()` bits, this returns `2^inx.bw()` signals for every possible
 /// state of `inx`. The `i`th signal is true only if `inx.to_usize() == 1`.
-/// `cap` optionally restricts the number of signals
+/// `cap` optionally restricts the number of signals. If `cap` is 0, there is
+/// one signal line set to true unconditionally.
 pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
     let num = cap.unwrap_or_else(|| 1usize << inx.bw());
+    if num == 0 {
+        // not sure if this should be reachable
+        panic!();
+    }
+    if num == 1 {
+        return vec![inlawi!(1)]
+    }
+    let lb_num = num.next_power_of_two().trailing_zeros() as usize;
     let mut signals = vec![];
     let lut0 = inlawi!(0100);
     let lut1 = inlawi!(1000);
     for i in 0..num {
         let mut signal = inlawi!(1);
-        for j in 0..inx.bw() {
+        for j in 0..lb_num {
             let mut tmp = inlawi!(00);
             tmp.set(0, inx.get(j).unwrap());
             tmp.set(1, signal.to_bool());
@@ -74,6 +83,9 @@ pub fn dynamic_to_static_lut(out: &mut Bits, table: &Bits, inx: &Bits) {
 }
 
 pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
+    if bits.bw() == 1 {
+        return InlAwi::from(bits.to_bool())
+    }
     let signals = selector(inx, Some(bits.bw()));
     let lut = inlawi!(1111_1000);
     let mut out = inlawi!(0);
@@ -89,6 +101,9 @@ pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
 }
 
 pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
+    if bits.bw() == 1 {
+        return ExtAwi::from(bit)
+    }
     let signals = selector(inx, Some(bits.bw()));
     let mut out = ExtAwi::zero(bits.nzbw());
     let lut = inlawi!(1101_1000);
