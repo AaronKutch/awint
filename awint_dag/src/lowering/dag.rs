@@ -5,7 +5,6 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     num::NonZeroUsize,
     ops::{Index, IndexMut},
-    rc::Rc,
 };
 
 use awint_core::Bits;
@@ -14,8 +13,8 @@ use triple_arena::{Arena, Ptr};
 use Op::*;
 
 use crate::{
-    common::{EvalError, Op, State},
-    lowering::{Node, PtrEqRc},
+    common::{EvalError, Op, RcState},
+    lowering::Node,
 };
 
 #[derive(Debug)]
@@ -50,7 +49,7 @@ impl<P: Ptr> Dag<P> {
     /// If an error occurs, the DAG (which may be in an unfinished or completely
     /// broken state) is still returned along with the error enum, so that debug
     /// tools like `render_to_svg_file` can be used.
-    pub fn new(leaves: &[Rc<State>], noted: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
+    pub fn new(leaves: &[RcState], noted: &[RcState]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
             dag: Arena::new(),
             noted: vec![],
@@ -68,21 +67,21 @@ impl<P: Ptr> Dag<P> {
     /// existing nodes in this DAG or else there will be duplication.
     pub fn add_group(
         &mut self,
-        leaves: &[Rc<State>],
-        noted: &[Rc<State>],
+        leaves: &[RcState],
+        noted: &[RcState],
         mut added: Option<&mut Vec<P>>,
     ) -> Result<(), EvalError> {
         // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<PtrEqRc, P> = HashMap::new();
+        let mut lowerings: HashMap<RcState, P> = HashMap::new();
         // DFS from leaves to avoid much allocation, but we need the hashmap to avoid
         // retracking
-        let mut path: Vec<(usize, P, PtrEqRc)> = vec![];
+        let mut path: Vec<(usize, P, RcState)> = vec![];
         for leaf in leaves {
-            let enter_loop = match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
+            let enter_loop = match lowerings.entry(leaf.clone()) {
                 Entry::Occupied(_) => false,
                 Entry::Vacant(v) => {
                     let p = self.dag.insert_with(|this_p| Node {
-                        nzbw: leaf.nzbw,
+                        nzbw: leaf.nzbw(),
                         visit: self.visit_gen,
                         this_p,
                         ..Default::default()
@@ -91,18 +90,18 @@ impl<P: Ptr> Dag<P> {
                     if let Some(ref mut v) = added {
                         v.push(p);
                     }
-                    path.push((0, p, PtrEqRc(Rc::clone(leaf))));
+                    path.push((0, p, leaf.clone()));
                     true
                 }
             };
             if enter_loop {
                 loop {
                     let (current_i, current_p, current_rc) = path.last().unwrap();
-                    let u_ops = current_rc.0.op.operands();
-                    if let Some(t) = Op::translate_root(&current_rc.0.op) {
+                    let u_ops = current_rc.op().operands();
+                    if let Some(t) = Op::translate_root(current_rc.op()) {
                         // reached a root
                         self[current_p].op = t;
-                        self[current_p].nzbw = current_rc.0.nzbw;
+                        self[current_p].nzbw = current_rc.nzbw();
                         path.pop().unwrap();
                         if let Some((i, ..)) = path.last_mut() {
                             *i += 1;
@@ -112,12 +111,12 @@ impl<P: Ptr> Dag<P> {
                     } else if *current_i >= u_ops.len() {
                         // all operands should be ready
                         self[current_p].op =
-                            Op::translate(&current_rc.0.op, |lhs: &mut [P], rhs: &[Rc<State>]| {
+                            Op::translate(current_rc.op(), |lhs: &mut [P], rhs: &[RcState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                    *lhs = lowerings[&PtrEqRc(Rc::clone(rhs))];
+                                    *lhs = lowerings[rhs];
                                 }
                             });
-                        self[current_p].nzbw = current_rc.0.nzbw;
+                        self[current_p].nzbw = current_rc.nzbw();
                         path.pop().unwrap();
                         if let Some((i, ..)) = path.last_mut() {
                             *i += 1;
@@ -126,9 +125,7 @@ impl<P: Ptr> Dag<P> {
                         }
                     } else {
                         // check next operand
-                        match lowerings
-                            .entry(PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])))
-                        {
+                        match lowerings.entry(current_rc.op().operands()[*current_i].clone()) {
                             Entry::Occupied(o) => {
                                 // already explored
                                 self[o.get()].rc += 1;
@@ -148,11 +145,7 @@ impl<P: Ptr> Dag<P> {
                                 if let Some(ref mut v) = added {
                                     v.push(p);
                                 }
-                                path.push((
-                                    0,
-                                    p,
-                                    PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])),
-                                ));
+                                path.push((0, p, current_rc.op().operands()[*current_i].clone()));
                             }
                         }
                     }
@@ -161,7 +154,7 @@ impl<P: Ptr> Dag<P> {
         }
         // handle the noted
         for root in noted {
-            match lowerings.entry(PtrEqRc(Rc::clone(root))) {
+            match lowerings.entry(root.clone()) {
                 Entry::Occupied(o) => {
                     self[o.get()].rc += 1;
                     self.noted.push(Some(*o.get()));
@@ -240,38 +233,38 @@ impl<P: Ptr> Dag<P> {
     }
 
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
-    /// replaced by a set of lowered `Rc<State>` nodes with interfaces `output`
+    /// replaced by a set of lowered `RcState` nodes with interfaces `output`
     /// and `operands` corresponding to the original interfaces.
     pub fn graft(
         &mut self,
         ptr: P,
         list: &mut Vec<P>,
-        output_and_operands: &[Rc<State>],
+        output_and_operands: &[RcState],
     ) -> Result<(), EvalError> {
         if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
             return Err(EvalError::WrongNumberOfOperands)
         }
         for (i, op) in self[ptr].op.operands().iter().enumerate() {
-            if self[op].nzbw != output_and_operands[i + 1].nzbw {
+            if self[op].nzbw != output_and_operands[i + 1].nzbw() {
                 return Err(EvalError::OtherString(format!(
                     "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of {:?}",
                     i,
-                    output_and_operands[i + 1].nzbw,
+                    output_and_operands[i + 1].nzbw(),
                     self[op].nzbw
                 )))
             }
-            if !output_and_operands[i + 1].op.is_opaque() {
+            if !output_and_operands[i + 1].op().is_opaque() {
                 return Err(EvalError::ExpectedOpaque)
             }
         }
-        if self[ptr].nzbw != output_and_operands[0].nzbw {
+        if self[ptr].nzbw != output_and_operands[0].nzbw() {
             return Err(EvalError::WrongBitwidth)
         }
         // get length before adding group, the output node we remove will be put at this
         // address
         let list_len = list.len();
         let err = self.add_group(
-            &[Rc::clone(&output_and_operands[0])],
+            &[output_and_operands[0].clone()],
             output_and_operands,
             Some(list),
         );

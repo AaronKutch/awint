@@ -1,9 +1,9 @@
-use std::{fmt, num::NonZeroUsize, ops::*, rc::Rc};
+use std::{fmt, num::NonZeroUsize, ops::*};
 
 use awint_internals::*;
 
 use crate::{
-    common::{Lineage, Op, State},
+    common::{Lineage, Op, RcState},
     mimick::{primitive as prim, InlAwi},
 };
 
@@ -73,13 +73,13 @@ macro_rules! prim {
                     Some(bw($bw))
                 }
 
-                fn state(&self) -> Rc<State> {
+                fn state(&self) -> RcState {
                     self.0.state()
                 }
             }
 
             impl $name {
-                pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+                pub(crate) fn new(op: Op<RcState>) -> Self {
                     Self(InlAwi::new(op))
                 }
             }
@@ -136,13 +136,13 @@ impl Lineage for bool {
         Some(bw(1))
     }
 
-    fn state(&self) -> Rc<State> {
+    fn state(&self) -> RcState {
         self.0.state()
     }
 }
 
 impl bool {
-    pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+    pub(crate) fn new(op: Op<RcState>) -> Self {
         Self(InlAwi::new(op))
     }
 }

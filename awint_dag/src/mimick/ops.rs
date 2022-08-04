@@ -298,7 +298,7 @@ impl Bits {
 
     pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
         let inx = inx.into().state();
-        if let Literal(ref lit) = inx.op {
+        if let Literal(ref lit) = inx.op() {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
@@ -312,7 +312,7 @@ impl Bits {
 
     pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
         let inx = inx.into().state();
-        if let Literal(ref lit) = inx.op {
+        if let Literal(ref lit) = inx.op() {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {

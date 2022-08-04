@@ -12,16 +12,51 @@ pub struct State {
     /// Bitwidth
     pub nzbw: Option<NonZeroUsize>,
     /// Operation
-    pub op: Op<Rc<Self>>,
+    pub op: Op<RcState>,
 }
 
-impl State {
-    pub fn new(nzbw: Option<NonZeroUsize>, op: Op<Rc<Self>>) -> Rc<Self> {
-        Rc::new(Self { nzbw, op })
+/// Abstracts around the reference counting mechanism. Defines equality using
+/// `Rc::ptr_eq`.
+#[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
+#[derive(Hash, Default, Eq)]
+pub struct RcState {
+    state: Rc<State>,
+}
+
+impl Clone for RcState {
+    fn clone(&self) -> Self {
+        Self {
+            state: Rc::clone(&self.state),
+        }
+    }
+}
+
+impl PartialEq for RcState {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.state, &other.state)
+    }
+}
+
+impl RcState {
+    pub fn new(nzbw: Option<NonZeroUsize>, op: Op<RcState>) -> RcState {
+        RcState {
+            state: Rc::new(State { nzbw, op }),
+        }
     }
 
-    // Note: there is no `update` function, because we run into borrowing problems
-    // when using a previous state to create a new one and replace the current
+    pub fn nzbw(&self) -> Option<NonZeroUsize> {
+        self.state.nzbw
+    }
+
+    pub fn op(&self) -> &Op<RcState> {
+        &self.state.op
+    }
+}
+
+impl fmt::Debug for RcState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.state)
+    }
 }
 
 impl fmt::Debug for State {

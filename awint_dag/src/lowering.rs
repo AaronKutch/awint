@@ -8,4 +8,4 @@ pub use dag::*;
 pub use eval::*;
 pub use lower::*;
 pub use meta::*;
-pub use node::{Node, PtrEqRc};
+pub use node::Node;

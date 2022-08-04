@@ -1,24 +1,13 @@
-use std::{num::NonZeroUsize, rc::Rc};
+use std::num::NonZeroUsize;
 
 use triple_arena::{ptr_struct, Ptr};
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
 
-use crate::common::{EvalError, Op, State};
+use crate::common::{EvalError, Op};
 
 // used in some internal algorithms
 ptr_struct!(P0);
-
-/// Defines equality using Rc::ptr_eq
-#[allow(clippy::derive_hash_xor_eq)] // If `ptr_eq` is true, the `Hash` defined on `Rc` also agrees
-#[derive(Debug, Hash, Clone, Eq)]
-pub struct PtrEqRc(pub Rc<State>);
-
-impl PartialEq for PtrEqRc {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct Node<P: Ptr> {

@@ -3,14 +3,13 @@ use std::{
     fmt,
     num::NonZeroUsize,
     ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
-    rc::Rc,
 };
 
 use awint_internals::*;
 
 use crate::{
-    common::{Lineage, Op, State},
-    mimick::{Bits, InnerState},
+    common::{Lineage, Op, RcState},
+    mimick::Bits,
     primitive as prim,
 };
 
@@ -18,7 +17,7 @@ use crate::{
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
 pub struct InlAwi<const BW: usize, const LEN: usize> {
-    pub(in crate::mimick) _inlawi_raw: [InnerState; 1],
+    pub(in crate::mimick) _inlawi_raw: [RcState; 1],
 }
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
@@ -26,8 +25,8 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
         Some(NonZeroUsize::new(BW).unwrap())
     }
 
-    fn state(&self) -> Rc<State> {
-        Rc::clone(&self._inlawi_raw[0].0)
+    fn state(&self) -> RcState {
+        self._inlawi_raw[0].clone()
     }
 }
 
@@ -38,13 +37,10 @@ impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+    pub(crate) fn new(op: Op<RcState>) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
-            _inlawi_raw: [InnerState(State::new(
-                Some(Self::hidden_const_nzbw().unwrap()),
-                op,
-            ))],
+            _inlawi_raw: [RcState::new(Some(Self::hidden_const_nzbw().unwrap()), op)],
         }
     }
 
@@ -164,7 +160,7 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> fmt::Debug for InlAwi<BW, LEN> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "InlAwi({:?})", self._inlawi_raw[0].0)
+        write!(f, "InlAwi({:?})", self._inlawi_raw[0])
     }
 }
 
@@ -300,7 +296,7 @@ impl From<prim::isize> for UsizeInlAwi {
 ///
 /// Note: `extawi!(opaque: ..64)` just works
 pub struct ExtAwi {
-    pub(in crate::mimick) _extawi_raw: [InnerState; 1],
+    pub(in crate::mimick) _extawi_raw: [RcState; 1],
 }
 
 impl Lineage for ExtAwi {
@@ -308,8 +304,8 @@ impl Lineage for ExtAwi {
         None
     }
 
-    fn state(&self) -> Rc<State> {
-        Rc::clone(&self._extawi_raw[0].0)
+    fn state(&self) -> RcState {
+        self._extawi_raw[0].clone()
     }
 }
 
@@ -320,16 +316,16 @@ impl Clone for ExtAwi {
 }
 
 impl ExtAwi {
-    fn new(nzbw: NonZeroUsize, op: Op<Rc<State>>) -> Self {
+    fn new(nzbw: NonZeroUsize, op: Op<RcState>) -> Self {
         Self {
-            _extawi_raw: [InnerState(State::new(Some(nzbw), op))],
+            _extawi_raw: [RcState::new(Some(nzbw), op)],
         }
     }
 
     /// Used by tests for getting a clone with no `Op::Copy` inbetween
     pub fn unstable_clone_identical(&self) -> Self {
         Self {
-            _extawi_raw: [InnerState(self.state())],
+            _extawi_raw: [self.state()],
         }
     }
 
@@ -340,7 +336,7 @@ impl ExtAwi {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.state().nzbw.unwrap()
+        self.state().nzbw().unwrap()
     }
 
     pub fn bw(&self) -> usize {
@@ -460,7 +456,7 @@ impl AsMut<Bits> for ExtAwi {
 
 impl fmt::Debug for ExtAwi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ExtAwi({:?})", self._extawi_raw[0].0)
+        write!(f, "ExtAwi({:?})", self._extawi_raw[0])
     }
 }
 

@@ -1,13 +1,13 @@
-use std::{num::NonZeroUsize, rc::Rc};
+use std::num::NonZeroUsize;
 
-use crate::common::State;
+use crate::common::RcState;
 
 /// The mimicking structs have extra information that the lowering logic needs
 /// but that can't be exposed in their public interfaces. This trait exposes
 /// extra functions on mimicking structs.
 pub trait Lineage {
     fn state_nzbw(&self) -> Option<NonZeroUsize> {
-        self.state().nzbw
+        self.state().nzbw()
     }
 
     /// If the underlying type has a known constant bitwidth, such as `InlAwi`
@@ -19,5 +19,5 @@ pub trait Lineage {
     }
 
     /// Get a reference to the `State` of `self`
-    fn state(&self) -> Rc<State>;
+    fn state(&self) -> RcState;
 }
