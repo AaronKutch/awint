@@ -8,7 +8,7 @@ use std::{
 use awint_internals::*;
 
 use crate::{
-    common::{Lineage, Op, RcState},
+    common::{get_state, new_state_with, Lineage, Op, PState},
     mimick::Bits,
     primitive as prim,
 };
@@ -17,7 +17,7 @@ use crate::{
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
 pub struct InlAwi<const BW: usize, const LEN: usize> {
-    pub(in crate::mimick) _inlawi_raw: [RcState; 1],
+    pub(in crate::mimick) _inlawi_raw: [PState; 1],
 }
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
@@ -25,7 +25,7 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
         Some(NonZeroUsize::new(BW).unwrap())
     }
 
-    fn state(&self) -> RcState {
+    fn state(&self) -> PState {
         self._inlawi_raw[0].clone()
     }
 }
@@ -37,10 +37,10 @@ impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub(crate) fn new(op: Op<RcState>) -> Self {
+    pub(crate) fn new(op: Op<PState>) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
-            _inlawi_raw: [RcState::new(Some(Self::hidden_const_nzbw().unwrap()), op)],
+            _inlawi_raw: [new_state_with(Some(Self::hidden_const_nzbw().unwrap()), op)],
         }
     }
 
@@ -296,7 +296,7 @@ impl From<prim::isize> for UsizeInlAwi {
 ///
 /// Note: `extawi!(opaque: ..64)` just works
 pub struct ExtAwi {
-    pub(in crate::mimick) _extawi_raw: [RcState; 1],
+    pub(in crate::mimick) _extawi_raw: [PState; 1],
 }
 
 impl Lineage for ExtAwi {
@@ -304,7 +304,7 @@ impl Lineage for ExtAwi {
         None
     }
 
-    fn state(&self) -> RcState {
+    fn state(&self) -> PState {
         self._extawi_raw[0].clone()
     }
 }
@@ -316,9 +316,9 @@ impl Clone for ExtAwi {
 }
 
 impl ExtAwi {
-    fn new(nzbw: NonZeroUsize, op: Op<RcState>) -> Self {
+    fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         Self {
-            _extawi_raw: [RcState::new(Some(nzbw), op)],
+            _extawi_raw: [new_state_with(Some(nzbw), op)],
         }
     }
 
@@ -336,7 +336,7 @@ impl ExtAwi {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.state().nzbw().unwrap()
+        get_state(self.state()).nzbw.unwrap()
     }
 
     pub fn bw(&self) -> usize {

@@ -1,13 +1,10 @@
 use std::num::NonZeroUsize;
 
-use triple_arena::{ptr_struct, Ptr};
+use triple_arena::Ptr;
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
 
 use crate::common::{EvalError, Op};
-
-// used in some internal algorithms
-ptr_struct!(P0);
 
 #[derive(Debug, Default)]
 pub struct Node<P: Ptr> {

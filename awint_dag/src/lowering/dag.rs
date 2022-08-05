@@ -13,7 +13,7 @@ use triple_arena::{Arena, Ptr};
 use Op::*;
 
 use crate::{
-    common::{EvalError, Op, RcState},
+    common::{get_state, EvalError, Op, PState},
     lowering::Node,
 };
 
@@ -49,7 +49,7 @@ impl<P: Ptr> Dag<P> {
     /// If an error occurs, the DAG (which may be in an unfinished or completely
     /// broken state) is still returned along with the error enum, so that debug
     /// tools like `render_to_svg_file` can be used.
-    pub fn new(leaves: &[RcState], noted: &[RcState]) -> (Self, Result<(), EvalError>) {
+    pub fn new(leaves: &[PState], noted: &[PState]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
             dag: Arena::new(),
             noted: vec![],
@@ -67,21 +67,21 @@ impl<P: Ptr> Dag<P> {
     /// existing nodes in this DAG or else there will be duplication.
     pub fn add_group(
         &mut self,
-        leaves: &[RcState],
-        noted: &[RcState],
+        leaves: &[PState],
+        noted: &[PState],
         mut added: Option<&mut Vec<P>>,
     ) -> Result<(), EvalError> {
         // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<RcState, P> = HashMap::new();
+        let mut lowerings: HashMap<PState, P> = HashMap::new();
         // DFS from leaves to avoid much allocation, but we need the hashmap to avoid
         // retracking
-        let mut path: Vec<(usize, P, RcState)> = vec![];
+        let mut path: Vec<(usize, P, PState)> = vec![];
         for leaf in leaves {
             let enter_loop = match lowerings.entry(leaf.clone()) {
                 Entry::Occupied(_) => false,
                 Entry::Vacant(v) => {
                     let p = self.dag.insert_with(|this_p| Node {
-                        nzbw: leaf.nzbw(),
+                        nzbw: get_state(*leaf).nzbw,
                         visit: self.visit_gen,
                         this_p,
                         ..Default::default()
@@ -97,26 +97,26 @@ impl<P: Ptr> Dag<P> {
             if enter_loop {
                 loop {
                     let (current_i, current_p, current_rc) = path.last().unwrap();
-                    let u_ops = current_rc.op().operands();
-                    if let Some(t) = Op::translate_root(current_rc.op()) {
+                    let current_rc = get_state(*current_rc);
+                    if let Some(t) = Op::translate_root(&current_rc.op) {
                         // reached a root
                         self[current_p].op = t;
-                        self[current_p].nzbw = current_rc.nzbw();
+                        self[current_p].nzbw = current_rc.nzbw;
                         path.pop().unwrap();
                         if let Some((i, ..)) = path.last_mut() {
                             *i += 1;
                         } else {
                             break
                         }
-                    } else if *current_i >= u_ops.len() {
+                    } else if *current_i >= current_rc.op.num_operands() {
                         // all operands should be ready
                         self[current_p].op =
-                            Op::translate(current_rc.op(), |lhs: &mut [P], rhs: &[RcState]| {
+                            Op::translate(&current_rc.op, |lhs: &mut [P], rhs: &[PState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
                                     *lhs = lowerings[rhs];
                                 }
                             });
-                        self[current_p].nzbw = current_rc.nzbw();
+                        self[current_p].nzbw = current_rc.nzbw;
                         path.pop().unwrap();
                         if let Some((i, ..)) = path.last_mut() {
                             *i += 1;
@@ -125,7 +125,7 @@ impl<P: Ptr> Dag<P> {
                         }
                     } else {
                         // check next operand
-                        match lowerings.entry(current_rc.op().operands()[*current_i].clone()) {
+                        match lowerings.entry(current_rc.op.operands()[*current_i].clone()) {
                             Entry::Occupied(o) => {
                                 // already explored
                                 self[o.get()].rc += 1;
@@ -145,7 +145,7 @@ impl<P: Ptr> Dag<P> {
                                 if let Some(ref mut v) = added {
                                     v.push(p);
                                 }
-                                path.push((0, p, current_rc.op().operands()[*current_i].clone()));
+                                path.push((0, p, current_rc.op.operands()[*current_i].clone()));
                             }
                         }
                     }
@@ -233,31 +233,30 @@ impl<P: Ptr> Dag<P> {
     }
 
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
-    /// replaced by a set of lowered `RcState` nodes with interfaces `output`
+    /// replaced by a set of lowered `PState` nodes with interfaces `output`
     /// and `operands` corresponding to the original interfaces.
     pub fn graft(
         &mut self,
         ptr: P,
         list: &mut Vec<P>,
-        output_and_operands: &[RcState],
+        output_and_operands: &[PState],
     ) -> Result<(), EvalError> {
         if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
             return Err(EvalError::WrongNumberOfOperands)
         }
         for (i, op) in self[ptr].op.operands().iter().enumerate() {
-            if self[op].nzbw != output_and_operands[i + 1].nzbw() {
+            let current_state = get_state(output_and_operands[i + 1]);
+            if self[op].nzbw != current_state.nzbw {
                 return Err(EvalError::OtherString(format!(
                     "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of {:?}",
-                    i,
-                    output_and_operands[i + 1].nzbw(),
-                    self[op].nzbw
+                    i, current_state.nzbw, self[op].nzbw
                 )))
             }
-            if !output_and_operands[i + 1].op().is_opaque() {
+            if !current_state.op.is_opaque() {
                 return Err(EvalError::ExpectedOpaque)
             }
         }
-        if self[ptr].nzbw != output_and_operands[0].nzbw() {
+        if self[ptr].nzbw != get_state(output_and_operands[0]).nzbw {
             return Err(EvalError::WrongBitwidth)
         }
         // get length before adding group, the output node we remove will be put at this

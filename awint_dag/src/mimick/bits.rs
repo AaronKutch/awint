@@ -1,7 +1,7 @@
 use std::{fmt, mem, num::NonZeroUsize, ptr};
 
 use crate::{
-    common::{Lineage, Op, RcState},
+    common::{get_state, new_state_with, Lineage, Op, PState},
     mimick::{ExtAwi, InlAwi},
 };
 
@@ -11,9 +11,9 @@ use crate::{
 /// Mimicking `awint_core::Bits`
 #[repr(transparent)] // for the transmute
 pub struct Bits {
-    // use different names for the different raw `RcState`s, or else Rust can think we are
+    // use different names for the different raw `PState`s, or else Rust can think we are
     // trying to go through the `Deref` impls
-    _bits_raw: [RcState],
+    _bits_raw: [PState],
 }
 
 // Safety: `Bits` follows standard slice initialization invariants and is marked
@@ -21,15 +21,15 @@ pub struct Bits {
 // unbounded.
 
 impl<'a> Bits {
-    /// Assumes this is called on a pointer from a `[RcState; 1]`
-    unsafe fn from_raw_parts(raw_ptr: *const RcState) -> &'a Self {
-        unsafe { mem::transmute::<&[RcState], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, 1)) }
+    /// Assumes this is called on a pointer from a `[PState; 1]`
+    unsafe fn from_raw_parts(raw_ptr: *const PState) -> &'a Self {
+        unsafe { mem::transmute::<&[PState], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, 1)) }
     }
 
-    /// Assumes this is called on a pointer from a `[RcState; 1]`
-    unsafe fn from_raw_parts_mut(raw_ptr: *mut RcState) -> &'a mut Self {
+    /// Assumes this is called on a pointer from a `[PState; 1]`
+    unsafe fn from_raw_parts_mut(raw_ptr: *mut PState) -> &'a mut Self {
         unsafe {
-            mem::transmute::<&mut [RcState], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
+            mem::transmute::<&mut [PState], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
                 raw_ptr, 1,
             ))
         }
@@ -61,7 +61,7 @@ impl Lineage for &Bits {
         None
     }
 
-    fn state(&self) -> RcState {
+    fn state(&self) -> PState {
         self._bits_raw[0].clone()
     }
 }
@@ -71,7 +71,7 @@ impl Lineage for &mut Bits {
         None
     }
 
-    fn state(&self) -> RcState {
+    fn state(&self) -> PState {
         self._bits_raw[0].clone()
     }
 }
@@ -85,7 +85,7 @@ impl Bits {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.state().nzbw().unwrap()
+        get_state(self.state()).nzbw.unwrap()
     }
 
     pub fn bw(&self) -> usize {
@@ -100,10 +100,10 @@ impl Bits {
         self
     }
 
-    pub fn update_state(&mut self, nzbw: Option<NonZeroUsize>, op: Op<RcState>) {
-        // other `RcState`s that need the old state will keep it alive despite this one
+    pub fn update_state(&mut self, nzbw: Option<NonZeroUsize>, op: Op<PState>) {
+        // other `PState`s that need the old state will keep it alive despite this one
         // being dropped
-        let _: RcState = mem::replace(&mut self._bits_raw[0], RcState::new(nzbw, op));
+        let _: PState = mem::replace(&mut self._bits_raw[0], new_state_with(nzbw, op));
     }
 }
 
