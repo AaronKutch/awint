@@ -1,23 +1,22 @@
 //! Lowers everything into LUT form
 
 use awint_macros::inlawi;
-use triple_arena::Ptr;
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
     dynamic_to_static_set, funnel, incrementer, resize,
 };
 use crate::{
-    common::{EvalError, Lineage, Op::*},
+    common::{EvalError, Lineage, Op::*, PNode},
     lowering::{negator, Dag},
     mimick::{Bits, ExtAwi, InlAwi},
 };
 
-impl<P: Ptr> Dag<P> {
+impl Dag {
     /// Lowers everything down to `Invalid`, `Opaque`, `Copy`, `StaticGet`,
     /// `StaticSet`, and `StaticLut`. If unlowered nodes were produced they
     /// are added to `list`
-    pub fn lower_node(&mut self, ptr: P, list: &mut Vec<P>) -> Result<(), EvalError> {
+    pub fn lower_node(&mut self, ptr: PNode, list: &mut Vec<PNode>) -> Result<(), EvalError> {
         if !self.dag.contains(ptr) {
             return Err(EvalError::InvalidPtr)
         }

@@ -2,45 +2,47 @@
 
 use std::{
     borrow::Borrow,
-    collections::{hash_map::Entry, HashMap},
     num::NonZeroUsize,
     ops::{Index, IndexMut},
 };
 
 use awint_core::Bits;
 use awint_internals::BITS;
-use triple_arena::{Arena, Ptr};
+use triple_arena::Arena;
 use Op::*;
 
 use crate::{
-    common::{get_state, EvalError, Op, PState},
+    common::{
+        state::{get_state, next_state_visit_gen, set_state_node_map, PState},
+        EvalError, Op, PNode,
+    },
     lowering::Node,
 };
 
 #[derive(Debug)]
-pub struct Dag<P: Ptr> {
-    pub dag: Arena<P, Node<P>>,
+pub struct Dag {
+    pub dag: Arena<PNode, Node<PNode>>,
     /// for keeping nodes alive and having an ordered list for identification
-    pub noted: Vec<Option<P>>,
+    pub noted: Vec<Option<PNode>>,
     /// A kind of generation counter tracking the highest `visit_num` number
     pub visit_gen: u64,
 }
 
-impl<P: Ptr, B: Borrow<P>> Index<B> for Dag<P> {
-    type Output = Node<P>;
+impl<B: Borrow<PNode>> Index<B> for Dag {
+    type Output = Node<PNode>;
 
-    fn index(&self, index: B) -> &Node<P> {
+    fn index(&self, index: B) -> &Node<PNode> {
         self.dag.get(*index.borrow()).unwrap()
     }
 }
 
-impl<P: Ptr, B: Borrow<P>> IndexMut<B> for Dag<P> {
-    fn index_mut(&mut self, index: B) -> &mut Node<P> {
+impl<B: Borrow<PNode>> IndexMut<B> for Dag {
+    fn index_mut(&mut self, index: B) -> &mut Node<PNode> {
         self.dag.get_mut(*index.borrow()).unwrap()
     }
 }
 
-impl<P: Ptr> Dag<P> {
+impl Dag {
     /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
     /// version. The optional `note`s should be included in the DAG reachable
     /// from the `leaves`, and should be `Opaque` if they should remain
@@ -69,37 +71,29 @@ impl<P: Ptr> Dag<P> {
         &mut self,
         leaves: &[PState],
         noted: &[PState],
-        mut added: Option<&mut Vec<P>>,
+        mut added: Option<&mut Vec<PNode>>,
     ) -> Result<(), EvalError> {
-        // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<PState, P> = HashMap::new();
-        // DFS from leaves to avoid much allocation, but we need the hashmap to avoid
-        // retracking
-        let mut path: Vec<(usize, P, PState)> = vec![];
+        let state_visit = next_state_visit_gen();
+        let mut path: Vec<(usize, PNode, PState)> = vec![];
         for leaf in leaves {
-            let enter_loop = match lowerings.entry(*leaf) {
-                Entry::Occupied(_) => false,
-                Entry::Vacant(v) => {
-                    let p = self.dag.insert_with(|this_p| Node {
-                        nzbw: get_state(*leaf).nzbw,
-                        visit: self.visit_gen,
-                        this_p,
-                        op: Op::Invalid,
-                        rc: 0,
-                        err: None,
-                    });
-                    v.insert(p);
-                    if let Some(ref mut v) = added {
-                        v.push(p);
-                    }
-                    path.push((0, p, *leaf));
-                    true
+            let leaf_state = get_state(*leaf).unwrap();
+            if leaf_state.visit != state_visit {
+                let p_leaf = self.dag.insert_with(|this_p| Node {
+                    nzbw: get_state(*leaf).unwrap().nzbw,
+                    visit: self.visit_gen,
+                    this_p,
+                    op: Op::Invalid,
+                    rc: 0,
+                    err: None,
+                });
+                set_state_node_map(*leaf, state_visit, p_leaf);
+                if let Some(ref mut v) = added {
+                    v.push(p_leaf);
                 }
-            };
-            if enter_loop {
+                path.push((0, p_leaf, *leaf));
                 loop {
                     let (current_i, current_p, current_rc) = path.last().unwrap();
-                    let current_rc = get_state(*current_rc);
+                    let current_rc = get_state(*current_rc).unwrap();
                     if let Some(t) = Op::translate_root(&current_rc.op) {
                         // reached a root
                         self[current_p].op = t;
@@ -113,9 +107,9 @@ impl<P: Ptr> Dag<P> {
                     } else if *current_i >= current_rc.op.num_operands() {
                         // all operands should be ready
                         self[current_p].op =
-                            Op::translate(&current_rc.op, |lhs: &mut [P], rhs: &[PState]| {
+                            Op::translate(&current_rc.op, |lhs: &mut [PNode], rhs: &[PState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                    *lhs = lowerings[rhs];
+                                    *lhs = get_state(*rhs).unwrap().node_map;
                                 }
                             });
                         self[current_p].nzbw = current_rc.nzbw;
@@ -127,46 +121,44 @@ impl<P: Ptr> Dag<P> {
                         }
                     } else {
                         // check next operand
-                        match lowerings.entry(current_rc.op.operands()[*current_i]) {
-                            Entry::Occupied(o) => {
-                                // already explored
-                                self[o.get()].rc += 1;
-                                if let Some((i, ..)) = path.last_mut() {
-                                    *i += 1;
-                                } else {
-                                    break
-                                }
+                        let next_p = current_rc.op.operands()[*current_i];
+                        let next_state = get_state(next_p).unwrap();
+                        if next_state.visit == state_visit {
+                            // already explored
+                            self[next_state.node_map].rc += 1;
+                            if let Some((i, ..)) = path.last_mut() {
+                                *i += 1;
+                            } else {
+                                break
                             }
-                            Entry::Vacant(v) => {
-                                let p = self.dag.insert_with(|this_p| Node {
-                                    rc: 1,
-                                    this_p,
-                                    nzbw: current_rc.nzbw,
-                                    op: Op::Invalid,
-                                    err: None,
-                                    visit: 0,
-                                });
-                                v.insert(p);
-                                if let Some(ref mut v) = added {
-                                    v.push(p);
-                                }
-                                path.push((0, p, current_rc.op.operands()[*current_i]));
+                        } else {
+                            let p = self.dag.insert_with(|this_p| Node {
+                                rc: 1,
+                                this_p,
+                                nzbw: current_rc.nzbw,
+                                op: Op::Invalid,
+                                err: None,
+                                visit: 0,
+                            });
+                            set_state_node_map(next_p, state_visit, p);
+                            if let Some(ref mut v) = added {
+                                v.push(p);
                             }
+                            path.push((0, p, current_rc.op.operands()[*current_i]));
                         }
                     }
                 }
             }
         }
         // handle the noted
-        for root in noted {
-            match lowerings.entry(*root) {
-                Entry::Occupied(o) => {
-                    self[o.get()].rc += 1;
-                    self.noted.push(Some(*o.get()));
-                }
-                Entry::Vacant(_) => {
-                    self.noted.push(None);
-                }
+        for p_noted in noted {
+            let state = get_state(*p_noted).unwrap();
+            if state.visit == state_visit {
+                let p_node = state.node_map;
+                self[p_node].rc += 1;
+                self.noted.push(Some(p_node));
+            } else {
+                self.noted.push(None);
             }
         }
         Ok(())
@@ -188,12 +180,12 @@ impl<P: Ptr> Dag<P> {
     }
 
     /// Returns a list of pointers to all nodes in no particular order
-    pub fn ptrs(&self) -> Vec<P> {
+    pub fn ptrs(&self) -> Vec<PNode> {
         self.dag.ptrs().collect()
     }
 
     /// Assumes `ptr` is a literal
-    pub fn lit(&self, ptr: P) -> &Bits {
+    pub fn lit(&self, ptr: PNode) -> &Bits {
         if let Literal(ref lit) = self[ptr].op {
             lit
         } else {
@@ -203,7 +195,7 @@ impl<P: Ptr> Dag<P> {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth 1.
-    pub fn bool(&self, ptr: P) -> Result<bool, EvalError> {
+    pub fn bool(&self, ptr: PNode) -> Result<bool, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == 1 {
                 Ok(lit.to_bool())
@@ -217,7 +209,7 @@ impl<P: Ptr> Dag<P> {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth `usize::BITS`.
-    pub fn usize(&self, ptr: P) -> Result<usize, EvalError> {
+    pub fn usize(&self, ptr: PNode) -> Result<usize, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == BITS {
                 Ok(lit.to_usize())
@@ -229,7 +221,7 @@ impl<P: Ptr> Dag<P> {
         }
     }
 
-    pub fn get_bw<B: Borrow<P>>(&self, ptr: B) -> NonZeroUsize {
+    pub fn get_bw<B: Borrow<PNode>>(&self, ptr: B) -> NonZeroUsize {
         self[ptr].nzbw
     }
 
@@ -238,15 +230,15 @@ impl<P: Ptr> Dag<P> {
     /// and `operands` corresponding to the original interfaces.
     pub fn graft(
         &mut self,
-        ptr: P,
-        list: &mut Vec<P>,
+        ptr: PNode,
+        list: &mut Vec<PNode>,
         output_and_operands: &[PState],
     ) -> Result<(), EvalError> {
         if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
             return Err(EvalError::WrongNumberOfOperands)
         }
         for (i, op) in self[ptr].op.operands().iter().enumerate() {
-            let current_state = get_state(output_and_operands[i + 1]);
+            let current_state = get_state(output_and_operands[i + 1]).unwrap();
             if self[op].nzbw != current_state.nzbw {
                 return Err(EvalError::OtherString(format!(
                     "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of {:?}",
@@ -257,7 +249,7 @@ impl<P: Ptr> Dag<P> {
                 return Err(EvalError::ExpectedOpaque)
             }
         }
-        if self[ptr].nzbw != get_state(output_and_operands[0]).nzbw {
+        if self[ptr].nzbw != get_state(output_and_operands[0]).unwrap().nzbw {
             return Err(EvalError::WrongBitwidth)
         }
         // get length before adding group, the output node we remove will be put at this

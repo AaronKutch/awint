@@ -5,7 +5,7 @@ use awint_internals::BITS;
 use Op::*;
 
 use crate::{
-    common::{get_state, Lineage, Op},
+    common::{state::get_state, Lineage, Op},
     mimick::Bits,
     primitive as prim,
 };
@@ -295,7 +295,7 @@ impl Bits {
 
     pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
         let inx = inx.into().state();
-        if let Literal(ref lit) = get_state(inx).op {
+        if let Literal(ref lit) = get_state(inx).unwrap().op {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
@@ -309,7 +309,7 @@ impl Bits {
 
     pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
         let inx = inx.into().state();
-        if let Literal(ref lit) = get_state(inx).op {
+        if let Literal(ref lit) = get_state(inx).unwrap().op {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {

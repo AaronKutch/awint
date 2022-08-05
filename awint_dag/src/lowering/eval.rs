@@ -2,18 +2,17 @@ use std::fmt::Write;
 
 use awint_core::Bits;
 use awint_ext::ExtAwi;
-use triple_arena::Ptr;
 use Op::*;
 
 use crate::{
-    common::{EvalError, Op},
+    common::{EvalError, Op, PNode},
     lowering::Dag,
 };
 
-impl<P: Ptr> Dag<P> {
+impl Dag {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
-    pub fn eval_node(&mut self, node: P) -> Result<(), EvalError> {
+    pub fn eval_node(&mut self, node: PNode) -> Result<(), EvalError> {
         let op = self[node].op.take();
         for source in op.operands() {
             self[source].rc = if let Some(x) = self[source].rc.checked_sub(1) {
@@ -445,12 +444,12 @@ impl<P: Ptr> Dag<P> {
     /// Evaluates the source tree of `leaf` as much as possible. Note that this
     /// evaluates the entire source tree of `leaf`, see `eval_tree_visit` for
     /// more specific evaluation.
-    pub fn eval_tree(&mut self, leaf: P) -> Result<(), EvalError> {
+    pub fn eval_tree(&mut self, leaf: PNode) -> Result<(), EvalError> {
         self.visit_gen += 1;
         let gen = self.visit_gen;
         // DFS from leaf to roots
         // the bool is set to false when an unevaluatabe node is in the sources
-        let mut path: Vec<(usize, P, bool)> = vec![(0, leaf, true)];
+        let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
             let (i, p, b) = path[path.len() - 1];
             /*if !self.dag.contains(p) {
@@ -502,12 +501,12 @@ impl<P: Ptr> Dag<P> {
     }
 
     /// Evaluates the source tree of `leaf` to only nodes with `visit`.
-    pub fn eval_tree_visit(&mut self, leaf: P, visit: u64) -> Result<(), EvalError> {
+    pub fn eval_tree_visit(&mut self, leaf: PNode, visit: u64) -> Result<(), EvalError> {
         self.visit_gen += 1;
         let gen = self.visit_gen;
         // DFS from leaf to roots
         // the bool is set to false when an unevaluatabe node is in the sources
-        let mut path: Vec<(usize, P, bool)> = vec![(0, leaf, true)];
+        let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
             let (i, p, b) = path[path.len() - 1];
             let ops = self[p].op.operands();

@@ -1,7 +1,10 @@
 use std::{fmt, mem, num::NonZeroUsize, ptr};
 
 use crate::{
-    common::{get_state, new_state_with, Lineage, Op, PState},
+    common::{
+        state::{get_state, new_state_with, PState},
+        Lineage, Op,
+    },
     mimick::{ExtAwi, InlAwi},
 };
 
@@ -70,7 +73,7 @@ impl Lineage for &mut Bits {
 
 impl Bits {
     pub fn nzbw(&self) -> NonZeroUsize {
-        get_state(self.state()).nzbw
+        get_state(self.state()).unwrap().nzbw
     }
 
     pub fn bw(&self) -> usize {

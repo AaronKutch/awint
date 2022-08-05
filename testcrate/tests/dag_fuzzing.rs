@@ -18,7 +18,7 @@ const N: u32 = if cfg!(miri) {
     32
 } else if cfg!(debug_assertions) {
     // TODO increase
-    1000
+    1
 } else {
     10000
 };
@@ -143,7 +143,7 @@ impl Mem {
     /// Makes sure that plain evaluation works
     pub fn eval_and_verify_equal(&mut self) -> Result<(), EvalError> {
         for pair in self.a.vals() {
-            let (mut dag, res) = Dag::<P0>::new(&[pair.dag.state()], &[pair.dag.state()]);
+            let (mut dag, res) = Dag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
             let leaf = dag.noted[0].unwrap();
             dag.eval_tree(leaf)?;
@@ -160,7 +160,7 @@ impl Mem {
     /// Makes sure that lowering works
     pub fn lower_and_verify_equal(&mut self) -> Result<(), EvalError> {
         for pair in self.a.vals() {
-            let (mut dag, res) = Dag::<P0>::new(&[pair.dag.state()], &[pair.dag.state()]);
+            let (mut dag, res) = Dag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
             let leaf = dag.noted[0].unwrap();
             dag.lower()?;

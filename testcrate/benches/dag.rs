@@ -15,7 +15,7 @@ fn lower_funnel(bencher: &mut Bencher) {
     let s = inlawi!(opaque: ..5);
     out.funnel(&rhs, &s).unwrap();
 
-    let (mut dag, res) = Dag::<P0>::new(&[out.state()], &[out.state()]);
+    let (mut dag, res) = Dag::new(&[out.state()], &[out.state()]);
     res.unwrap();
     bencher.iter(|| {
         dag.lower().unwrap();

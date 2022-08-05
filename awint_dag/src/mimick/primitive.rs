@@ -3,7 +3,7 @@ use std::{fmt, ops::*};
 use awint_internals::*;
 
 use crate::{
-    common::{Lineage, Op, PState},
+    common::{state::PState, Lineage, Op},
     mimick::{primitive as prim, InlAwi},
 };
 
