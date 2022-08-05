@@ -4,8 +4,11 @@ use triple_arena::{ptr_struct, Arena, Ptr};
 
 use crate::common::Op;
 
-ptr_struct!(PState);
-ptr_struct!(PNode);
+#[cfg(debug_assertions)]
+ptr_struct!(PState; PNode);
+
+#[cfg(not(debug_assertions))]
+ptr_struct!(PState(); PNode());
 
 thread_local!(static STATE_ARENA: RefCell<Arena<PState, State>> = RefCell::new(Arena::new()));
 thread_local!(static STATE_VISIT_GEN: RefCell<u64> = RefCell::new(0));
