@@ -27,10 +27,14 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
     StaticGet([T; 1], usize),
     StaticSet([T; 2], usize),
 
-    // the bitwidth value
+    // in the future we may try to do some kind of dynamic bitwidth
     //Bw,
 
     // note: we encourage common assembly code paths by putting the arrays first
+
+    // These functions are special because they need self width or downstream width to operate. In
+    // earlier versions these all had fields for size, but only the overflow variants actually
+    // need it because their self width is a single bit and they are effectively parameterized
     Resize([T; 2]),
     ZeroResize([T; 1]),
     SignResize([T; 1]),

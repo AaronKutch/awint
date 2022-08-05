@@ -77,7 +77,7 @@ impl<P: Ptr> Dag<P> {
         // retracking
         let mut path: Vec<(usize, P, PState)> = vec![];
         for leaf in leaves {
-            let enter_loop = match lowerings.entry(leaf.clone()) {
+            let enter_loop = match lowerings.entry(*leaf) {
                 Entry::Occupied(_) => false,
                 Entry::Vacant(v) => {
                     let p = self.dag.insert_with(|this_p| Node {
@@ -92,7 +92,7 @@ impl<P: Ptr> Dag<P> {
                     if let Some(ref mut v) = added {
                         v.push(p);
                     }
-                    path.push((0, p, leaf.clone()));
+                    path.push((0, p, *leaf));
                     true
                 }
             };
@@ -127,7 +127,7 @@ impl<P: Ptr> Dag<P> {
                         }
                     } else {
                         // check next operand
-                        match lowerings.entry(current_rc.op.operands()[*current_i].clone()) {
+                        match lowerings.entry(current_rc.op.operands()[*current_i]) {
                             Entry::Occupied(o) => {
                                 // already explored
                                 self[o.get()].rc += 1;
@@ -150,7 +150,7 @@ impl<P: Ptr> Dag<P> {
                                 if let Some(ref mut v) = added {
                                     v.push(p);
                                 }
-                                path.push((0, p, current_rc.op.operands()[*current_i].clone()));
+                                path.push((0, p, current_rc.op.operands()[*current_i]));
                             }
                         }
                     }
@@ -159,7 +159,7 @@ impl<P: Ptr> Dag<P> {
         }
         // handle the noted
         for root in noted {
-            match lowerings.entry(root.clone()) {
+            match lowerings.entry(*root) {
                 Entry::Occupied(o) => {
                     self[o.get()].rc += 1;
                     self.noted.push(Some(*o.get()));
@@ -263,11 +263,7 @@ impl<P: Ptr> Dag<P> {
         // get length before adding group, the output node we remove will be put at this
         // address
         let list_len = list.len();
-        let err = self.add_group(
-            &[output_and_operands[0].clone()],
-            output_and_operands,
-            Some(list),
-        );
+        let err = self.add_group(&[output_and_operands[0]], output_and_operands, Some(list));
         //self.render_to_svg_file(std::path::PathBuf::from("debug.svg"))
         //    .unwrap();
         err?;

@@ -58,24 +58,17 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
 impl Lineage for &Bits {
     fn state(&self) -> PState {
-        self._bits_raw[0].clone()
+        self._bits_raw[0]
     }
 }
 
 impl Lineage for &mut Bits {
     fn state(&self) -> PState {
-        self._bits_raw[0].clone()
+        self._bits_raw[0]
     }
 }
 
 impl Bits {
-    // TODO if we use dynamic bitwidths do we do something like this?
-    /*
-    pub fn bw(&self) -> prim::usize {
-        prim::usize::new(BwAssign, vec![self.state()])
-    }
-    */
-
     pub fn nzbw(&self) -> NonZeroUsize {
         get_state(self.state()).nzbw
     }

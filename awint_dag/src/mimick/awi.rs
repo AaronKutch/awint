@@ -22,7 +22,7 @@ pub struct InlAwi<const BW: usize, const LEN: usize> {
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     fn state(&self) -> PState {
-        self._inlawi_raw[0].clone()
+        self._inlawi_raw[0]
     }
 }
 
@@ -297,7 +297,7 @@ pub struct ExtAwi {
 
 impl Lineage for ExtAwi {
     fn state(&self) -> PState {
-        self._extawi_raw[0].clone()
+        self._extawi_raw[0]
     }
 }
 
