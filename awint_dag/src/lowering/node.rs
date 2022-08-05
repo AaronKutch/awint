@@ -18,7 +18,7 @@ pub struct Node<P: Ptr> {
     /// Used in algorithms to check for visitation
     pub visit: u64,
     /// `Ptr` to self
-    pub this_p: P,
+    pub p_this: P,
 }
 
 /*
@@ -73,10 +73,10 @@ impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
             res.center.push(format!("ERROR: {:?}", err));
         }
         res.center.push(format!("{}", this.nzbw));
-        if this.this_p == Ptr::invalid() {
+        if this.p_this == Ptr::invalid() {
             res.center.push("Invalid".to_owned());
         } else {
-            res.center.push(format!("{:?}", this.this_p));
+            res.center.push(format!("{:?}", this.p_this));
         }
         res
     }

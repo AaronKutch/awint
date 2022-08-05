@@ -17,8 +17,7 @@ use triple_arena::{ptr_struct, Arena};
 const N: u32 = if cfg!(miri) {
     32
 } else if cfg!(debug_assertions) {
-    // TODO increase
-    1
+    1000
 } else {
     10000
 };

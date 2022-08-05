@@ -26,6 +26,8 @@ pub struct Dag {
     pub noted: Vec<Option<PNode>>,
     /// A kind of generation counter tracking the highest `visit_num` number
     pub visit_gen: u64,
+    /// for capacity reuse in `add_group`
+    pub tmp_stack: Vec<(usize, PNode, PState)>,
 }
 
 impl<B: Borrow<PNode>> Index<B> for Dag {
@@ -56,6 +58,7 @@ impl Dag {
             dag: Arena::new(),
             noted: vec![],
             visit_gen: 0,
+            tmp_stack: vec![],
         };
         let err = res.add_group(leaves, noted, None);
         (res, err)
@@ -74,14 +77,14 @@ impl Dag {
         mut added: Option<&mut Vec<PNode>>,
     ) -> Result<(), EvalError> {
         let state_visit = next_state_visit_gen();
-        let mut path: Vec<(usize, PNode, PState)> = vec![];
+        self.tmp_stack.clear();
         for leaf in leaves {
             let leaf_state = get_state(*leaf).unwrap();
             if leaf_state.visit != state_visit {
-                let p_leaf = self.dag.insert_with(|this_p| Node {
+                let p_leaf = self.dag.insert_with(|p_this| Node {
                     nzbw: get_state(*leaf).unwrap().nzbw,
                     visit: self.visit_gen,
-                    this_p,
+                    p_this,
                     op: Op::Invalid,
                     rc: 0,
                     err: None,
@@ -90,61 +93,62 @@ impl Dag {
                 if let Some(ref mut v) = added {
                     v.push(p_leaf);
                 }
-                path.push((0, p_leaf, *leaf));
+                self.tmp_stack.push((0, p_leaf, *leaf));
                 loop {
-                    let (current_i, current_p, current_rc) = path.last().unwrap();
-                    let current_rc = get_state(*current_rc).unwrap();
-                    if let Some(t) = Op::translate_root(&current_rc.op) {
+                    let (current_i, current_p_node, current_p_state) =
+                        *self.tmp_stack.last().unwrap();
+                    let state = get_state(current_p_state).unwrap();
+                    if let Some(t) = Op::translate_root(&state.op) {
                         // reached a root
-                        self[current_p].op = t;
-                        self[current_p].nzbw = current_rc.nzbw;
-                        path.pop().unwrap();
-                        if let Some((i, ..)) = path.last_mut() {
+                        self[current_p_node].op = t;
+                        self[current_p_node].nzbw = state.nzbw;
+                        self.tmp_stack.pop().unwrap();
+                        if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
                         } else {
                             break
                         }
-                    } else if *current_i >= current_rc.op.num_operands() {
+                    } else if current_i >= state.op.num_operands() {
                         // all operands should be ready
-                        self[current_p].op =
-                            Op::translate(&current_rc.op, |lhs: &mut [PNode], rhs: &[PState]| {
+                        self[current_p_node].op =
+                            Op::translate(&state.op, |lhs: &mut [PNode], rhs: &[PState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
                                     *lhs = get_state(*rhs).unwrap().node_map;
                                 }
                             });
-                        self[current_p].nzbw = current_rc.nzbw;
-                        path.pop().unwrap();
-                        if let Some((i, ..)) = path.last_mut() {
+                        self[current_p_node].nzbw = state.nzbw;
+                        self.tmp_stack.pop().unwrap();
+                        if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
                         } else {
                             break
                         }
                     } else {
                         // check next operand
-                        let next_p = current_rc.op.operands()[*current_i];
-                        let next_state = get_state(next_p).unwrap();
+                        let p_next = state.op.operands()[current_i];
+                        let next_state = get_state(p_next).unwrap();
                         if next_state.visit == state_visit {
                             // already explored
                             self[next_state.node_map].rc += 1;
-                            if let Some((i, ..)) = path.last_mut() {
+                            if let Some((i, ..)) = self.tmp_stack.last_mut() {
                                 *i += 1;
                             } else {
                                 break
                             }
                         } else {
-                            let p = self.dag.insert_with(|this_p| Node {
+                            let p = self.dag.insert_with(|p_this| Node {
                                 rc: 1,
-                                this_p,
-                                nzbw: current_rc.nzbw,
+                                p_this,
+                                nzbw: state.nzbw,
                                 op: Op::Invalid,
                                 err: None,
                                 visit: 0,
                             });
-                            set_state_node_map(next_p, state_visit, p);
+                            set_state_node_map(p_next, state_visit, p);
                             if let Some(ref mut v) = added {
                                 v.push(p);
                             }
-                            path.push((0, p, current_rc.op.operands()[*current_i]));
+                            self.tmp_stack.push((0, p, state.op.operands()[current_i]));
                         }
                     }
                 }

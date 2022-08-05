@@ -485,15 +485,15 @@ impl Dag {
                     path.last_mut().unwrap().2 = false;
                 }
             } else {
-                let next_p = ops[i];
-                if self[next_p].visit == gen {
+                let p_next = ops[i];
+                if self[p_next].visit == gen {
                     // peek at node for evaluatableness but do not visit node, this prevents
                     // exponential growth
                     path.last_mut().unwrap().0 += 1;
-                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
+                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                 } else {
-                    self[next_p].visit = gen;
-                    path.push((0, next_p, true));
+                    self[p_next].visit = gen;
+                    path.push((0, p_next, true));
                 }
             }
         }
@@ -537,18 +537,18 @@ impl Dag {
                     path.last_mut().unwrap().2 = false;
                 }
             } else {
-                let next_p = ops[i];
-                let next_visit = self[next_p].visit;
+                let p_next = ops[i];
+                let next_visit = self[p_next].visit;
                 if next_visit == gen {
                     // peek at node for evaluatableness but do not visit node
                     path.last_mut().unwrap().0 += 1;
-                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
+                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                 } else if next_visit == visit {
-                    self[next_p].visit = gen;
-                    path.push((0, next_p, true));
+                    self[p_next].visit = gen;
+                    path.push((0, p_next, true));
                 } else {
                     path.last_mut().unwrap().0 += 1;
-                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
+                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                 }
             }
         }
