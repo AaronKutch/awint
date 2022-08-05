@@ -22,6 +22,7 @@ jobs:
           rustup default nightly
       - name: Run test suite
         run: |
+          cargo bench
           cargo test --all-features
           cargo test --release --all-features
 

@@ -10,14 +10,14 @@ ptr_struct!(P0; P1; P2);
 
 #[bench]
 fn lower_funnel(bencher: &mut Bencher) {
-    let mut out = inlawi!(0u32);
-    let rhs = inlawi!(opaque: ..64);
-    let s = inlawi!(opaque: ..5);
-    out.funnel(&rhs, &s).unwrap();
-
-    let (mut dag, res) = Dag::new(&[out.state()], &[out.state()]);
-    res.unwrap();
     bencher.iter(|| {
+        let mut out = inlawi!(0u32);
+        let rhs = inlawi!(opaque: ..64);
+        let s = inlawi!(opaque: ..5);
+        out.funnel(&rhs, &s).unwrap();
+
+        let (mut dag, res) = Dag::new(&[out.state()], &[out.state()]);
+        res.unwrap();
         dag.lower().unwrap();
     })
 }
