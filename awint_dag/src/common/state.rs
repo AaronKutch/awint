@@ -9,10 +9,10 @@ use crate::common::Op;
 /// `Rc` pointers to `States`, so that they can change their state without
 /// borrowing issues or mutating `States` (which could be used as operands by
 /// other `States`).
-#[derive(Hash, Clone, Default, PartialEq, Eq)]
+#[derive(Hash, Clone, PartialEq, Eq)]
 pub struct State {
     /// Bitwidth
-    pub nzbw: Option<NonZeroUsize>,
+    pub nzbw: NonZeroUsize,
     /// Operation
     pub op: Op<PState>,
 }
@@ -28,7 +28,7 @@ pub fn new_state(new_state: State) -> PState {
     STATE_ARENA.with(|f| f.borrow_mut().insert(new_state))
 }
 
-pub fn new_state_with(nzbw: Option<NonZeroUsize>, op: Op<PState>) -> PState {
+pub fn new_state_with(nzbw: NonZeroUsize, op: Op<PState>) -> PState {
     STATE_ARENA.with(|f| f.borrow_mut().insert(State { nzbw, op }))
 }
 

@@ -57,20 +57,12 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 }
 
 impl Lineage for &Bits {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        None
-    }
-
     fn state(&self) -> PState {
         self._bits_raw[0].clone()
     }
 }
 
 impl Lineage for &mut Bits {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        None
-    }
-
     fn state(&self) -> PState {
         self._bits_raw[0].clone()
     }
@@ -85,7 +77,7 @@ impl Bits {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        get_state(self.state()).nzbw.unwrap()
+        get_state(self.state()).nzbw
     }
 
     pub fn bw(&self) -> usize {
@@ -100,7 +92,7 @@ impl Bits {
         self
     }
 
-    pub fn update_state(&mut self, nzbw: Option<NonZeroUsize>, op: Op<PState>) {
+    pub fn update_state(&mut self, nzbw: NonZeroUsize, op: Op<PState>) {
         // other `PState`s that need the old state will keep it alive despite this one
         // being dropped
         let _: PState = mem::replace(&mut self._bits_raw[0], new_state_with(nzbw, op));

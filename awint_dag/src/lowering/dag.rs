@@ -84,7 +84,9 @@ impl<P: Ptr> Dag<P> {
                         nzbw: get_state(*leaf).nzbw,
                         visit: self.visit_gen,
                         this_p,
-                        ..Default::default()
+                        op: Op::Invalid,
+                        rc: 0,
+                        err: None,
                     });
                     v.insert(p);
                     if let Some(ref mut v) = added {
@@ -139,7 +141,10 @@ impl<P: Ptr> Dag<P> {
                                 let p = self.dag.insert_with(|this_p| Node {
                                     rc: 1,
                                     this_p,
-                                    ..Default::default()
+                                    nzbw: current_rc.nzbw,
+                                    op: Op::Invalid,
+                                    err: None,
+                                    visit: 0,
                                 });
                                 v.insert(p);
                                 if let Some(ref mut v) = added {
@@ -224,12 +229,8 @@ impl<P: Ptr> Dag<P> {
         }
     }
 
-    pub fn get_bw<B: Borrow<P>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {
-        if let Some(w) = self[ptr].nzbw {
-            Ok(w)
-        } else {
-            Err(EvalError::NonStaticBitwidth)
-        }
+    pub fn get_bw<B: Borrow<P>>(&self, ptr: B) -> NonZeroUsize {
+        self[ptr].nzbw
     }
 
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is

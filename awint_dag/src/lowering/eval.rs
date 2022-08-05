@@ -14,13 +14,6 @@ impl<P: Ptr> Dag<P> {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
     pub fn eval_node(&mut self, node: P) -> Result<(), EvalError> {
-        macro_rules! check_bw {
-            ($lhs:expr, $rhs:expr) => {
-                if $lhs != $rhs {
-                    return Err(EvalError::WrongBitwidth)
-                }
-            };
-        }
         let op = self[node].op.take();
         for source in op.operands() {
             self[source].rc = if let Some(x) = self[source].rc.checked_sub(1) {
@@ -29,11 +22,7 @@ impl<P: Ptr> Dag<P> {
                 return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
             };
         }
-        let self_w = if let Some(w) = self[node].nzbw {
-            w
-        } else {
-            return Err(EvalError::NonStaticBitwidth)
-        };
+        let self_w = self[node].nzbw;
         // need this for errors
         let op_err = op.clone();
         let mut r = ExtAwi::zero(self_w);
@@ -57,26 +46,20 @@ impl<P: Ptr> Dag<P> {
                     None
                 }
             }
-            Resize([a, b], w) => {
-                check_bw!(w, self_w);
+            Resize([a, b]) => {
                 r.resize_assign(self.lit(a), self.bool(b)?);
                 Some(())
             }
-            ZeroResize([a], w) => {
-                check_bw!(w, self_w);
+            ZeroResize([a]) => {
                 r.zero_resize_assign(self.lit(a));
                 Some(())
             }
-            SignResize([a], w) => {
-                check_bw!(w, self_w);
+            SignResize([a]) => {
                 r.sign_resize_assign(self.lit(a));
                 Some(())
             }
             Copy([a]) => r.copy_assign(self.lit(a)),
-            Lut([a, b], w) => {
-                check_bw!(w, self_w);
-                r.lut(self.lit(a), self.lit(b))
-            }
+            Lut([a, b]) => r.lut(self.lit(a), self.lit(b)),
             Funnel([a, b]) => r.funnel(self.lit(a), self.lit(b)),
             CinSum([a, b, c]) => {
                 if r.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
@@ -381,7 +364,7 @@ impl<P: Ptr> Dag<P> {
             }
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
-                let mut t = ExtAwi::zero(self.get_bw(b)?);
+                let mut t = ExtAwi::zero(self.get_bw(b));
                 if let Some((o, _)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
                     r.bool_assign(o);
                     Some(())
@@ -390,7 +373,7 @@ impl<P: Ptr> Dag<P> {
                 }
             }
             SignedOverflow([a, b, c]) => {
-                let mut t = ExtAwi::zero(self.get_bw(b)?);
+                let mut t = ExtAwi::zero(self.get_bw(b));
                 if let Some((_, o)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
                     r.bool_assign(o);
                     Some(())
@@ -399,7 +382,7 @@ impl<P: Ptr> Dag<P> {
                 }
             }
             IncCout([a, b]) => {
-                let mut t = ExtAwi::zero(self.get_bw(a)?);
+                let mut t = ExtAwi::zero(self.get_bw(a));
                 if t.copy_assign(self.lit(a)).is_some() {
                     r.bool_assign(t.inc_assign(self.bool(b)?));
                     Some(())
@@ -408,7 +391,7 @@ impl<P: Ptr> Dag<P> {
                 }
             }
             DecCout([a, b]) => {
-                let mut t = ExtAwi::zero(self.get_bw(a)?);
+                let mut t = ExtAwi::zero(self.get_bw(a));
                 if t.copy_assign(self.lit(a)).is_some() {
                     r.bool_assign(t.dec_assign(self.bool(b)?));
                     Some(())

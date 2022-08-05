@@ -43,14 +43,14 @@ macro_rules! zero_cast {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
                 self.update_state(
-                    Some(self.nzbw()),
-                    ZeroResize([x.into().state()],self.nzbw()),
+                    self.nzbw(),
+                    ZeroResize([x.into().state()]),
                 );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
                 prim::$prim::new(
-                    ZeroResize([self.state()], prim::$prim::hidden_const_nzbw().unwrap()),
+                    ZeroResize([self.state()]),
                 )
             }
         )*
@@ -63,13 +63,13 @@ macro_rules! sign_cast {
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
                 self.update_state(
                     self.state_nzbw(),
-                    SignResize([x.into().state()], self.nzbw()),
+                    SignResize([x.into().state()]),
                 );
             }
 
             pub fn $to_name(&self) -> prim::$prim {
                 prim::$prim::new(
-                    SignResize([self.state()], prim::$prim::hidden_const_nzbw().unwrap()),
+                    SignResize([self.state()]),
                 )
             }
         )*
@@ -270,10 +270,7 @@ impl Bits {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
-                    self.update_state(
-                        self.state_nzbw(),
-                        Lut([lut.state(), inx.state()], self.nzbw()),
-                    );
+                    self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]));
                     return Some(())
                 }
             }
@@ -416,19 +413,19 @@ impl Bits {
     pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<prim::bool>) {
         self.update_state(
             self.state_nzbw(),
-            Resize([rhs.state(), extension.into().state()], self.nzbw()),
+            Resize([rhs.state(), extension.into().state()]),
         );
     }
 
     pub fn zero_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
-        self.update_state(self.state_nzbw(), ZeroResize([rhs.state()], self.nzbw()));
+        self.update_state(self.state_nzbw(), ZeroResize([rhs.state()]));
         b
     }
 
     pub fn sign_resize_assign(&mut self, rhs: &Self) -> prim::bool {
         let b = prim::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
-        self.update_state(self.state_nzbw(), SignResize([rhs.state()], self.nzbw()));
+        self.update_state(self.state_nzbw(), SignResize([rhs.state()]));
         b
     }
 

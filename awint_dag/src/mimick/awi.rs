@@ -21,10 +21,6 @@ pub struct InlAwi<const BW: usize, const LEN: usize> {
 }
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        Some(NonZeroUsize::new(BW).unwrap())
-    }
-
     fn state(&self) -> PState {
         self._inlawi_raw[0].clone()
     }
@@ -40,7 +36,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn new(op: Op<PState>) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
-            _inlawi_raw: [new_state_with(Some(Self::hidden_const_nzbw().unwrap()), op)],
+            _inlawi_raw: [new_state_with(NonZeroUsize::new(BW).unwrap(), op)],
         }
     }
 
@@ -300,10 +296,6 @@ pub struct ExtAwi {
 }
 
 impl Lineage for ExtAwi {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        None
-    }
-
     fn state(&self) -> PState {
         self._extawi_raw[0].clone()
     }
@@ -318,7 +310,7 @@ impl Clone for ExtAwi {
 impl ExtAwi {
     fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         Self {
-            _extawi_raw: [new_state_with(Some(nzbw), op)],
+            _extawi_raw: [new_state_with(nzbw, op)],
         }
     }
 
@@ -336,7 +328,7 @@ impl ExtAwi {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        get_state(self.state()).nzbw.unwrap()
+        get_state(self.state()).nzbw
     }
 
     pub fn bw(&self) -> usize {

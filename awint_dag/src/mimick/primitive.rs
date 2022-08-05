@@ -1,4 +1,4 @@
-use std::{fmt, num::NonZeroUsize, ops::*};
+use std::{fmt, ops::*};
 
 use awint_internals::*;
 
@@ -69,10 +69,6 @@ macro_rules! prim {
             pub struct $name(InlAwi<$bw, {crate::mimick::Bits::unstable_raw_digits($bw)}>);
 
             impl Lineage for $name {
-                fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-                    Some(bw($bw))
-                }
-
                 fn state(&self) -> PState {
                     self.0.state()
                 }
@@ -132,10 +128,6 @@ macro_rules! prim {
 pub struct bool(InlAwi<1, { crate::mimick::Bits::unstable_raw_digits(1) }>);
 
 impl Lineage for bool {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        Some(bw(1))
-    }
-
     fn state(&self) -> PState {
         self.0.state()
     }

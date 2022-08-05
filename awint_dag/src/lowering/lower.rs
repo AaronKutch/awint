@@ -22,6 +22,7 @@ impl<P: Ptr> Dag<P> {
             return Err(EvalError::InvalidPtr)
         }
         let start_op = self[ptr].op.clone();
+        let out_w = self.get_bw(ptr);
         match start_op {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => (),
@@ -30,14 +31,14 @@ impl<P: Ptr> Dag<P> {
             StaticLut(..) => (),
             StaticGet(..) => (),
             StaticSet(..) => (),
-            Lut([lut, inx], out_w) => {
+            Lut([lut, inx]) => {
                 if self[lut].op.is_literal() {
                     self[ptr].op = StaticLut([inx], awint_ext::ExtAwi::from(self.lit(lut)));
                     self[lut].rc -= 1;
                 } else {
                     let mut out = ExtAwi::zero(out_w);
-                    let lut = ExtAwi::opaque(self.get_bw(lut)?);
-                    let inx = ExtAwi::opaque(self.get_bw(inx)?);
+                    let lut = ExtAwi::opaque(self.get_bw(lut));
+                    let inx = ExtAwi::opaque(self.get_bw(inx));
                     dynamic_to_static_lut(&mut out, &lut, &inx);
                     self.graft(ptr, list, &[out.state(), lut.state(), inx.state()])?;
                 }
@@ -47,8 +48,8 @@ impl<P: Ptr> Dag<P> {
                     self[ptr].op = StaticGet([bits], self.usize(inx).unwrap());
                     self[inx].rc -= 1;
                 } else {
-                    let bits = ExtAwi::opaque(self.get_bw(bits)?);
-                    let inx = ExtAwi::opaque(self.get_bw(inx)?);
+                    let bits = ExtAwi::opaque(self.get_bw(bits));
+                    let inx = ExtAwi::opaque(self.get_bw(inx));
                     let out = dynamic_to_static_get(&bits, &inx);
                     self.graft(ptr, list, &[out.state(), bits.state(), inx.state()])?;
                 }
@@ -58,9 +59,9 @@ impl<P: Ptr> Dag<P> {
                     self[ptr].op = StaticSet([bits, bit], self.usize(inx).unwrap());
                     self[inx].rc -= 1;
                 } else {
-                    let bits = ExtAwi::opaque(self.get_bw(bits)?);
-                    let inx = ExtAwi::opaque(self.get_bw(inx)?);
-                    let bit = ExtAwi::opaque(self.get_bw(bit)?);
+                    let bits = ExtAwi::opaque(self.get_bw(bits));
+                    let inx = ExtAwi::opaque(self.get_bw(inx));
+                    let bit = ExtAwi::opaque(self.get_bw(bit));
                     let out = dynamic_to_static_set(&bits, &inx, &bit);
                     self.graft(ptr, list, &[
                         out.state(),
@@ -71,11 +72,11 @@ impl<P: Ptr> Dag<P> {
                 }
             }
             FieldBit([lhs, to, rhs, from]) => {
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
-                let from = ExtAwi::opaque(self.get_bw(from)?);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let from = ExtAwi::opaque(self.get_bw(from));
                 let bit = rhs.get(from.to_usize()).unwrap();
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let to = ExtAwi::opaque(self.get_bw(to)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let to = ExtAwi::opaque(self.get_bw(to));
                 // keep `lhs` the same, `out` has the set bit
                 let mut out = lhs.clone();
                 out.set(to.to_usize(), bit);
@@ -87,83 +88,83 @@ impl<P: Ptr> Dag<P> {
                     from.state(),
                 ])?;
             }
-            ZeroResize([x], w) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let out = resize(&x, w, false);
+            ZeroResize([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let out = resize(&x, out_w, false);
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
-            SignResize([x], w) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let out = resize(&x, w, true);
+            SignResize([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let out = resize(&x, out_w, true);
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             Lsb([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
                 let out = x.get(0).unwrap();
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             Msb([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
                 let out = x.get(x.bw() - 1).unwrap();
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             Funnel([x, s]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let s = ExtAwi::opaque(self.get_bw(s)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let s = ExtAwi::opaque(self.get_bw(s));
                 let out = funnel(&x, &s);
                 self.graft(ptr, list, &[out.state(), x.state(), s.state()])?;
             }
             Not([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
                 let out = bitwise_not(&x);
                 self.graft(ptr, list, &[out.state(), x.state()])?;
             }
             Or([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(1110));
                 self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
             }
             And([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(1000));
                 self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Xor([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(0110));
                 self.graft(ptr, list, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Inc([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, false).0;
                 self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
             }
             IncCout([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, false).1;
                 self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
             }
             Dec([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, true).0;
                 self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
             }
             DecCout([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, true).1;
                 self.graft(ptr, list, &[out.state(), x.state(), cin.state()])?;
             }
             CinSum([cin, lhs, rhs]) => {
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).0;
                 self.graft(ptr, list, &[
                     out.state(),
@@ -173,9 +174,9 @@ impl<P: Ptr> Dag<P> {
                 ])?;
             }
             UnsignedOverflow([cin, lhs, rhs]) => {
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).1;
                 self.graft(ptr, list, &[
                     out.state(),
@@ -185,9 +186,9 @@ impl<P: Ptr> Dag<P> {
                 ])?;
             }
             SignedOverflow([cin, lhs, rhs]) => {
-                let cin = ExtAwi::opaque(self.get_bw(cin)?);
-                let lhs = ExtAwi::opaque(self.get_bw(lhs)?);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs)?);
+                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).2;
                 self.graft(ptr, list, &[
                     out.state(),
@@ -197,14 +198,14 @@ impl<P: Ptr> Dag<P> {
                 ])?;
             }
             Neg([x, neg]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
-                let neg = ExtAwi::opaque(self.get_bw(neg)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let neg = ExtAwi::opaque(self.get_bw(neg));
                 assert_eq!(neg.bw(), 1);
                 let out = negator(&x, &neg);
                 self.graft(ptr, list, &[out.state(), x.state(), neg.state()])?;
             }
             Abs([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x)?);
+                let x = ExtAwi::opaque(self.get_bw(x));
                 let mut out = x.clone();
                 out.neg_assign(x.msb());
                 self.graft(ptr, list, &[out.state(), x.state()])?;

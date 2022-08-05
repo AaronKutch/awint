@@ -6,16 +6,8 @@ use crate::common::{get_state, PState};
 /// but that can't be exposed in their public interfaces. This trait exposes
 /// extra functions on mimicking structs.
 pub trait Lineage {
-    fn state_nzbw(&self) -> Option<NonZeroUsize> {
+    fn state_nzbw(&self) -> NonZeroUsize {
         get_state(self.state()).nzbw
-    }
-
-    /// If the underlying type has a known constant bitwidth, such as `InlAwi`
-    /// or a mimicking primitive
-    fn hidden_const_nzbw() -> Option<NonZeroUsize>;
-
-    fn hidden_const_bw() -> Option<usize> {
-        Self::hidden_const_nzbw().map(|x| x.get())
     }
 
     /// Get a reference to the `State` of `self`
