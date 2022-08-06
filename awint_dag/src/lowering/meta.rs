@@ -136,11 +136,7 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
             for i in x.bw()..out.bw() {
                 out.set(i, x.get(x.bw() - 1).unwrap()).unwrap();
             }
-        } else {
-            for i in x.bw()..out.bw() {
-                out.set(i, false).unwrap();
-            }
-        }
+        } // else the bits in `out` are automatically zero
     }
     out
 }
