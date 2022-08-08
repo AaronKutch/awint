@@ -496,38 +496,4 @@ impl Dag {
         }
         Ok(())
     }
-
-    /// Decrements the reference count on `p`, removing its tree if the count
-    /// goes to 0.
-    pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {
-        self[p].rc = if let Some(x) = self[p].rc.checked_sub(1) {
-            x
-        } else {
-            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
-        };
-        if self[p].rc == 0 {
-            let mut v = vec![p];
-            while let Some(p) = v.pop() {
-                let mut delete = false;
-                if let Some(node) = self.dag.get(p) {
-                    if node.rc == 0 {
-                        delete = true;
-                    }
-                }
-                if delete {
-                    for i in 0..self[p].op.num_operands() {
-                        let op = self[p].op.operands()[i];
-                        self[op].rc = if let Some(x) = self[op].rc.checked_sub(1) {
-                            x
-                        } else {
-                            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
-                        };
-                        v.push(op);
-                    }
-                    self.dag.remove(p).unwrap();
-                }
-            }
-        }
-        Ok(())
-    }
 }

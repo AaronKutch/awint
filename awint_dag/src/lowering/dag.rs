@@ -3,7 +3,7 @@
 use std::{
     borrow::Borrow,
     num::NonZeroUsize,
-    ops::{Index, IndexMut},
+    ops::{Index, IndexMut}, vec,
 };
 
 use awint_core::Bits;
@@ -28,6 +28,8 @@ pub struct Dag {
     pub visit_gen: u64,
     /// for capacity reuse in `add_group`
     pub tmp_stack: Vec<(usize, PNode, PState)>,
+    /// for capacity reuse in `dec_rc`
+    pub tmp_pnode_stack: Vec<PNode>,
 }
 
 impl<B: Borrow<PNode>> Index<B> for Dag {
@@ -59,6 +61,7 @@ impl Dag {
             noted: vec![],
             visit_gen: 0,
             tmp_stack: vec![],
+            tmp_pnode_stack: vec![],
         };
         let err = res.add_group(leaves, noted, true, 0, None);
         (res, err)
@@ -233,6 +236,41 @@ impl Dag {
 
     pub fn get_bw<B: Borrow<PNode>>(&self, ptr: B) -> NonZeroUsize {
         self[ptr].nzbw
+    }
+
+    /// Decrements the reference count on `p`, removing its tree if the count
+    /// goes to 0.
+    pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {
+        self[p].rc = if let Some(x) = self[p].rc.checked_sub(1) {
+            x
+        } else {
+            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+        };
+        if self[p].rc == 0 {
+            self.tmp_pnode_stack.clear();
+            self.tmp_pnode_stack.push(p);
+            while let Some(p) = self.tmp_pnode_stack.pop() {
+                let mut delete = false;
+                if let Some(node) = self.dag.get(p) {
+                    if node.rc == 0 {
+                        delete = true;
+                    }
+                }
+                if delete {
+                    for i in 0..self[p].op.num_operands() {
+                        let op = self[p].op.operands()[i];
+                        self[op].rc = if let Some(x) = self[op].rc.checked_sub(1) {
+                            x
+                        } else {
+                            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+                        };
+                        self.tmp_pnode_stack.push(op);
+                    }
+                    self.dag.remove(p).unwrap();
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
