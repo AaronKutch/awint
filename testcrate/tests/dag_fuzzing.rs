@@ -153,14 +153,12 @@ impl Mem {
             // function.
             let mut literals = vec![];
             for (p, node) in &mut dag.dag {
-                if node.op.is_literal() {
-                    if (self.rng.next_u32() & 1) == 0 {
-                        if let Op::Literal(lit) = node.op.take() {
-                            literals.push((p, lit));
-                            node.op = Op::Opaque(vec![]);
-                        } else {
-                            unreachable!()
-                        }
+                if node.op.is_literal() && ((self.rng.next_u32() & 1) == 0) {
+                    if let Op::Literal(lit) = node.op.take() {
+                        literals.push((p, lit));
+                        node.op = Op::Opaque(vec![]);
+                    } else {
+                        unreachable!()
                     }
                 }
             }
@@ -172,7 +170,10 @@ impl Mem {
             //    .unwrap();
             for (p, lit) in literals {
                 if let Some(op) = dag.dag.get_mut(p) {
-                    op.op = Op::Literal(lit);
+                    // we are not respecting gen counters in release mode so we need this check
+                    if op.op.is_opaque() {
+                        op.op = Op::Literal(lit);
+                    }
                 } // else the literal was culled
             }
             dag.visit_gen += 1;
