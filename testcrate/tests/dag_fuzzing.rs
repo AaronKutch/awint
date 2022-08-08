@@ -153,18 +153,27 @@ impl Mem {
             // function.
             let mut literals = vec![];
             for (p, node) in &mut dag.dag {
-                if let Op::Literal(lit) = node.op.take() {
+                if node.op.is_literal() {
                     if (self.rng.next_u32() & 1) == 0 {
-                        literals.push((p, lit));
+                        if let Op::Literal(lit) = node.op.take() {
+                            literals.push((p, lit));
+                            node.op = Op::Opaque(vec![]);
+                        } else {
+                            unreachable!()
+                        }
                     }
-                    node.op = Op::Opaque(vec![]);
                 }
             }
             let leaf = dag.noted[0].unwrap();
             dag.visit_gen += 1;
-            dag.lower_tree(leaf, dag.visit_gen)?;
+            let res = dag.lower_tree(leaf, dag.visit_gen);
+            res.unwrap();
+            //dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
+            //    .unwrap();
             for (p, lit) in literals {
-                dag[p].op = Op::Literal(lit);
+                if let Some(op) = dag.dag.get_mut(p) {
+                    op.op = Op::Literal(lit);
+                } // else the literal was culled
             }
             dag.visit_gen += 1;
             dag.eval_tree(leaf, dag.visit_gen)?;
@@ -377,10 +386,13 @@ fn dag_fuzzing() {
         }
     }
     m.eval_and_verify_equal().unwrap();
-    m.lower_and_verify_equal().unwrap();
-    /*let dag = &m.a.vals().next().unwrap().dag;
-    let (mut dag, res) = Dag::<P0>::new(&[dag.state()], &[dag.state()]);
-    dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg")).unwrap();
-    res.unwrap();*/
-    //panic!();
+    let res = m.lower_and_verify_equal();
+    /*let mut leaves = vec![];
+    for val in m.a.vals() {
+        leaves.push(val.dag.state());
+    }
+    let (mut dag, _) = Dag::new(&leaves, &leaves);
+    dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
+        .unwrap();*/
+    res.unwrap();
 }

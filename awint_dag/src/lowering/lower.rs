@@ -24,7 +24,7 @@ impl Dag {
         let out_w = self.get_bw(ptr);
         let v = visit;
         match start_op {
-            Invalid => return Err(EvalError::Unevaluatable),
+            Invalid => return Err(EvalError::OtherStr("encountered `Invalid` in lowering")),
             Opaque(_) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
                 return Ok(true)
             }

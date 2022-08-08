@@ -13,7 +13,7 @@ impl Dag {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
     pub fn eval_node(&mut self, node: PNode, visit: u64) -> Result<(), EvalError> {
-        let op = self[node].op.take();
+        let op = self[node].op.clone();
         let self_w = self[node].nzbw;
         let mut r = ExtAwi::zero(self_w);
         let option = match op.clone() {
