@@ -63,8 +63,8 @@ impl<P: Ptr, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
         self.map.get(t).copied()
     }
 
-    /*pub fn insert_with<F0: FnOnce(Ptr<P>) -> T, F1: FnOnce() -> A>
-      (&mut self, create: F0, associate: F1) -> Ptr<P> {
+    /*pub fn insert_with<P: Ptr, F0: FnOnce(P) -> T, F1: FnOnce() -> A>
+      (&mut self, create: F0, associate: F1) -> P {
         self.arena.insert_with(|p| {
             let t = create(p);
             // need &T
@@ -80,8 +80,8 @@ impl<P: Ptr, T: Clone + Eq + Hash, A> BiMap<P, T, A> {
     }*/
 
     /// If `t` is already contained, it and `a` are not inserted. Returns `None`
-    /// if inserted a new entry (use `F` to get the new `Ptr<P>`), else returns
-    /// the `Ptr<P>` to an already existing `t`.
+    /// if inserted a new entry (use `F` to get the new `Ptr`), else returns
+    /// the `Ptr` to an already existing `t`.
     pub fn insert_with<F: FnOnce(P) -> A>(&mut self, t: T, associate: F) -> Result<P, P> {
         match self.map.entry(t.clone()) {
             Entry::Occupied(o) => Err(*o.get()),

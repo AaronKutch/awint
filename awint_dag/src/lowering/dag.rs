@@ -60,13 +60,14 @@ impl Dag {
             visit_gen: 0,
             tmp_stack: vec![],
         };
-        let err = res.add_group(leaves, noted, None);
+        let err = res.add_group(leaves, noted, true, 0, None);
         (res, err)
     }
 
     /// Adds the `leaves` and their source trees to `self`. For each `noted`
     /// node in order, the translated node is pushed to `self.noted` or `None`
-    /// is pushed if it is not found in the source trees.The visit numbers of
+    /// is pushed if it is not found in the source trees. If `inc_noted_rc` and
+    /// a `noted` node is found, the rc is incremented. The visit numbers of
     /// all the added nodes are set to `self.visit_gen`. Note: the leaves
     /// and all their preceding nodes should not share with previously
     /// existing nodes in this DAG or else there will be duplication.
@@ -74,8 +75,11 @@ impl Dag {
         &mut self,
         leaves: &[PState],
         noted: &[PState],
+        inc_noted_rc: bool,
+        visit: u64,
         mut added: Option<&mut Vec<PNode>>,
     ) -> Result<(), EvalError> {
+        // this is for the state side visits not the `visit` for `Node`s
         let state_visit = next_state_visit_gen();
         self.tmp_stack.clear();
         for leaf in leaves {
@@ -83,7 +87,7 @@ impl Dag {
             if leaf_state.visit != state_visit {
                 let p_leaf = self.dag.insert_with(|p_this| Node {
                     nzbw: get_state(*leaf).unwrap().nzbw,
-                    visit: self.visit_gen,
+                    visit,
                     p_this,
                     op: Op::Invalid,
                     rc: 0,
@@ -142,7 +146,7 @@ impl Dag {
                                 nzbw: state.nzbw,
                                 op: Op::Invalid,
                                 err: None,
-                                visit: 0,
+                                visit,
                             });
                             set_state_node_map(p_next, state_visit, p);
                             if let Some(ref mut v) = added {
@@ -159,7 +163,9 @@ impl Dag {
             let state = get_state(*p_noted).unwrap();
             if state.visit == state_visit {
                 let p_node = state.node_map;
-                self[p_node].rc += 1;
+                if inc_noted_rc {
+                    self[p_node].rc += 1;
+                }
                 self.noted.push(Some(p_node));
             } else {
                 self.noted.push(None);
@@ -231,40 +237,51 @@ impl Dag {
 
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
     /// replaced by a set of lowered `PState` nodes with interfaces `output`
-    /// and `operands` corresponding to the original interfaces.
+    /// and `operands` corresponding to the original interfaces. Newly added
+    /// nodes not including `ptr` are colored with `visit`.
     pub fn graft(
         &mut self,
         ptr: PNode,
-        list: &mut Vec<PNode>,
+        visit: u64,
         output_and_operands: &[PState],
     ) -> Result<(), EvalError> {
-        if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
-            return Err(EvalError::WrongNumberOfOperands)
-        }
-        for (i, op) in self[ptr].op.operands().iter().enumerate() {
-            let current_state = get_state(output_and_operands[i + 1]).unwrap();
-            if self[op].nzbw != current_state.nzbw {
-                return Err(EvalError::OtherString(format!(
-                    "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of {:?}",
-                    i, current_state.nzbw, self[op].nzbw
-                )))
+        #[cfg(debug_assertions)]
+        {
+            if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
+                return Err(EvalError::WrongNumberOfOperands)
             }
-            if !current_state.op.is_opaque() {
-                return Err(EvalError::ExpectedOpaque)
+            for (i, op) in self[ptr].op.operands().iter().enumerate() {
+                let current_state = get_state(output_and_operands[i + 1]).unwrap();
+                if self[op].nzbw != current_state.nzbw {
+                    return Err(EvalError::OtherString(format!(
+                        "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of \
+                         {:?}",
+                        i, current_state.nzbw, self[op].nzbw
+                    )))
+                }
+                if !current_state.op.is_opaque() {
+                    return Err(EvalError::ExpectedOpaque)
+                }
+            }
+            if self[ptr].nzbw != get_state(output_and_operands[0]).unwrap().nzbw {
+                return Err(EvalError::WrongBitwidth)
             }
         }
-        if self[ptr].nzbw != get_state(output_and_operands[0]).unwrap().nzbw {
-            return Err(EvalError::WrongBitwidth)
-        }
-        // get length before adding group, the output node we remove will be put at this
-        // address
-        let list_len = list.len();
-        let err = self.add_group(&[output_and_operands[0]], output_and_operands, Some(list));
+        // note we do not increment the rc because we immediately remove the node's
+        // special status
+        let err = self.add_group(
+            &[output_and_operands[0]],
+            output_and_operands,
+            false,
+            visit,
+            None,
+        );
         //self.render_to_svg_file(std::path::PathBuf::from("debug.svg"))
         //    .unwrap();
         err?;
         //self.verify_integrity()?;
         let start = self.noted.len() - output_and_operands.len();
+
         // graft inputs
         for i in 0..(output_and_operands.len() - 1) {
             let grafted = self.noted[start + i + 1];
@@ -272,27 +289,26 @@ impl Dag {
             if let Some(grafted) = grafted {
                 // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
                 // needing to change all the operands of potentially many internal nodes.
-
                 self[grafted].op = Copy([graftee]);
             } else {
                 // else the operand is not used because it was optimized away
-                self[graftee].rc = self[graftee].rc.checked_sub(1).unwrap();
+                self.dec_rc(graftee).unwrap();
             }
         }
+
         // graft output
-        let output_p = self.noted[start].unwrap();
-        let output_node = self.dag.remove(output_p).unwrap();
-        assert_eq!(list.swap_remove(list_len), output_p);
-        let old_output = self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
-        // preserve original reference count
-        self[ptr].rc = old_output.rc;
-        // relist because there are cases where this node needs to be reprocessed
-        list.push(ptr);
         // remove the temporary noted nodes
+        let p = self.noted[start].unwrap();
+        // this will replace the graftee's location to avoid changing downstream nodes
+        let grafted = self.dag.remove(p).unwrap();
+        let graftee = self.dag.replace_and_keep_gen(ptr, grafted).unwrap();
+
+        // preserve original reference count
+        self[ptr].rc = graftee.rc;
+        self[ptr].p_this = graftee.p_this;
+
+        // reset the `noted` to its original state
         self.noted.drain(start..);
-        // this is very important to prevent infinite cycles where literals are not
-        // being propogated and eliminating nodes
-        self.eval_tree_visit(ptr, self.visit_gen)?;
         Ok(())
     }
 

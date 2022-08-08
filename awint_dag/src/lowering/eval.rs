@@ -12,20 +12,11 @@ use crate::{
 impl Dag {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
-    pub fn eval_node(&mut self, node: PNode) -> Result<(), EvalError> {
+    pub fn eval_node(&mut self, node: PNode, visit: u64) -> Result<(), EvalError> {
         let op = self[node].op.take();
-        for source in op.operands() {
-            self[source].rc = if let Some(x) = self[source].rc.checked_sub(1) {
-                x
-            } else {
-                return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
-            };
-        }
         let self_w = self[node].nzbw;
-        // need this for errors
-        let op_err = op.clone();
         let mut r = ExtAwi::zero(self_w);
-        let option = match op {
+        let option = match op.clone() {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => return Err(EvalError::Unevaluatable),
             Literal(_) => return Err(EvalError::Unevaluatable),
@@ -426,27 +417,29 @@ impl Dag {
             }
         };
         if option.is_none() {
-            let operands = op_err.operands();
+            let operands = op.operands();
             let mut s = String::new();
             for op in operands {
                 write!(s, "{:?}, ", self[op]).unwrap();
             }
             Err(EvalError::OtherString(format!(
                 "evaluation failure on operation {:?} ({})",
-                op_err, s
+                op, s
             )))
         } else {
+            for source in op.operands() {
+                self.dec_rc(*source).unwrap();
+            }
             self[node].op = Literal(r);
+            self[node].visit = visit;
             Ok(())
         }
     }
 
-    /// Evaluates the source tree of `leaf` as much as possible. Note that this
-    /// evaluates the entire source tree of `leaf`, see `eval_tree_visit` for
-    /// more specific evaluation.
-    pub fn eval_tree(&mut self, leaf: PNode) -> Result<(), EvalError> {
-        self.visit_gen += 1;
-        let gen = self.visit_gen;
+    /// Evaluates the source tree of `leaf` as much as possible. Only evaluates
+    /// nodes not equal to `visit`, evaluated nodes have their visit number set
+    /// to `visit`.
+    pub fn eval_tree(&mut self, leaf: PNode, visit: u64) -> Result<(), EvalError> {
         // DFS from leaf to roots
         // the bool is set to false when an unevaluatabe node is in the sources
         let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
@@ -473,9 +466,13 @@ impl Dag {
                 // checked all sources
                 path.pop().unwrap();
                 if b {
-                    if let Err(e) = self.eval_node(p) {
-                        self[p].err = Some(e.clone());
-                        return Err(e)
+                    match self.eval_node(p, visit) {
+                        Ok(()) => {}
+                        Err(EvalError::Unevaluatable) => {}
+                        Err(e) => {
+                            self[p].err = Some(e.clone());
+                            return Err(e)
+                        }
                     }
                 }
                 if path.is_empty() {
@@ -486,13 +483,13 @@ impl Dag {
                 }
             } else {
                 let p_next = ops[i];
-                if self[p_next].visit == gen {
+                if self[p_next].visit == visit {
                     // peek at node for evaluatableness but do not visit node, this prevents
                     // exponential growth
                     path.last_mut().unwrap().0 += 1;
                     path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                 } else {
-                    self[p_next].visit = gen;
+                    self[p_next].visit = visit;
                     path.push((0, p_next, true));
                 }
             }
@@ -500,80 +497,37 @@ impl Dag {
         Ok(())
     }
 
-    /// Evaluates the source tree of `leaf` to only nodes with `visit`.
-    pub fn eval_tree_visit(&mut self, leaf: PNode, visit: u64) -> Result<(), EvalError> {
-        self.visit_gen += 1;
-        let gen = self.visit_gen;
-        // DFS from leaf to roots
-        // the bool is set to false when an unevaluatabe node is in the sources
-        let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
-        loop {
-            let (i, p, b) = path[path.len() - 1];
-            let ops = self[p].op.operands();
-            if ops.is_empty() {
-                // reached a root
-                path.pop().unwrap();
-                if path.is_empty() {
-                    break
-                }
-                path.last_mut().unwrap().0 += 1;
-                if !self[p].op.is_literal() {
-                    // is an `Invalid` or `Opaque`
-                    path.last_mut().unwrap().2 = false;
-                }
-            } else if i >= ops.len() {
-                // checked all sources
-                path.pop().unwrap();
-                if b {
-                    if let Err(e) = self.eval_node(p) {
-                        self[p].err = Some(e.clone());
-                        return Err(e)
+    /// Decrements the reference count on `p`, removing its tree if the count
+    /// goes to 0.
+    pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {
+        self[p].rc = if let Some(x) = self[p].rc.checked_sub(1) {
+            x
+        } else {
+            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+        };
+        if self[p].rc == 0 {
+            let mut v = vec![p];
+            while let Some(p) = v.pop() {
+                let mut delete = false;
+                if let Some(node) = self.dag.get(p) {
+                    if node.rc == 0 {
+                        delete = true;
                     }
                 }
-                if path.is_empty() {
-                    break
-                }
-                if !b {
-                    path.last_mut().unwrap().2 = false;
-                }
-            } else {
-                let p_next = ops[i];
-                let next_visit = self[p_next].visit;
-                if next_visit == gen {
-                    // peek at node for evaluatableness but do not visit node
-                    path.last_mut().unwrap().0 += 1;
-                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
-                } else if next_visit == visit {
-                    self[p_next].visit = gen;
-                    path.push((0, p_next, true));
-                } else {
-                    path.last_mut().unwrap().0 += 1;
-                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
+                if delete {
+                    for i in 0..self[p].op.num_operands() {
+                        let op = self[p].op.operands()[i];
+                        self[op].rc = if let Some(x) = self[op].rc.checked_sub(1) {
+                            x
+                        } else {
+                            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+                        };
+                        v.push(op);
+                    }
+                    self.dag.remove(p).unwrap();
                 }
             }
         }
         Ok(())
-    }
-
-    /// Cull unused nodes
-    pub fn cull(&mut self) {
-        let mut v = self.ptrs();
-        while let Some(p) = v.pop() {
-            let mut delete = false;
-            if let Some(node) = self.dag.get(p) {
-                if node.rc == 0 {
-                    delete = true;
-                }
-            }
-            if delete {
-                for i in 0..self[p].op.num_operands() {
-                    let op = self[p].op.operands()[i];
-                    self[op].rc -= 1;
-                    // this will eventually cull whole trees if they are separate
-                    v.push(op);
-                }
-                self.dag.remove(p).unwrap();
-            }
-        }
     }
 }

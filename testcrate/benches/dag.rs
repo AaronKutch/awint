@@ -18,6 +18,8 @@ fn lower_funnel(bencher: &mut Bencher) {
 
         let (mut dag, res) = Dag::new(&[out.state()], &[out.state()]);
         res.unwrap();
-        dag.lower().unwrap();
+        dag.visit_gen += 1;
+        dag.lower_tree(dag.noted.last().unwrap().unwrap(), dag.visit_gen)
+            .unwrap();
     })
 }

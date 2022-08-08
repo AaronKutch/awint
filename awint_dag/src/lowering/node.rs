@@ -6,7 +6,7 @@ use triple_arena_render::{DebugNode, DebugNodeTrait};
 
 use crate::common::{EvalError, Op};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node<P: Ptr> {
     /// Bitwidth
     pub nzbw: NonZeroUsize,
@@ -72,7 +72,7 @@ impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
         if let Some(ref err) = this.err {
             res.center.push(format!("ERROR: {:?}", err));
         }
-        res.center.push(format!("{}", this.nzbw));
+        res.center.push(format!("{} - {}", this.nzbw, this.rc));
         if this.p_this == Ptr::invalid() {
             res.center.push("Invalid".to_owned());
         } else {

@@ -61,21 +61,6 @@ impl Mem {
         }
     }
 
-    /*pub fn new_val(&mut self, w: usize, val: usize) -> Ptr<P0> {
-        if (w == 0) || (w > 64) {
-            panic!("width needs to be in range 1..=64");
-        }
-        let p = self.a.insert(Pair::new(num::ExtAwi::from_usize(val)));
-        self.v[w].push(p);
-        p
-    }
-
-    /// Randomly generates a width `w` integer upper bounded by `cap`
-    pub fn new_capped(&mut self, w: usize, cap: usize) -> Ptr<P0> {
-        let tmp = (self.rng.next_u64() as usize) % cap;
-        self.new_val(w, tmp)
-    }*/
-
     /// Randomly creates a new pair or gets an existing one under the `cap`
     pub fn next_capped(&mut self, w: usize, cap: usize) -> P0 {
         let try_query = (self.rng.next_u32() % 4) != 0;
@@ -141,12 +126,13 @@ impl Mem {
 
     /// Makes sure that plain evaluation works
     pub fn eval_and_verify_equal(&mut self) -> Result<(), EvalError> {
+        // TODO lower leaves primarily in this function and below
         for pair in self.a.vals() {
             let (mut dag, res) = Dag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
             let leaf = dag.noted[0].unwrap();
-            dag.eval_tree(leaf)?;
-            dag.cull();
+            dag.visit_gen += 1;
+            dag.eval_tree(leaf, dag.visit_gen)?;
             if let Op::Literal(ref lit) = dag[leaf].op {
                 if pair.num != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
@@ -161,13 +147,33 @@ impl Mem {
         for pair in self.a.vals() {
             let (mut dag, res) = Dag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
+            // if all constants are known, the lowering will simply become an evaluation. We
+            // convert half of the literals to opaques at random, lower the dag, and finally
+            // convert back and evaluate to check that the lowering did not break the DAG
+            // function.
+            let mut literals = vec![];
+            for (p, node) in &mut dag.dag {
+                if let Op::Literal(lit) = node.op.take() {
+                    if (self.rng.next_u32() & 1) == 0 {
+                        literals.push((p, lit));
+                    }
+                    node.op = Op::Opaque(vec![]);
+                }
+            }
             let leaf = dag.noted[0].unwrap();
-            dag.lower()?;
-            dag.eval_tree(leaf)?;
+            dag.visit_gen += 1;
+            dag.lower_tree(leaf, dag.visit_gen)?;
+            for (p, lit) in literals {
+                dag[p].op = Op::Literal(lit);
+            }
+            dag.visit_gen += 1;
+            dag.eval_tree(leaf, dag.visit_gen)?;
             if let Op::Literal(ref lit) = dag[leaf].op {
                 if pair.num != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
+            } else {
+                panic!("did not eval to literal")
             }
         }
         Ok(())

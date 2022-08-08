@@ -164,6 +164,11 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         matches!(self, Opaque(_))
     }
 
+    /// Returns if `self` is an `Invalid`
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, Invalid)
+    }
+
     /// Returns the name of the operation
     pub fn operation_name(&self) -> &'static str {
         match *self {
