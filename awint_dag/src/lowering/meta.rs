@@ -193,6 +193,20 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
     out
 }
 
+pub fn static_field(lhs: &Bits, to: usize, rhs: &Bits, from: usize, width: usize) -> ExtAwi {
+    assert!(
+        width <= lhs.bw()
+            && width <= rhs.bw()
+            && to <= (lhs.bw() - width)
+            && from <= (rhs.bw() - width)
+    );
+    let mut out = ExtAwi::from_bits(lhs);
+    for i in 0..width {
+        out.set(i + to, rhs.get(i + from).unwrap()).unwrap();
+    }
+    out
+}
+
 pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     let mut out = ExtAwi::from_bits(lhs);
     let min_w = min(lhs.bw(), rhs.bw());

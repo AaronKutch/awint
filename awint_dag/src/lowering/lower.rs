@@ -4,7 +4,7 @@ use awint_macros::inlawi;
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field_width, funnel, incrementer, resize,
+    dynamic_to_static_set, field_width, funnel, incrementer, resize, static_field,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*, PNode},
@@ -106,16 +106,28 @@ impl Dag {
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             FieldWidth([lhs, rhs, width]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                let width = ExtAwi::opaque(self.get_bw(width));
-                let out = field_width(&lhs, &rhs, &width);
-                self.graft(ptr, v, &[
-                    out.state(),
-                    lhs.state(),
-                    rhs.state(),
-                    width.state(),
-                ])?;
+                if self[width].op.is_literal() {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let out = static_field(&lhs, 0, &rhs, 0, self.usize(width).unwrap());
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        rhs.state(),
+                        ExtAwi::opaque(self.get_bw(width)).state(),
+                    ])?;
+                } else {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let out = field_width(&lhs, &rhs, &width);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        rhs.state(),
+                        width.state(),
+                    ])?;
+                }
             }
             Funnel([x, s]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
