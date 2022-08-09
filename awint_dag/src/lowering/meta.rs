@@ -97,6 +97,53 @@ pub fn tsmear(inx: &Bits, num_signals: usize) -> Vec<inlawi_ty!(1)> {
     signals
 }
 
+pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> ExtAwi {
+    let next_pow = num_signals.next_power_of_two();
+    let mut lb_num = next_pow.trailing_zeros() as usize;
+    if next_pow == num_signals {
+        // need extra bit to get all `n + 1`
+        lb_num += 1;
+    }
+    let mut signals = ExtAwi::zero(NonZeroUsize::new(num_signals).unwrap());
+    let lut_s0 = inlawi!(10010000);
+    let lut_and = inlawi!(1000);
+    let lut_or = inlawi!(1110);
+    for i in 0..num_signals {
+        // if `inx < i`
+        let mut signal = inlawi!(0);
+        // if the prefix up until now is equal
+        let mut prefix_equal = inlawi!(1);
+        for j in (0..lb_num).rev() {
+            // starting with the msb going down
+            if (i & (1 << j)) == 0 {
+                // update equality, and if the prefix is true and the `j` bit of `inx` is set
+                // then the signal is set
+                let mut tmp0 = inlawi!(00);
+                tmp0.set(0, inx.get(j).unwrap()).unwrap();
+                tmp0.set(1, prefix_equal.to_bool()).unwrap();
+                let mut tmp1 = inlawi!(00);
+                tmp1.lut(&lut_s0, &tmp0).unwrap();
+                prefix_equal.set(0, tmp1.get(0).unwrap()).unwrap();
+
+                // or into `signal`
+                let mut tmp = inlawi!(00);
+                tmp.set(0, tmp1.get(1).unwrap()).unwrap();
+                tmp.set(1, signal.to_bool()).unwrap();
+                signal.lut(&lut_or, &tmp).unwrap();
+            } else {
+                // just update equality, the `j`th bit of `i` is 1 and cannot be less than
+                // whatever the `inx` bit is
+                let mut tmp = inlawi!(00);
+                tmp.set(0, inx.get(j).unwrap()).unwrap();
+                tmp.set(1, prefix_equal.to_bool()).unwrap();
+                prefix_equal.lut(&lut_and, &tmp).unwrap();
+            }
+        }
+        signals.set(i, signal.to_bool());
+    }
+    signals
+}
+
 /*
 Normalize. Table size explodes really fast if trying
 to keep as a single LUT, lets use a meta LUT.
@@ -293,6 +340,34 @@ pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
     crossbar(&mut out, x, &signals, (0, x.bw()));
     out
 }
+
+pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
+    assert_eq!(width.bw(), BITS);
+    // curiously, `field_to` seems fundamentally harder than `field_from`
+
+    // get `lhs.bw()` sized resize of `rhs
+    let tmp0 = ExtAwi::from_bits(rhs);
+    let mut tmp1 = ExtAwi::zero(lhs.nzbw());
+    tmp1.zero_resize_assign(&tmp0);
+
+    // get `lhs.bw()` sized mask
+    let min_w = min(lhs.bw(), rhs.bw());
+    let mask0 = tsmear_awi(width, min_w);
+    let mut mask1 = ExtAwi::zero(lhs.nzbw());
+    mask1.zero_resize_assign(&mask0);
+
+    // mask off and then shift both
+    tmp1.and_assign(&mask1);
+    tmp1.shl_assign(to.to_usize());
+    mask1.shl_assign(to.to_usize());
+    mask1.not_assign();
+
+    let mut out = ExtAwi::from_bits(lhs);
+    out.and_assign(&mask1);
+    out.or_assign(&tmp1);
+    out
+}
+
 pub fn bitwise_not(x: &Bits) -> ExtAwi {
     let mut out = ExtAwi::zero(x.nzbw());
     for i in 0..x.bw() {

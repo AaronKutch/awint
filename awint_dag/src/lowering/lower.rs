@@ -6,7 +6,8 @@ use awint_macros::inlawi;
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field_from, field_width, funnel, incrementer, resize, shl, static_field,
+    dynamic_to_static_set, field_from, field_to, field_width, funnel, incrementer, resize, shl,
+    static_field,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*, PNode},
@@ -191,6 +192,42 @@ impl Dag {
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = shl(&x, &s);
                     self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                }
+            }
+            FieldTo([lhs, to, rhs, width]) => {
+                if self[to].op.is_literal() {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let to_u = self.usize(to)?;
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+
+                    let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
+                        let mut lhs_hi = static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
+                        lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
+                        static_field(&lhs, to_u, &lhs_hi, 0, w.get())
+                    } else {
+                        lhs.clone()
+                    };
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        ExtAwi::opaque(self.get_bw(to)).state(),
+                        rhs.state(),
+                        width.state(),
+                    ])?;
+                } else {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let to = ExtAwi::opaque(self.get_bw(to));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let out = field_to(&lhs, &to, &rhs, &width);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        to.state(),
+                        rhs.state(),
+                        width.state(),
+                    ])?;
                 }
             }
             Not([x]) => {
