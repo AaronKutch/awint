@@ -318,6 +318,7 @@ pub fn funnel(x: &Bits, s: &Bits) -> ExtAwi {
 }
 
 pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
+    assert_eq!(from.bw(), BITS);
     assert_eq!(width.bw(), BITS);
     let mut out = ExtAwi::from_bits(lhs);
     // the `width == 0` case will result in a no-op from the later `field_width`
@@ -334,6 +335,7 @@ pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
 }
 
 pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
+    assert_eq!(s.bw(), BITS);
     let mut signals = selector(s, Some(x.bw()));
     signals.reverse();
     let mut out = ExtAwi::zero(x.nzbw());
@@ -342,6 +344,7 @@ pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
 }
 
 pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
+    assert_eq!(to.bw(), BITS);
     assert_eq!(width.bw(), BITS);
     // curiously, `field_to` seems fundamentally harder than `field_from`
 

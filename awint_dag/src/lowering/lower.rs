@@ -326,6 +326,29 @@ impl Dag {
                 out.neg_assign(x.msb());
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
+            Add([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let out = cin_sum(&inlawi!(0), &lhs, &rhs).0;
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Sub([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut rhs_tmp = rhs.clone();
+                rhs_tmp.neg_assign(true);
+                let mut out = lhs.clone();
+                out.add_assign(&rhs_tmp).unwrap();
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Rsb([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut out = lhs.clone();
+                out.neg_assign(true);
+                out.add_assign(&rhs).unwrap();
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         Ok(false)
