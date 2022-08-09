@@ -5,9 +5,9 @@ use std::num::NonZeroUsize;
 use awint_macros::inlawi;
 
 use super::{
-    bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field_from, field_to, field_width, funnel, incrementer, resize, shl,
-    static_field,
+    ashr, bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
+    dynamic_to_static_set, field_from, field_to, field_width, funnel, incrementer, lshr, resize,
+    rotl, rotr, shl, static_field,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*, PNode},
@@ -191,6 +191,89 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = shl(&x, &s);
+                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                }
+            }
+            Lshr([x, s]) => {
+                if self[s].op.is_literal() {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s_u = self.usize(s)?;
+                    let tmp = ExtAwi::zero(x.nzbw());
+                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        x.state(),
+                        ExtAwi::opaque(self.get_bw(s)).state(),
+                    ])?;
+                } else {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let out = lshr(&x, &s);
+                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                }
+            }
+            Ashr([x, s]) => {
+                if self[s].op.is_literal() {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s_u = self.usize(s)?;
+                    let mut tmp = ExtAwi::zero(x.nzbw());
+                    for i in 0..x.bw() {
+                        tmp.set(i, x.msb());
+                    }
+                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        x.state(),
+                        ExtAwi::opaque(self.get_bw(s)).state(),
+                    ])?;
+                } else {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let out = ashr(&x, &s);
+                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                }
+            }
+            Rotl([x, s]) => {
+                if self[s].op.is_literal() {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s_u = self.usize(s)?;
+                    let out = if s_u == 0 {
+                        x.clone()
+                    } else {
+                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u);
+                        static_field(&tmp, 0, &x, x.bw() - s_u, s_u)
+                    };
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        x.state(),
+                        ExtAwi::opaque(self.get_bw(s)).state(),
+                    ])?;
+                } else {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let out = rotl(&x, &s);
+                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                }
+            }
+            Rotr([x, s]) => {
+                if self[s].op.is_literal() {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s_u = self.usize(s)?;
+                    let out = if s_u == 0 {
+                        x.clone()
+                    } else {
+                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u);
+                        static_field(&tmp, x.bw() - s_u, &x, 0, s_u)
+                    };
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        x.state(),
+                        ExtAwi::opaque(self.get_bw(s)).state(),
+                    ])?;
+                } else {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let out = rotr(&x, &s);
                     self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }

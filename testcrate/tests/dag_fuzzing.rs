@@ -433,14 +433,35 @@ fn dag_fuzzing() {
                     .field_from(&rhs_b, from_b.to_usize(), width_b.to_usize())
                     .unwrap();
             }
-            // Shl
+            // Shl, Lshr, Ashr, Rotl, Rotr
             15 => {
                 let (w, x) = m.next1_5();
                 let s = m.next_usize(w);
                 let s_a = m.get_num(s);
-                m.get_mut_num(x).shl_assign(s_a.to_usize()).unwrap();
                 let s_b = m.get_dag(s);
-                m.get_mut_dag(x).shl_assign(s_b.to_usize()).unwrap();
+                match rng.next_u32() % 5 {
+                    0 => {
+                        m.get_mut_num(x).shl_assign(s_a.to_usize()).unwrap();
+                        m.get_mut_dag(x).shl_assign(s_b.to_usize()).unwrap();
+                    }
+                    1 => {
+                        m.get_mut_num(x).lshr_assign(s_a.to_usize()).unwrap();
+                        m.get_mut_dag(x).lshr_assign(s_b.to_usize()).unwrap();
+                    }
+                    2 => {
+                        m.get_mut_num(x).ashr_assign(s_a.to_usize()).unwrap();
+                        m.get_mut_dag(x).ashr_assign(s_b.to_usize()).unwrap();
+                    }
+                    3 => {
+                        m.get_mut_num(x).rotl_assign(s_a.to_usize()).unwrap();
+                        m.get_mut_dag(x).rotl_assign(s_b.to_usize()).unwrap();
+                    }
+                    4 => {
+                        m.get_mut_num(x).rotr_assign(s_a.to_usize()).unwrap();
+                        m.get_mut_dag(x).rotr_assign(s_b.to_usize()).unwrap();
+                    }
+                    _ => unreachable!(),
+                }
             }
             // FieldTo
             16 => {

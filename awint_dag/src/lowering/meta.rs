@@ -343,6 +343,98 @@ pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
     out
 }
 
+pub fn lshr(x: &Bits, s: &Bits) -> ExtAwi {
+    assert_eq!(s.bw(), BITS);
+    let signals = selector(s, Some(x.bw()));
+    let mut out = ExtAwi::zero(x.nzbw());
+    crossbar(&mut out, x, &signals, (x.bw() - 1, 2 * x.bw() - 1));
+    out
+}
+
+pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
+    assert_eq!(s.bw(), BITS);
+    let signals = selector(s, Some(x.bw()));
+    let mut out = ExtAwi::zero(x.nzbw());
+    crossbar(&mut out, x, &signals, (x.bw() - 1, 2 * x.bw() - 1));
+    // Not sure if there is a better way to do this. If we try to use the crossbar
+    // signals in some way, we are guaranteed some kind of > O(1) time thing.
+
+    // get the `lb_num` that `tsmear` uses, it can be `x.bw() - 1` because of the `s
+    // < x.bw()` requirement, this single bit of difference is important for powers
+    // of two because of the `lb_num += 1` condition it avoids.
+    let num = x.bw() - 1;
+    let next_pow = num.next_power_of_two();
+    let mut lb_num = next_pow.trailing_zeros() as usize;
+    if next_pow == num {
+        // need extra bit to get all `n + 1`
+        lb_num += 1;
+    }
+    if let Some(w) = NonZeroUsize::new(lb_num) {
+        let mut gated_s = ExtAwi::zero(w);
+        let lut_and = inlawi!(1000);
+        // `gated_s` will be zero if `x.msb()` is zero, in which case `tsmear` produces
+        // all zeros to be ORed
+        for i in 0..gated_s.bw() {
+            let mut tmp0 = inlawi!(00);
+            tmp0.set(0, s.get(i).unwrap()).unwrap();
+            tmp0.set(1, x.msb()).unwrap();
+            let mut tmp1 = inlawi!(0);
+            tmp1.lut(&lut_and, &tmp0).unwrap();
+            gated_s.set(i, tmp1.to_bool());
+        }
+        let or_mask = tsmear_awi(&gated_s, num);
+        let lut_or = inlawi!(1110);
+        for i in 0..or_mask.bw() {
+            let out_i = out.bw() - 1 - i;
+            let mut tmp0 = inlawi!(00);
+            tmp0.set(0, out.get(out_i).unwrap()).unwrap();
+            tmp0.set(1, or_mask.get(i).unwrap()).unwrap();
+            let mut tmp1 = inlawi!(0);
+            tmp1.lut(&lut_or, &tmp0).unwrap();
+            out.set(out_i, tmp1.to_bool());
+        }
+    }
+
+    out
+}
+
+pub fn rotl(x: &Bits, s: &Bits) -> ExtAwi {
+    assert_eq!(s.bw(), BITS);
+    let signals = selector(s, Some(x.bw()));
+    // we will use the whole cross bar, with every signal controlling two diagonals
+    // for the wraparound except for the `x.bw() - 1` one
+    let mut rolled_signals = vec![inlawi!(0); 2 * x.bw() - 1];
+    rolled_signals[x.bw() - 1].copy_assign(&signals[0]).unwrap();
+    for i in 0..(x.bw() - 1) {
+        rolled_signals[i].copy_assign(&signals[i + 1]).unwrap();
+        rolled_signals[i + x.bw()]
+            .copy_assign(&signals[i + 1])
+            .unwrap();
+    }
+    rolled_signals.reverse();
+    let mut out = ExtAwi::zero(x.nzbw());
+    crossbar(&mut out, x, &rolled_signals, (0, 2 * x.bw() - 1));
+    out
+}
+
+pub fn rotr(x: &Bits, s: &Bits) -> ExtAwi {
+    assert_eq!(s.bw(), BITS);
+    let signals = selector(s, Some(x.bw()));
+    // we will use the whole cross bar, with every signal controlling two diagonals
+    // for the wraparound except for the `x.bw() - 1` one
+    let mut rolled_signals = vec![inlawi!(0); 2 * x.bw() - 1];
+    rolled_signals[x.bw() - 1].copy_assign(&signals[0]).unwrap();
+    for i in 0..(x.bw() - 1) {
+        rolled_signals[i].copy_assign(&signals[i + 1]).unwrap();
+        rolled_signals[i + x.bw()]
+            .copy_assign(&signals[i + 1])
+            .unwrap();
+    }
+    let mut out = ExtAwi::zero(x.nzbw());
+    crossbar(&mut out, x, &rolled_signals, (0, 2 * x.bw() - 1));
+    out
+}
+
 pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     assert_eq!(to.bw(), BITS);
     assert_eq!(width.bw(), BITS);
