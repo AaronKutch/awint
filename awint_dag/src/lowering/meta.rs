@@ -2,6 +2,7 @@
 
 use std::{cmp::min, num::NonZeroUsize};
 
+use awint_internals::BITS;
 use awint_macros::*;
 
 use crate::mimick::{Bits, ExtAwi, InlAwi};
@@ -261,10 +262,26 @@ pub fn funnel(x: &Bits, s: &Bits) -> ExtAwi {
     assert_eq!(x.bw() / 2, 1 << s.bw());
     let mut out = ExtAwi::zero(NonZeroUsize::new(x.bw() / 2).unwrap());
     let signals = selector(s, None);
-    // select zero should connect the zeroeth crossbars, so the offset is `0 - 0 +
-    // out.bw() - 1`
+    // select zero should connect the zeroeth crossbars, so the offset is `out.bw()
+    // - 1 + 0 - 0`
     let range = (out.bw() - 1, out.bw() - 1 + out.bw());
     crossbar(&mut out, x, &signals, range);
+    out
+}
+
+pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
+    assert_eq!(width.bw(), BITS);
+    let mut out = ExtAwi::from_bits(lhs);
+    // the `width == 0` case will result in a no-op from the later `field_width`
+    // part, so we need to be able to handle just `rhs.bw()` possible shifts for
+    // `width == 1` cases. There are `rhs.bw()` output bars needed. `from == 0`
+    // should connect the zeroeth crossbars, so the offset is `rhs.bw() - 1 + 0 -
+    // 0`. `j` stays zero and we have `0 <= i < rhs.bw()`
+    let signals = selector(from, Some(rhs.bw()));
+    let range = (rhs.bw() - 1, 2 * rhs.bw() - 1);
+    let mut tmp = ExtAwi::zero(rhs.nzbw());
+    crossbar(&mut tmp, rhs, &signals, range);
+    out.field_width(&tmp, width.to_usize()).unwrap();
     out
 }
 

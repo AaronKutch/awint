@@ -114,8 +114,8 @@ impl Bits {
     /// returned. `width` can be zero, in which case this function just checks
     /// the input correctness and does not mutate `self`.
     ///
-    /// This function works by copying a `bw` sized bitfield from `rhs` at
-    /// bitposition `from` and overwriting `bw` bits at bitposition `to` in
+    /// This function works by copying a `width` sized bitfield from `rhs` at
+    /// bitposition `from` and overwriting `width` bits at bitposition `to` in
     /// `self`. Only the `width` bits in `self` are mutated, any bits before and
     /// after the bitfield are left unchanged.
     ///

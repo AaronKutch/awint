@@ -4,7 +4,7 @@ use awint_macros::inlawi;
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field_width, funnel, incrementer, resize, static_field,
+    dynamic_to_static_set, field_from, field_width, funnel, incrementer, resize, static_field,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*, PNode},
@@ -134,6 +134,21 @@ impl Dag {
                 let s = ExtAwi::opaque(self.get_bw(s));
                 let out = funnel(&x, &s);
                 self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+            }
+            FieldFrom([lhs, rhs, from, width]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let from = ExtAwi::opaque(self.get_bw(from));
+                let width = ExtAwi::opaque(self.get_bw(width));
+                // the optimizations on `width` are done later on an inner `field_width` call
+                let out = field_from(&lhs, &rhs, &from, &width);
+                self.graft(ptr, v, &[
+                    out.state(),
+                    lhs.state(),
+                    rhs.state(),
+                    from.state(),
+                    width.state(),
+                ])?;
             }
             Not([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
