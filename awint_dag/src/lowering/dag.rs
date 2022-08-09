@@ -3,7 +3,8 @@
 use std::{
     borrow::Borrow,
     num::NonZeroUsize,
-    ops::{Index, IndexMut}, vec,
+    ops::{Index, IndexMut},
+    vec,
 };
 
 use awint_core::Bits;

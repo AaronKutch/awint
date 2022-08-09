@@ -1,6 +1,6 @@
 //! Using combined normal and mimick types to assist in lowering
 
-use std::num::NonZeroUsize;
+use std::{cmp::min, num::NonZeroUsize};
 
 use awint_macros::*;
 
@@ -37,6 +37,58 @@ pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
                 signal.lut(&lut0, &tmp).unwrap();
             } else {
                 signal.lut(&lut1, &tmp).unwrap();
+            }
+        }
+        signals.push(signal);
+    }
+    signals
+}
+
+/// Trailing smear, given the value of `inx` it will set all bits in the vector
+/// up to but not including the one indexed by `inx`. This means that
+/// `inx.to_usize() == 0` sets no bits, and `inx.to_usize() == num_bits` sets
+/// all the bits. Beware of off-by-one errors, if there are `n` bits then there
+/// are `n + 1` possible unique smears.
+pub fn tsmear(inx: &Bits, num_signals: usize) -> Vec<inlawi_ty!(1)> {
+    let next_pow = num_signals.next_power_of_two();
+    let mut lb_num = next_pow.trailing_zeros() as usize;
+    if next_pow == num_signals {
+        // need extra bit to get all `n + 1`
+        lb_num += 1;
+    }
+    let mut signals = vec![];
+    let lut_s0 = inlawi!(10010000);
+    let lut_and = inlawi!(1000);
+    let lut_or = inlawi!(1110);
+    for i in 0..num_signals {
+        // if `inx < i`
+        let mut signal = inlawi!(0);
+        // if the prefix up until now is equal
+        let mut prefix_equal = inlawi!(1);
+        for j in (0..lb_num).rev() {
+            // starting with the msb going down
+            if (i & (1 << j)) == 0 {
+                // update equality, and if the prefix is true and the `j` bit of `inx` is set
+                // then the signal is set
+                let mut tmp0 = inlawi!(00);
+                tmp0.set(0, inx.get(j).unwrap()).unwrap();
+                tmp0.set(1, prefix_equal.to_bool()).unwrap();
+                let mut tmp1 = inlawi!(00);
+                tmp1.lut(&lut_s0, &tmp0).unwrap();
+                prefix_equal.set(0, tmp1.get(0).unwrap()).unwrap();
+
+                // or into `signal`
+                let mut tmp = inlawi!(00);
+                tmp.set(0, tmp1.get(1).unwrap()).unwrap();
+                tmp.set(1, signal.to_bool()).unwrap();
+                signal.lut(&lut_or, &tmp).unwrap();
+            } else {
+                // just update equality, the `j`th bit of `i` is 1 and cannot be less than
+                // whatever the `inx` bit is
+                let mut tmp = inlawi!(00);
+                tmp.set(0, inx.get(j).unwrap()).unwrap();
+                tmp.set(1, prefix_equal.to_bool()).unwrap();
+                prefix_equal.lut(&lut_and, &tmp).unwrap();
             }
         }
         signals.push(signal);
@@ -137,6 +189,24 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
                 out.set(i, x.get(x.bw() - 1).unwrap()).unwrap();
             }
         } // else the bits in `out` are automatically zero
+    }
+    out
+}
+
+pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
+    let mut out = ExtAwi::from_bits(lhs);
+    let min_w = min(lhs.bw(), rhs.bw());
+    let signals = tsmear(width, min_w);
+    let lut = inlawi!(1100_1010);
+    for (i, signal) in signals.into_iter().enumerate() {
+        // mux betwee `lhs` or `rhs` based on the signal
+        let mut tmp0 = inlawi!(000);
+        tmp0.set(0, lhs.get(i).unwrap()).unwrap();
+        tmp0.set(1, rhs.get(i).unwrap()).unwrap();
+        tmp0.set(2, signal.to_bool()).unwrap();
+        let mut tmp1 = inlawi!(0);
+        tmp1.lut(&lut, &tmp0).unwrap();
+        out.set(i, tmp1.to_bool()).unwrap();
     }
     out
 }

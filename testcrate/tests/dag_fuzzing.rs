@@ -1,4 +1,4 @@
-use std::num::NonZeroUsize;
+use std::{cmp::min, num::NonZeroUsize};
 
 use awint::prelude as num;
 use awint_dag::{
@@ -196,8 +196,9 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        let next_op = rng.next_u32() % 13;
+        let next_op = rng.next_u32() % 14;
         match next_op {
+            // Lut, StaticLut
             0 => {
                 let (out_w, out) = m.next1_5();
                 let (inx_w, inx) = m.next1_5();
@@ -209,6 +210,7 @@ fn dag_fuzzing() {
                 let inx_b = m.get_dag(inx);
                 m.get_mut_dag(out).lut(&lut_b, &inx_b).unwrap();
             }
+            // Get, StaticGet
             1 => {
                 let (bits_w, bits) = m.next1_5();
                 let inx = m.next_usize(bits_w);
@@ -222,6 +224,7 @@ fn dag_fuzzing() {
                 m.get_mut_dag(out)
                     .bool_assign(bits_b.get(inx_b.to_usize()).unwrap());
             }
+            // Set, StaticSet
             2 => {
                 let (bits_w, bits) = m.next1_5();
                 let inx = m.next_usize(bits_w);
@@ -237,6 +240,7 @@ fn dag_fuzzing() {
                     .set(inx_b.to_usize(), bit_b.to_bool())
                     .unwrap();
             }
+            // FieldBit
             3 => {
                 let (lhs_w, lhs) = m.next1_5();
                 let to = m.next_usize(lhs_w);
@@ -255,6 +259,7 @@ fn dag_fuzzing() {
                     .field_bit(to_b.to_usize(), &rhs_b, from_b.to_usize())
                     .unwrap();
             }
+            // ZeroResize
             4 => {
                 let lhs = m.next1_5().1;
                 let rhs = m.next1_5().1;
@@ -263,6 +268,7 @@ fn dag_fuzzing() {
                 let rhs_b = m.get_dag(rhs);
                 m.get_mut_dag(lhs).zero_resize_assign(&rhs_b);
             }
+            // SignResize
             5 => {
                 let lhs = m.next1_5().1;
                 let rhs = m.next1_5().1;
@@ -271,11 +277,13 @@ fn dag_fuzzing() {
                 let rhs_b = m.get_dag(rhs);
                 m.get_mut_dag(lhs).sign_resize_assign(&rhs_b);
             }
+            // Not
             6 => {
                 let x = m.next1_5().1;
                 m.get_mut_num(x).not_assign();
                 m.get_mut_dag(x).not_assign();
             }
+            // Or, And, Xor
             7 => {
                 let (lhs_w, lhs) = m.next1_5();
                 let rhs = m.next(lhs_w);
@@ -297,6 +305,7 @@ fn dag_fuzzing() {
                     _ => unreachable!(),
                 }
             }
+            // Inc, IncCout, Dec, DecCout
             8 => {
                 let x = m.next1_5().1;
                 let cin = m.next(1);
@@ -315,6 +324,7 @@ fn dag_fuzzing() {
                 m.get_mut_num(cout).bool_assign(out_a);
                 m.get_mut_dag(cout).bool_assign(out_b);
             }
+            // CinSum, UnsignedOverflow, SignedOverflow
             9 => {
                 let cin = m.next(1);
                 let (lhs_w, lhs) = m.next1_5();
@@ -343,6 +353,7 @@ fn dag_fuzzing() {
                 m.get_mut_dag(unsigned).bool_assign(overflow.0);
                 m.get_mut_dag(signed).bool_assign(overflow.1);
             }
+            // Lsb, Msb
             10 => {
                 let x = m.next1_5().1;
                 let out = m.next(1);
@@ -358,6 +369,7 @@ fn dag_fuzzing() {
                     m.get_mut_dag(out).bool_assign(b);
                 }
             }
+            // Neg, Abs
             11 => {
                 let x = m.next1_5().1;
                 if (rng.next_u32() & 1) == 0 {
@@ -371,6 +383,7 @@ fn dag_fuzzing() {
                     m.get_mut_dag(x).abs_assign();
                 }
             }
+            // Funnel
             12 => {
                 let w = 1 << (((m.rng.next_u32() as usize) % 2) + 1);
                 let lhs = m.next(w);
@@ -382,6 +395,23 @@ fn dag_fuzzing() {
                 let b = m.get_dag(rhs);
                 let b_s = m.get_dag(s);
                 m.get_mut_dag(lhs).funnel(&b, &b_s).unwrap();
+            }
+            // FieldWidth
+            13 => {
+                let (w0, lhs) = m.next1_5();
+                let (w1, rhs) = m.next1_5();
+                let min_w = min(w0, w1);
+                let width = m.next_usize(min_w + 1);
+                let rhs_a = m.get_num(rhs);
+                let width_a = m.get_num(width);
+                m.get_mut_num(lhs)
+                    .field_width(&rhs_a, width_a.to_usize())
+                    .unwrap();
+                let rhs_b = m.get_dag(rhs);
+                let width_b = m.get_dag(width);
+                m.get_mut_dag(lhs)
+                    .field_width(&rhs_b, width_b.to_usize())
+                    .unwrap();
             }
             _ => unreachable!(),
         }
