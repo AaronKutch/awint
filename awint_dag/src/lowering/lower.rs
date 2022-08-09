@@ -1,5 +1,7 @@
 //! Lowers everything into LUT form
 
+use std::num::NonZeroUsize;
+
 use awint_macros::inlawi;
 
 use super::{
@@ -136,19 +138,42 @@ impl Dag {
                 self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
             }
             FieldFrom([lhs, rhs, from, width]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                let from = ExtAwi::opaque(self.get_bw(from));
-                let width = ExtAwi::opaque(self.get_bw(width));
-                // the optimizations on `width` are done later on an inner `field_width` call
-                let out = field_from(&lhs, &rhs, &from, &width);
-                self.graft(ptr, v, &[
-                    out.state(),
-                    lhs.state(),
-                    rhs.state(),
-                    from.state(),
-                    width.state(),
-                ])?;
+                if self[from].op.is_literal() {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let from_u = self.usize(from)?;
+                    let out = if let Some(w) = NonZeroUsize::new(rhs.bw() - from_u) {
+                        let tmp0 = ExtAwi::zero(w);
+                        let tmp1 = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
+                        let mut out = lhs.clone();
+                        out.field_width(&tmp1, width.to_usize());
+                        out
+                    } else {
+                        lhs.clone()
+                    };
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        rhs.state(),
+                        ExtAwi::opaque(self.get_bw(from)).state(),
+                        width.state(),
+                    ])?;
+                } else {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let from = ExtAwi::opaque(self.get_bw(from));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+                    // the optimizations on `width` are done later on an inner `field_width` call
+                    let out = field_from(&lhs, &rhs, &from, &width);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        rhs.state(),
+                        from.state(),
+                        width.state(),
+                    ])?;
+                }
             }
             Not([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));

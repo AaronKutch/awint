@@ -195,6 +195,7 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
 }
 
 pub fn static_field(lhs: &Bits, to: usize, rhs: &Bits, from: usize, width: usize) -> ExtAwi {
+    //(lhs.bw(), to, rhs.bw(), from, width);
     assert!(
         width <= lhs.bw()
             && width <= rhs.bw()
