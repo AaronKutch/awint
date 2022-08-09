@@ -196,7 +196,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        let next_op = rng.next_u32() % 15;
+        let next_op = rng.next_u32() % 16;
         match next_op {
             // Lut, StaticLut
             0 => {
@@ -432,6 +432,15 @@ fn dag_fuzzing() {
                 m.get_mut_dag(lhs)
                     .field_from(&rhs_b, from_b.to_usize(), width_b.to_usize())
                     .unwrap();
+            }
+            // Shl
+            15 => {
+                let (w, x) = m.next1_5();
+                let s = m.next_usize(w);
+                let s_a = m.get_num(s);
+                m.get_mut_num(x).shl_assign(s_a.to_usize()).unwrap();
+                let s_b = m.get_dag(s);
+                m.get_mut_dag(x).shl_assign(s_b.to_usize()).unwrap();
             }
             _ => unreachable!(),
         }

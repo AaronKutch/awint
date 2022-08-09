@@ -286,6 +286,13 @@ pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
     out
 }
 
+pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
+    let mut signals = selector(s, Some(x.bw()));
+    signals.reverse();
+    let mut out = ExtAwi::zero(x.nzbw());
+    crossbar(&mut out, x, &signals, (0, x.bw()));
+    out
+}
 pub fn bitwise_not(x: &Bits) -> ExtAwi {
     let mut out = ExtAwi::zero(x.nzbw());
     for i in 0..x.bw() {

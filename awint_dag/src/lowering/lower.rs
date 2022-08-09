@@ -6,7 +6,7 @@ use awint_macros::inlawi;
 
 use super::{
     bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field_from, field_width, funnel, incrementer, resize, static_field,
+    dynamic_to_static_set, field_from, field_width, funnel, incrementer, resize, shl, static_field,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*, PNode},
@@ -173,6 +173,24 @@ impl Dag {
                         from.state(),
                         width.state(),
                     ])?;
+                }
+            }
+            Shl([x, s]) => {
+                if self[s].op.is_literal() {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s_u = self.usize(s)?;
+                    let tmp = ExtAwi::zero(x.nzbw());
+                    let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        x.state(),
+                        ExtAwi::opaque(self.get_bw(s)).state(),
+                    ])?;
+                } else {
+                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let out = shl(&x, &s);
+                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Not([x]) => {
