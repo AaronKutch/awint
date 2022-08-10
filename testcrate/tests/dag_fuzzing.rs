@@ -13,7 +13,7 @@ use triple_arena::{ptr_struct, Arena};
 
 // miri is just here to check that the unsized deref hacks are working
 const N: u32 = if cfg!(miri) {
-    32
+    4
 } else if cfg!(debug_assertions) {
     1000
 } else {
@@ -111,7 +111,7 @@ impl Mem {
     }
 
     pub fn get_dag(&self, inx: P0) -> dag::ExtAwi {
-        self.a[inx].dag.unstable_clone_identical()
+        self.a[inx].dag.clone()
     }
 
     pub fn get_mut_num(&mut self, inx: P0) -> &mut num::ExtAwi {

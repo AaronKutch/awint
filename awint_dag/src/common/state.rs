@@ -42,6 +42,24 @@ thread_local!(
 );
 thread_local!(pub static EPOCH_GEN: RefCell<u64> = RefCell::new(0));
 
+/// During the lifetime of a `StateEpoch` struct, all thread local `State`s
+/// created will be kept until the struct is dropped, in which case the capacity
+/// for those states are reclaimed and their `PState`s invalidated. If mimick
+/// types are using states from before the lifetime, variables taken only by
+/// reference will retain their validity, but variables operated on by mutable
+/// reference during the lifetime will probably be invalidated and cause panics
+/// if used after the lifetime.
+///
+/// In most use cases, you should create a `StateEpoch` for the lifetime of a
+/// group of mimicking types that are never used after being converted to `Dag`
+/// form or used by a function like `Dag::add_group` or `Dag::graft`. Once in
+/// `Dag` form, you do not have to worry about any thread local weirdness.
+///
+/// # Panics
+///
+/// The lifetimes of `StateEpoch` structs should be stacklike, such that a
+/// `StateEpoch` created during the lifetime of another `StateEpoch` should be
+/// dropped before the older `StateEpoch` is dropped, otherwise a panic occurs.
 #[derive(Debug)]
 pub struct StateEpoch {
     this_epoch_gen: u64,

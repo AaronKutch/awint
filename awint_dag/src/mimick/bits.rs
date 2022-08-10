@@ -1,4 +1,4 @@
-use std::{fmt, mem, num::NonZeroUsize, ptr};
+use std::{fmt, mem, num::NonZeroUsize, ptr, marker::PhantomData, rc::Rc};
 
 use crate::{
     mimick::{ExtAwi, InlAwi},
@@ -11,6 +11,7 @@ use crate::{
 /// Mimicking `awint_core::Bits`
 #[repr(transparent)] // for the transmute
 pub struct Bits {
+    _no_send_or_sync: PhantomData<Rc<()>>,
     // use different names for the different raw `PState`s, or else Rust can think we are
     // trying to go through the `Deref` impls
     _bits_raw: [PState],

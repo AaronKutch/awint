@@ -2,7 +2,7 @@ use std::{
     borrow::{Borrow, BorrowMut},
     fmt,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull}, marker::PhantomData, rc::Rc,
 };
 
 use awint_internals::*;
@@ -14,6 +14,8 @@ use crate::{mimick::Bits, primitive as prim, Lineage, Op, PState};
 /// Note: `inlawi!(opaque: ..64)` just works
 #[derive(Clone, Copy)]
 pub struct InlAwi<const BW: usize, const LEN: usize> {
+    // prevents the type from implementing `Send` or `Sync` on stable while still being able to be `Copy`
+    _no_send_or_sync: PhantomData<Rc<()>>,
     pub(in crate::mimick) _inlawi_raw: [PState; 1],
 }
 
@@ -28,6 +30,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
             _inlawi_raw: [PState::new(NonZeroUsize::new(BW).unwrap(), op)],
+            _no_send_or_sync: PhantomData,
         }
     }
 
@@ -284,6 +287,7 @@ impl From<prim::isize> for UsizeInlAwi {
 /// Note: `extawi!(opaque: ..64)` just works
 #[derive(Clone)]
 pub struct ExtAwi {
+    _no_send_or_sync: PhantomData<Rc<()>>,
     pub(in crate::mimick) _extawi_raw: [PState; 1],
 }
 
@@ -297,21 +301,9 @@ impl ExtAwi {
     fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         Self {
             _extawi_raw: [PState::new(nzbw, op)],
+            _no_send_or_sync: PhantomData,
         }
     }
-
-    /// Used by tests for getting a clone with no `Op::Copy` inbetween
-    pub fn unstable_clone_identical(&self) -> Self {
-        Self {
-            _extawi_raw: [self.state()],
-        }
-    }
-
-    /*
-    pub fn bw(&self) -> prim::usize {
-        prim::usize::new(BwAssign, vec![self.state()])
-    }
-    */
 
     pub fn nzbw(&self) -> NonZeroUsize {
         self.state_nzbw()
