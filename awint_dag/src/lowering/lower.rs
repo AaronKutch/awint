@@ -1,6 +1,6 @@
 //! Lowers everything into LUT form
 
-use std::num::NonZeroUsize;
+use std::{cmp::min, num::NonZeroUsize};
 
 use awint_macros::inlawi;
 
@@ -277,42 +277,6 @@ impl Dag {
                     self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
-            FieldTo([lhs, to, rhs, width]) => {
-                if self[to].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let to_u = self.usize(to)?;
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let width = ExtAwi::opaque(self.get_bw(width));
-
-                    let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
-                        let mut lhs_hi = static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
-                        lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
-                        static_field(&lhs, to_u, &lhs_hi, 0, w.get())
-                    } else {
-                        lhs.clone()
-                    };
-                    self.graft(ptr, v, &[
-                        out.state(),
-                        lhs.state(),
-                        ExtAwi::opaque(self.get_bw(to)).state(),
-                        rhs.state(),
-                        width.state(),
-                    ])?;
-                } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let to = ExtAwi::opaque(self.get_bw(to));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let width = ExtAwi::opaque(self.get_bw(width));
-                    let out = field_to(&lhs, &to, &rhs, &width);
-                    self.graft(ptr, v, &[
-                        out.state(),
-                        lhs.state(),
-                        to.state(),
-                        rhs.state(),
-                        width.state(),
-                    ])?;
-                }
-            }
             Not([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = bitwise_not(&x);
@@ -432,21 +396,81 @@ impl Dag {
                 out.add_assign(&rhs).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
+            FieldTo([lhs, to, rhs, width]) => {
+                if self[to].op.is_literal() {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let to_u = self.usize(to)?;
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+
+                    let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
+                        let mut lhs_hi = static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
+                        lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
+                        static_field(&lhs, to_u, &lhs_hi, 0, w.get())
+                    } else {
+                        lhs.clone()
+                    };
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        ExtAwi::opaque(self.get_bw(to)).state(),
+                        rhs.state(),
+                        width.state(),
+                    ])?;
+                } else {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let to = ExtAwi::opaque(self.get_bw(to));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let out = field_to(&lhs, &to, &rhs, &width);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        to.state(),
+                        rhs.state(),
+                        width.state(),
+                    ])?;
+                }
+            }
             Field([lhs, to, rhs, from, width]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let to = ExtAwi::opaque(self.get_bw(to));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                let from = ExtAwi::opaque(self.get_bw(from));
-                let width = ExtAwi::opaque(self.get_bw(width));
-                let out = field(&lhs, &to, &rhs, &from, &width);
-                self.graft(ptr, v, &[
-                    out.state(),
-                    lhs.state(),
-                    to.state(),
-                    rhs.state(),
-                    from.state(),
-                    width.state(),
-                ])?;
+                if self[to].op.is_literal() || self[from].op.is_literal() {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let to = ExtAwi::opaque(self.get_bw(to));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let from = ExtAwi::opaque(self.get_bw(from));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+
+                    let min_w = min(lhs.bw(), rhs.bw());
+                    let mut tmp = ExtAwi::zero(NonZeroUsize::new(min_w).unwrap());
+                    tmp.field_from(&rhs, from.to_usize(), width.to_usize())
+                        .unwrap();
+                    let mut out = lhs.clone();
+                    out.field_to(to.to_usize(), &tmp, width.to_usize()).unwrap();
+
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        to.state(),
+                        rhs.state(),
+                        from.state(),
+                        width.state(),
+                    ])?;
+                } else {
+                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let to = ExtAwi::opaque(self.get_bw(to));
+                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let from = ExtAwi::opaque(self.get_bw(from));
+                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let out = field(&lhs, &to, &rhs, &from, &width);
+                    self.graft(ptr, v, &[
+                        out.state(),
+                        lhs.state(),
+                        to.state(),
+                        rhs.state(),
+                        from.state(),
+                        width.state(),
+                    ])?;
+                }
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
