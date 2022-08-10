@@ -166,6 +166,19 @@ impl Mem {
             res.unwrap();
             //dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
             //    .unwrap();
+            for node in dag.dag.vals() {
+                if !matches!(
+                    node.op,
+                    Op::Opaque(_)
+                        | Op::Literal(_)
+                        | Op::Copy(_)
+                        | Op::StaticGet(_, _)
+                        | Op::StaticSet(_, _)
+                        | Op::StaticLut(_, _)
+                ) {
+                    panic!("did not lower all the way: {:?}", node);
+                }
+            }
             for (p, lit) in literals {
                 if let Some(op) = dag.dag.get_mut(p) {
                     // we are not respecting gen counters in release mode so we need this check
