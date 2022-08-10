@@ -1,8 +1,10 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     fmt,
+    marker::PhantomData,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull}, marker::PhantomData, rc::Rc,
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    rc::Rc,
 };
 
 use awint_internals::*;
@@ -14,7 +16,8 @@ use crate::{mimick::Bits, primitive as prim, Lineage, Op, PState};
 /// Note: `inlawi!(opaque: ..64)` just works
 #[derive(Clone, Copy)]
 pub struct InlAwi<const BW: usize, const LEN: usize> {
-    // prevents the type from implementing `Send` or `Sync` on stable while still being able to be `Copy`
+    // prevents the type from implementing `Send` or `Sync` on stable while still being able to be
+    // `Copy`
     _no_send_or_sync: PhantomData<Rc<()>>,
     pub(in crate::mimick) _inlawi_raw: [PState; 1],
 }

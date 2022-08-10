@@ -1,4 +1,4 @@
-use std::{fmt, mem, num::NonZeroUsize, ptr, marker::PhantomData, rc::Rc};
+use std::{fmt, marker::PhantomData, mem, num::NonZeroUsize, ptr, rc::Rc};
 
 use crate::{
     mimick::{ExtAwi, InlAwi},
