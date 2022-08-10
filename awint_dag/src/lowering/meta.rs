@@ -7,8 +7,9 @@ use awint_macros::*;
 
 use crate::mimick::{Bits, ExtAwi, InlAwi};
 
-// These first few functions need to use manual `get` and `set` and only literal
-// macros within loop blocks to prevent infinite lowering loops
+// This code here is especially messy because we do not want to get into
+// infinite lowering loops. These first few functions need to use manual `get`
+// and `set` and only literal macros within loop blocks.
 
 /// Given `inx.bw()` bits, this returns `2^inx.bw()` signals for every possible
 /// state of `inx`. The `i`th signal is true only if `inx.to_usize() == 1`.
@@ -554,4 +555,75 @@ pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
         carry.bool_assign(carry_sum.get(1).unwrap());
     }
     out
+}
+
+pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
+    assert_eq!(to.bw(), BITS);
+    assert_eq!(from.bw(), BITS);
+    assert_eq!(width.bw(), BITS);
+
+    // we use some summation to get the fielding done with a single crossbar
+
+    // the basic shift offset is based on `to - from`, to keep the shift value
+    // positive in case of `to == 0` and `from == rhs.bw()` we add `rhs.bw()` to
+    // this value. The opposite extreme is therefore `to == lhs.bw()` and `from ==
+    // 0`, which will be equal to `lhs.bw() + rhs.bw()` because of the added
+    // `rhs.bw()`.
+    let num = lhs.bw() + rhs.bw();
+    let lb_num = num.next_power_of_two().trailing_zeros() as usize;
+    if let Some(w) = NonZeroUsize::new(lb_num) {
+        let mut shift = ExtAwi::zero(w);
+        shift.usize_assign(rhs.bw());
+        shift
+            .add_assign(&extawi!(to[..(w.get())]).unwrap())
+            .unwrap();
+        shift
+            .sub_assign(&extawi!(from[..(w.get())]).unwrap())
+            .unwrap();
+
+        let mut signals = selector(&shift, Some(num));
+        signals.reverse();
+
+        let mut rhs_to_lhs = ExtAwi::zero(lhs.nzbw());
+        // really what `field` is is a well defined full crossbar, the masking part
+        // after this is optimized to nothing if `rhs` is zero.
+        crossbar(&mut rhs_to_lhs, rhs, &signals, (0, num));
+
+        // `rhs` is now shifted correctly but we need a mask to overwrite the correct
+        // bits of `lhs`. We use opposing `tsmears` and AND them together to get the
+        // `width` window in the correct spot.
+
+        // to + width
+        let mut tmp = ExtAwi::zero(w);
+        tmp.usize_assign(to.to_usize());
+        tmp.add_assign(&extawi!(width[..(w.get())]).unwrap());
+        let tmask = tsmear(&tmp, lhs.bw());
+        // lhs.bw() - to
+        let mut tmp = ExtAwi::zero(w);
+        tmp.usize_assign(lhs.bw());
+        tmp.sub_assign(&extawi!(to[..(w.get())]).unwrap()).unwrap();
+        let mut lmask = tsmear(&tmp, lhs.bw());
+        lmask.reverse();
+
+        let mut out = ExtAwi::from_bits(lhs);
+        // when `tmask` and `lmask` are both set, mux in `rhs`
+        let lut = inlawi!(1011_1111_1000_0000);
+        for i in 0..lhs.bw() {
+            let mut tmp = inlawi!(0000);
+            tmp.set(0, rhs_to_lhs.get(i).unwrap()).unwrap();
+            tmp.set(1, tmask[i].to_bool()).unwrap();
+            tmp.set(2, lmask[i].to_bool()).unwrap();
+            tmp.set(3, lhs.get(i).unwrap()).unwrap();
+            let mut lut_out = inlawi!(0);
+            lut_out.lut(&lut, &tmp);
+            out.set(i, lut_out.to_bool());
+        }
+        out
+    } else {
+        // `lhs.bw() == 1`, `rhs.bw() == 1`, `width` is the only thing that matters
+        let lut = inlawi!(rhs[0], lhs[0]).unwrap();
+        let mut out = extawi!(0);
+        out.lut(&lut, width).unwrap();
+        out
+    }
 }

@@ -6,8 +6,8 @@ use awint_macros::inlawi;
 
 use super::{
     ashr, bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field_from, field_to, field_width, funnel, incrementer, lshr, resize,
-    rotl, rotr, shl, static_field,
+    dynamic_to_static_set, field, field_from, field_to, field_width, funnel, incrementer, lshr,
+    resize, rotl, rotr, shl, static_field,
 };
 use crate::{
     common::{EvalError, Lineage, Op::*, PNode},
@@ -431,6 +431,22 @@ impl Dag {
                 out.neg_assign(true);
                 out.add_assign(&rhs).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Field([lhs, to, rhs, from, width]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let to = ExtAwi::opaque(self.get_bw(to));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let from = ExtAwi::opaque(self.get_bw(from));
+                let width = ExtAwi::opaque(self.get_bw(width));
+                let out = field(&lhs, &to, &rhs, &from, &width);
+                self.graft(ptr, v, &[
+                    out.state(),
+                    lhs.state(),
+                    to.state(),
+                    rhs.state(),
+                    from.state(),
+                    width.state(),
+                ])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }

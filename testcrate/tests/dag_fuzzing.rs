@@ -196,7 +196,7 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N {
-        let next_op = rng.next_u32() % 18;
+        let next_op = rng.next_u32() % 19;
         match next_op {
             // Lut, StaticLut
             0 => {
@@ -428,7 +428,7 @@ fn dag_fuzzing() {
                     .unwrap();
                 let rhs_b = m.get_dag(rhs);
                 let width_b = m.get_dag(width);
-                let from_b = m.get_num(from);
+                let from_b = m.get_dag(from);
                 m.get_mut_dag(lhs)
                     .field_from(&rhs_b, from_b.to_usize(), width_b.to_usize())
                     .unwrap();
@@ -476,7 +476,7 @@ fn dag_fuzzing() {
                 m.get_mut_num(lhs)
                     .field_to(to_a.to_usize(), &rhs_a, width_a.to_usize())
                     .unwrap();
-                let to_b = m.get_num(to);
+                let to_b = m.get_dag(to);
                 let rhs_b = m.get_dag(rhs);
                 let width_b = m.get_dag(width);
                 m.get_mut_dag(lhs)
@@ -504,6 +504,40 @@ fn dag_fuzzing() {
                     }
                     _ => unreachable!(),
                 }
+            }
+            // Field
+            18 => {
+                let (w0, lhs) = m.next1_5();
+                let (w1, rhs) = m.next1_5();
+                let min_w = min(w0, w1);
+                let width = m.next_usize(min_w + 1);
+                let to = m.next_usize(1 + w0 - m.get_num(width).to_usize());
+                let from = m.next_usize(1 + w1 - m.get_num(width).to_usize());
+
+                let to_a = m.get_num(to);
+                let rhs_a = m.get_num(rhs);
+                let from_a = m.get_num(from);
+                let width_a = m.get_num(width);
+                m.get_mut_num(lhs)
+                    .field(
+                        to_a.to_usize(),
+                        &rhs_a,
+                        from_a.to_usize(),
+                        width_a.to_usize(),
+                    )
+                    .unwrap();
+                let to_b = m.get_dag(to);
+                let rhs_b = m.get_dag(rhs);
+                let from_b = m.get_dag(from);
+                let width_b = m.get_dag(width);
+                m.get_mut_dag(lhs)
+                    .field(
+                        to_b.to_usize(),
+                        &rhs_b,
+                        from_b.to_usize(),
+                        width_b.to_usize(),
+                    )
+                    .unwrap();
             }
             _ => unreachable!(),
         }
