@@ -24,7 +24,7 @@
 mod common;
 pub mod lowering;
 pub mod mimick;
-pub use common::{EvalError, Lineage, Op, PState, State, StateEpoch};
+pub use common::{EvalError, Lineage, Op, PNode, PState, State, StateEpoch};
 pub use mimick::primitive;
 
 /// Raw access to thread-local `State` related things

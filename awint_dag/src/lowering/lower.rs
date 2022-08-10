@@ -492,53 +492,74 @@ impl Dag {
         // have been much simpler because of constants being propogated down.
 
         let mut unimplemented = false;
-        let mut path: Vec<(usize, PNode)> = vec![(0, leaf)];
+        let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
-            let (i, p) = path[path.len() - 1];
+            let (i, p, all_constants) = path[path.len() - 1];
             let ops = self[p].op.operands();
-            if i >= ops.len() {
+            if ops.is_empty() {
+                path.pop().unwrap();
+                if path.is_empty() {
+                    break
+                }
+                path.last_mut().unwrap().2 &= self[p].op.is_literal();
+            } else if i >= ops.len() {
                 // checked all sources
                 self.visit_gen += 1;
                 let this_visit = self.visit_gen;
-                // newly lowered nodes will be set to `this_visit` so that the DFS reexplores
-                let eval = match self.lower_node(p, this_visit) {
-                    Ok(lowered) => lowered,
-                    Err(EvalError::Unimplemented) => {
-                        // we lower as much as possible
-                        unimplemented = true;
-                        true
-                    }
-                    Err(e) => {
-                        self[p].err = Some(e.clone());
-                        return Err(e)
-                    }
-                };
-                if eval {
-                    match self.eval_tree(p, base_visit) {
-                        Ok(()) => {}
-                        Err(EvalError::Unevaluatable) => {}
+                if all_constants {
+                    match self.eval_node(p, this_visit) {
+                        Ok(()) => {
+                            path.pop().unwrap();
+                            if path.is_empty() {
+                                break
+                            }
+                        }
+                        Err(EvalError::Unevaluatable) => {
+                            path.pop().unwrap();
+                            if path.is_empty() {
+                                break
+                            }
+                            path.last_mut().unwrap().2 &= self[p].op.is_literal();
+                        }
                         Err(e) => {
                             self[p].err = Some(e.clone());
                             return Err(e)
                         }
                     }
-                    path.pop().unwrap();
-                    if path.is_empty() {
-                        break
-                    }
                 } else {
-                    // else do not call `path.pop`, restart the DFS here
-                    path.last_mut().unwrap().0 = 0;
+                    // newly lowered nodes will be set to `this_visit` so that the DFS reexplores
+                    let lowered = match self.lower_node(p, this_visit) {
+                        Ok(lowered) => lowered,
+                        Err(EvalError::Unimplemented) => {
+                            // we lower as much as possible
+                            unimplemented = true;
+                            true
+                        }
+                        Err(e) => {
+                            self[p].err = Some(e.clone());
+                            return Err(e)
+                        }
+                    };
+                    if lowered {
+                        path.pop().unwrap();
+                        if path.is_empty() {
+                            break
+                        }
+                    } else {
+                        // else do not call `path.pop`, restart the DFS here
+                        path.last_mut().unwrap().0 = 0;
+                    }
                 }
             } else {
                 let p_next = ops[i];
                 let next_visit = self[p_next].visit;
                 if next_visit == base_visit {
                     // peek at node for evaluatableness but do not visit node
+                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                     path.last_mut().unwrap().0 += 1;
                 } else {
                     self[p_next].visit = base_visit;
-                    path.push((0, p_next));
+                    path.push((0, p_next, true));
                 }
             }
         }
