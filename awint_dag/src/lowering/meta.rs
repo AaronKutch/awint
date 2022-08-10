@@ -436,34 +436,6 @@ pub fn rotr(x: &Bits, s: &Bits) -> ExtAwi {
     out
 }
 
-pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
-    assert_eq!(to.bw(), BITS);
-    assert_eq!(width.bw(), BITS);
-    // curiously, `field_to` seems fundamentally harder than `field_from`
-
-    // get `lhs.bw()` sized resize of `rhs
-    let tmp0 = ExtAwi::from_bits(rhs);
-    let mut tmp1 = ExtAwi::zero(lhs.nzbw());
-    tmp1.zero_resize_assign(&tmp0);
-
-    // get `lhs.bw()` sized mask
-    let min_w = min(lhs.bw(), rhs.bw());
-    let mask0 = tsmear_awi(width, min_w);
-    let mut mask1 = ExtAwi::zero(lhs.nzbw());
-    mask1.zero_resize_assign(&mask0);
-
-    // mask off and then shift both
-    tmp1.and_assign(&mask1);
-    tmp1.shl_assign(to.to_usize());
-    mask1.shl_assign(to.to_usize());
-    mask1.not_assign();
-
-    let mut out = ExtAwi::from_bits(lhs);
-    out.and_assign(&mask1);
-    out.or_assign(&tmp1);
-    out
-}
-
 pub fn bitwise_not(x: &Bits) -> ExtAwi {
     let mut out = ExtAwi::zero(x.nzbw());
     for i in 0..x.bw() {
@@ -555,6 +527,59 @@ pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
         carry.bool_assign(carry_sum.get(1).unwrap());
     }
     out
+}
+
+pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
+    assert_eq!(to.bw(), BITS);
+    assert_eq!(width.bw(), BITS);
+
+    // simplified version of `field` below
+
+    let num = lhs.bw();
+    let next_pow = num.next_power_of_two();
+    let mut lb_num = next_pow.trailing_zeros() as usize;
+    if next_pow == num {
+        // need extra bit to get all `n + 1`
+        lb_num += 1;
+    }
+    if let Some(w) = NonZeroUsize::new(lb_num) {
+        let mut signals = selector(to, Some(num));
+        signals.reverse();
+
+        let mut rhs_to_lhs = ExtAwi::zero(lhs.nzbw());
+        crossbar(&mut rhs_to_lhs, rhs, &signals, (0, lhs.bw()));
+
+        // to + width
+        let mut tmp = ExtAwi::zero(w);
+        tmp.usize_assign(to.to_usize());
+        tmp.add_assign(&extawi!(width[..(w.get())]).unwrap());
+        let tmask = tsmear(&tmp, lhs.bw());
+        // lhs.bw() - to
+        let mut tmp = ExtAwi::zero(w);
+        tmp.usize_assign(lhs.bw());
+        tmp.sub_assign(&extawi!(to[..(w.get())]).unwrap()).unwrap();
+        let mut lmask = tsmear(&tmp, lhs.bw());
+        lmask.reverse();
+
+        let mut out = ExtAwi::from_bits(lhs);
+        let lut = inlawi!(1011_1111_1000_0000);
+        for i in 0..lhs.bw() {
+            let mut tmp = inlawi!(0000);
+            tmp.set(0, rhs_to_lhs.get(i).unwrap()).unwrap();
+            tmp.set(1, tmask[i].to_bool()).unwrap();
+            tmp.set(2, lmask[i].to_bool()).unwrap();
+            tmp.set(3, lhs.get(i).unwrap()).unwrap();
+            let mut lut_out = inlawi!(0);
+            lut_out.lut(&lut, &tmp);
+            out.set(i, lut_out.to_bool());
+        }
+        out
+    } else {
+        let lut = inlawi!(rhs[0], lhs[0]).unwrap();
+        let mut out = extawi!(0);
+        out.lut(&lut, width).unwrap();
+        out
+    }
 }
 
 pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {

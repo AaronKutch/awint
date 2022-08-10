@@ -299,7 +299,11 @@ impl Bits {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
-                panic!("index of {} is out of bounds of bw {}", inx, self.bw());
+                panic!(
+                    "mimicking Bits::get({}) is out of bounds with bitwidth {}",
+                    inx,
+                    self.bw()
+                );
             }
             Some(prim::bool::new(StaticGet([self.state()], inx)))
         } else {
@@ -313,7 +317,11 @@ impl Bits {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
-                panic!("index of {} is out of bounds of bw {}", inx, self.bw());
+                panic!(
+                    "mimicking Bits::set({}) is out of bounds with bitwidth {}",
+                    inx,
+                    self.bw()
+                );
             }
             self.update_state(
                 self.state_nzbw(),
