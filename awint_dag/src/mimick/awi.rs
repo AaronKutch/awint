@@ -19,6 +19,7 @@ use crate::{
 /// Mimicking `awint_core::InlAwi`.
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
+#[derive(Clone, Copy)]
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     pub(in crate::mimick) _inlawi_raw: [PState; 1],
 }
@@ -26,12 +27,6 @@ pub struct InlAwi<const BW: usize, const LEN: usize> {
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     fn state(&self) -> PState {
         self._inlawi_raw[0]
-    }
-}
-
-impl<const BW: usize, const LEN: usize> Clone for InlAwi<BW, LEN> {
-    fn clone(&self) -> Self {
-        Self::new(Op::Copy([self.state()]))
     }
 }
 
@@ -294,6 +289,7 @@ impl From<prim::isize> for UsizeInlAwi {
 /// Mimicking `awint_ext::ExtAwi`
 ///
 /// Note: `extawi!(opaque: ..64)` just works
+#[derive(Clone)]
 pub struct ExtAwi {
     pub(in crate::mimick) _extawi_raw: [PState; 1],
 }
@@ -301,12 +297,6 @@ pub struct ExtAwi {
 impl Lineage for ExtAwi {
     fn state(&self) -> PState {
         self._extawi_raw[0]
-    }
-}
-
-impl Clone for ExtAwi {
-    fn clone(&self) -> Self {
-        Self::new(self.nzbw(), Op::Copy([self.state()]))
     }
 }
 

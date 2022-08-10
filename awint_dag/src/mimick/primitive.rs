@@ -66,6 +66,7 @@ macro_rules! prim {
         $(
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
+            #[derive(Clone, Copy)]
             pub struct $name(InlAwi<$bw, {crate::mimick::Bits::unstable_raw_digits($bw)}>);
 
             impl Lineage for $name {
@@ -83,12 +84,6 @@ macro_rules! prim {
             impl From<core::primitive::$name> for $name {
                 fn from(x: core::primitive::$name) -> Self {
                     Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
-                }
-            }
-
-            impl Clone for $name {
-                fn clone(&self) -> Self {
-                    Self::new(Op::Copy([self.state()]))
                 }
             }
 
@@ -125,6 +120,7 @@ macro_rules! prim {
 
 /// Mimicking primitive of same name
 #[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
 pub struct bool(InlAwi<1, { crate::mimick::Bits::unstable_raw_digits(1) }>);
 
 impl Lineage for bool {
@@ -142,12 +138,6 @@ impl bool {
 impl From<core::primitive::bool> for bool {
     fn from(x: core::primitive::bool) -> Self {
         Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
-    }
-}
-
-impl Clone for bool {
-    fn clone(&self) -> Self {
-        Self::new(Op::Copy([self.state()]))
     }
 }
 
