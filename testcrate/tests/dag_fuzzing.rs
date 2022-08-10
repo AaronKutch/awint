@@ -1,7 +1,9 @@
 use std::{cmp::min, num::NonZeroUsize};
 
 use awint::prelude as num;
-use awint_dag::{lowering::Dag, prelude as dag, EvalError, Lineage, Op, StateEpoch};
+use awint_dag::{
+    lowering::Dag, prelude as dag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
+};
 use awint_internals::BITS;
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
@@ -550,5 +552,43 @@ fn dag_fuzzing() {
         .unwrap();*/
     res.unwrap();
     drop(epoch);
-    assert!(awint_dag::state::STATE_ARENA.with(|f| f.borrow().is_empty()))
+    assert!(STATE_ARENA.with(|f| f.borrow().is_empty()))
+}
+
+#[test]
+fn state_epochs() {
+    use awint_dag::primitive::u8;
+    let state = {
+        let _epoch0 = StateEpoch::new();
+        let x: &u8 = &7.into();
+        // test `Copy` trait
+        let y: u8 = *x;
+        assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
+        {
+            let _epoch1 = StateEpoch::new();
+            let mut _z: u8 = 7.into();
+            assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 2);
+        }
+        assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
+        {
+            let _epoch2 = StateEpoch::new();
+            let mut _w: u8 = 7.into();
+            assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 2);
+        }
+        assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
+        let state = y.state();
+        assert!(state.get_state().is_some());
+        state
+    };
+    assert!(state.get_state().is_none());
+    assert!(STATE_ARENA.with(|f| f.borrow().is_empty()))
+}
+
+#[test]
+#[should_panic]
+fn state_epoch_fail() {
+    let epoch0 = StateEpoch::new();
+    let epoch1 = StateEpoch::new();
+    drop(epoch0);
+    drop(epoch1);
 }

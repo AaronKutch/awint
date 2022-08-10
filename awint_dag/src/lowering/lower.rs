@@ -16,6 +16,7 @@ use crate::{
     mimick::{Bits, ExtAwi, InlAwi},
     EvalError, Lineage,
     Op::*,
+    StateEpoch,
 };
 
 impl Dag {
@@ -23,6 +24,8 @@ impl Dag {
     /// `StaticSet`, and `StaticLut`. New nodes that may be unlowered are
     /// colored with `visit`. Returns `true` if the node is already lowered.
     pub fn lower_node(&mut self, ptr: PNode, visit: u64) -> Result<bool, EvalError> {
+        // create a temporary epoch for the grafting in this function
+        let epoch = StateEpoch::new();
         if !self.dag.contains(ptr) {
             return Err(EvalError::InvalidPtr)
         }
@@ -477,6 +480,7 @@ impl Dag {
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
+        drop(epoch);
         Ok(false)
     }
 
