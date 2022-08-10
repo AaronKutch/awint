@@ -1,11 +1,7 @@
 use std::{cmp::min, num::NonZeroUsize};
 
 use awint::prelude as num;
-use awint_dag::{
-    common::{EvalError, Lineage, Op},
-    lowering::Dag,
-    prelude as dag,
-};
+use awint_dag::{lowering::Dag, prelude as dag, EvalError, Lineage, Op, StateEpoch};
 use awint_internals::BITS;
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
@@ -192,6 +188,7 @@ impl Mem {
 
 #[test]
 fn dag_fuzzing() {
+    let epoch = StateEpoch::new();
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     let mut m = Mem::new();
 
@@ -552,4 +549,6 @@ fn dag_fuzzing() {
     dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
         .unwrap();*/
     res.unwrap();
+    drop(epoch);
+    assert!(awint_dag::state::STATE_ARENA.with(|f| f.borrow().is_empty()))
 }

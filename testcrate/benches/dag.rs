@@ -2,7 +2,7 @@
 
 extern crate test;
 use awint::dag_prelude::*;
-use awint_dag::{common::Lineage, lowering::Dag};
+use awint_dag::{lowering::Dag, Lineage};
 use test::Bencher;
 use triple_arena::ptr_struct;
 

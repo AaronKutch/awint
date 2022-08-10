@@ -2,10 +2,7 @@ use std::{fmt, ops::*};
 
 use awint_internals::*;
 
-use crate::{
-    common::{state::PState, Lineage, Op},
-    mimick::{primitive as prim, InlAwi},
-};
+use crate::{mimick::InlAwi, primitive as prim, Lineage, Op, PState};
 
 macro_rules! unary {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {

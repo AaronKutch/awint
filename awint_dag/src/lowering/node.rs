@@ -4,7 +4,7 @@ use triple_arena::Ptr;
 #[cfg(feature = "debug")]
 use triple_arena_render::{DebugNode, DebugNodeTrait};
 
-use crate::common::{EvalError, Op};
+use crate::{EvalError, Op};
 
 #[derive(Debug, Clone)]
 pub struct Node<P: Ptr> {

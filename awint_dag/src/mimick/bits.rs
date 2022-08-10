@@ -1,11 +1,8 @@
 use std::{fmt, mem, num::NonZeroUsize, ptr};
 
 use crate::{
-    common::{
-        state::{get_state, new_state_with, PState},
-        Lineage, Op,
-    },
     mimick::{ExtAwi, InlAwi},
+    Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
@@ -73,7 +70,7 @@ impl Lineage for &mut Bits {
 
 impl Bits {
     pub fn nzbw(&self) -> NonZeroUsize {
-        get_state(self.state()).unwrap().nzbw
+        self.state_nzbw()
     }
 
     pub fn bw(&self) -> usize {
@@ -91,7 +88,7 @@ impl Bits {
     pub fn update_state(&mut self, nzbw: NonZeroUsize, op: Op<PState>) {
         // other `PState`s that need the old state will keep it alive despite this one
         // being dropped
-        let _: PState = mem::replace(&mut self._bits_raw[0], new_state_with(nzbw, op));
+        let _: PState = mem::replace(&mut self._bits_raw[0], PState::new(nzbw, op));
     }
 }
 

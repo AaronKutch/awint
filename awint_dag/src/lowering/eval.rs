@@ -5,8 +5,8 @@ use awint_ext::ExtAwi;
 use Op::*;
 
 use crate::{
-    common::{EvalError, Op, PNode},
-    lowering::Dag,
+    lowering::{Dag, PNode},
+    EvalError, Op,
 };
 
 impl Dag {

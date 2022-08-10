@@ -13,11 +13,9 @@ use triple_arena::Arena;
 use Op::*;
 
 use crate::{
-    common::{
-        state::{get_state, next_state_visit_gen, set_state_node_map, PState},
-        EvalError, Op, PNode,
-    },
-    lowering::Node,
+    lowering::{Node, PNode},
+    state::next_state_visit_gen,
+    EvalError, Op, PState,
 };
 
 #[derive(Debug)]
@@ -87,17 +85,17 @@ impl Dag {
         let state_visit = next_state_visit_gen();
         self.tmp_stack.clear();
         for leaf in leaves {
-            let leaf_state = get_state(*leaf).unwrap();
+            let leaf_state = leaf.get_state().unwrap();
             if leaf_state.visit != state_visit {
                 let p_leaf = self.dag.insert_with(|p_this| Node {
-                    nzbw: get_state(*leaf).unwrap().nzbw,
+                    nzbw: leaf_state.nzbw,
                     visit,
                     p_this,
                     op: Op::Invalid,
                     rc: 0,
                     err: None,
                 });
-                set_state_node_map(*leaf, state_visit, p_leaf);
+                leaf.set_state_aux(state_visit, p_leaf);
                 if let Some(ref mut v) = added {
                     v.push(p_leaf);
                 }
@@ -105,7 +103,7 @@ impl Dag {
                 loop {
                     let (current_i, current_p_node, current_p_state) =
                         *self.tmp_stack.last().unwrap();
-                    let state = get_state(current_p_state).unwrap();
+                    let state = current_p_state.get_state().unwrap();
                     if let Some(t) = Op::translate_root(&state.op) {
                         // reached a root
                         self[current_p_node].op = t;
@@ -121,7 +119,7 @@ impl Dag {
                         self[current_p_node].op =
                             Op::translate(&state.op, |lhs: &mut [PNode], rhs: &[PState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                    *lhs = get_state(*rhs).unwrap().node_map;
+                                    *lhs = rhs.get_state().unwrap().node_map;
                                 }
                             });
                         self[current_p_node].nzbw = state.nzbw;
@@ -134,7 +132,7 @@ impl Dag {
                     } else {
                         // check next operand
                         let p_next = state.op.operands()[current_i];
-                        let next_state = get_state(p_next).unwrap();
+                        let next_state = p_next.get_state().unwrap();
                         if next_state.visit == state_visit {
                             // already explored
                             self[next_state.node_map].rc += 1;
@@ -152,7 +150,7 @@ impl Dag {
                                 err: None,
                                 visit,
                             });
-                            set_state_node_map(p_next, state_visit, p);
+                            p_next.set_state_aux(state_visit, p);
                             if let Some(ref mut v) = added {
                                 v.push(p);
                             }
@@ -164,7 +162,7 @@ impl Dag {
         }
         // handle the noted
         for p_noted in noted {
-            let state = get_state(*p_noted).unwrap();
+            let state = p_noted.get_state().unwrap();
             if state.visit == state_visit {
                 let p_node = state.node_map;
                 if inc_noted_rc {
@@ -290,7 +288,7 @@ impl Dag {
                 return Err(EvalError::WrongNumberOfOperands)
             }
             for (i, op) in self[ptr].op.operands().iter().enumerate() {
-                let current_state = get_state(output_and_operands[i + 1]).unwrap();
+                let current_state = output_and_operands[i + 1].get_state().unwrap();
                 if self[op].nzbw != current_state.nzbw {
                     return Err(EvalError::OtherString(format!(
                         "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of \
@@ -302,7 +300,7 @@ impl Dag {
                     return Err(EvalError::ExpectedOpaque)
                 }
             }
-            if self[ptr].nzbw != get_state(output_and_operands[0]).unwrap().nzbw {
+            if self[ptr].nzbw != output_and_operands[0].get_nzbw() {
                 return Err(EvalError::WrongBitwidth)
             }
         }

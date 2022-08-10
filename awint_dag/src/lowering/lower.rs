@@ -4,15 +4,18 @@ use std::{cmp::min, num::NonZeroUsize};
 
 use awint_macros::inlawi;
 
-use super::{
-    ashr, bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-    dynamic_to_static_set, field, field_from, field_to, field_width, funnel, incrementer, lshr,
-    resize, rotl, rotr, shl, static_field,
-};
 use crate::{
-    common::{EvalError, Lineage, Op::*, PNode},
-    lowering::{negator, Dag},
+    lowering::{
+        meta::{
+            ashr, bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
+            dynamic_to_static_set, field, field_from, field_to, field_width, funnel, incrementer,
+            lshr, negator, resize, rotl, rotr, shl, static_field,
+        },
+        Dag, PNode,
+    },
     mimick::{Bits, ExtAwi, InlAwi},
+    EvalError, Lineage,
+    Op::*,
 };
 
 impl Dag {

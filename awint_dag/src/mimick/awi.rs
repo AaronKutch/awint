@@ -7,14 +7,7 @@ use std::{
 
 use awint_internals::*;
 
-use crate::{
-    common::{
-        state::{get_state, new_state_with, PState},
-        Lineage, Op,
-    },
-    mimick::Bits,
-    primitive as prim,
-};
+use crate::{mimick::Bits, primitive as prim, Lineage, Op, PState};
 
 /// Mimicking `awint_core::InlAwi`.
 ///
@@ -34,7 +27,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn new(op: Op<PState>) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
-            _inlawi_raw: [new_state_with(NonZeroUsize::new(BW).unwrap(), op)],
+            _inlawi_raw: [PState::new(NonZeroUsize::new(BW).unwrap(), op)],
         }
     }
 
@@ -303,7 +296,7 @@ impl Lineage for ExtAwi {
 impl ExtAwi {
     fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         Self {
-            _extawi_raw: [new_state_with(nzbw, op)],
+            _extawi_raw: [PState::new(nzbw, op)],
         }
     }
 
@@ -321,7 +314,7 @@ impl ExtAwi {
     */
 
     pub fn nzbw(&self) -> NonZeroUsize {
-        get_state(self.state()).unwrap().nzbw
+        self.state_nzbw()
     }
 
     pub fn bw(&self) -> usize {

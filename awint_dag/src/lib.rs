@@ -21,10 +21,19 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::comparison_chain)]
 
-pub mod common;
+mod common;
 pub mod lowering;
 pub mod mimick;
+pub use common::{EvalError, Lineage, Op, PState, State, StateEpoch};
 pub use mimick::primitive;
+
+/// Raw access to thread-local `State` related things
+pub mod state {
+    pub use super::common::{
+        clear_thread_local_state, next_state_visit_gen, EPOCH_GEN, EPOCH_STACK, STATE_ARENA,
+        STATE_VISIT_GEN,
+    };
+}
 
 pub mod prelude {
     pub use crate::mimick::{Bits, ExtAwi, InlAwi};
