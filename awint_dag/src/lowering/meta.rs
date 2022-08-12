@@ -652,3 +652,38 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
         out
     }
 }
+
+pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
+    let mut ranks = vec![vec![]];
+    let lut_xnor = inlawi!(1001);
+    for i in 0..lhs.bw() {
+        let mut tmp0 = inlawi!(00);
+        tmp0.set(0, lhs.get(i).unwrap()).unwrap();
+        tmp0.set(1, rhs.get(i).unwrap()).unwrap();
+        let mut tmp1 = inlawi!(0);
+        tmp1.lut(&lut_xnor, &tmp0).unwrap();
+        ranks[0].push(tmp1);
+    }
+    // binary tree reduce
+    let lut_and = inlawi!(1000);
+    loop {
+        let prev_rank = ranks.last().unwrap();
+        let rank_len = prev_rank.len();
+        if rank_len == 1 {
+            break prev_rank[0]
+        }
+        let mut next_rank = vec![];
+        for i in 0..(rank_len / 2) {
+            let mut tmp0 = inlawi!(00);
+            tmp0.set(0, prev_rank[2 * i].to_bool()).unwrap();
+            tmp0.set(1, prev_rank[2 * i + 1].to_bool()).unwrap();
+            let mut tmp1 = inlawi!(0);
+            tmp1.lut(&lut_and, &tmp0).unwrap();
+            next_rank.push(tmp1);
+        }
+        if (rank_len & 1) != 0 {
+            next_rank.push(*prev_rank.last().unwrap())
+        }
+        ranks.push(next_rank);
+    }
+}

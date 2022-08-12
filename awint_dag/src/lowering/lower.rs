@@ -2,8 +2,9 @@
 
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint_macros::inlawi;
+use awint_macros::{extawi, inlawi};
 
+use super::meta::equal;
 use crate::{
     lowering::{
         meta::{
@@ -477,6 +478,95 @@ impl Dag {
                         width.state(),
                     ])?;
                 }
+            }
+            Rev([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let mut out = ExtAwi::zero(x.nzbw());
+                for i in 0..x.bw() {
+                    out.set(i, x.get(x.bw() - 1 - i).unwrap()).unwrap()
+                }
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
+            Eq([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let out = equal(&lhs, &rhs);
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Ne([lhs, rhs]) => {
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut out = equal(&lhs, &rhs);
+                out.not_assign();
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Ult([lhs, rhs]) => {
+                let w = self.get_bw(lhs);
+                let lhs = ExtAwi::opaque(w);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut not_lhs = lhs.clone();
+                not_lhs.not_assign();
+                let mut tmp = ExtAwi::zero(w);
+                // TODO should probably use some short termination circuit like what `tsmear`
+                // uses
+                let (out, _) = tmp.cin_sum_assign(false, &not_lhs, &rhs).unwrap();
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Ule([lhs, rhs]) => {
+                let w = self.get_bw(lhs);
+                let lhs = ExtAwi::opaque(w);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut not_lhs = lhs.clone();
+                not_lhs.not_assign();
+                let mut tmp = ExtAwi::zero(w);
+                let (out, _) = tmp.cin_sum_assign(true, &not_lhs, &rhs).unwrap();
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Ilt([lhs, rhs]) => {
+                let w = self.get_bw(lhs);
+                let lhs = ExtAwi::opaque(w);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut out = inlawi!(0);
+                if w.get() == 1 {
+                    let mut tmp = inlawi!(00);
+                    tmp.set(0, lhs.msb()).unwrap();
+                    tmp.set(1, rhs.msb()).unwrap();
+                    out.lut(&inlawi!(0010), &tmp).unwrap();
+                } else {
+                    let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
+                    let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
+                    let lo_lt = lhs_lo.ult(&rhs_lo).unwrap();
+                    let mut tmp = inlawi!(000);
+                    tmp.set(0, lo_lt).unwrap();
+                    tmp.set(1, lhs.msb()).unwrap();
+                    tmp.set(2, rhs.msb()).unwrap();
+                    // if `lhs.msb() != rhs.msb()` then `lhs.msb()` determines signed-less-than,
+                    // otherwise `lo_lt` determines
+                    out.lut(&inlawi!(10001110), &tmp).unwrap();
+                }
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+            }
+            Ile([lhs, rhs]) => {
+                let w = self.get_bw(lhs);
+                let lhs = ExtAwi::opaque(w);
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let mut out = inlawi!(0);
+                if w.get() == 1 {
+                    let mut tmp = inlawi!(00);
+                    tmp.set(0, lhs.msb()).unwrap();
+                    tmp.set(1, rhs.msb()).unwrap();
+                    out.lut(&inlawi!(1011), &tmp).unwrap();
+                } else {
+                    let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
+                    let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
+                    let lo_lt = lhs_lo.ule(&rhs_lo).unwrap();
+                    let mut tmp = inlawi!(000);
+                    tmp.set(0, lo_lt).unwrap();
+                    tmp.set(1, lhs.msb()).unwrap();
+                    tmp.set(2, rhs.msb()).unwrap();
+                    out.lut(&inlawi!(10001110), &tmp).unwrap();
+                }
+                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
