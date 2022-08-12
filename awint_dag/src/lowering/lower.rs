@@ -568,6 +568,19 @@ impl Dag {
                 }
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
+            op @ (IsZero(_) | IsUmax(_) | IsImax(_) | IsImin(_) | IsUone(_)) => {
+                let x = ExtAwi::opaque(self.get_bw(op.operands()[0]));
+                let w = x.bw();
+                let out = InlAwi::from(match op {
+                    IsZero(_) => x.const_eq(&extawi!(zero: ..w).unwrap()).unwrap(),
+                    IsUmax(_) => x.const_eq(&extawi!(umax: ..w).unwrap()).unwrap(),
+                    IsImax(_) => x.const_eq(&extawi!(imax: ..w).unwrap()).unwrap(),
+                    IsImin(_) => x.const_eq(&extawi!(imin: ..w).unwrap()).unwrap(),
+                    IsUone(_) => x.const_eq(&extawi!(uone: ..w).unwrap()).unwrap(),
+                    _ => unreachable!(),
+                });
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         drop(epoch);

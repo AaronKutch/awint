@@ -209,7 +209,7 @@ impl Mem {
 }
 
 fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
-    let next_op = rng.next_u32() % 21;
+    let next_op = rng.next_u32() % 22;
     match next_op {
         // Lut, StaticLut
         0 => {
@@ -600,6 +600,35 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             }
         }
         // IsZero, IsUmax, IsImax, IsImin, IsUone
+        21 => {
+            let x = m.next1_5().1;
+            let x_a = m.get_num(x);
+            let x_b = m.get_dag(x);
+            let out = m.next(1);
+            match rng.next_u32() % 5 {
+                0 => {
+                    m.get_mut_num(out).bool_assign(x_a.is_zero());
+                    m.get_mut_dag(out).bool_assign(x_b.is_zero());
+                }
+                1 => {
+                    m.get_mut_num(out).bool_assign(x_a.is_umax());
+                    m.get_mut_dag(out).bool_assign(x_b.is_umax());
+                }
+                2 => {
+                    m.get_mut_num(out).bool_assign(x_a.is_imax());
+                    m.get_mut_dag(out).bool_assign(x_b.is_imax());
+                }
+                3 => {
+                    m.get_mut_num(out).bool_assign(x_a.is_imin());
+                    m.get_mut_dag(out).bool_assign(x_b.is_imin());
+                }
+                4 => {
+                    m.get_mut_num(out).bool_assign(x_a.is_uone());
+                    m.get_mut_dag(out).bool_assign(x_b.is_uone());
+                }
+                _ => unreachable!(),
+            }
+        }
         _ => unreachable!(),
     }
 }
