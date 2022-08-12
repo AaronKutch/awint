@@ -5,10 +5,7 @@ use std::{cmp::min, num::NonZeroUsize};
 use awint_internals::BITS;
 use awint_macros::*;
 
-use crate::{
-    mimick::{Bits, ExtAwi, InlAwi},
-    primitive as prim,
-};
+use crate::mimick::{Bits, ExtAwi, InlAwi};
 
 mod num {
     pub use awint_core::{Bits, InlAwi};
@@ -59,7 +56,7 @@ pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
 /// `inx.to_usize() == 0` sets no bits, and `inx.to_usize() == num_bits` sets
 /// all the bits. Beware of off-by-one errors, if there are `n` bits then there
 /// are `n + 1` possible unique smears.
-pub fn tsmear(inx: &Bits, num_signals: usize) -> Vec<inlawi_ty!(1)> {
+pub fn tsmear_inx(inx: &Bits, num_signals: usize) -> Vec<inlawi_ty!(1)> {
     let next_pow = num_signals.next_power_of_two();
     let mut lb_num = next_pow.trailing_zeros() as usize;
     if next_pow == num_signals {
@@ -268,7 +265,7 @@ pub fn static_field(lhs: &Bits, to: usize, rhs: &Bits, from: usize, width: usize
 pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     let mut out = ExtAwi::from_bits(lhs);
     let min_w = min(lhs.bw(), rhs.bw());
-    let signals = tsmear(width, min_w);
+    let signals = tsmear_inx(width, min_w);
     let lut = inlawi!(1100_1010);
     for (i, signal) in signals.into_iter().enumerate() {
         // mux betwee `lhs` or `rhs` based on the signal
@@ -368,9 +365,9 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
     // Not sure if there is a better way to do this. If we try to use the crossbar
     // signals in some way, we are guaranteed some kind of > O(1) time thing.
 
-    // get the `lb_num` that `tsmear` uses, it can be `x.bw() - 1` because of the `s
-    // < x.bw()` requirement, this single bit of difference is important for powers
-    // of two because of the `lb_num += 1` condition it avoids.
+    // get the `lb_num` that `tsmear_inx` uses, it can be `x.bw() - 1` because of
+    // the `s < x.bw()` requirement, this single bit of difference is important
+    // for powers of two because of the `lb_num += 1` condition it avoids.
     let num = x.bw() - 1;
     let next_pow = num.next_power_of_two();
     let mut lb_num = next_pow.trailing_zeros() as usize;
@@ -381,8 +378,8 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
     if let Some(w) = NonZeroUsize::new(lb_num) {
         let mut gated_s = ExtAwi::zero(w);
         let lut_and = inlawi!(1000);
-        // `gated_s` will be zero if `x.msb()` is zero, in which case `tsmear` produces
-        // all zeros to be ORed
+        // `gated_s` will be zero if `x.msb()` is zero, in which case `tsmear_inx`
+        // produces all zeros to be ORed
         for i in 0..gated_s.bw() {
             let mut tmp0 = inlawi!(00);
             tmp0.set(0, s.get(i).unwrap()).unwrap();
@@ -561,12 +558,12 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
         let mut tmp = ExtAwi::zero(w);
         tmp.usize_assign(to.to_usize());
         tmp.add_assign(&extawi!(width[..(w.get())]).unwrap());
-        let tmask = tsmear(&tmp, lhs.bw());
+        let tmask = tsmear_inx(&tmp, lhs.bw());
         // lhs.bw() - to
         let mut tmp = ExtAwi::zero(w);
         tmp.usize_assign(lhs.bw());
         tmp.sub_assign(&extawi!(to[..(w.get())]).unwrap()).unwrap();
-        let mut lmask = tsmear(&tmp, lhs.bw());
+        let mut lmask = tsmear_inx(&tmp, lhs.bw());
         lmask.reverse();
 
         let mut out = ExtAwi::from_bits(lhs);
@@ -630,12 +627,12 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
         let mut tmp = ExtAwi::zero(w);
         tmp.usize_assign(to.to_usize());
         tmp.add_assign(&extawi!(width[..(w.get())]).unwrap());
-        let tmask = tsmear(&tmp, lhs.bw());
+        let tmask = tsmear_inx(&tmp, lhs.bw());
         // lhs.bw() - to
         let mut tmp = ExtAwi::zero(w);
         tmp.usize_assign(lhs.bw());
         tmp.sub_assign(&extawi!(to[..(w.get())]).unwrap()).unwrap();
-        let mut lmask = tsmear(&tmp, lhs.bw());
+        let mut lmask = tsmear_inx(&tmp, lhs.bw());
         lmask.reverse();
 
         let mut out = ExtAwi::from_bits(lhs);
@@ -696,7 +693,9 @@ pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
     }
 }
 
-pub fn count_ones(x: &Bits) -> prim::usize {
+/// Uses the minimum number of bits to handle all cases, you may need to call
+/// `to_usize` on the result
+pub fn count_ones(x: &Bits) -> ExtAwi {
     // a tuple of an intermediate sum and the max possible value of that sum
     let mut ranks: Vec<Vec<(ExtAwi, awint_ext::ExtAwi)>> = vec![vec![]];
     for i in 0..x.bw() {
@@ -709,7 +708,7 @@ pub fn count_ones(x: &Bits) -> prim::usize {
         let prev_rank = ranks.last().unwrap();
         let rank_len = prev_rank.len();
         if rank_len == 1 {
-            break prev_rank[0].0.to_usize()
+            break prev_rank[0].0.clone()
         }
         let mut next_rank = vec![];
         let mut i = 0;
@@ -752,4 +751,35 @@ pub fn count_ones(x: &Bits) -> prim::usize {
         }
         ranks.push(next_rank);
     }
+}
+
+// If there is a set bit, it and the bits less significant than it will be set
+pub fn tsmear(x: &Bits) -> ExtAwi {
+    let mut tmp0 = ExtAwi::from(x);
+    let mut lvl = 0;
+    // exponentially OR cascade the smear
+    loop {
+        let s = 1 << lvl;
+        if s >= x.bw() {
+            break tmp0
+        }
+        let mut tmp1 = tmp0.clone();
+        tmp1.lshr_assign(s).unwrap();
+        tmp0.or_assign(&tmp1).unwrap();
+        lvl += 1;
+    }
+}
+
+pub fn leading_zeros(x: &Bits) -> ExtAwi {
+    let mut tmp = tsmear(x);
+    tmp.not_assign();
+    count_ones(&tmp)
+}
+
+pub fn trailing_zeros(x: &Bits) -> ExtAwi {
+    let mut tmp = ExtAwi::from_bits(x);
+    tmp.rev_assign();
+    let mut tmp = tsmear(&tmp);
+    tmp.not_assign();
+    count_ones(&tmp)
 }

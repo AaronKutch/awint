@@ -9,7 +9,8 @@ use crate::{
         meta::{
             ashr, bitwise, bitwise_not, cin_sum, count_ones, dynamic_to_static_get,
             dynamic_to_static_lut, dynamic_to_static_set, equal, field, field_from, field_to,
-            field_width, funnel, incrementer, lshr, negator, resize, rotl, rotr, shl, static_field,
+            field_width, funnel, incrementer, leading_zeros, lshr, negator, resize, rotl, rotr,
+            shl, static_field, trailing_zeros,
         },
         Dag, PNode,
     },
@@ -506,8 +507,8 @@ impl Dag {
                 let mut not_lhs = lhs.clone();
                 not_lhs.not_assign();
                 let mut tmp = ExtAwi::zero(w);
-                // TODO should probably use some short termination circuit like what `tsmear`
-                // uses
+                // TODO should probably use some short termination circuit like what
+                // `tsmear_inx` uses
                 let (out, _) = tmp.cin_sum_assign(false, &not_lhs, &rhs).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
@@ -582,7 +583,17 @@ impl Dag {
             }
             CountOnes([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
-                let out = count_ones(&x);
+                let out = count_ones(&x).to_usize();
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
+            Lz([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let out = leading_zeros(&x).to_usize();
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
+            Tz([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let out = trailing_zeros(&x).to_usize();
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
