@@ -787,3 +787,7 @@ pub fn trailing_zeros(x: &Bits) -> ExtAwi {
     tmp.not_assign();
     count_ones(&tmp)
 }
+
+pub fn significant_bits(x: &Bits) -> ExtAwi {
+    count_ones(&tsmear(x))
+}

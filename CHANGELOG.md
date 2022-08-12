@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.0] - TODO
+### Additions
+- Added `#[must_use]` where applicable
+
 ## [0.6.0] - 2022-07-20
 ### Fixes
 - Fixed that the infallibility of some macros was being calculated wrong. A few macros now return

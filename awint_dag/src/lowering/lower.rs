@@ -5,15 +5,7 @@ use std::{cmp::min, num::NonZeroUsize};
 use awint_macros::{extawi, inlawi};
 
 use crate::{
-    lowering::{
-        meta::{
-            ashr, bitwise, bitwise_not, cin_sum, count_ones, dynamic_to_static_get,
-            dynamic_to_static_lut, dynamic_to_static_set, equal, field, field_from, field_to,
-            field_width, funnel, incrementer, leading_zeros, lshr, negator, resize, rotl, rotr,
-            shl, static_field, trailing_zeros,
-        },
-        Dag, PNode,
-    },
+    lowering::{meta::*, Dag, PNode},
     mimick::{Bits, ExtAwi, InlAwi},
     EvalError, Lineage,
     Op::*,
@@ -594,6 +586,11 @@ impl Dag {
             Tz([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = trailing_zeros(&x).to_usize();
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
+            Sig([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let out = significant_bits(&x).to_usize();
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),

@@ -629,13 +629,13 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                 _ => unreachable!(),
             }
         }
-        // CountOnes, Lz, Tz
+        // CountOnes, Lz, Tz, Sig
         22 => {
             let x = m.next1_5().1;
             let x_a = m.get_num(x);
             let x_b = m.get_dag(x);
             let out = m.next_usize(usize::MAX);
-            match rng.next_u32() % 3 {
+            match rng.next_u32() % 4 {
                 0 => {
                     m.get_mut_num(out).usize_assign(x_a.count_ones());
                     m.get_mut_dag(out).usize_assign(x_b.count_ones());
@@ -647,6 +647,10 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                 2 => {
                     m.get_mut_num(out).usize_assign(x_a.tz());
                     m.get_mut_dag(out).usize_assign(x_b.tz());
+                }
+                3 => {
+                    m.get_mut_num(out).usize_assign(x_a.sig());
+                    m.get_mut_dag(out).usize_assign(x_b.sig());
                 }
                 _ => unreachable!(),
             }
