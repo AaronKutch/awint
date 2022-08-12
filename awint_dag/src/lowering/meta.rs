@@ -5,7 +5,15 @@ use std::{cmp::min, num::NonZeroUsize};
 use awint_internals::BITS;
 use awint_macros::*;
 
-use crate::mimick::{Bits, ExtAwi, InlAwi};
+use crate::{
+    mimick::{Bits, ExtAwi, InlAwi},
+    primitive as prim,
+};
+
+mod num {
+    pub use awint_core::{Bits, InlAwi};
+    pub use awint_ext::ExtAwi;
+}
 
 // This code here is especially messy because we do not want to get into
 // infinite lowering loops. These first few functions need to use manual `get`
@@ -683,6 +691,64 @@ pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
         }
         if (rank_len & 1) != 0 {
             next_rank.push(*prev_rank.last().unwrap())
+        }
+        ranks.push(next_rank);
+    }
+}
+
+pub fn count_ones(x: &Bits) -> prim::usize {
+    // a tuple of an intermediate sum and the max possible value of that sum
+    let mut ranks: Vec<Vec<(ExtAwi, awint_ext::ExtAwi)>> = vec![vec![]];
+    for i in 0..x.bw() {
+        ranks[0].push((
+            ExtAwi::from(x.get(i).unwrap()),
+            awint_ext::ExtAwi::from(true),
+        ));
+    }
+    loop {
+        let prev_rank = ranks.last().unwrap();
+        let rank_len = prev_rank.len();
+        if rank_len == 1 {
+            break prev_rank[0].0.to_usize()
+        }
+        let mut next_rank = vec![];
+        let mut i = 0;
+        loop {
+            if i >= rank_len {
+                break
+            }
+            // each rank adds another bit, keep adding until overflow
+            let mut next_sum = extawi!(0, prev_rank[i].0);
+            let mut next_max = {
+                use num::*;
+                extawi!(0, prev_rank[i].1)
+            };
+            loop {
+                i += 1;
+                if i >= rank_len {
+                    break
+                }
+                let w = next_max.bw();
+                {
+                    use num::*;
+                    let mut tmp = ExtAwi::zero(next_max.nzbw());
+                    if tmp
+                        .cin_sum_assign(
+                            false,
+                            &extawi!(zero: .., prev_rank[i].1; ..w).unwrap(),
+                            &next_max,
+                        )
+                        .unwrap()
+                        .0
+                    {
+                        // do not add another previous sum to this sum because of overflow
+                        break
+                    }
+                    cc!(tmp; next_max).unwrap();
+                }
+                next_sum.add_assign(&extawi!(zero: .., prev_rank[i].0; ..w).unwrap());
+            }
+            next_rank.push((next_sum, next_max));
         }
         ranks.push(next_rank);
     }

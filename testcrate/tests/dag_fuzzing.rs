@@ -209,7 +209,7 @@ impl Mem {
 }
 
 fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
-    let next_op = rng.next_u32() % 22;
+    let next_op = rng.next_u32() % 23;
     match next_op {
         // Lut, StaticLut
         0 => {
@@ -628,6 +628,15 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                 }
                 _ => unreachable!(),
             }
+        }
+        // CountOnes
+        22 => {
+            let x = m.next1_5().1;
+            let x_a = m.get_num(x);
+            let x_b = m.get_dag(x);
+            let out = m.next_usize(usize::MAX);
+            m.get_mut_num(out).usize_assign(x_a.count_ones());
+            m.get_mut_dag(out).usize_assign(x_b.count_ones());
         }
         _ => unreachable!(),
     }

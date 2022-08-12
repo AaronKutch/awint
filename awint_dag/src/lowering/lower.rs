@@ -4,13 +4,12 @@ use std::{cmp::min, num::NonZeroUsize};
 
 use awint_macros::{extawi, inlawi};
 
-use super::meta::equal;
 use crate::{
     lowering::{
         meta::{
-            ashr, bitwise, bitwise_not, cin_sum, dynamic_to_static_get, dynamic_to_static_lut,
-            dynamic_to_static_set, field, field_from, field_to, field_width, funnel, incrementer,
-            lshr, negator, resize, rotl, rotr, shl, static_field,
+            ashr, bitwise, bitwise_not, cin_sum, count_ones, dynamic_to_static_get,
+            dynamic_to_static_lut, dynamic_to_static_set, equal, field, field_from, field_to,
+            field_width, funnel, incrementer, lshr, negator, resize, rotl, rotr, shl, static_field,
         },
         Dag, PNode,
     },
@@ -579,6 +578,11 @@ impl Dag {
                     IsUone(_) => x.const_eq(&extawi!(uone: ..w).unwrap()).unwrap(),
                     _ => unreachable!(),
                 });
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
+            CountOnes([x]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let out = count_ones(&x);
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
