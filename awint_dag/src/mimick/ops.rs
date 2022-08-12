@@ -19,6 +19,7 @@ macro_rules! unary {
 macro_rules! binary {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
+            #[must_use]
             pub fn $fn_name(&mut self, rhs: &Self) -> Option<()> {
                 if self.bw() == rhs.bw() {
                     self.update_state(
@@ -44,6 +45,7 @@ macro_rules! zero_cast {
                 );
             }
 
+            #[must_use]
             pub fn $to_name(&self) -> prim::$prim {
                 prim::$prim::new(
                     ZeroResize([self.state()]),
@@ -63,6 +65,7 @@ macro_rules! sign_cast {
                 );
             }
 
+            #[must_use]
             pub fn $to_name(&self) -> prim::$prim {
                 prim::$prim::new(
                     SignResize([self.state()]),
@@ -75,6 +78,7 @@ macro_rules! sign_cast {
 macro_rules! ref_self_output_bool {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
+            #[must_use]
             pub fn $fn_name(&self) -> prim::bool {
                 prim::bool::new($enum_var([self.state()]))
             }
@@ -85,6 +89,7 @@ macro_rules! ref_self_output_bool {
 macro_rules! compare {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
+            #[must_use]
             pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
                 if self.bw() == rhs.bw() {
                     Some(prim::bool::new($enum_var([self.state(), rhs.state()])))
@@ -99,6 +104,7 @@ macro_rules! compare {
 macro_rules! compare_reversed {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
+            #[must_use]
             pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
                 if self.bw() == rhs.bw() {
                     Some(prim::bool::new($enum_var([rhs.state(), self.state()])))
@@ -113,6 +119,7 @@ macro_rules! compare_reversed {
 macro_rules! shift {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
+            #[must_use]
             pub fn $fn_name(&mut self, s: impl Into<prim::usize>) -> Option<()> {
                 self.update_state(
                     self.state_nzbw(),
@@ -127,6 +134,7 @@ macro_rules! shift {
 macro_rules! ref_self_output_usize {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
+            #[must_use]
             pub fn $fn_name(&self) -> prim::usize {
                 prim::usize::new($enum_var([self.state()]))
             }
@@ -253,6 +261,7 @@ impl Bits {
         );
     }
 
+    #[must_use]
     pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() == rhs.bw() {
             self.update_state(self.state_nzbw(), Copy([rhs.state()]));
@@ -262,6 +271,7 @@ impl Bits {
         }
     }
 
+    #[must_use]
     pub fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
@@ -274,6 +284,7 @@ impl Bits {
         None
     }
 
+    #[must_use]
     pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
@@ -289,6 +300,7 @@ impl Bits {
         None
     }
 
+    #[must_use]
     pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
         let inx = inx.into().state();
         if let Literal(ref lit) = inx.get_state().unwrap().op {
@@ -307,6 +319,7 @@ impl Bits {
         }
     }
 
+    #[must_use]
     pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
         let inx = inx.into().state();
         if let Literal(ref lit) = inx.get_state().unwrap().op {
@@ -332,6 +345,7 @@ impl Bits {
         Some(())
     }
 
+    #[must_use]
     pub fn field(
         &mut self,
         to: impl Into<prim::usize>,
@@ -352,6 +366,7 @@ impl Bits {
         Some(())
     }
 
+    #[must_use]
     pub fn field_to(
         &mut self,
         to: impl Into<prim::usize>,
@@ -370,6 +385,7 @@ impl Bits {
         Some(())
     }
 
+    #[must_use]
     pub fn field_from(
         &mut self,
         rhs: &Self,
@@ -388,6 +404,7 @@ impl Bits {
         Some(())
     }
 
+    #[must_use]
     pub fn field_width(&mut self, rhs: &Self, width: impl Into<prim::usize>) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -396,6 +413,7 @@ impl Bits {
         Some(())
     }
 
+    #[must_use]
     pub fn field_bit(
         &mut self,
         to: impl Into<prim::usize>,
@@ -433,6 +451,7 @@ impl Bits {
         b
     }
 
+    #[must_use]
     pub fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         if (s.bw() >= (BITS - 1))
             || ((1usize << s.bw()) != self.bw())
@@ -445,18 +464,21 @@ impl Bits {
         }
     }
 
+    #[must_use]
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
         quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]));
         rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
         Some(())
     }
 
+    #[must_use]
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
         quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]));
         rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
         Some(())
     }
 
+    #[must_use]
     pub fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -484,6 +506,7 @@ impl Bits {
         self.update_state(self.state_nzbw(), Neg([self.state(), b.state()]));
     }
 
+    #[must_use]
     pub fn cin_sum_assign(
         &mut self,
         cin: impl Into<prim::bool>,

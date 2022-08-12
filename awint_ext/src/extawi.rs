@@ -93,6 +93,7 @@ impl<'a> ExtAwi {
     /// Returns a reference to `self` in the form of `&Bits`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // `as_ref` on NonNull is not const yet, so we have to use transmute.
         // Safety: The explicit lifetimes make sure they do not become unbounded.
@@ -102,6 +103,7 @@ impl<'a> ExtAwi {
     /// Returns a reference to `self` in the form of `&mut Bits`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &mut Bits>(self.raw) }
@@ -110,6 +112,7 @@ impl<'a> ExtAwi {
     /// Returns the bitwidth of this `ExtAwi` as a `NonZeroUsize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn nzbw(&self) -> NonZeroUsize {
         self.const_as_ref().nzbw()
     }
@@ -117,6 +120,7 @@ impl<'a> ExtAwi {
     /// Returns the bitwidth of this `ExtAwi` as a `usize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn bw(&self) -> usize {
         self.const_as_ref().bw()
     }
@@ -124,6 +128,7 @@ impl<'a> ExtAwi {
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.const_as_ref().len()
     }
@@ -132,6 +137,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn raw_len(&self) -> usize {
         self.const_as_ref().raw_len()
     }
@@ -143,6 +149,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub fn as_ptr(&self) -> *const usize {
         self.const_as_ref().as_ptr()
     }
@@ -153,6 +160,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub fn as_mut_ptr(&mut self) -> *mut usize {
         self.const_as_mut().as_mut_ptr()
     }
@@ -160,6 +168,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn layout(&self) -> Layout {
         layout(self.nzbw())
     }

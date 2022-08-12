@@ -26,6 +26,7 @@ impl FPType {
     /// Returns the minimum number of digits in a given `radix` needed for
     /// unique representation of the fraction part of this fixed point type.
     /// This function performs allocation. Returns `None` if `radix < 2`.
+    #[must_use]
     pub fn unique_min_fraction_digits(&self, radix: usize) -> Option<usize> {
         if radix < 2 {
             return None

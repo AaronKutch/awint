@@ -21,6 +21,7 @@ fn itousize(i: isize) -> Option<usize> {
 impl<B: BorrowMut<Bits>> FP<B> {
     /// One-assigns `this`. Returns `None` if a positive one value is not
     /// representable.
+    #[must_use]
     pub fn one_assign(this: &mut Self) -> Option<()> {
         // if fp is negative, one can certainly not be represented
         let fp = itousize(this.fp())?;
@@ -42,6 +43,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// Note: because the msb position is one less than the bitwidth, the
     /// bitwidth is equal to the difference in the bounds _plus one_
     #[inline]
+    #[must_use]
     pub fn rel_sb(this: &Self) -> (isize, isize) {
         // cannot overflow because of the invariants
         let lo = this.fp().wrapping_neg();
@@ -90,6 +92,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
 
     /// The same as [FP::otruncate_assign] except it always intreprets arguments
     /// as unsigned
+    #[must_use = "use `utruncate_assign` if you do not need the overflow booleans"]
     pub fn outruncate_assign(this: &mut Self, rhs: &Self) -> (bool, bool) {
         this.zero_assign();
         if rhs.is_zero() {
@@ -151,6 +154,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// some kind of truncation rounding has occured to the numerical value. If
     /// `FP::otruncate_assign(...).1` is true, then the numerical value could be
     /// dramatically changed.
+    #[must_use = "use `truncate_assign` if you do not need the overflow booleans"]
     pub fn otruncate_assign(this: &mut Self, rhs: &mut Self) -> (bool, bool) {
         let mut b = rhs.is_negative();
         // reinterpret as unsigned to avoid imin overflow
@@ -215,7 +219,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let is_zero = this.is_zero();
         let is_negative = this.is_negative();
         let mut unsigned = ExtAwi::zero(this.nzbw());
-        unsigned.copy_assign(this);
+        unsigned.copy_assign(this).unwrap();
         // reinterpret as unsigned for `imin`
         unsigned.neg_assign(is_negative);
         // safe because of invariants
@@ -282,7 +286,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
                 // round up
                 true
             };
-            tmp.lshr_assign(calc_fp);
+            tmp.lshr_assign(calc_fp).unwrap();
             tmp.inc_assign(inc);
             // note: we do not unwrap here in case of resource exhaustion
             let mut s = ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, calc_digits)?;

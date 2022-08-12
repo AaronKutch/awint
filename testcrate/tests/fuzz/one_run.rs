@@ -50,7 +50,7 @@ pub fn one_run(array: [&mut Bits; 4]) -> Option<()> {
     // double check corner case
     x2.imin_assign();
     x3.umax_assign();
-    Bits::idivide(x4, x5, x2, x3);
+    Bits::idivide(x4, x5, x2, x3).unwrap();
     assert!(x4.is_imin());
     assert!(x5.is_zero());
     Some(())

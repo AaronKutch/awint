@@ -86,7 +86,7 @@ impl Dag {
                 let to = ExtAwi::opaque(self.get_bw(to));
                 // keep `lhs` the same, `out` has the set bit
                 let mut out = lhs.clone();
-                out.set(to.to_usize(), bit);
+                out.set(to.to_usize(), bit).unwrap();
                 self.graft(ptr, v, &[
                     out.state(),
                     lhs.state(),
@@ -155,7 +155,7 @@ impl Dag {
                         let tmp0 = ExtAwi::zero(w);
                         let tmp1 = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
                         let mut out = lhs.clone();
-                        out.field_width(&tmp1, width.to_usize());
+                        out.field_width(&tmp1, width.to_usize()).unwrap();
                         out
                     } else {
                         lhs.clone()
@@ -225,7 +225,7 @@ impl Dag {
                     let s_u = self.usize(s)?;
                     let mut tmp = ExtAwi::zero(x.nzbw());
                     for i in 0..x.bw() {
-                        tmp.set(i, x.msb());
+                        tmp.set(i, x.msb()).unwrap();
                     }
                     let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
                     self.graft(ptr, v, &[

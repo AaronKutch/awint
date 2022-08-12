@@ -257,6 +257,7 @@ impl Bits {
     /// Left shifts can act as a very fast multiplication by a power of two for
     /// both the signed and unsigned interpretation of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn shl_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -276,6 +277,7 @@ impl Bits {
     /// very fast floored division by a power of two for the unsigned
     /// interpretation of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn lshr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -295,6 +297,7 @@ impl Bits {
     /// fast _floored_ division by a power of two for the signed interpretation
     /// of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ashr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -354,6 +357,7 @@ impl Bits {
     /// allocation and has many optimized branches for different input sizes and
     /// shifts.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn rotl_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -419,6 +423,7 @@ impl Bits {
     ///
     /// See `Bits::rotl_assign` for more details.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn rotr_assign(&mut self, s: usize) -> Option<()> {
         let bw = self.bw();
         if s == 0 {
@@ -534,6 +539,7 @@ impl Bits {
     /// assert_eq!(lhs, inlawi!(0xa9876543_u32))
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         // because we later call `s.to_usize()` and assume it fits within `s.bw()`
         s.assert_cleared_unused_bits();

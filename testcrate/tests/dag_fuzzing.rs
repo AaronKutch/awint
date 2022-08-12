@@ -304,16 +304,16 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let rhs_b = m.get_dag(rhs);
             match rng.next_u32() % 3 {
                 0 => {
-                    m.get_mut_num(lhs).or_assign(&rhs_a);
-                    m.get_mut_dag(lhs).or_assign(&rhs_b);
+                    m.get_mut_num(lhs).or_assign(&rhs_a).unwrap();
+                    m.get_mut_dag(lhs).or_assign(&rhs_b).unwrap();
                 }
                 1 => {
-                    m.get_mut_num(lhs).and_assign(&rhs_a);
-                    m.get_mut_dag(lhs).and_assign(&rhs_b);
+                    m.get_mut_num(lhs).and_assign(&rhs_a).unwrap();
+                    m.get_mut_dag(lhs).and_assign(&rhs_b).unwrap();
                 }
                 2 => {
-                    m.get_mut_num(lhs).xor_assign(&rhs_a);
-                    m.get_mut_dag(lhs).xor_assign(&rhs_b);
+                    m.get_mut_num(lhs).xor_assign(&rhs_a).unwrap();
+                    m.get_mut_dag(lhs).xor_assign(&rhs_b).unwrap();
                 }
                 _ => unreachable!(),
             }

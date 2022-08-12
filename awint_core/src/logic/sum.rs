@@ -103,6 +103,7 @@ impl Bits {
 
     /// Add-assigns by `rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 0;
         binop_for_each_mut!(
@@ -121,6 +122,7 @@ impl Bits {
 
     /// Subtract-assigns by `rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn sub_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
         binop_for_each_mut!(
@@ -139,6 +141,7 @@ impl Bits {
 
     /// Reverse-subtract-assigns by `rhs`. Sets `self` to `(-self) + rhs`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn rsb_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
         binop_for_each_mut!(
@@ -157,6 +160,7 @@ impl Bits {
 
     /// Negate-add-assigns by `rhs`. Negates conditionally on `neg`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn neg_add_assign(&mut self, neg: bool, rhs: &Self) -> Option<()> {
         if neg {
             self.sub_assign(rhs)
@@ -171,6 +175,7 @@ impl Bits {
     /// returned if any bitwidths do not match. If subtraction is desired,
     /// one of the operands can be negated.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn cin_sum_assign(
         &mut self,
         cin: bool,

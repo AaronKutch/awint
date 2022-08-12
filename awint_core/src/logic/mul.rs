@@ -32,6 +32,7 @@ impl Bits {
 
     /// Add-assigns `lhs * rhs` to `self` and returns if overflow happened
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn short_mul_add_assign(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
         let mut mul_carry = 0;
         let mut add_carry = 0;
@@ -55,6 +56,7 @@ impl Bits {
     /// Multiplies `lhs` by `rhs` and add-assigns the product to `self`. Three
     /// operands eliminates the need for an allocating temporary.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
             return None
@@ -81,6 +83,7 @@ impl Bits {
     /// Multiply-assigns `self` by `rhs`. `pad` is a scratchpad that will be
     /// mutated arbitrarily.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn mul_assign(&mut self, rhs: &Self, pad: &mut Self) -> Option<()> {
         if self.bw() != rhs.bw() || self.bw() != pad.bw() {
             return None
@@ -102,7 +105,7 @@ impl Bits {
             });
         }
         pad.clear_unused_bits();
-        self.copy_assign(pad);
+        self.copy_assign(pad).unwrap();
         Some(())
     }
 

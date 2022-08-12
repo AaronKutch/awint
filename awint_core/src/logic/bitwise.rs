@@ -51,6 +51,7 @@ impl Bits {
 
     /// Copy-assigns the bits of `rhs` to `self`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() != rhs.bw() {
             return None
@@ -63,18 +64,21 @@ impl Bits {
 
     /// Or-assigns `rhs` to `self`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn or_assign(&mut self, rhs: &Self) -> Option<()> {
         binop_for_each_mut!(self, rhs, x, y, { *x |= y }, false)
     }
 
     /// And-assigns `rhs` to `self`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn and_assign(&mut self, rhs: &Self) -> Option<()> {
         binop_for_each_mut!(self, rhs, x, y, { *x &= y }, false)
     }
 
     /// Xor-assigns `rhs` to `self`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn xor_assign(&mut self, rhs: &Self) -> Option<()> {
         binop_for_each_mut!(self, rhs, x, y, { *x ^= y }, false)
     }
@@ -83,6 +87,7 @@ impl Bits {
     /// reversed range zeroes `self`. `None` is returned if `range.start >
     /// self.bw()` or `range.end > self.bw()`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn range_and_assign(&mut self, range: Range<usize>) -> Option<()> {
         if range.start > self.bw() || range.end > self.bw() {
             return None

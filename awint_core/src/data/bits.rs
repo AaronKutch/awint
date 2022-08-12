@@ -155,6 +155,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const unsafe fn from_raw_parts(raw_ptr: *const usize, raw_len: usize) -> &'a Self {
         // Safety: `Bits` follows standard slice initialization invariants and is marked
         // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
@@ -168,6 +169,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const unsafe fn from_raw_parts_mut(raw_ptr: *mut usize, raw_len: usize) -> &'a mut Self {
         // Safety: `Bits` follows standard slice initialization invariants and is marked
         // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
@@ -184,6 +186,7 @@ impl<'a> Bits {
     /// determine the type.
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         self
     }
@@ -194,6 +197,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
         self
     }
@@ -203,6 +207,7 @@ impl<'a> Bits {
     /// The underlying memory should never be written to.
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn as_ptr(&self) -> *const usize {
         self.raw.as_ptr()
     }
@@ -212,6 +217,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut usize {
         self.raw.as_mut_ptr()
     }
@@ -219,6 +225,7 @@ impl<'a> Bits {
     /// Returns the raw total length of `self`, including the bitwidth digit.
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn raw_len(&self) -> usize {
         self.raw.len()
     }
@@ -231,6 +238,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub(crate) const unsafe fn raw_get_unchecked(&self, i: usize) -> usize {
         debug_assert!(i < self.raw_len());
         // Safety: `i` is bounded by `raw_len`
@@ -245,6 +253,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub(crate) const unsafe fn raw_get_unchecked_mut(&'a mut self, i: usize) -> &'a mut usize {
         debug_assert!(i < self.raw_len());
         // Safety: `i` is bounded by `raw_len`. The lifetimes are bounded.
@@ -254,6 +263,7 @@ impl<'a> Bits {
     /// Returns the bitwidth as a `NonZeroUsize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn nzbw(&self) -> NonZeroUsize {
         unsafe {
             // Safety: The bitwidth is stored in the last raw slice element. The bitwidth is
@@ -269,6 +279,7 @@ impl<'a> Bits {
     /// Returns the bitwidth as a `usize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn bw(&self) -> usize {
         self.nzbw().get()
     }
@@ -279,6 +290,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const unsafe fn get_unchecked(&self, i: usize) -> usize {
         debug_assert!(i < self.len());
         // Safety: `i < self.len()` means the access is within the slice
@@ -291,6 +303,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const unsafe fn get_unchecked_mut(&'a mut self, i: usize) -> &'a mut usize {
         debug_assert!(i < self.len());
         // Safety: The bounds of this are a subset of `raw_get_unchecked_mut`
@@ -300,6 +313,7 @@ impl<'a> Bits {
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn len(&self) -> usize {
         // Safety: The length on the raw slice is the number of `usize` digits plus the
         // metadata bitwidth digit. To get the number of regular digits, we just
@@ -311,6 +325,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn unused(&self) -> usize {
         if self.extra() == 0 {
             0
@@ -324,6 +339,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn extra(&self) -> usize {
         extra(self.nzbw())
     }
@@ -332,6 +348,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn first(&self) -> usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked(0) }
@@ -341,6 +358,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn first_mut(&'a mut self) -> &'a mut usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked_mut(0) }
@@ -350,6 +368,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn last(&self) -> usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked(self.len() - 1) }
@@ -359,6 +378,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn last_mut(&'a mut self) -> &'a mut usize {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
         unsafe { self.get_unchecked_mut(self.len() - 1) }
@@ -401,6 +421,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn as_slice(&'a self) -> &'a [usize] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
         // acquires a subslice that includes everything except for the metadata digit.
@@ -411,6 +432,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn as_raw_slice(&'a self) -> &'a [usize] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
         // acquires a subslice that includes everything except for the metadata digit.
@@ -429,6 +451,7 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn as_mut_slice(&'a mut self) -> &'a mut [usize] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
         // acquires a subslice that includes everything except for the metadata digit,
@@ -450,6 +473,7 @@ impl<'a> Bits {
     /// source code of [Bits::rand_assign_using] for how to handle this
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn as_bytes_full_width_nonportable(&'a self) -> &'a [u8] {
         // Previously, this function used to be called "portable" because it was
         // intended as a way to get a slice view of `Bits` independent of `usize` width.
@@ -483,6 +507,7 @@ impl<'a> Bits {
     /// source code of [Bits::rand_assign_using] for how to handle this
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn as_mut_bytes_full_width_nonportable(&'a mut self) -> &'a mut [u8] {
         let size_in_u8 = self.len() * BYTE_RATIO;
         // Safety: Same reasoning as `as_bytes_full_width_nonportable`
@@ -610,6 +635,7 @@ impl<'a> Bits {
     /// Bits that extend beyond `self.bw()` are zeroed.
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn get_digit(&self, start: usize) -> usize {
         let digits = digits_u(start);
         let bits = extra_u(start);
@@ -631,6 +657,7 @@ impl<'a> Bits {
     /// `self.bw()` are zeroed.
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn get_double_digit(&self, start: usize) -> (usize, usize) {
         let digits = digits_u(start);
         let bits = extra_u(start);

@@ -117,7 +117,7 @@ impl Bits {
                 return Err(Overflow)
             }
         }
-        self.copy_assign(pad);
+        self.copy_assign(pad).unwrap();
         Ok(())
     }
 
@@ -199,7 +199,7 @@ impl Bits {
                 return Err(Overflow)
             }
         }
-        self.copy_assign(pad0);
+        self.copy_assign(pad0).unwrap();
         Ok(())
     }
 
@@ -234,7 +234,7 @@ impl Bits {
         if radix < 2 || radix > 36 {
             return Err(InvalidRadix)
         }
-        pad.copy_assign(self);
+        pad.copy_assign(self).unwrap();
         // happens to do the right thing to `imin`
         pad.neg_assign(signed && pad.msb());
         const_for!(i in {0..dst.len()}.rev() {

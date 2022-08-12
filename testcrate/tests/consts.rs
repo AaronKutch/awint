@@ -32,7 +32,7 @@ const fn consts() {
     //let z: &mut Bits = awi2.const_as_mut();
     x.u128_assign(123456789);
     y.u128_assign(9876543211);
-    x.add_assign(y);
+    x.add_assign(y).unwrap();
     y.u128_assign(10000000000);
     eq(x, y);
 
@@ -85,7 +85,7 @@ macro_rules! test_nonequal_bw {
         $($fn_binary:ident)*
     ) => {
         $(
-            $x0.$fn_unary(); // Just checking that the function exists and is constant
+            let _ = $x0.$fn_unary(); // Just checking that the function exists and is constant
         )*
         $(
             assert!($x0.$fn_unary_shift($x0.bw() - 1).is_some());
