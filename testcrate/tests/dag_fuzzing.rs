@@ -209,7 +209,7 @@ impl Mem {
 }
 
 fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
-    let next_op = rng.next_u32() % 23;
+    let next_op = rng.next_u32() % 26;
     match next_op {
         // Lut, StaticLut
         0 => {
@@ -659,14 +659,38 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         23 => {
             let (entry_w, entry) = m.next1_5();
             let (inx_w, inx) = m.next1_5();
-            let lut_w = entry_w * (1 << inx_w);
-            let lut = m.next(lut_w);
+            let table_w = entry_w * (1 << inx_w);
+            let table = m.next(table_w);
             let entry_a = m.get_num(entry);
             let inx_a = m.get_num(inx);
-            m.get_mut_num(lut).lut(&entry_a, &inx_a).unwrap();
+            m.get_mut_num(table).lut_set(&entry_a, &inx_a).unwrap();
             let entry_b = m.get_dag(entry);
             let inx_b = m.get_dag(inx);
-            m.get_mut_dag(lut).lut(&entry_b, &inx_b).unwrap();
+            m.get_mut_dag(table).lut_set(&entry_b, &inx_b).unwrap();
+        }
+        // Resize
+        24 => {
+            let lhs = m.next1_5().1;
+            let rhs = m.next1_5().1;
+            let b = m.next(1);
+            let rhs_a = m.get_num(rhs);
+            let b_a = m.get_num(b);
+            m.get_mut_num(lhs).resize_assign(&rhs_a, b_a.to_bool());
+            let rhs_b = m.get_dag(rhs);
+            let b_b = m.get_dag(b);
+            m.get_mut_dag(lhs).resize_assign(&rhs_b, b_b.to_bool());
+        }
+        // ZeroResizeOverflow
+        25 => {
+            let lhs = m.next1_5().1;
+            let rhs = m.next1_5().1;
+            let b = m.next(1);
+            let rhs_a = m.get_num(rhs);
+            let b_a = m.get_num(b);
+            m.get_mut_num(lhs).resize_assign(&rhs_a, b_a.to_bool());
+            let rhs_b = m.get_dag(rhs);
+            let b_b = m.get_dag(b);
+            m.get_mut_dag(lhs).resize_assign(&rhs_b, b_b.to_bool());
         }
         _ => unreachable!(),
     }

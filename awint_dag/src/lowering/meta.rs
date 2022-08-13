@@ -247,6 +247,27 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
     out
 }
 
+pub fn resize_cond(x: &Bits, w: NonZeroUsize, signed: &Bits) -> ExtAwi {
+    assert_eq!(signed.bw(), 1);
+    let mut out = ExtAwi::zero(w);
+    if out.nzbw() == x.nzbw() {
+        out.copy_assign(x).unwrap();
+    } else if out.nzbw() < x.nzbw() {
+        for i in 0..out.bw() {
+            out.set(i, x.get(i).unwrap()).unwrap();
+        }
+    } else {
+        for i in 0..x.bw() {
+            out.set(i, x.get(i).unwrap()).unwrap();
+        }
+        let signed = signed.to_bool();
+        for i in x.bw()..out.bw() {
+            out.set(i, signed).unwrap();
+        }
+    }
+    out
+}
+
 pub fn static_field(lhs: &Bits, to: usize, rhs: &Bits, from: usize, width: usize) -> ExtAwi {
     //(lhs.bw(), to, rhs.bw(), from, width);
     assert!(
@@ -792,21 +813,22 @@ pub fn significant_bits(x: &Bits) -> ExtAwi {
     count_ones(&tsmear(x))
 }
 
-pub fn lut_set(lut: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
+pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
     let num_entries = 1 << inx.bw();
+    assert_eq!(table.bw(), entry.bw() * num_entries);
     let signals = selector(inx, Some(num_entries));
-    let mut out = ExtAwi::from_bits(lut);
-    let lut = inlawi!(1100_1010);
+    let mut out = ExtAwi::from_bits(table);
+    let lut_mux = inlawi!(1100_1010);
     for (j, signal) in signals.into_iter().enumerate() {
         for i in 0..entry.bw() {
             let lut_inx = i + (j * entry.bw());
-            // mux betwee `lhs` or `entry` based on the signal
+            // mux between `lhs` or `entry` based on the signal
             let mut tmp0 = inlawi!(000);
-            tmp0.set(0, lut.get(lut_inx).unwrap()).unwrap();
+            tmp0.set(0, table.get(lut_inx).unwrap()).unwrap();
             tmp0.set(1, entry.get(i).unwrap()).unwrap();
             tmp0.set(2, signal.to_bool()).unwrap();
             let mut tmp1 = inlawi!(0);
-            tmp1.lut(&lut, &tmp0).unwrap();
+            tmp1.lut(&lut_mux, &tmp0).unwrap();
             out.set(lut_inx, tmp1.to_bool()).unwrap();
         }
     }

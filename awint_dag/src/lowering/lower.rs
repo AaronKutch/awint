@@ -2,6 +2,7 @@
 
 use std::{cmp::min, num::NonZeroUsize};
 
+use awint_core::bw;
 use awint_macros::{extawi, inlawi};
 
 use crate::{
@@ -96,6 +97,12 @@ impl Dag {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = resize(&x, out_w, true);
                 self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
+            Resize([x, b]) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let b = ExtAwi::opaque(self.get_bw(b));
+                let out = resize_cond(&x, out_w, &b);
+                self.graft(ptr, v, &[out.state(), x.state(), b.state()])?;
             }
             Lsb([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
@@ -593,17 +600,26 @@ impl Dag {
                 let out = significant_bits(&x).to_usize();
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
-            LutSet([lut, entry, inx]) => {
-                let lut = ExtAwi::opaque(self.get_bw(lut));
+            LutSet([table, entry, inx]) => {
+                let table = ExtAwi::opaque(self.get_bw(table));
                 let entry = ExtAwi::opaque(self.get_bw(entry));
                 let inx = ExtAwi::opaque(self.get_bw(inx));
-                let out = lut_set(&lut, &entry, &inx);
+                let out = lut_set(&table, &entry, &inx);
                 self.graft(ptr, v, &[
                     out.state(),
-                    lut.state(),
+                    table.state(),
                     entry.state(),
                     inx.state(),
                 ])?;
+            }
+            ZeroResizeOverflow([x], w) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let mut out = ExtAwi::zero(bw(1));
+                let w = w.get();
+                if w < x.bw() {
+                    out.bool_assign(!extawi!(x[w..]).unwrap().is_zero());
+                }
+                self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
