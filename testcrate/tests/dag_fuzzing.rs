@@ -680,17 +680,30 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let b_b = m.get_dag(b);
             m.get_mut_dag(lhs).resize_assign(&rhs_b, b_b.to_bool());
         }
-        // ZeroResizeOverflow
+        // ZeroResizeOverflow, SignResizeOverflow
         25 => {
             let lhs = m.next1_5().1;
             let rhs = m.next1_5().1;
-            let b = m.next(1);
+            let out = m.next(1);
+            let mut lhs_a = m.get_num(lhs);
             let rhs_a = m.get_num(rhs);
-            let b_a = m.get_num(b);
-            m.get_mut_num(lhs).resize_assign(&rhs_a, b_a.to_bool());
+            let mut lhs_b = m.get_dag(lhs);
             let rhs_b = m.get_dag(rhs);
-            let b_b = m.get_dag(b);
-            m.get_mut_dag(lhs).resize_assign(&rhs_b, b_b.to_bool());
+            match rng.next_u32() % 2 {
+                0 => {
+                    m.get_mut_num(out)
+                        .bool_assign(lhs_a.zero_resize_assign(&rhs_a));
+                    m.get_mut_dag(out)
+                        .bool_assign(lhs_b.zero_resize_assign(&rhs_b));
+                }
+                1 => {
+                    m.get_mut_num(out)
+                        .bool_assign(lhs_a.sign_resize_assign(&rhs_a));
+                    m.get_mut_dag(out)
+                        .bool_assign(lhs_b.sign_resize_assign(&rhs_b));
+                }
+                _ => unreachable!(),
+            }
         }
         _ => unreachable!(),
     }

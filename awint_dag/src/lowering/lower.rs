@@ -621,6 +621,20 @@ impl Dag {
                 }
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
+            SignResizeOverflow([x], w) => {
+                let x = ExtAwi::opaque(self.get_bw(x));
+                let mut out = ExtAwi::zero(bw(1));
+                let w = w.get();
+                if w < x.bw() {
+                    // the new msb and the bits above it should equal the old msb
+                    let critical = extawi!(x[(w - 1)..]).unwrap();
+                    let mut tmp = inlawi!(00);
+                    tmp.set(0, critical.is_zero()).unwrap();
+                    tmp.set(1, critical.is_umax()).unwrap();
+                    out.lut(&inlawi!(1001), &tmp).unwrap();
+                }
+                self.graft(ptr, v, &[out.state(), x.state()])?;
+            }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         drop(epoch);
