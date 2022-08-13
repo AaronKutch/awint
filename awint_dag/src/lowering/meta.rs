@@ -791,3 +791,24 @@ pub fn trailing_zeros(x: &Bits) -> ExtAwi {
 pub fn significant_bits(x: &Bits) -> ExtAwi {
     count_ones(&tsmear(x))
 }
+
+pub fn lut_set(lut: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
+    let num_entries = 1 << inx.bw();
+    let signals = selector(inx, Some(num_entries));
+    let mut out = ExtAwi::from_bits(lut);
+    let lut = inlawi!(1100_1010);
+    for (j, signal) in signals.into_iter().enumerate() {
+        for i in 0..entry.bw() {
+            let lut_inx = i + (j * entry.bw());
+            // mux betwee `lhs` or `entry` based on the signal
+            let mut tmp0 = inlawi!(000);
+            tmp0.set(0, lut.get(lut_inx).unwrap()).unwrap();
+            tmp0.set(1, entry.get(i).unwrap()).unwrap();
+            tmp0.set(2, signal.to_bool()).unwrap();
+            let mut tmp1 = inlawi!(0);
+            tmp1.lut(&lut, &tmp0).unwrap();
+            out.set(lut_inx, tmp1.to_bool()).unwrap();
+        }
+    }
+    out
+}

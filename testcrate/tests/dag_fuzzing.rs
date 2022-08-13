@@ -655,6 +655,19 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                 _ => unreachable!(),
             }
         }
+        // LutSet
+        23 => {
+            let (entry_w, entry) = m.next1_5();
+            let (inx_w, inx) = m.next1_5();
+            let lut_w = entry_w * (1 << inx_w);
+            let lut = m.next(lut_w);
+            let entry_a = m.get_num(entry);
+            let inx_a = m.get_num(inx);
+            m.get_mut_num(lut).lut(&entry_a, &inx_a).unwrap();
+            let entry_b = m.get_dag(entry);
+            let inx_b = m.get_dag(inx);
+            m.get_mut_dag(lut).lut(&entry_b, &inx_b).unwrap();
+        }
         _ => unreachable!(),
     }
 }

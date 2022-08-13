@@ -593,6 +593,18 @@ impl Dag {
                 let out = significant_bits(&x).to_usize();
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
+            LutSet([lut, entry, inx]) => {
+                let lut = ExtAwi::opaque(self.get_bw(lut));
+                let entry = ExtAwi::opaque(self.get_bw(entry));
+                let inx = ExtAwi::opaque(self.get_bw(inx));
+                let out = lut_set(&lut, &entry, &inx);
+                self.graft(ptr, v, &[
+                    out.state(),
+                    lut.state(),
+                    entry.state(),
+                    inx.state(),
+                ])?;
+            }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         drop(epoch);
