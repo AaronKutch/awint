@@ -29,12 +29,16 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub(crate) fn new(op: Op<PState>) -> Self {
+    pub(crate) fn from_state(state: PState) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
-            _inlawi_raw: [PState::new(NonZeroUsize::new(BW).unwrap(), op)],
+            _inlawi_raw: [state],
             _no_send_or_sync: PhantomData,
         }
+    }
+
+    pub(crate) fn new(op: Op<PState>) -> Self {
+        Self::from_state(PState::new(NonZeroUsize::new(BW).unwrap(), op))
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
@@ -301,11 +305,15 @@ impl Lineage for ExtAwi {
 }
 
 impl ExtAwi {
-    fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
+    pub(crate) fn from_state(state: PState) -> Self {
         Self {
-            _extawi_raw: [PState::new(nzbw, op)],
+            _extawi_raw: [state],
             _no_send_or_sync: PhantomData,
         }
+    }
+
+    pub(crate) fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
+        Self::from_state(PState::new(nzbw, op))
     }
 
     pub fn nzbw(&self) -> NonZeroUsize {
@@ -317,7 +325,7 @@ impl ExtAwi {
     }
 
     pub fn from_bits(bits: &Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Copy([bits.state()]))
+        Self::from_state(bits.state())
     }
 
     pub fn opaque(bw: NonZeroUsize) -> Self {
@@ -437,7 +445,7 @@ forward_debug_fmt!(ExtAwi);
 
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Copy([bits.state()]))
+        Self::from_state(bits.state())
     }
 }
 
@@ -449,7 +457,7 @@ impl From<&awint_core::Bits> for ExtAwi {
 
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::Copy([awi.state()]))
+        Self::from_state(awi.state())
     }
 }
 

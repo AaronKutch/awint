@@ -39,17 +39,28 @@ macro_rules! zero_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
-                self.update_state(
-                    self.nzbw(),
-                    ZeroResize([x.into().state()]),
-                );
+                let x = x.into().state();
+                if self.state_nzbw() == prim::$prim::get_nzbw() {
+                    self.set_state(x);
+                } else {
+                    self.update_state(
+                        self.state_nzbw(),
+                        ZeroResize([x]),
+                    );
+                }
             }
 
             #[must_use]
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(
-                    ZeroResize([self.state()]),
-                )
+                if self.state_nzbw() == prim::$prim::get_nzbw() {
+                    prim::$prim::from_state(
+                        self.state(),
+                    )
+                } else {
+                    prim::$prim::new(
+                        ZeroResize([self.state()]),
+                    )
+                }
             }
         )*
     };
@@ -59,17 +70,28 @@ macro_rules! sign_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
             pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
-                self.update_state(
-                    self.state_nzbw(),
-                    SignResize([x.into().state()]),
-                );
+                let x = x.into().state();
+                if self.state_nzbw() == prim::$prim::get_nzbw() {
+                    self.set_state(x);
+                } else {
+                    self.update_state(
+                        self.state_nzbw(),
+                        SignResize([x]),
+                    );
+                }
             }
 
             #[must_use]
             pub fn $to_name(&self) -> prim::$prim {
-                prim::$prim::new(
-                    SignResize([self.state()]),
-                )
+                if self.state_nzbw() == prim::$prim::get_nzbw() {
+                    prim::$prim::from_state(
+                        self.state(),
+                    )
+                } else {
+                    prim::$prim::new(
+                        SignResize([self.state()]),
+                    )
+                }
             }
         )*
     };
@@ -259,16 +281,6 @@ impl Bits {
             self.state_nzbw(),
             Op::Literal(awint_ext::ExtAwi::uone(self.nzbw())),
         );
-    }
-
-    #[must_use]
-    pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
-        if self.bw() == rhs.bw() {
-            self.update_state(self.state_nzbw(), Copy([rhs.state()]));
-            Some(())
-        } else {
-            None
-        }
     }
 
     #[must_use]

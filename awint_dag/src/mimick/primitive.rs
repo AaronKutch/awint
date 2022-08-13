@@ -1,4 +1,4 @@
-use std::{fmt, ops::*};
+use std::{fmt, num::NonZeroUsize, ops::*};
 
 use awint_internals::*;
 
@@ -73,8 +73,16 @@ macro_rules! prim {
             }
 
             impl $name {
+                pub(crate) fn from_state(state: PState) -> Self {
+                    Self(InlAwi::from_state(state))
+                }
+
                 pub(crate) fn new(op: Op<PState>) -> Self {
                     Self(InlAwi::new(op))
+                }
+
+                pub(crate) fn get_nzbw() -> NonZeroUsize {
+                    NonZeroUsize::new($bw).unwrap()
                 }
             }
 
@@ -127,8 +135,16 @@ impl Lineage for bool {
 }
 
 impl bool {
+    pub(crate) fn from_state(state: PState) -> Self {
+        Self(InlAwi::from_state(state))
+    }
+
     pub(crate) fn new(op: Op<PState>) -> Self {
         Self(InlAwi::new(op))
+    }
+
+    pub(crate) fn get_nzbw() -> NonZeroUsize {
+        NonZeroUsize::new(1).unwrap()
     }
 }
 

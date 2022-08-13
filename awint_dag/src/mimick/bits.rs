@@ -86,10 +86,25 @@ impl Bits {
         self
     }
 
-    pub fn update_state(&mut self, nzbw: NonZeroUsize, op: Op<PState>) {
+    pub(crate) fn set_state(&mut self, state: PState) {
         // other `PState`s that need the old state will keep it alive despite this one
         // being dropped
-        let _: PState = mem::replace(&mut self._bits_raw[0], PState::new(nzbw, op));
+        let _: PState = mem::replace(&mut self._bits_raw[0], state);
+    }
+
+    pub(crate) fn update_state(&mut self, nzbw: NonZeroUsize, op: Op<PState>) {
+        self.set_state(PState::new(nzbw, op));
+    }
+
+    #[must_use]
+    pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
+        // directly use the state of `rhs`
+        if self.bw() == rhs.bw() {
+            self.set_state(rhs.state());
+            Some(())
+        } else {
+            None
+        }
     }
 }
 
