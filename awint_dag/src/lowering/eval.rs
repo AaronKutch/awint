@@ -339,7 +339,8 @@ impl Dag {
             }
             MulAdd([a, b, c]) => {
                 if r.copy_assign(self.lit(a)).is_some() {
-                    r.mul_add_assign(self.lit(b), self.lit(c))
+                    r.arb_umul_add_assign(self.lit(b), self.lit(c));
+                    Some(())
                 } else {
                     None
                 }

@@ -635,6 +635,19 @@ impl Dag {
                 }
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
+            MulAdd([add, lhs, rhs]) => {
+                let w = self.get_bw(add);
+                let add = ExtAwi::opaque(w);
+                let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let out = mul_add(w, Some(&add), &lhs, &rhs);
+                self.graft(ptr, v, &[
+                    out.state(),
+                    add.state(),
+                    lhs.state(),
+                    rhs.state(),
+                ])?;
+            }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         drop(epoch);

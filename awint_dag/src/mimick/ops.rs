@@ -4,6 +4,7 @@
 use awint_internals::BITS;
 use Op::*;
 
+use super::ExtAwi;
 use crate::{mimick::Bits, primitive as prim, Lineage, Op};
 
 macro_rules! unary {
@@ -497,6 +498,30 @@ impl Bits {
             MulAdd([self.state(), lhs.state(), rhs.state()]),
         );
         Some(())
+    }
+
+    pub fn arb_umul_add_assign(&mut self, lhs: &Bits, rhs: &Bits) {
+        self.update_state(
+            self.state_nzbw(),
+            MulAdd([self.state(), lhs.state(), rhs.state()]),
+        );
+    }
+
+    pub fn arb_imul_add_assign(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
+        let mut lhs = ExtAwi::from_bits(lhs);
+        let mut rhs = ExtAwi::from_bits(rhs);
+        let lhs_msb = lhs.msb();
+        let rhs_msb = rhs.msb();
+        lhs.neg_assign(lhs_msb);
+        rhs.neg_assign(rhs_msb);
+        self.neg_assign(lhs_msb);
+        self.neg_assign(rhs_msb);
+        self.update_state(
+            self.state_nzbw(),
+            MulAdd([self.state(), lhs.state(), rhs.state()]),
+        );
+        self.neg_assign(lhs_msb);
+        self.neg_assign(rhs_msb);
     }
 
     pub fn inc_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {

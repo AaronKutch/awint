@@ -1,6 +1,6 @@
 //! Using combined normal and mimick types to assist in lowering
 
-use std::{cmp::min, num::NonZeroUsize};
+use std::{cmp::min, mem, num::NonZeroUsize};
 
 use awint_internals::BITS;
 use awint_macros::*;
@@ -509,6 +509,24 @@ pub fn incrementer(x: &Bits, cin: &Bits, dec: bool) -> (ExtAwi, inlawi_ty!(1)) {
     (out, carry)
 }
 
+// TODO select carry adder
+/*
+// for every pair of bits, calculate their sums and couts assuming 0 or 1 cins.
+let mut s0_i = a ^ b; // a ^ b ^ 0
+let mut s1_i = !s0_i; // a ^ b ^ 1
+let mut c0_i = a & b; // carry of a + b + 0
+let mut c1_i = a | b; // carry of a + b + 1
+for i in 0..lb {
+    let s0_tmp = carry_block_mux(c0_i, s0_i, s1_i, i).0;
+    let s1_tmp = carry_block_mux(c1_i, s0_i, s1_i, i).1;
+    let c0_tmp = carry_block_mux(c0_i, c0_i, c1_i, i).0;
+    let c1_tmp = carry_block_mux(c1_i, c0_i, c1_i, i).1;
+    s0_i = s0_tmp;
+    s1_i = s1_tmp;
+    c0_i = c0_tmp;
+    c1_i = c1_tmp;
+}
+*/
 pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), inlawi_ty!(1)) {
     assert_eq!(cin.bw(), 1);
     assert_eq!(lhs.bw(), rhs.bw());
@@ -832,5 +850,90 @@ pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
             out.set(lut_inx, tmp1.to_bool()).unwrap();
         }
     }
+    out
+}
+
+pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) -> ExtAwi {
+    // make `rhs` the smaller side, column size will be minimized
+    let (lhs, rhs) = if lhs.bw() < rhs.bw() {
+        (rhs, lhs)
+    } else {
+        (lhs, rhs)
+    };
+
+    let and = inlawi!(1000);
+    let place_map0: &mut Vec<Vec<inlawi_ty!(1)>> = &mut vec![];
+    let place_map1: &mut Vec<Vec<inlawi_ty!(1)>> = &mut vec![];
+    for _ in 0..out_w.get() {
+        place_map0.push(vec![]);
+        place_map1.push(vec![]);
+    }
+    for j in 0..rhs.bw() {
+        for i in 0..lhs.bw() {
+            if let Some(place) = place_map0.get_mut(i + j) {
+                let mut tmp = inlawi!(00);
+                tmp.set(0, rhs.get(j).unwrap()).unwrap();
+                tmp.set(1, lhs.get(i).unwrap()).unwrap();
+                let mut ji = inlawi!(0);
+                ji.lut(&and, &tmp).unwrap();
+                place.push(ji);
+            }
+        }
+    }
+    if let Some(add) = add {
+        for i in 0..add.bw() {
+            if let Some(place) = place_map0.get_mut(i) {
+                place.push(inlawi!(add[i]).unwrap());
+            }
+        }
+    }
+
+    // after every bit that will be added is in its place, the columns of bits
+    // sharing the same place are counted, resulting in a new set of columns, and
+    // the process is repeated again. This reduces very quickly e.g. 65 -> 7 -> 3 ->
+    // 2. The final set of 2 deep columns is added together with a fast adder.
+
+    loop {
+        let mut gt2 = false;
+        for i in 0..place_map0.len() {
+            if place_map0[i].len() > 2 {
+                gt2 = true;
+            }
+        }
+        if !gt2 {
+            // if all columns 2 or less in height, break and use a fast adder
+            break
+        }
+        for i in 0..place_map0.len() {
+            if let Some(w) = NonZeroUsize::new(place_map0[i].len()) {
+                let mut column = ExtAwi::zero(w);
+                for (i, bit) in place_map0[i].drain(..).enumerate() {
+                    column.set(i, bit.to_bool()).unwrap();
+                }
+                let row = count_ones(&column);
+                for j in 0..row.bw() {
+                    if let Some(place) = place_map1.get_mut(i + j) {
+                        place.push(inlawi!(row[j]).unwrap())
+                    }
+                }
+            }
+        }
+        mem::swap(place_map0, place_map1);
+    }
+
+    let mut out = ExtAwi::zero(out_w);
+    let mut tmp = ExtAwi::zero(out_w);
+    for i in 0..out.bw() {
+        for (j, bit) in place_map0[i].iter().enumerate() {
+            if j == 0 {
+                out.set(i, bit.to_bool()).unwrap();
+            } else if j == 1 {
+                tmp.set(i, bit.to_bool()).unwrap();
+            } else {
+                unreachable!()
+            }
+        }
+    }
+    out.add_assign(&tmp).unwrap();
     out
 }

@@ -46,6 +46,9 @@ to _all_ of the crate roots where you use the macros in `const` contexts.
 These are currently unimplemented because of other developments and improvements that are being
 prioritized. Please open an issue or PR if you would like these implemented faster.
 
+- We need some kind of macro for handling fallible points, instead of `unwrap` everywhere or `?`
+  operators that make it difficult to determine panic positions, have a macro find locations of `?`
+  operators and do stuff from there.
 - A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track

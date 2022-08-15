@@ -209,7 +209,7 @@ impl Mem {
 }
 
 fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
-    let next_op = rng.next_u32() % 26;
+    let next_op = rng.next_u32() % 27;
     match next_op {
         // Lut, StaticLut
         0 => {
@@ -701,6 +701,45 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                         .bool_assign(lhs_a.sign_resize_assign(&rhs_a));
                     m.get_mut_dag(out)
                         .bool_assign(lhs_b.sign_resize_assign(&rhs_b));
+                }
+                _ => unreachable!(),
+            }
+        }
+        // MulAdd
+        26 => {
+            let (w, lhs) = m.next1_5();
+            match rng.next_u32() % 3 {
+                0 => {
+                    let rhs = m.next(w);
+                    let out = m.next(w);
+                    let lhs_a = m.get_num(lhs);
+                    let rhs_a = m.get_num(rhs);
+                    let lhs_b = m.get_dag(lhs);
+                    let rhs_b = m.get_dag(rhs);
+                    m.get_mut_num(out).mul_add_assign(&lhs_a, &rhs_a).unwrap();
+                    m.get_mut_dag(out).mul_add_assign(&lhs_b, &rhs_b).unwrap();
+                }
+                1 => {
+                    let rhs = m.next1_5().1;
+                    let out = m.next1_5().1;
+                    let lhs_a = m.get_num(lhs);
+                    let rhs_a = m.get_num(rhs);
+                    let lhs_b = m.get_dag(lhs);
+                    let rhs_b = m.get_dag(rhs);
+                    m.get_mut_num(out).arb_umul_add_assign(&lhs_a, &rhs_a);
+                    m.get_mut_dag(out).arb_umul_add_assign(&lhs_b, &rhs_b);
+                }
+                2 => {
+                    let rhs = m.next1_5().1;
+                    let out = m.next1_5().1;
+                    let mut lhs_a = m.get_num(lhs);
+                    let mut rhs_a = m.get_num(rhs);
+                    let mut lhs_b = m.get_dag(lhs);
+                    let mut rhs_b = m.get_dag(rhs);
+                    m.get_mut_num(out)
+                        .arb_imul_add_assign(&mut lhs_a, &mut rhs_a);
+                    m.get_mut_dag(out)
+                        .arb_imul_add_assign(&mut lhs_b, &mut rhs_b);
                 }
                 _ => unreachable!(),
             }
