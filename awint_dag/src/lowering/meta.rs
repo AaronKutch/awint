@@ -150,6 +150,23 @@ pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> ExtAwi {
     signals
 }
 
+pub fn mux(x0: &Bits, x1: &Bits, inx: &Bits) -> ExtAwi {
+    assert_eq!(x0.bw(), x1.bw());
+    assert_eq!(inx.bw(), 1);
+    let mut out = ExtAwi::zero(x0.nzbw());
+    let lut = inlawi!(1100_1010);
+    for i in 0..x0.bw() {
+        let mut tmp0 = inlawi!(000);
+        tmp0.set(0, x0.get(i).unwrap()).unwrap();
+        tmp0.set(1, x1.get(i).unwrap()).unwrap();
+        tmp0.set(2, inx.to_bool()).unwrap();
+        let mut tmp1 = inlawi!(0);
+        tmp1.lut(&lut, &tmp0).unwrap();
+        out.set(i, tmp1.to_bool()).unwrap();
+    }
+    out
+}
+
 /*
 Normalize. Table size explodes really fast if trying
 to keep as a single LUT, lets use a meta LUT.

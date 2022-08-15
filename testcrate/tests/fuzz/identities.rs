@@ -235,6 +235,14 @@ fn identities_inner(
     assert_eq!(x3.count_ones(), 1);
     assert_eq!(x3.tz(), s0);
 
+    // mux
+    x2.copy_assign(x0)?;
+    x3.copy_assign(x1)?;
+    x4.mux(x2, x3, false)?;
+    assert_eq!(x4, x2);
+    x4.mux(x2, x3, true)?;
+    assert_eq!(x4, x3);
+
     // reversal
     x2.copy_assign(x0)?;
     let lz = x2.lz();

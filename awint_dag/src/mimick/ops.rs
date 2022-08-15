@@ -284,6 +284,14 @@ impl Bits {
         );
     }
 
+    pub fn mux(&mut self, x0: &Self, x1: &Self, inx: impl Into<prim::bool>) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            Mux([x0.state(), x1.state(), inx.into().state()]),
+        );
+        Some(())
+    }
+
     #[must_use]
     pub fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {

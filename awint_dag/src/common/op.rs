@@ -105,6 +105,7 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
 
     Get([T; 2]),
     Set([T; 3]),
+    Mux([T; 3]),
     LutSet([T; 3]),
     Field([T; 5]),
     FieldTo([T; 4]),
@@ -232,6 +233,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(_) => "neg",
             Get(_) => "get",
             Set(_) => "set",
+            Mux(_) => "mux",
             LutSet(_) => "lut_set",
             Field(_) => "field",
             FieldTo(_) => "field_to",
@@ -324,6 +326,11 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
                 v.push("inx");
                 v.push("bit");
             }
+            Mux(_) => {
+                v.push("x0");
+                v.push("x1");
+                v.push("inx");
+            }
             LutSet(_) => {
                 v.push("lut");
                 v.push("entry");
@@ -408,6 +415,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(v) => v,
             Get(v) => v,
             Set(v) => v,
+            Mux(v) => v,
             LutSet(v) => v,
             Field(v) => v.as_ref(),
             FieldTo(v) => v,
@@ -479,6 +487,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(v) => v,
             Get(v) => v,
             Set(v) => v,
+            Mux(v) => v,
             LutSet(v) => v,
             Field(v) => v.as_mut(),
             FieldTo(v) => v,
@@ -586,6 +595,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(v) => Neg(map2!(m, v)),
             Get(v) => Get(map2!(m, v)),
             Set(v) => Set(map3!(m, v)),
+            Mux(v) => Mux(map3!(m, v)),
             LutSet(v) => LutSet(map3!(m, v)),
             Field(_) => {
                 let mut res = Field([

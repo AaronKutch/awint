@@ -648,6 +648,27 @@ impl Dag {
                     rhs.state(),
                 ])?;
             }
+            Mux([x0, x1, inx]) => {
+                let x0 = ExtAwi::opaque(self.get_bw(x0));
+                let x1 = ExtAwi::opaque(self.get_bw(x1));
+                let inx_tmp = ExtAwi::opaque(self.get_bw(inx));
+                let out = if self[inx].op.is_literal() {
+                    let b = self.bool(inx)?;
+                    if b {
+                        x1.clone()
+                    } else {
+                        x0.clone()
+                    }
+                } else {
+                    mux(&x0, &x1, &inx_tmp)
+                };
+                self.graft(ptr, v, &[
+                    out.state(),
+                    x0.state(),
+                    x1.state(),
+                    inx_tmp.state(),
+                ])?;
+            }
             op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
         }
         drop(epoch);

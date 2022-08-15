@@ -290,6 +290,13 @@ impl Dag {
                     None
                 }
             }
+            Mux([a, b, c]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.mux(self.lit(a), self.lit(b), self.bool(c)?)
+                } else {
+                    None
+                }
+            }
             LutSet([a, b, c]) => {
                 if r.copy_assign(self.lit(a)).is_some() {
                     r.lut_set(self.lit(b), self.lit(c))
