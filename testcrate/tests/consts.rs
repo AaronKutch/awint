@@ -227,9 +227,8 @@ const fn bits_functions() {
     assert!(x0.get(128).is_none());
     assert!(x0.set(128, false).is_none());
 
-    assert!(x0.mux(x1, x2, false).is_none());
-    assert!(x2.mux(x0, x1, false).is_none());
-    assert!(x2.mux(x1, x0, false).is_none());
+    assert!(x0.mux_assign(x1, false).is_none());
+    assert!(x0.mux_assign(x1, true).is_none());
 
     // TODO test all const serialization
 

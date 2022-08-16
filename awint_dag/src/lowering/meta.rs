@@ -150,7 +150,7 @@ pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> ExtAwi {
     signals
 }
 
-pub fn mux(x0: &Bits, x1: &Bits, inx: &Bits) -> ExtAwi {
+pub fn mux_assign(x0: &Bits, x1: &Bits, inx: &Bits) -> ExtAwi {
     assert_eq!(x0.bw(), x1.bw());
     assert_eq!(inx.bw(), 1);
     let mut out = ExtAwi::zero(x0.nzbw());
@@ -306,7 +306,7 @@ pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     let signals = tsmear_inx(width, min_w);
     let lut = inlawi!(1100_1010);
     for (i, signal) in signals.into_iter().enumerate() {
-        // mux betwee `lhs` or `rhs` based on the signal
+        // mux_assign betwee `lhs` or `rhs` based on the signal
         let mut tmp0 = inlawi!(000);
         tmp0.set(0, lhs.get(i).unwrap()).unwrap();
         tmp0.set(1, rhs.get(i).unwrap()).unwrap();
@@ -694,7 +694,7 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
         lmask.reverse();
 
         let mut out = ExtAwi::from_bits(lhs);
-        // when `tmask` and `lmask` are both set, mux in `rhs`
+        // when `tmask` and `lmask` are both set, mux_assign in `rhs`
         let lut = inlawi!(1011_1111_1000_0000);
         for i in 0..lhs.bw() {
             let mut tmp = inlawi!(0000);
@@ -857,7 +857,7 @@ pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
     for (j, signal) in signals.into_iter().enumerate() {
         for i in 0..entry.bw() {
             let lut_inx = i + (j * entry.bw());
-            // mux between `lhs` or `entry` based on the signal
+            // mux_assign between `lhs` or `entry` based on the signal
             let mut tmp0 = inlawi!(000);
             tmp0.set(0, table.get(lut_inx).unwrap()).unwrap();
             tmp0.set(1, entry.get(i).unwrap()).unwrap();

@@ -604,16 +604,13 @@ impl Bits {
         None
     }
 
-    /// Multiplex by copy-assigning `x0` to `self` if `inx == false`, or
-    /// copy-assigning `x1` to `self` if `inx == true`
+    /// Multiplex by conditionally copy-assigning `rhs` to `self` if `b`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn mux(&mut self, x0: &Bits, x1: &Bits, inx: bool) -> Option<()> {
-        if (self.bw() == x0.bw()) && (self.bw() == x1.bw()) {
-            if inx {
-                self.copy_assign(x1).unwrap();
-            } else {
-                self.copy_assign(x0).unwrap();
+    pub const fn mux_assign(&mut self, rhs: &Bits, b: bool) -> Option<()> {
+        if self.bw() == rhs.bw() {
+            if b {
+                self.copy_assign(rhs).unwrap();
             }
             Some(())
         } else {

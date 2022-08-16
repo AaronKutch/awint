@@ -292,7 +292,7 @@ impl Dag {
             }
             Mux([a, b, c]) => {
                 if r.copy_assign(self.lit(a)).is_some() {
-                    r.mux(self.lit(a), self.lit(b), self.bool(c)?)
+                    r.mux_assign(self.lit(b), self.bool(c)?)
                 } else {
                     None
                 }

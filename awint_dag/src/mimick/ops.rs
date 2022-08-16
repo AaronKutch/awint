@@ -284,10 +284,10 @@ impl Bits {
         );
     }
 
-    pub fn mux(&mut self, x0: &Self, x1: &Self, inx: impl Into<prim::bool>) -> Option<()> {
+    pub fn mux_assign(&mut self, rhs: &Self, b: impl Into<prim::bool>) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
-            Mux([x0.state(), x1.state(), inx.into().state()]),
+            Mux([self.state(), rhs.state(), b.into().state()]),
         );
         Some(())
     }

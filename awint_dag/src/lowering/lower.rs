@@ -660,7 +660,7 @@ impl Dag {
                         x0.clone()
                     }
                 } else {
-                    mux(&x0, &x1, &inx_tmp)
+                    mux_assign(&x0, &x1, &inx_tmp)
                 };
                 self.graft(ptr, v, &[
                     out.state(),

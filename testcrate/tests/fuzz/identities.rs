@@ -235,13 +235,12 @@ fn identities_inner(
     assert_eq!(x3.count_ones(), 1);
     assert_eq!(x3.tz(), s0);
 
-    // mux
+    // mux_assign
     x2.copy_assign(x0)?;
-    x3.copy_assign(x1)?;
-    x4.mux(x2, x3, false)?;
-    assert_eq!(x4, x2);
-    x4.mux(x2, x3, true)?;
-    assert_eq!(x4, x3);
+    x2.mux_assign(x1, false)?;
+    assert_eq!(x2, x0);
+    x2.mux_assign(x1, true)?;
+    assert_eq!(x2, x1);
 
     // reversal
     x2.copy_assign(x0)?;

@@ -3,7 +3,7 @@
 ## [0.7.0] - TODO
 ### Additions
 - Added `#[must_use]` where applicable
-- Added `Bits::mux`
+- Added `Bits::mux_assign`
 - First workable version of `awint_dag`
 
 ## [0.6.0] - 2022-07-20

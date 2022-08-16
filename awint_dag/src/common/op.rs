@@ -233,7 +233,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(_) => "neg",
             Get(_) => "get",
             Set(_) => "set",
-            Mux(_) => "mux",
+            Mux(_) => "mux_assign",
             LutSet(_) => "lut_set",
             Field(_) => "field",
             FieldTo(_) => "field_to",
@@ -329,7 +329,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Mux(_) => {
                 v.push("x0");
                 v.push("x1");
-                v.push("inx");
+                v.push("b");
             }
             LutSet(_) => {
                 v.push("lut");
