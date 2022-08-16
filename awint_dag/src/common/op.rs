@@ -233,7 +233,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(_) => "neg",
             Get(_) => "get",
             Set(_) => "set",
-            Mux(_) => "mux_assign",
+            Mux(_) => "mux",
             LutSet(_) => "lut_set",
             Field(_) => "field",
             FieldTo(_) => "field_to",

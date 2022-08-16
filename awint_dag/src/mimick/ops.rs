@@ -293,7 +293,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+    pub fn lut_assign(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {

@@ -530,7 +530,7 @@ impl Dag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, lhs.msb()).unwrap();
                     tmp.set(1, rhs.msb()).unwrap();
-                    out.lut(&inlawi!(0010), &tmp).unwrap();
+                    out.lut_assign(&inlawi!(0010), &tmp).unwrap();
                 } else {
                     let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
                     let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
@@ -541,7 +541,7 @@ impl Dag {
                     tmp.set(2, rhs.msb()).unwrap();
                     // if `lhs.msb() != rhs.msb()` then `lhs.msb()` determines signed-less-than,
                     // otherwise `lo_lt` determines
-                    out.lut(&inlawi!(10001110), &tmp).unwrap();
+                    out.lut_assign(&inlawi!(10001110), &tmp).unwrap();
                 }
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
@@ -554,7 +554,7 @@ impl Dag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, lhs.msb()).unwrap();
                     tmp.set(1, rhs.msb()).unwrap();
-                    out.lut(&inlawi!(1011), &tmp).unwrap();
+                    out.lut_assign(&inlawi!(1011), &tmp).unwrap();
                 } else {
                     let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
                     let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
@@ -563,7 +563,7 @@ impl Dag {
                     tmp.set(0, lo_lt).unwrap();
                     tmp.set(1, lhs.msb()).unwrap();
                     tmp.set(2, rhs.msb()).unwrap();
-                    out.lut(&inlawi!(10001110), &tmp).unwrap();
+                    out.lut_assign(&inlawi!(10001110), &tmp).unwrap();
                 }
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
@@ -631,7 +631,7 @@ impl Dag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, critical.is_zero()).unwrap();
                     tmp.set(1, critical.is_umax()).unwrap();
-                    out.lut(&inlawi!(1001), &tmp).unwrap();
+                    out.lut_assign(&inlawi!(1001), &tmp).unwrap();
                 }
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }

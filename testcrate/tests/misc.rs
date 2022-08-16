@@ -2,7 +2,7 @@ use awint::prelude::*;
 use awint_internals::BITS;
 use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 
-/// [Bits::lut] needs its own test because of its special requirements
+/// [Bits::lut_assign] needs its own test because of its special requirements
 #[test]
 fn lut_and_field() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
@@ -26,7 +26,7 @@ fn lut_and_field() {
             let inx = awi_inx.const_as_mut();
             for i in 0..mul {
                 inx.usize_assign(i);
-                out.lut(lut, inx).unwrap();
+                out.lut_assign(lut, inx).unwrap();
                 tmp0.zero_resize_assign(out);
                 tmp1.field_from(lut, i * out.bw(), out.bw()).unwrap();
                 assert_eq!(tmp0, tmp1);
@@ -35,7 +35,7 @@ fn lut_and_field() {
     }
 }
 
-/// Test [Bits::lut] and [Bits::lut_set]
+/// Test [Bits::lut_assign] and [Bits::lut_set]
 #[test]
 fn lut_and_lut_set() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
@@ -65,11 +65,11 @@ fn lut_and_lut_set() {
                 entry.rand_assign_using(&mut rng).unwrap();
                 entry_copy.copy_assign(entry).unwrap();
                 // before `lut_set`, copy the old entry
-                entry_old.lut(lut, inx).unwrap();
+                entry_old.lut_assign(lut, inx).unwrap();
                 // set new value
                 lut.lut_set(entry, inx).unwrap();
                 // get the value that was set
-                entry.lut(lut, inx).unwrap();
+                entry.lut_assign(lut, inx).unwrap();
                 assert_eq!(entry, entry_copy);
                 // restore to original state and make sure nothing else was overwritten
                 lut.lut_set(entry_old, inx).unwrap();

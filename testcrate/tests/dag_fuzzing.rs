@@ -218,10 +218,10 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let lut = m.next(out_w * (1 << inx_w));
             let lut_a = m.get_num(lut);
             let inx_a = m.get_num(inx);
-            m.get_mut_num(out).lut(&lut_a, &inx_a).unwrap();
+            m.get_mut_num(out).lut_assign(&lut_a, &inx_a).unwrap();
             let lut_b = m.get_dag(lut);
             let inx_b = m.get_dag(inx);
-            m.get_mut_dag(out).lut(&lut_b, &inx_b).unwrap();
+            m.get_mut_dag(out).lut_assign(&lut_b, &inx_b).unwrap();
         }
         // Get, StaticGet
         1 => {

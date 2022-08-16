@@ -6,6 +6,9 @@
 - Added `Bits::mux_assign`
 - First workable version of `awint_dag`
 
+### Changes
+- Renamed `Bits::lut` to `Bits::lut_assign`
+
 ## [0.6.0] - 2022-07-20
 ### Fixes
 - Fixed that the infallibility of some macros was being calculated wrong. A few macros now return

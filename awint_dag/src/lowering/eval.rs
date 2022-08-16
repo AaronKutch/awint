@@ -20,7 +20,7 @@ impl Dag {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => return Err(EvalError::Unevaluatable),
             Literal(_) => return Err(EvalError::Unevaluatable),
-            StaticLut([a], lit) => r.lut(&lit, self.lit(a)),
+            StaticLut([a], lit) => r.lut_assign(&lit, self.lit(a)),
             StaticGet([a], inx) => {
                 if let Some(b) = self.lit(a).get(inx) {
                     r.bool_assign(b);
@@ -49,7 +49,7 @@ impl Dag {
                 Some(())
             }
             Copy([a]) => r.copy_assign(self.lit(a)),
-            Lut([a, b]) => r.lut(self.lit(a), self.lit(b)),
+            Lut([a, b]) => r.lut_assign(self.lit(a), self.lit(b)),
             Funnel([a, b]) => r.funnel(self.lit(a), self.lit(b)),
             CinSum([a, b, c]) => {
                 if r.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))

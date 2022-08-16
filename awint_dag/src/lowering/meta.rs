@@ -41,9 +41,9 @@ pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
             tmp.set(1, signal.to_bool()).unwrap();
             // depending on the `j`th bit of `i`, keep the signal line true
             if (i & (1 << j)) == 0 {
-                signal.lut(&lut0, &tmp).unwrap();
+                signal.lut_assign(&lut0, &tmp).unwrap();
             } else {
-                signal.lut(&lut1, &tmp).unwrap();
+                signal.lut_assign(&lut1, &tmp).unwrap();
             }
         }
         signals.push(signal);
@@ -81,21 +81,21 @@ pub fn tsmear_inx(inx: &Bits, num_signals: usize) -> Vec<inlawi_ty!(1)> {
                 tmp0.set(0, inx.get(j).unwrap()).unwrap();
                 tmp0.set(1, prefix_equal.to_bool()).unwrap();
                 let mut tmp1 = inlawi!(00);
-                tmp1.lut(&lut_s0, &tmp0).unwrap();
+                tmp1.lut_assign(&lut_s0, &tmp0).unwrap();
                 prefix_equal.set(0, tmp1.get(0).unwrap()).unwrap();
 
                 // or into `signal`
                 let mut tmp = inlawi!(00);
                 tmp.set(0, tmp1.get(1).unwrap()).unwrap();
                 tmp.set(1, signal.to_bool()).unwrap();
-                signal.lut(&lut_or, &tmp).unwrap();
+                signal.lut_assign(&lut_or, &tmp).unwrap();
             } else {
                 // just update equality, the `j`th bit of `i` is 1 and cannot be less than
                 // whatever the `inx` bit is
                 let mut tmp = inlawi!(00);
                 tmp.set(0, inx.get(j).unwrap()).unwrap();
                 tmp.set(1, prefix_equal.to_bool()).unwrap();
-                prefix_equal.lut(&lut_and, &tmp).unwrap();
+                prefix_equal.lut_assign(&lut_and, &tmp).unwrap();
             }
         }
         signals.push(signal);
@@ -128,21 +128,21 @@ pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> ExtAwi {
                 tmp0.set(0, inx.get(j).unwrap()).unwrap();
                 tmp0.set(1, prefix_equal.to_bool()).unwrap();
                 let mut tmp1 = inlawi!(00);
-                tmp1.lut(&lut_s0, &tmp0).unwrap();
+                tmp1.lut_assign(&lut_s0, &tmp0).unwrap();
                 prefix_equal.set(0, tmp1.get(0).unwrap()).unwrap();
 
                 // or into `signal`
                 let mut tmp = inlawi!(00);
                 tmp.set(0, tmp1.get(1).unwrap()).unwrap();
                 tmp.set(1, signal.to_bool()).unwrap();
-                signal.lut(&lut_or, &tmp).unwrap();
+                signal.lut_assign(&lut_or, &tmp).unwrap();
             } else {
                 // just update equality, the `j`th bit of `i` is 1 and cannot be less than
                 // whatever the `inx` bit is
                 let mut tmp = inlawi!(00);
                 tmp.set(0, inx.get(j).unwrap()).unwrap();
                 tmp.set(1, prefix_equal.to_bool()).unwrap();
-                prefix_equal.lut(&lut_and, &tmp).unwrap();
+                prefix_equal.lut_assign(&lut_and, &tmp).unwrap();
             }
         }
         signals.set(i, signal.to_bool()).unwrap();
@@ -161,7 +161,7 @@ pub fn mux_assign(x0: &Bits, x1: &Bits, inx: &Bits) -> ExtAwi {
         tmp0.set(1, x1.get(i).unwrap()).unwrap();
         tmp0.set(2, inx.to_bool()).unwrap();
         let mut tmp1 = inlawi!(0);
-        tmp1.lut(&lut, &tmp0).unwrap();
+        tmp1.lut_assign(&lut, &tmp0).unwrap();
         out.set(i, tmp1.to_bool()).unwrap();
     }
     out
@@ -199,7 +199,7 @@ pub fn dynamic_to_static_lut(out: &mut Bits, table: &Bits, inx: &Bits) {
             tmp.set(1, table.get((i * out.bw()) + j).unwrap()).unwrap();
             tmp.set(2, column.to_bool()).unwrap();
             // if the column is set or both the cell and signal are set
-            column.lut(&lut, &tmp).unwrap();
+            column.lut_assign(&lut, &tmp).unwrap();
         }
         out.set(j, column.to_bool()).unwrap();
     }
@@ -218,7 +218,7 @@ pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
         tmp.set(1, bits.get(i).unwrap()).unwrap();
         tmp.set(2, out.to_bool()).unwrap();
         // horizontally OR the product of the signals and `bits`
-        out.lut(&lut, &tmp).unwrap();
+        out.lut_assign(&lut, &tmp).unwrap();
     }
     out
 }
@@ -237,7 +237,7 @@ pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
         tmp0.set(2, bits.get(i).unwrap()).unwrap();
         let mut tmp1 = inlawi!(0);
         // multiplex between using `bits` or the `bit` depending on the signal
-        tmp1.lut(&lut, &tmp0).unwrap();
+        tmp1.lut_assign(&lut, &tmp0).unwrap();
         out.set(i, tmp1.to_bool()).unwrap();
     }
     out
@@ -312,7 +312,7 @@ pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
         tmp0.set(1, rhs.get(i).unwrap()).unwrap();
         tmp0.set(2, signal.to_bool()).unwrap();
         let mut tmp1 = inlawi!(0);
-        tmp1.lut(&lut, &tmp0).unwrap();
+        tmp1.lut_assign(&lut, &tmp0).unwrap();
         out.set(i, tmp1.to_bool()).unwrap();
     }
     out
@@ -342,7 +342,7 @@ pub fn crossbar(
                 inx.set(1, signals[signal_inx - signal_range.0].to_bool())
                     .unwrap();
                 inx.set(2, out_bar.to_bool()).unwrap();
-                out_bar.lut(&inlawi!(1111_1000), &inx).unwrap();
+                out_bar.lut_assign(&inlawi!(1111_1000), &inx).unwrap();
             }
         }
         output.set(j, out_bar.to_bool()).unwrap();
@@ -423,7 +423,7 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
             tmp0.set(0, s.get(i).unwrap()).unwrap();
             tmp0.set(1, x.msb()).unwrap();
             let mut tmp1 = inlawi!(0);
-            tmp1.lut(&lut_and, &tmp0).unwrap();
+            tmp1.lut_assign(&lut_and, &tmp0).unwrap();
             gated_s.set(i, tmp1.to_bool()).unwrap();
         }
         let or_mask = tsmear_awi(&gated_s, num);
@@ -434,7 +434,7 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
             tmp0.set(0, out.get(out_i).unwrap()).unwrap();
             tmp0.set(1, or_mask.get(i).unwrap()).unwrap();
             let mut tmp1 = inlawi!(0);
-            tmp1.lut(&lut_or, &tmp0).unwrap();
+            tmp1.lut_assign(&lut_or, &tmp0).unwrap();
             out.set(out_i, tmp1.to_bool()).unwrap();
         }
     }
@@ -484,7 +484,7 @@ pub fn bitwise_not(x: &Bits) -> ExtAwi {
     for i in 0..x.bw() {
         let mut tmp = inlawi!(0);
         let inx = InlAwi::from(x.get(i).unwrap());
-        tmp.lut(&inlawi!(01), &inx).unwrap();
+        tmp.lut_assign(&inlawi!(01), &inx).unwrap();
         out.set(i, tmp.to_bool()).unwrap();
     }
     out
@@ -498,7 +498,7 @@ pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> ExtAwi {
         let mut inx = inlawi!(00);
         inx.set(0, lhs.get(i).unwrap()).unwrap();
         inx.set(1, rhs.get(i).unwrap()).unwrap();
-        tmp.lut(&lut, &inx).unwrap();
+        tmp.lut_assign(&lut, &inx).unwrap();
         out.set(i, tmp.to_bool()).unwrap();
     }
     out
@@ -519,7 +519,7 @@ pub fn incrementer(x: &Bits, cin: &Bits, dec: bool) -> (ExtAwi, inlawi_ty!(1)) {
         let mut inx = inlawi!(00);
         inx.set(0, carry.to_bool()).unwrap();
         inx.set(1, x.get(i).unwrap()).unwrap();
-        carry_sum.lut(&lut, &inx).unwrap();
+        carry_sum.lut_assign(&lut, &inx).unwrap();
         out.set(i, carry_sum.get(0).unwrap()).unwrap();
         carry.bool_assign(carry_sum.get(1).unwrap());
     }
@@ -558,7 +558,7 @@ pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), in
         inx.set(0, carry.to_bool()).unwrap();
         inx.set(1, lhs.get(i).unwrap()).unwrap();
         inx.set(2, rhs.get(i).unwrap()).unwrap();
-        carry_sum.lut(&lut, &inx).unwrap();
+        carry_sum.lut_assign(&lut, &inx).unwrap();
         out.set(i, carry_sum.get(0).unwrap()).unwrap();
         carry.bool_assign(carry_sum.get(1).unwrap());
     }
@@ -567,7 +567,9 @@ pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), in
     inx.set(0, lhs.get(bw - 1).unwrap()).unwrap();
     inx.set(1, rhs.get(bw - 1).unwrap()).unwrap();
     inx.set(2, out.get(bw - 1).unwrap()).unwrap();
-    signed_overflow.lut(&inlawi!(0001_1000), &inx).unwrap();
+    signed_overflow
+        .lut_assign(&inlawi!(0001_1000), &inx)
+        .unwrap();
     (out, carry, signed_overflow)
 }
 
@@ -583,7 +585,7 @@ pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
         inx.set(0, carry.to_bool()).unwrap();
         inx.set(1, x.get(i).unwrap()).unwrap();
         inx.set(2, neg.to_bool()).unwrap();
-        carry_sum.lut(&lut, &inx).unwrap();
+        carry_sum.lut_assign(&lut, &inx).unwrap();
         out.set(i, carry_sum.get(0).unwrap()).unwrap();
         carry.bool_assign(carry_sum.get(1).unwrap());
     }
@@ -632,14 +634,14 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
             tmp.set(2, lmask[i].to_bool()).unwrap();
             tmp.set(3, lhs.get(i).unwrap()).unwrap();
             let mut lut_out = inlawi!(0);
-            lut_out.lut(&lut, &tmp).unwrap();
+            lut_out.lut_assign(&lut, &tmp).unwrap();
             out.set(i, lut_out.to_bool()).unwrap();
         }
         out
     } else {
         let lut = inlawi!(rhs[0], lhs[0]).unwrap();
         let mut out = extawi!(0);
-        out.lut(&lut, width).unwrap();
+        out.lut_assign(&lut, width).unwrap();
         out
     }
 }
@@ -703,7 +705,7 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
             tmp.set(2, lmask[i].to_bool()).unwrap();
             tmp.set(3, lhs.get(i).unwrap()).unwrap();
             let mut lut_out = inlawi!(0);
-            lut_out.lut(&lut, &tmp).unwrap();
+            lut_out.lut_assign(&lut, &tmp).unwrap();
             out.set(i, lut_out.to_bool()).unwrap();
         }
         out
@@ -711,7 +713,7 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
         // `lhs.bw() == 1`, `rhs.bw() == 1`, `width` is the only thing that matters
         let lut = inlawi!(rhs[0], lhs[0]).unwrap();
         let mut out = extawi!(0);
-        out.lut(&lut, width).unwrap();
+        out.lut_assign(&lut, width).unwrap();
         out
     }
 }
@@ -724,7 +726,7 @@ pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
         tmp0.set(0, lhs.get(i).unwrap()).unwrap();
         tmp0.set(1, rhs.get(i).unwrap()).unwrap();
         let mut tmp1 = inlawi!(0);
-        tmp1.lut(&lut_xnor, &tmp0).unwrap();
+        tmp1.lut_assign(&lut_xnor, &tmp0).unwrap();
         ranks[0].push(tmp1);
     }
     // binary tree reduce
@@ -741,7 +743,7 @@ pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
             tmp0.set(0, prev_rank[2 * i].to_bool()).unwrap();
             tmp0.set(1, prev_rank[2 * i + 1].to_bool()).unwrap();
             let mut tmp1 = inlawi!(0);
-            tmp1.lut(&lut_and, &tmp0).unwrap();
+            tmp1.lut_assign(&lut_and, &tmp0).unwrap();
             next_rank.push(tmp1);
         }
         if (rank_len & 1) != 0 {
@@ -863,7 +865,7 @@ pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
             tmp0.set(1, entry.get(i).unwrap()).unwrap();
             tmp0.set(2, signal.to_bool()).unwrap();
             let mut tmp1 = inlawi!(0);
-            tmp1.lut(&lut_mux, &tmp0).unwrap();
+            tmp1.lut_assign(&lut_mux, &tmp0).unwrap();
             out.set(lut_inx, tmp1.to_bool()).unwrap();
         }
     }
@@ -892,7 +894,7 @@ pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) 
                 tmp.set(0, rhs.get(j).unwrap()).unwrap();
                 tmp.set(1, lhs.get(i).unwrap()).unwrap();
                 let mut ji = inlawi!(0);
-                ji.lut(&and, &tmp).unwrap();
+                ji.lut_assign(&and, &tmp).unwrap();
                 place.push(ji);
             }
         }

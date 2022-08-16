@@ -450,12 +450,12 @@ impl Bits {
     ///
     /// // get the third entry (this is using zero indexing)
     /// inx.usize_assign(2);
-    /// out.lut(&lut, &inx).unwrap();
+    /// out.lut_assign(&lut, &inx).unwrap();
     /// assert_eq!(out, inlawi!(3u10));
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+    pub const fn lut_assign(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         // because we later call `inx.to_usize()` and assume that it fits within
         // `inx.bw()`
         inx.assert_cleared_unused_bits();
