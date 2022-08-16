@@ -493,7 +493,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
+    pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &mut Self, div: &mut Self) -> Option<()> {
         quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]));
         rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
         Some(())

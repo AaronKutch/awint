@@ -669,7 +669,51 @@ impl Dag {
                     inx_tmp.state(),
                 ])?;
             }
-            op => return Err(EvalError::OtherString(format!("unimplemented: {:?}", op))),
+            // TODO in the divisions especially and in other operations, we need to look at the
+            // operand tree and combine multiple ops together in a single lowering operation
+            UQuo([duo, div]) => {
+                let duo = ExtAwi::opaque(self.get_bw(duo));
+                let div = ExtAwi::opaque(self.get_bw(div));
+                let quo = division(&duo, &div).0;
+                self.graft(ptr, v, &[quo.state(), duo.state(), div.state()])?;
+            }
+            URem([duo, div]) => {
+                let duo = ExtAwi::opaque(self.get_bw(duo));
+                let div = ExtAwi::opaque(self.get_bw(div));
+                let rem = division(&duo, &div).1;
+                self.graft(ptr, v, &[rem.state(), duo.state(), div.state()])?;
+            }
+            IQuo([duo, div]) => {
+                let duo = ExtAwi::opaque(self.get_bw(duo));
+                let div = ExtAwi::opaque(self.get_bw(div));
+                let duo_msb = duo.msb();
+                let div_msb = div.msb();
+                // keeping arguments opaque
+                let mut tmp_duo = duo.clone();
+                let mut tmp_div = div.clone();
+                tmp_duo.neg_assign(duo_msb);
+                tmp_div.neg_assign(div_msb);
+                let mut quo = division(&tmp_duo, &tmp_div).0;
+                let mut tmp0 = InlAwi::from(duo_msb);
+                let tmp1 = InlAwi::from(div_msb);
+                tmp0.xor_assign(&tmp1).unwrap();
+                quo.neg_assign(tmp0.to_bool());
+                self.graft(ptr, v, &[quo.state(), duo.state(), div.state()])?;
+            }
+            IRem([duo, div]) => {
+                let duo = ExtAwi::opaque(self.get_bw(duo));
+                let div = ExtAwi::opaque(self.get_bw(div));
+                let duo_msb = duo.msb();
+                let div_msb = div.msb();
+                // keeping arguments opaque
+                let mut tmp_duo = duo.clone();
+                let mut tmp_div = div.clone();
+                tmp_duo.neg_assign(duo_msb);
+                tmp_div.neg_assign(div_msb);
+                let mut rem = division(&tmp_duo, &tmp_div).1;
+                rem.neg_assign(duo_msb);
+                self.graft(ptr, v, &[rem.state(), duo.state(), div.state()])?;
+            }
         }
         drop(epoch);
         Ok(false)

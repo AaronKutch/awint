@@ -209,7 +209,7 @@ impl Mem {
 }
 
 fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
-    let next_op = rng.next_u32() % 28;
+    let next_op = rng.next_u32() % 29;
     match next_op {
         // Lut, StaticLut
         0 => {
@@ -759,6 +759,44 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             m.get_mut_dag(lhs)
                 .mux_assign(&rhs_b, b_b.to_bool())
                 .unwrap();
+        }
+        // UQuo, URem, IQuo, IRem
+        28 => {
+            let (w, duo) = m.next1_5();
+            let div = m.next(w);
+            let quo = m.next(w);
+            let rem = m.next(w);
+            let out0 = m.next(w);
+            let out1 = m.next(w);
+
+            if m.get_num(div).is_zero() {
+                m.get_mut_num(div).uone_assign();
+                m.get_mut_dag(div).uone_assign();
+            }
+
+            let mut duo_a = m.get_num(duo);
+            let mut div_a = m.get_num(div);
+            let mut quo_a = m.get_num(quo);
+            let mut rem_a = m.get_num(rem);
+            let mut duo_b = m.get_dag(duo);
+            let mut div_b = m.get_dag(div);
+            let mut quo_b = m.get_dag(quo);
+            let mut rem_b = m.get_dag(rem);
+            match rng.next_u32() % 2 {
+                0 => {
+                    num::Bits::udivide(&mut quo_a, &mut rem_a, &duo_a, &div_a).unwrap();
+                    dag::Bits::udivide(&mut quo_b, &mut rem_b, &duo_b, &div_b).unwrap();
+                }
+                1 => {
+                    num::Bits::idivide(&mut quo_a, &mut rem_a, &mut duo_a, &mut div_a).unwrap();
+                    dag::Bits::idivide(&mut quo_b, &mut rem_b, &mut duo_b, &mut div_b).unwrap();
+                }
+                _ => unreachable!(),
+            }
+            m.get_mut_num(out0).copy_assign(&quo_a).unwrap();
+            m.get_mut_num(out1).copy_assign(&rem_a).unwrap();
+            m.get_mut_dag(out0).copy_assign(&quo_b).unwrap();
+            m.get_mut_dag(out1).copy_assign(&rem_b).unwrap();
         }
         _ => unreachable!(),
     }

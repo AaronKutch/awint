@@ -51,6 +51,37 @@ pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
     signals
 }
 
+pub fn selector_awi(inx: &Bits, cap: Option<usize>) -> ExtAwi {
+    let num = cap.unwrap_or_else(|| 1usize << inx.bw());
+    if num == 0 {
+        // not sure if this should be reachable
+        panic!();
+    }
+    if num == 1 {
+        return extawi!(1)
+    }
+    let lb_num = num.next_power_of_two().trailing_zeros() as usize;
+    let mut signals = ExtAwi::zero(NonZeroUsize::new(num).unwrap());
+    let lut0 = inlawi!(0100);
+    let lut1 = inlawi!(1000);
+    for i in 0..num {
+        let mut signal = inlawi!(1);
+        for j in 0..lb_num {
+            let mut tmp = inlawi!(00);
+            tmp.set(0, inx.get(j).unwrap()).unwrap();
+            tmp.set(1, signal.to_bool()).unwrap();
+            // depending on the `j`th bit of `i`, keep the signal line true
+            if (i & (1 << j)) == 0 {
+                signal.lut_assign(&lut0, &tmp).unwrap();
+            } else {
+                signal.lut_assign(&lut1, &tmp).unwrap();
+            }
+        }
+        signals.set(i, signal.to_bool()).unwrap();
+    }
+    signals
+}
+
 /// Trailing smear, given the value of `inx` it will set all bits in the vector
 /// up to but not including the one indexed by `inx`. This means that
 /// `inx.to_usize() == 0` sets no bits, and `inx.to_usize() == num_bits` sets
@@ -955,4 +986,158 @@ pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) 
     }
     out.add_assign(&tmp).unwrap();
     out
+}
+
+/// DAG version of division, most implementations should probably use a fast
+/// multiplier and a combination of the algorithms in the `specialized-div-rem`
+/// crate, or Goldschmidt division. TODO if `div` is constant or there are
+/// enough divisions sharing the same divisor, use fixed point inverses and
+/// multiplication. TODO try out other algorithms in the `specialized-div-rem`
+/// crate for this implementation.
+pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
+    assert_eq!(duo.bw(), div.bw());
+
+    // this uses the nonrestoring SWAR algorithm, with `duo` and `div` extended by
+    // one bit so we don't need one of the edge case handlers. TODO can we
+    // remove or optimize more of the prelude?
+
+    let original_w = duo.nzbw();
+    let w = NonZeroUsize::new(original_w.get() + 1).unwrap();
+    let mut tmp = ExtAwi::zero(w);
+    tmp.zero_resize_assign(duo);
+    let duo = tmp;
+    let mut tmp = ExtAwi::zero(w);
+    tmp.zero_resize_assign(div);
+    let div = tmp;
+
+    let div_original = div.clone();
+
+    /*
+    if div == 0 {
+        $zero_div_fn()
+    }
+    if duo < div {
+        return (0, duo)
+    }
+    // SWAR opening
+    let div_original = div;
+
+    let mut shl = (div.leading_zeros() - duo.leading_zeros()) as usize;
+    if duo < (div << shl) {
+        // when the msb of `duo` and `div` are aligned, the resulting `div` may be
+        // larger than `duo`, so we decrease the shift by 1.
+        shl -= 1;
+    }
+    let mut div: $uX = (div << shl);
+    duo = duo.wrapping_sub(div);
+    let mut quo: $uX = 1 << shl;
+    if duo < div_original {
+        return (quo, duo);
+    }
+    // NOTE: only with extended `duo` and `div` can we do this
+    let mask: $uX = (1 << shl) - 1;
+
+    // central loop
+    let div: $uX = div.wrapping_sub(1);
+    let mut i = shl;
+    loop {
+        if i == 0 {
+            break;
+        }
+        i -= 1;
+        // note: the `wrapping_shl(1)` can be factored out, but would require another
+        // restoring division step to prevent `(duo as $iX)` from overflowing
+        if (duo as $iX) < 0 {
+            // Negated binary long division step.
+            duo = duo.wrapping_shl(1).wrapping_add(div);
+        } else {
+            // Normal long division step.
+            duo = duo.wrapping_shl(1).wrapping_sub(div);
+        }
+    }
+    if (duo as $iX) < 0 {
+        // Restore. This was not needed in the original nonrestoring algorithm because of
+        // the `duo < div_original` checks.
+        duo = duo.wrapping_add(div);
+    }
+    // unpack
+    return ((duo & mask) | quo, duo >> shl);
+    */
+
+    let duo_lt_div = duo.ult(&div).unwrap();
+
+    // if there is a shortcut value it gets put in here and the `short`cut flag is
+    // set to disable downstream shortcuts
+    let mut short_quo = ExtAwi::zero(w);
+    let mut short_rem = ExtAwi::zero(w);
+    // leave `short_quo` as zero in both cases
+    short_rem.mux_assign(&duo, duo_lt_div).unwrap();
+    let mut short = duo_lt_div;
+
+    let mut shl = leading_zeros(&div);
+    shl.sub_assign(&leading_zeros(&duo)).unwrap();
+    // if duo < (div << shl)
+    let mut shifted_div = ExtAwi::from_bits(&div);
+    shifted_div.shl_assign(shl.to_usize()).unwrap();
+    let reshift = duo.ult(&shifted_div).unwrap();
+    shl.dec_assign(!reshift);
+
+    // if we need to reshift to correct for the shl decrement
+    let mut reshifted = shifted_div.clone();
+    reshifted.lshr_assign(1).unwrap();
+    let mut div = shifted_div;
+    div.mux_assign(&reshifted, reshift).unwrap();
+
+    let mut duo = ExtAwi::from_bits(&duo);
+    duo.sub_assign(&div).unwrap();
+    // 1 << shl efficiently
+    let tmp = selector_awi(&shl, Some(w.get()));
+    let mut quo = ExtAwi::zero(w);
+    quo.zero_resize_assign(&tmp);
+
+    // if duo < div_original
+    let b = duo.ult(&div_original).unwrap();
+    short_quo.mux_assign(&quo, b & !short).unwrap();
+    short_rem.mux_assign(&duo, b & !short).unwrap();
+    short |= b;
+    let mut mask = quo.clone();
+    mask.dec_assign(false);
+
+    // central loop
+    div.dec_assign(false);
+
+    let mut i = shl.clone();
+    for _ in 0..w.get() {
+        let b = i.is_zero();
+        i.dec_assign(b);
+
+        // Normal or Negated binary long division step.
+        let mut tmp0 = div.clone();
+        tmp0.neg_assign(!duo.msb());
+        let mut tmp1 = duo.clone();
+        tmp1.shl_assign(1).unwrap();
+        tmp1.add_assign(&tmp0).unwrap();
+        duo.mux_assign(&tmp1, !b).unwrap();
+    }
+    // final restore
+    let mut tmp = ExtAwi::zero(w);
+    tmp.mux_assign(&div, duo.msb()).unwrap();
+    duo.add_assign(&tmp).unwrap();
+
+    // unpack
+
+    let mut tmp_quo = duo.clone();
+    tmp_quo.and_assign(&mask).unwrap();
+    tmp_quo.or_assign(&quo).unwrap();
+    let mut tmp_rem = duo.clone();
+    tmp_rem.lshr_assign(shl.to_usize()).unwrap();
+
+    short_quo.mux_assign(&tmp_quo, !short).unwrap();
+    short_rem.mux_assign(&tmp_rem, !short).unwrap();
+
+    let mut tmp0 = ExtAwi::zero(original_w);
+    let mut tmp1 = ExtAwi::zero(original_w);
+    tmp0.zero_resize_assign(&short_quo);
+    tmp1.zero_resize_assign(&short_rem);
+    (tmp0, tmp1)
 }
