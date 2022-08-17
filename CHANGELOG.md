@@ -8,6 +8,8 @@
 
 ### Changes
 - Renamed `Bits::lut` to `Bits::lut_assign`
+- Added a second generic to some `FP` functions that allows different `Borrow<Bits>` types to work
+  together
 
 ## [0.6.0] - 2022-07-20
 ### Fixes

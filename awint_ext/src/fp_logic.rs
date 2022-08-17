@@ -53,7 +53,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
 
     /// The same as [FP::truncate_assign] except it always intreprets arguments
     /// as unsigned
-    pub fn utruncate_assign(this: &mut Self, rhs: &Self) {
+    pub fn utruncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) {
         this.zero_assign();
         let lbb = FP::rel_sb(this);
         let rbb = FP::rel_sb(rhs);
@@ -80,7 +80,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// to `this`. For the case of `rhs.signed()`, the absolute value of
     /// `rhs` is used for truncation to `this` followed by
     /// `this.neg_assign(rhs.msb() && this.signed())`.
-    pub fn truncate_assign(this: &mut Self, rhs: &mut Self) {
+    pub fn truncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) {
         let mut b = rhs.is_negative();
         // reinterpret as unsigned to avoid imin overflow
         rhs.const_as_mut().neg_assign(b);
@@ -93,7 +93,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// The same as [FP::otruncate_assign] except it always intreprets arguments
     /// as unsigned
     #[must_use = "use `utruncate_assign` if you do not need the overflow booleans"]
-    pub fn outruncate_assign(this: &mut Self, rhs: &Self) -> (bool, bool) {
+    pub fn outruncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) -> (bool, bool) {
         this.zero_assign();
         if rhs.is_zero() {
             return (false, false)
@@ -155,7 +155,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// `FP::otruncate_assign(...).1` is true, then the numerical value could be
     /// dramatically changed.
     #[must_use = "use `truncate_assign` if you do not need the overflow booleans"]
-    pub fn otruncate_assign(this: &mut Self, rhs: &mut Self) -> (bool, bool) {
+    pub fn otruncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> (bool, bool) {
         let mut b = rhs.is_negative();
         // reinterpret as unsigned to avoid imin overflow
         rhs.const_as_mut().neg_assign(b);
