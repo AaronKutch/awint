@@ -618,4 +618,14 @@ impl Bits {
     ) -> Option<()> {
         Some(())
     }
+
+    pub fn unstable_max<const N: usize>(x: [awi::usize; N]) -> awi::usize {
+        let mut max = x[0];
+        for i in 1..N {
+            if x[i] > max {
+                max = x[i];
+            }
+        }
+        max
+    }
 }
