@@ -285,11 +285,15 @@ impl Bits {
     }
 
     pub fn mux_assign(&mut self, rhs: &Self, b: impl Into<prim::bool>) -> Option<()> {
-        self.update_state(
-            self.state_nzbw(),
-            Mux([self.state(), rhs.state(), b.into().state()]),
-        );
-        Some(())
+        if self.bw() == rhs.bw() {
+            self.update_state(
+                self.state_nzbw(),
+                Mux([self.state(), rhs.state(), b.into().state()]),
+            );
+            Some(())
+        } else {
+            None
+        }
     }
 
     #[must_use]
@@ -487,25 +491,37 @@ impl Bits {
 
     #[must_use]
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
-        quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]));
-        rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
-        Some(())
+        if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
+            quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]));
+            rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
+            Some(())
+        } else {
+            None
+        }
     }
 
     #[must_use]
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &mut Self, div: &mut Self) -> Option<()> {
-        quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]));
-        rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
-        Some(())
+        if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
+            quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]));
+            rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
+            Some(())
+        } else {
+            None
+        }
     }
 
     #[must_use]
     pub fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        self.update_state(
-            self.state_nzbw(),
-            MulAdd([self.state(), lhs.state(), rhs.state()]),
-        );
-        Some(())
+        if (self.bw() == lhs.bw()) && (lhs.bw() == rhs.bw()) {
+            self.update_state(
+                self.state_nzbw(),
+                MulAdd([self.state(), lhs.state(), rhs.state()]),
+            );
+            Some(())
+        } else {
+            None
+        }
     }
 
     pub fn arb_umul_add_assign(&mut self, lhs: &Bits, rhs: &Bits) {
@@ -558,16 +574,20 @@ impl Bits {
         lhs: &Self,
         rhs: &Self,
     ) -> Option<(prim::bool, prim::bool)> {
-        let b = cin.into();
-        let out = Some((
-            prim::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
-            prim::bool::new(SignedOverflow([b.state(), lhs.state(), rhs.state()])),
-        ));
-        self.update_state(
-            self.state_nzbw(),
-            CinSum([b.state(), lhs.state(), rhs.state()]),
-        );
-        out
+        if (self.bw() == lhs.bw()) && (lhs.bw() == rhs.bw()) {
+            let b = cin.into();
+            let out = Some((
+                prim::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
+                prim::bool::new(SignedOverflow([b.state(), lhs.state(), rhs.state()])),
+            ));
+            self.update_state(
+                self.state_nzbw(),
+                CinSum([b.state(), lhs.state(), rhs.state()]),
+            );
+            out
+        } else {
+            None
+        }
     }
 }
 

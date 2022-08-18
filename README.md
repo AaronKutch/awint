@@ -52,6 +52,8 @@ prioritized. Please open an issue or PR if you would like these implemented fast
 - We need a macro for simpler syntax. The base `_assign` functions can have virtual counterparts
   (e.g. `x.add_assign(y)` would have the alternative `z = x.add(y)` or `z = x + y`) and the macro
   optimizes storage creation and routing.
+- Add more functions to `FP`
+- Add some missing functions to the mimicking primitives in `awint_dag`
 - A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track
