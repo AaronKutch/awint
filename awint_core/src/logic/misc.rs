@@ -500,10 +500,10 @@ impl Bits {
         None
     }
 
-    /// Set entry in lookup table. The inverse of [Bits::lut], this uses `entry`
-    /// as a bitfield to overwrite part of `self` at bit position
-    /// `inx.to_usize() * entry.bw()`. If `self.bw() != (entry.bw() *
-    /// (2^inx.bw()))`, `None` will be returned.
+    /// Set entry in lookup table. The inverse of [Bits::lut_assign], this uses
+    /// `entry` as a bitfield to overwrite part of `self` at bit position
+    /// `inx.to_usize() * entry.bw()`. If
+    /// `self.bw() != (entry.bw() * (2^inx.bw()))`, `None` will be returned.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {

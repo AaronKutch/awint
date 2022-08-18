@@ -2,15 +2,11 @@
 
 use std::{cmp::min, mem, num::NonZeroUsize};
 
+use awint_ext::awi;
 use awint_internals::BITS;
 use awint_macros::*;
 
 use crate::mimick::{Bits, ExtAwi, InlAwi};
-
-mod num {
-    pub use awint_core::{Bits, InlAwi};
-    pub use awint_ext::ExtAwi;
-}
 
 // This code here is especially messy because we do not want to get into
 // infinite lowering loops. These first few functions need to use manual `get`
@@ -810,7 +806,7 @@ pub fn count_ones(x: &Bits) -> ExtAwi {
             // each rank adds another bit, keep adding until overflow
             let mut next_sum = extawi!(0, prev_rank[i].0);
             let mut next_max = {
-                use num::*;
+                use awi::*;
                 extawi!(0, prev_rank[i].1)
             };
             loop {
@@ -820,7 +816,7 @@ pub fn count_ones(x: &Bits) -> ExtAwi {
                 }
                 let w = next_max.bw();
                 {
-                    use num::*;
+                    use awi::*;
                     let mut tmp = ExtAwi::zero(next_max.nzbw());
                     if tmp
                         .cin_sum_assign(

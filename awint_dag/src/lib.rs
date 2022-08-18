@@ -1,8 +1,9 @@
 //! # DAG functionality for `awint`
 //!
-//! **NOTE**: this is extremely WIP
+//! **NOTE**: this crate is usable but design choices are still in flux.
 //!
-//! Requires `std`
+//! This crate is intended to be used as a reexport from the `awint` crate with
+//! the "dag" feature flag enabled.
 //!
 //! Outside of the core functionality which will be useful for big integer
 //! arithmetic in constrained environments, there is a secondary goal with this
@@ -35,6 +36,12 @@ pub mod state {
     };
 }
 
-pub mod prelude {
-    pub use crate::mimick::{Bits, ExtAwi, InlAwi};
+pub use crate::mimick::{Bits, ExtAwi, InlAwi};
+
+/// All mimicking structs
+pub mod dag {
+    pub use crate::{
+        mimick::{Bits, ExtAwi, InlAwi},
+        primitive::*,
+    };
 }

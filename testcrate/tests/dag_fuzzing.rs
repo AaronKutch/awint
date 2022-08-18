@@ -1,8 +1,9 @@
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint::prelude as num;
-use awint_dag::{
-    lowering::Dag, prelude as dag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
+use awint::{
+    awi,
+    awint_dag::{lowering::Dag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
+    dag,
 };
 use awint_internals::BITS;
 use rand_xoshiro::{
@@ -24,14 +25,14 @@ ptr_struct!(P0);
 
 #[derive(Debug, Clone)]
 struct Pair {
-    num: num::ExtAwi,
+    awi: awi::ExtAwi,
     dag: dag::ExtAwi,
 }
 
 impl Pair {
-    pub fn new(lit: num::ExtAwi) -> Self {
+    pub fn new(lit: awi::ExtAwi) -> Self {
         Self {
-            num: lit.clone(),
+            awi: lit.clone(),
             dag: lit.const_as_ref().into(),
         }
     }
@@ -72,11 +73,11 @@ impl Mem {
         let try_query = (self.rng.next_u32() % 4) != 0;
         if try_query && (!self.v[w].is_empty()) {
             let p = self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()];
-            if self.get_num(p).to_usize() < cap {
+            if self.get_awi(p).to_usize() < cap {
                 return p
             }
         }
-        let mut lit = num::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+        let mut lit = awi::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
         lit.rand_assign_using(&mut self.rng).unwrap();
         let tmp = lit.to_usize() % cap;
         lit.usize_assign(tmp);
@@ -91,7 +92,7 @@ impl Mem {
         if try_query && (!self.v[w].is_empty()) {
             self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()]
         } else {
-            let mut lit = num::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+            let mut lit = awi::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
             lit.rand_assign_using(&mut self.rng).unwrap();
             let p = self.a.insert(Pair::new(lit));
             self.v[w].push(p);
@@ -114,16 +115,16 @@ impl Mem {
     // of mixed internal mutability is too much. We can't get the signature of
     // `Index` to work in any case.
 
-    pub fn get_num(&self, inx: P0) -> num::ExtAwi {
-        self.a[inx].num.clone()
+    pub fn get_awi(&self, inx: P0) -> awi::ExtAwi {
+        self.a[inx].awi.clone()
     }
 
     pub fn get_dag(&self, inx: P0) -> dag::ExtAwi {
         self.a[inx].dag.clone()
     }
 
-    pub fn get_mut_num(&mut self, inx: P0) -> &mut num::ExtAwi {
-        &mut self.a[inx].num
+    pub fn get_mut_awi(&mut self, inx: P0) -> &mut awi::ExtAwi {
+        &mut self.a[inx].awi
     }
 
     pub fn get_mut_dag(&mut self, inx: P0) -> &mut dag::ExtAwi {
@@ -139,7 +140,7 @@ impl Mem {
             dag.visit_gen += 1;
             dag.eval_tree(leaf, dag.visit_gen)?;
             if let Op::Literal(ref lit) = dag[leaf].op {
-                if pair.num != *lit {
+                if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
             }
@@ -197,7 +198,7 @@ impl Mem {
             dag.visit_gen += 1;
             dag.eval_tree(leaf, dag.visit_gen)?;
             if let Op::Literal(ref lit) = dag[leaf].op {
-                if pair.num != *lit {
+                if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
             } else {
@@ -216,9 +217,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (out_w, out) = m.next1_5();
             let (inx_w, inx) = m.next1_5();
             let lut = m.next(out_w * (1 << inx_w));
-            let lut_a = m.get_num(lut);
-            let inx_a = m.get_num(inx);
-            m.get_mut_num(out).lut_assign(&lut_a, &inx_a).unwrap();
+            let lut_a = m.get_awi(lut);
+            let inx_a = m.get_awi(inx);
+            m.get_mut_awi(out).lut_assign(&lut_a, &inx_a).unwrap();
             let lut_b = m.get_dag(lut);
             let inx_b = m.get_dag(inx);
             m.get_mut_dag(out).lut_assign(&lut_b, &inx_b).unwrap();
@@ -228,9 +229,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (bits_w, bits) = m.next1_5();
             let inx = m.next_usize(bits_w);
             let out = m.next(1);
-            let bits_a = m.get_num(bits);
-            let inx_a = m.get_num(inx);
-            m.get_mut_num(out)
+            let bits_a = m.get_awi(bits);
+            let inx_a = m.get_awi(inx);
+            m.get_mut_awi(out)
                 .bool_assign(bits_a.get(inx_a.to_usize()).unwrap());
             let bits_b = m.get_dag(bits);
             let inx_b = m.get_dag(inx);
@@ -242,9 +243,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (bits_w, bits) = m.next1_5();
             let inx = m.next_usize(bits_w);
             let bit = m.next(1);
-            let inx_a = m.get_num(inx);
-            let bit_a = m.get_num(bit);
-            m.get_mut_num(bits)
+            let inx_a = m.get_awi(inx);
+            let bit_a = m.get_awi(bit);
+            m.get_mut_awi(bits)
                 .set(inx_a.to_usize(), bit_a.to_bool())
                 .unwrap();
             let inx_b = m.get_dag(inx);
@@ -259,10 +260,10 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let to = m.next_usize(lhs_w);
             let (rhs_w, rhs) = m.next1_5();
             let from = m.next_usize(rhs_w);
-            let to_a = m.get_num(to);
-            let rhs_a = m.get_num(rhs);
-            let from_a = m.get_num(from);
-            m.get_mut_num(lhs)
+            let to_a = m.get_awi(to);
+            let rhs_a = m.get_awi(rhs);
+            let from_a = m.get_awi(from);
+            m.get_mut_awi(lhs)
                 .field_bit(to_a.to_usize(), &rhs_a, from_a.to_usize())
                 .unwrap();
             let to_b = m.get_dag(to);
@@ -276,8 +277,8 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         4 => {
             let lhs = m.next1_5().1;
             let rhs = m.next1_5().1;
-            let rhs_a = m.get_num(rhs);
-            m.get_mut_num(lhs).zero_resize_assign(&rhs_a);
+            let rhs_a = m.get_awi(rhs);
+            m.get_mut_awi(lhs).zero_resize_assign(&rhs_a);
             let rhs_b = m.get_dag(rhs);
             m.get_mut_dag(lhs).zero_resize_assign(&rhs_b);
         }
@@ -285,34 +286,34 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         5 => {
             let lhs = m.next1_5().1;
             let rhs = m.next1_5().1;
-            let rhs_a = m.get_num(rhs);
-            m.get_mut_num(lhs).sign_resize_assign(&rhs_a);
+            let rhs_a = m.get_awi(rhs);
+            m.get_mut_awi(lhs).sign_resize_assign(&rhs_a);
             let rhs_b = m.get_dag(rhs);
             m.get_mut_dag(lhs).sign_resize_assign(&rhs_b);
         }
         // Not
         6 => {
             let x = m.next1_5().1;
-            m.get_mut_num(x).not_assign();
+            m.get_mut_awi(x).not_assign();
             m.get_mut_dag(x).not_assign();
         }
         // Or, And, Xor
         7 => {
             let (lhs_w, lhs) = m.next1_5();
             let rhs = m.next(lhs_w);
-            let rhs_a = m.get_num(rhs);
+            let rhs_a = m.get_awi(rhs);
             let rhs_b = m.get_dag(rhs);
             match rng.next_u32() % 3 {
                 0 => {
-                    m.get_mut_num(lhs).or_assign(&rhs_a).unwrap();
+                    m.get_mut_awi(lhs).or_assign(&rhs_a).unwrap();
                     m.get_mut_dag(lhs).or_assign(&rhs_b).unwrap();
                 }
                 1 => {
-                    m.get_mut_num(lhs).and_assign(&rhs_a).unwrap();
+                    m.get_mut_awi(lhs).and_assign(&rhs_a).unwrap();
                     m.get_mut_dag(lhs).and_assign(&rhs_b).unwrap();
                 }
                 2 => {
-                    m.get_mut_num(lhs).xor_assign(&rhs_a).unwrap();
+                    m.get_mut_awi(lhs).xor_assign(&rhs_a).unwrap();
                     m.get_mut_dag(lhs).xor_assign(&rhs_b).unwrap();
                 }
                 _ => unreachable!(),
@@ -323,18 +324,18 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let x = m.next1_5().1;
             let cin = m.next(1);
             let cout = m.next(1);
-            let cin_a = m.get_num(cin);
+            let cin_a = m.get_awi(cin);
             let cin_b = m.get_dag(cin);
             let out_a;
             let out_b;
             if (rng.next_u32() & 1) == 0 {
-                out_a = m.get_mut_num(x).inc_assign(cin_a.to_bool());
+                out_a = m.get_mut_awi(x).inc_assign(cin_a.to_bool());
                 out_b = m.get_mut_dag(x).inc_assign(cin_b.to_bool());
             } else {
-                out_a = m.get_mut_num(x).dec_assign(cin_a.to_bool());
+                out_a = m.get_mut_awi(x).dec_assign(cin_a.to_bool());
                 out_b = m.get_mut_dag(x).dec_assign(cin_b.to_bool());
             }
-            m.get_mut_num(cout).bool_assign(out_a);
+            m.get_mut_awi(cout).bool_assign(out_a);
             m.get_mut_dag(cout).bool_assign(out_b);
         }
         // CinSum, UnsignedOverflow, SignedOverflow
@@ -346,15 +347,15 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let unsigned = m.next(1);
             let signed = m.next(1);
 
-            let cin_a = m.get_num(cin);
-            let lhs_a = m.get_num(lhs);
-            let rhs_a = m.get_num(rhs);
+            let cin_a = m.get_awi(cin);
+            let lhs_a = m.get_awi(lhs);
+            let rhs_a = m.get_awi(rhs);
             let overflow = m
-                .get_mut_num(out)
+                .get_mut_awi(out)
                 .cin_sum_assign(cin_a.to_bool(), &lhs_a, &rhs_a)
                 .unwrap();
-            m.get_mut_num(unsigned).bool_assign(overflow.0);
-            m.get_mut_num(signed).bool_assign(overflow.1);
+            m.get_mut_awi(unsigned).bool_assign(overflow.0);
+            m.get_mut_awi(signed).bool_assign(overflow.1);
 
             let cin_b = m.get_dag(cin);
             let lhs_b = m.get_dag(lhs);
@@ -371,13 +372,13 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let x = m.next1_5().1;
             let out = m.next(1);
             if (rng.next_u32() & 1) == 0 {
-                let a = m.get_num(x).lsb();
-                m.get_mut_num(out).bool_assign(a);
+                let a = m.get_awi(x).lsb();
+                m.get_mut_awi(out).bool_assign(a);
                 let b = m.get_dag(x).lsb();
                 m.get_mut_dag(out).bool_assign(b);
             } else {
-                let a = m.get_num(x).msb();
-                m.get_mut_num(out).bool_assign(a);
+                let a = m.get_awi(x).msb();
+                m.get_mut_awi(out).bool_assign(a);
                 let b = m.get_dag(x).msb();
                 m.get_mut_dag(out).bool_assign(b);
             }
@@ -387,12 +388,12 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let x = m.next1_5().1;
             if (rng.next_u32() & 1) == 0 {
                 let neg = m.next(1);
-                let a = m.get_num(neg).to_bool();
-                m.get_mut_num(x).neg_assign(a);
+                let a = m.get_awi(neg).to_bool();
+                m.get_mut_awi(x).neg_assign(a);
                 let b = m.get_dag(neg).to_bool();
                 m.get_mut_dag(x).neg_assign(b);
             } else {
-                m.get_mut_num(x).abs_assign();
+                m.get_mut_awi(x).abs_assign();
                 m.get_mut_dag(x).abs_assign();
             }
         }
@@ -402,9 +403,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let lhs = m.next(w);
             let rhs = m.next(w * 2);
             let s = m.next(w.trailing_zeros() as usize);
-            let a = m.get_num(rhs);
-            let a_s = m.get_num(s);
-            m.get_mut_num(lhs).funnel(&a, &a_s).unwrap();
+            let a = m.get_awi(rhs);
+            let a_s = m.get_awi(s);
+            m.get_mut_awi(lhs).funnel(&a, &a_s).unwrap();
             let b = m.get_dag(rhs);
             let b_s = m.get_dag(s);
             m.get_mut_dag(lhs).funnel(&b, &b_s).unwrap();
@@ -415,9 +416,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (w1, rhs) = m.next1_5();
             let min_w = min(w0, w1);
             let width = m.next_usize(min_w + 1);
-            let rhs_a = m.get_num(rhs);
-            let width_a = m.get_num(width);
-            m.get_mut_num(lhs)
+            let rhs_a = m.get_awi(rhs);
+            let width_a = m.get_awi(width);
+            m.get_mut_awi(lhs)
                 .field_width(&rhs_a, width_a.to_usize())
                 .unwrap();
             let rhs_b = m.get_dag(rhs);
@@ -432,11 +433,11 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (w1, rhs) = m.next1_5();
             let min_w = min(w0, w1);
             let width = m.next_usize(min_w + 1);
-            let from = m.next_usize(1 + w1 - m.get_num(width).to_usize());
-            let rhs_a = m.get_num(rhs);
-            let width_a = m.get_num(width);
-            let from_a = m.get_num(from);
-            m.get_mut_num(lhs)
+            let from = m.next_usize(1 + w1 - m.get_awi(width).to_usize());
+            let rhs_a = m.get_awi(rhs);
+            let width_a = m.get_awi(width);
+            let from_a = m.get_awi(from);
+            m.get_mut_awi(lhs)
                 .field_from(&rhs_a, from_a.to_usize(), width_a.to_usize())
                 .unwrap();
             let rhs_b = m.get_dag(rhs);
@@ -450,27 +451,27 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         15 => {
             let (w, x) = m.next1_5();
             let s = m.next_usize(w);
-            let s_a = m.get_num(s);
+            let s_a = m.get_awi(s);
             let s_b = m.get_dag(s);
             match rng.next_u32() % 5 {
                 0 => {
-                    m.get_mut_num(x).shl_assign(s_a.to_usize()).unwrap();
+                    m.get_mut_awi(x).shl_assign(s_a.to_usize()).unwrap();
                     m.get_mut_dag(x).shl_assign(s_b.to_usize()).unwrap();
                 }
                 1 => {
-                    m.get_mut_num(x).lshr_assign(s_a.to_usize()).unwrap();
+                    m.get_mut_awi(x).lshr_assign(s_a.to_usize()).unwrap();
                     m.get_mut_dag(x).lshr_assign(s_b.to_usize()).unwrap();
                 }
                 2 => {
-                    m.get_mut_num(x).ashr_assign(s_a.to_usize()).unwrap();
+                    m.get_mut_awi(x).ashr_assign(s_a.to_usize()).unwrap();
                     m.get_mut_dag(x).ashr_assign(s_b.to_usize()).unwrap();
                 }
                 3 => {
-                    m.get_mut_num(x).rotl_assign(s_a.to_usize()).unwrap();
+                    m.get_mut_awi(x).rotl_assign(s_a.to_usize()).unwrap();
                     m.get_mut_dag(x).rotl_assign(s_b.to_usize()).unwrap();
                 }
                 4 => {
-                    m.get_mut_num(x).rotr_assign(s_a.to_usize()).unwrap();
+                    m.get_mut_awi(x).rotr_assign(s_a.to_usize()).unwrap();
                     m.get_mut_dag(x).rotr_assign(s_b.to_usize()).unwrap();
                 }
                 _ => unreachable!(),
@@ -482,11 +483,11 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (w1, rhs) = m.next1_5();
             let min_w = min(w0, w1);
             let width = m.next_usize(min_w + 1);
-            let to = m.next_usize(1 + w0 - m.get_num(width).to_usize());
-            let to_a = m.get_num(to);
-            let rhs_a = m.get_num(rhs);
-            let width_a = m.get_num(width);
-            m.get_mut_num(lhs)
+            let to = m.next_usize(1 + w0 - m.get_awi(width).to_usize());
+            let to_a = m.get_awi(to);
+            let rhs_a = m.get_awi(rhs);
+            let width_a = m.get_awi(width);
+            m.get_mut_awi(lhs)
                 .field_to(to_a.to_usize(), &rhs_a, width_a.to_usize())
                 .unwrap();
             let to_b = m.get_dag(to);
@@ -500,19 +501,19 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         17 => {
             let (w, lhs) = m.next1_5();
             let rhs = m.next(w);
-            let rhs_a = m.get_num(rhs);
+            let rhs_a = m.get_awi(rhs);
             let rhs_b = m.get_dag(rhs);
             match rng.next_u32() % 3 {
                 0 => {
-                    m.get_mut_num(lhs).add_assign(&rhs_a).unwrap();
+                    m.get_mut_awi(lhs).add_assign(&rhs_a).unwrap();
                     m.get_mut_dag(lhs).add_assign(&rhs_b).unwrap();
                 }
                 1 => {
-                    m.get_mut_num(lhs).sub_assign(&rhs_a).unwrap();
+                    m.get_mut_awi(lhs).sub_assign(&rhs_a).unwrap();
                     m.get_mut_dag(lhs).sub_assign(&rhs_b).unwrap();
                 }
                 2 => {
-                    m.get_mut_num(lhs).rsb_assign(&rhs_a).unwrap();
+                    m.get_mut_awi(lhs).rsb_assign(&rhs_a).unwrap();
                     m.get_mut_dag(lhs).rsb_assign(&rhs_b).unwrap();
                 }
                 _ => unreachable!(),
@@ -524,14 +525,14 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (w1, rhs) = m.next1_5();
             let min_w = min(w0, w1);
             let width = m.next_usize(min_w + 1);
-            let to = m.next_usize(1 + w0 - m.get_num(width).to_usize());
-            let from = m.next_usize(1 + w1 - m.get_num(width).to_usize());
+            let to = m.next_usize(1 + w0 - m.get_awi(width).to_usize());
+            let from = m.next_usize(1 + w1 - m.get_awi(width).to_usize());
 
-            let to_a = m.get_num(to);
-            let rhs_a = m.get_num(rhs);
-            let from_a = m.get_num(from);
-            let width_a = m.get_num(width);
-            m.get_mut_num(lhs)
+            let to_a = m.get_awi(to);
+            let rhs_a = m.get_awi(rhs);
+            let from_a = m.get_awi(from);
+            let width_a = m.get_awi(width);
+            m.get_mut_awi(lhs)
                 .field(
                     to_a.to_usize(),
                     &rhs_a,
@@ -555,45 +556,45 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         // Rev
         19 => {
             let x = m.next1_5().1;
-            m.get_mut_num(x).rev_assign();
+            m.get_mut_awi(x).rev_assign();
             m.get_mut_dag(x).rev_assign();
         }
         // Eq, Ne, Ult, Ule, Ilt, Ile
         20 => {
             let (w, lhs) = m.next1_5();
             let rhs = m.next(w);
-            let lhs_a = m.get_num(lhs);
+            let lhs_a = m.get_awi(lhs);
             let lhs_b = m.get_dag(lhs);
-            let rhs_a = m.get_num(rhs);
+            let rhs_a = m.get_awi(rhs);
             let rhs_b = m.get_dag(rhs);
             let out = m.next(1);
             match rng.next_u32() % 6 {
                 0 => {
-                    m.get_mut_num(out)
+                    m.get_mut_awi(out)
                         .bool_assign(lhs_a.const_eq(&rhs_a).unwrap());
                     m.get_mut_dag(out)
                         .bool_assign(lhs_b.const_eq(&rhs_b).unwrap());
                 }
                 1 => {
-                    m.get_mut_num(out)
+                    m.get_mut_awi(out)
                         .bool_assign(lhs_a.const_ne(&rhs_a).unwrap());
                     m.get_mut_dag(out)
                         .bool_assign(lhs_b.const_ne(&rhs_b).unwrap());
                 }
                 2 => {
-                    m.get_mut_num(out).bool_assign(lhs_a.ult(&rhs_a).unwrap());
+                    m.get_mut_awi(out).bool_assign(lhs_a.ult(&rhs_a).unwrap());
                     m.get_mut_dag(out).bool_assign(lhs_b.ult(&rhs_b).unwrap());
                 }
                 3 => {
-                    m.get_mut_num(out).bool_assign(lhs_a.ule(&rhs_a).unwrap());
+                    m.get_mut_awi(out).bool_assign(lhs_a.ule(&rhs_a).unwrap());
                     m.get_mut_dag(out).bool_assign(lhs_b.ule(&rhs_b).unwrap());
                 }
                 4 => {
-                    m.get_mut_num(out).bool_assign(lhs_a.ilt(&rhs_a).unwrap());
+                    m.get_mut_awi(out).bool_assign(lhs_a.ilt(&rhs_a).unwrap());
                     m.get_mut_dag(out).bool_assign(lhs_b.ilt(&rhs_b).unwrap());
                 }
                 5 => {
-                    m.get_mut_num(out).bool_assign(lhs_a.ile(&rhs_a).unwrap());
+                    m.get_mut_awi(out).bool_assign(lhs_a.ile(&rhs_a).unwrap());
                     m.get_mut_dag(out).bool_assign(lhs_b.ile(&rhs_b).unwrap());
                 }
                 _ => unreachable!(),
@@ -602,28 +603,28 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         // IsZero, IsUmax, IsImax, IsImin, IsUone
         21 => {
             let x = m.next1_5().1;
-            let x_a = m.get_num(x);
+            let x_a = m.get_awi(x);
             let x_b = m.get_dag(x);
             let out = m.next(1);
             match rng.next_u32() % 5 {
                 0 => {
-                    m.get_mut_num(out).bool_assign(x_a.is_zero());
+                    m.get_mut_awi(out).bool_assign(x_a.is_zero());
                     m.get_mut_dag(out).bool_assign(x_b.is_zero());
                 }
                 1 => {
-                    m.get_mut_num(out).bool_assign(x_a.is_umax());
+                    m.get_mut_awi(out).bool_assign(x_a.is_umax());
                     m.get_mut_dag(out).bool_assign(x_b.is_umax());
                 }
                 2 => {
-                    m.get_mut_num(out).bool_assign(x_a.is_imax());
+                    m.get_mut_awi(out).bool_assign(x_a.is_imax());
                     m.get_mut_dag(out).bool_assign(x_b.is_imax());
                 }
                 3 => {
-                    m.get_mut_num(out).bool_assign(x_a.is_imin());
+                    m.get_mut_awi(out).bool_assign(x_a.is_imin());
                     m.get_mut_dag(out).bool_assign(x_b.is_imin());
                 }
                 4 => {
-                    m.get_mut_num(out).bool_assign(x_a.is_uone());
+                    m.get_mut_awi(out).bool_assign(x_a.is_uone());
                     m.get_mut_dag(out).bool_assign(x_b.is_uone());
                 }
                 _ => unreachable!(),
@@ -632,24 +633,24 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
         // CountOnes, Lz, Tz, Sig
         22 => {
             let x = m.next1_5().1;
-            let x_a = m.get_num(x);
+            let x_a = m.get_awi(x);
             let x_b = m.get_dag(x);
             let out = m.next_usize(usize::MAX);
             match rng.next_u32() % 4 {
                 0 => {
-                    m.get_mut_num(out).usize_assign(x_a.count_ones());
+                    m.get_mut_awi(out).usize_assign(x_a.count_ones());
                     m.get_mut_dag(out).usize_assign(x_b.count_ones());
                 }
                 1 => {
-                    m.get_mut_num(out).usize_assign(x_a.lz());
+                    m.get_mut_awi(out).usize_assign(x_a.lz());
                     m.get_mut_dag(out).usize_assign(x_b.lz());
                 }
                 2 => {
-                    m.get_mut_num(out).usize_assign(x_a.tz());
+                    m.get_mut_awi(out).usize_assign(x_a.tz());
                     m.get_mut_dag(out).usize_assign(x_b.tz());
                 }
                 3 => {
-                    m.get_mut_num(out).usize_assign(x_a.sig());
+                    m.get_mut_awi(out).usize_assign(x_a.sig());
                     m.get_mut_dag(out).usize_assign(x_b.sig());
                 }
                 _ => unreachable!(),
@@ -661,9 +662,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (inx_w, inx) = m.next1_5();
             let table_w = entry_w * (1 << inx_w);
             let table = m.next(table_w);
-            let entry_a = m.get_num(entry);
-            let inx_a = m.get_num(inx);
-            m.get_mut_num(table).lut_set(&entry_a, &inx_a).unwrap();
+            let entry_a = m.get_awi(entry);
+            let inx_a = m.get_awi(inx);
+            m.get_mut_awi(table).lut_set(&entry_a, &inx_a).unwrap();
             let entry_b = m.get_dag(entry);
             let inx_b = m.get_dag(inx);
             m.get_mut_dag(table).lut_set(&entry_b, &inx_b).unwrap();
@@ -673,9 +674,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let lhs = m.next1_5().1;
             let rhs = m.next1_5().1;
             let b = m.next(1);
-            let rhs_a = m.get_num(rhs);
-            let b_a = m.get_num(b);
-            m.get_mut_num(lhs).resize_assign(&rhs_a, b_a.to_bool());
+            let rhs_a = m.get_awi(rhs);
+            let b_a = m.get_awi(b);
+            m.get_mut_awi(lhs).resize_assign(&rhs_a, b_a.to_bool());
             let rhs_b = m.get_dag(rhs);
             let b_b = m.get_dag(b);
             m.get_mut_dag(lhs).resize_assign(&rhs_b, b_b.to_bool());
@@ -685,19 +686,19 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let lhs = m.next1_5().1;
             let rhs = m.next1_5().1;
             let out = m.next(1);
-            let mut lhs_a = m.get_num(lhs);
-            let rhs_a = m.get_num(rhs);
+            let mut lhs_a = m.get_awi(lhs);
+            let rhs_a = m.get_awi(rhs);
             let mut lhs_b = m.get_dag(lhs);
             let rhs_b = m.get_dag(rhs);
             match rng.next_u32() % 2 {
                 0 => {
-                    m.get_mut_num(out)
+                    m.get_mut_awi(out)
                         .bool_assign(lhs_a.zero_resize_assign(&rhs_a));
                     m.get_mut_dag(out)
                         .bool_assign(lhs_b.zero_resize_assign(&rhs_b));
                 }
                 1 => {
-                    m.get_mut_num(out)
+                    m.get_mut_awi(out)
                         .bool_assign(lhs_a.sign_resize_assign(&rhs_a));
                     m.get_mut_dag(out)
                         .bool_assign(lhs_b.sign_resize_assign(&rhs_b));
@@ -712,31 +713,31 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                 0 => {
                     let rhs = m.next(w);
                     let out = m.next(w);
-                    let lhs_a = m.get_num(lhs);
-                    let rhs_a = m.get_num(rhs);
+                    let lhs_a = m.get_awi(lhs);
+                    let rhs_a = m.get_awi(rhs);
                     let lhs_b = m.get_dag(lhs);
                     let rhs_b = m.get_dag(rhs);
-                    m.get_mut_num(out).mul_add_assign(&lhs_a, &rhs_a).unwrap();
+                    m.get_mut_awi(out).mul_add_assign(&lhs_a, &rhs_a).unwrap();
                     m.get_mut_dag(out).mul_add_assign(&lhs_b, &rhs_b).unwrap();
                 }
                 1 => {
                     let rhs = m.next1_5().1;
                     let out = m.next1_5().1;
-                    let lhs_a = m.get_num(lhs);
-                    let rhs_a = m.get_num(rhs);
+                    let lhs_a = m.get_awi(lhs);
+                    let rhs_a = m.get_awi(rhs);
                     let lhs_b = m.get_dag(lhs);
                     let rhs_b = m.get_dag(rhs);
-                    m.get_mut_num(out).arb_umul_add_assign(&lhs_a, &rhs_a);
+                    m.get_mut_awi(out).arb_umul_add_assign(&lhs_a, &rhs_a);
                     m.get_mut_dag(out).arb_umul_add_assign(&lhs_b, &rhs_b);
                 }
                 2 => {
                     let rhs = m.next1_5().1;
                     let out = m.next1_5().1;
-                    let mut lhs_a = m.get_num(lhs);
-                    let mut rhs_a = m.get_num(rhs);
+                    let mut lhs_a = m.get_awi(lhs);
+                    let mut rhs_a = m.get_awi(rhs);
                     let mut lhs_b = m.get_dag(lhs);
                     let mut rhs_b = m.get_dag(rhs);
-                    m.get_mut_num(out)
+                    m.get_mut_awi(out)
                         .arb_imul_add_assign(&mut lhs_a, &mut rhs_a);
                     m.get_mut_dag(out)
                         .arb_imul_add_assign(&mut lhs_b, &mut rhs_b);
@@ -749,9 +750,9 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let (w, lhs) = m.next1_5();
             let rhs = m.next(w);
             let b = m.next(1);
-            let rhs_a = m.get_num(rhs);
-            let b_a = m.get_num(b);
-            m.get_mut_num(lhs)
+            let rhs_a = m.get_awi(rhs);
+            let b_a = m.get_awi(b);
+            m.get_mut_awi(lhs)
                 .mux_assign(&rhs_a, b_a.to_bool())
                 .unwrap();
             let rhs_b = m.get_dag(rhs);
@@ -769,32 +770,32 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let out0 = m.next(w);
             let out1 = m.next(w);
 
-            if m.get_num(div).is_zero() {
-                m.get_mut_num(div).uone_assign();
+            if m.get_awi(div).is_zero() {
+                m.get_mut_awi(div).uone_assign();
                 m.get_mut_dag(div).uone_assign();
             }
 
-            let mut duo_a = m.get_num(duo);
-            let mut div_a = m.get_num(div);
-            let mut quo_a = m.get_num(quo);
-            let mut rem_a = m.get_num(rem);
+            let mut duo_a = m.get_awi(duo);
+            let mut div_a = m.get_awi(div);
+            let mut quo_a = m.get_awi(quo);
+            let mut rem_a = m.get_awi(rem);
             let mut duo_b = m.get_dag(duo);
             let mut div_b = m.get_dag(div);
             let mut quo_b = m.get_dag(quo);
             let mut rem_b = m.get_dag(rem);
             match rng.next_u32() % 2 {
                 0 => {
-                    num::Bits::udivide(&mut quo_a, &mut rem_a, &duo_a, &div_a).unwrap();
+                    awi::Bits::udivide(&mut quo_a, &mut rem_a, &duo_a, &div_a).unwrap();
                     dag::Bits::udivide(&mut quo_b, &mut rem_b, &duo_b, &div_b).unwrap();
                 }
                 1 => {
-                    num::Bits::idivide(&mut quo_a, &mut rem_a, &mut duo_a, &mut div_a).unwrap();
+                    awi::Bits::idivide(&mut quo_a, &mut rem_a, &mut duo_a, &mut div_a).unwrap();
                     dag::Bits::idivide(&mut quo_b, &mut rem_b, &mut duo_b, &mut div_b).unwrap();
                 }
                 _ => unreachable!(),
             }
-            m.get_mut_num(out0).copy_assign(&quo_a).unwrap();
-            m.get_mut_num(out1).copy_assign(&rem_a).unwrap();
+            m.get_mut_awi(out0).copy_assign(&quo_a).unwrap();
+            m.get_mut_awi(out1).copy_assign(&rem_a).unwrap();
             m.get_mut_dag(out0).copy_assign(&quo_b).unwrap();
             m.get_mut_dag(out1).copy_assign(&rem_b).unwrap();
         }

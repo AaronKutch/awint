@@ -79,6 +79,8 @@ jobs:
           cargo build --no-default-features --features=std
           cargo build --no-default-features --features=rand_support
           cargo build --no-default-features --features=serde_support
+          cargo build --no-default-features --features=dag
+          cargo build --no-default-features --features=dag,rand_support,serde_support
           cargo build --no-default-features
 
   rustfmt:
