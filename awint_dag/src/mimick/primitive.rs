@@ -1,8 +1,9 @@
 use std::{fmt, num::NonZeroUsize, ops::*};
 
+use awint_ext::awi;
 use awint_internals::*;
 
-use crate::{mimick::InlAwi, primitive as prim, Lineage, Op, PState};
+use crate::{dag, mimick::InlAwi, Lineage, Op, PState};
 
 macro_rules! unary {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
@@ -23,8 +24,8 @@ macro_rules! unary {
 macro_rules! op_assign {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
         $(
-            impl<I> $std_trait<I> for $name where I: Into<prim::$name> {
-                fn $std_fn(&mut self, rhs: I) where I: Into<prim::$name> {
+            impl<I> $std_trait<I> for $name where I: Into<dag::$name> {
+                fn $std_fn(&mut self, rhs: I) where I: Into<dag::$name> {
                     self.0.$assign_name(&rhs.into().0).unwrap();
                 }
             }
@@ -45,10 +46,10 @@ macro_rules! triop {
                 }
             }
 
-            impl $std_trait<core::primitive::$name> for $name {
+            impl $std_trait<awi::$name> for $name {
                 type Output = Self;
 
-                fn $std_fn(self, rhs: core::primitive::$name) -> Self {
+                fn $std_fn(self, rhs: awi::$name) -> Self {
                     let mut tmp = self.clone();
                     tmp.0.$op_assign(&$name::from(rhs).0).unwrap();
                     tmp
@@ -64,7 +65,7 @@ macro_rules! prim {
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
             #[derive(Clone, Copy)]
-            pub struct $name(InlAwi<$bw, {crate::mimick::Bits::unstable_raw_digits($bw)}>);
+            pub struct $name(InlAwi<$bw, {awi::Bits::unstable_raw_digits($bw)}>);
 
             impl Lineage for $name {
                 fn state(&self) -> PState {
@@ -86,9 +87,9 @@ macro_rules! prim {
                 }
             }
 
-            impl From<core::primitive::$name> for $name {
-                fn from(x: core::primitive::$name) -> Self {
-                    Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
+            impl From<awi::$name> for $name {
+                fn from(x: awi::$name) -> Self {
+                    Self::new(Op::Literal(awi::ExtAwi::from(x)))
                 }
             }
 
@@ -126,7 +127,7 @@ macro_rules! prim {
 /// Mimicking primitive of same name
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct bool(InlAwi<1, { crate::mimick::Bits::unstable_raw_digits(1) }>);
+pub struct bool(InlAwi<1, { awi::Bits::unstable_raw_digits(1) }>);
 
 impl Lineage for bool {
     fn state(&self) -> PState {
@@ -148,9 +149,9 @@ impl bool {
     }
 }
 
-impl From<core::primitive::bool> for bool {
-    fn from(x: core::primitive::bool) -> Self {
-        Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
+impl From<awi::bool> for bool {
+    fn from(x: awi::bool) -> Self {
+        Self::new(Op::Literal(awi::ExtAwi::from(x)))
     }
 }
 

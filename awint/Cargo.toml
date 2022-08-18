@@ -32,5 +32,5 @@ std = ["alloc"]
 rand_support = ["awint_core/rand_support"]
 # Turns on `serde` support
 serde_support = ["awint_core/serde_support", "awint_ext/serde_support"]
-# Turns on the experimental `awint_dag`. Note: this activates `std`.
+# Turns on `awint_dag` support. Note: this activates `std`.
 dag = ["awint_dag", "std"]

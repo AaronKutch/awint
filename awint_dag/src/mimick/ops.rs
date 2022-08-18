@@ -1,11 +1,12 @@
 // Note: we use `impl Into<...>` heavily instead of `U: Into<...>` generics,
 // because it allows arguments to be different types
 
+use awint_ext::awi;
 use awint_internals::BITS;
 use Op::*;
 
 use super::ExtAwi;
-use crate::{mimick::Bits, primitive as prim, Lineage, Op};
+use crate::{dag, mimick::Bits, Lineage, Op};
 
 macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
@@ -39,9 +40,9 @@ macro_rules! binary {
 macro_rules! zero_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
-            pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
+            pub fn $assign_name(&mut self, x: impl Into<dag::$prim>) {
                 let x = x.into().state();
-                if self.state_nzbw() == prim::$prim::get_nzbw() {
+                if self.state_nzbw() == dag::$prim::get_nzbw() {
                     self.set_state(x);
                 } else {
                     self.update_state(
@@ -52,13 +53,13 @@ macro_rules! zero_cast {
             }
 
             #[must_use]
-            pub fn $to_name(&self) -> prim::$prim {
-                if self.state_nzbw() == prim::$prim::get_nzbw() {
-                    prim::$prim::from_state(
+            pub fn $to_name(&self) -> dag::$prim {
+                if self.state_nzbw() == dag::$prim::get_nzbw() {
+                    dag::$prim::from_state(
                         self.state(),
                     )
                 } else {
-                    prim::$prim::new(
+                    dag::$prim::new(
                         ZeroResize([self.state()]),
                     )
                 }
@@ -70,9 +71,9 @@ macro_rules! zero_cast {
 macro_rules! sign_cast {
     ($($prim:ident $assign_name:ident $to_name:ident),*,) => {
         $(
-            pub fn $assign_name(&mut self, x: impl Into<prim::$prim>) {
+            pub fn $assign_name(&mut self, x: impl Into<dag::$prim>) {
                 let x = x.into().state();
-                if self.state_nzbw() == prim::$prim::get_nzbw() {
+                if self.state_nzbw() == dag::$prim::get_nzbw() {
                     self.set_state(x);
                 } else {
                     self.update_state(
@@ -83,13 +84,13 @@ macro_rules! sign_cast {
             }
 
             #[must_use]
-            pub fn $to_name(&self) -> prim::$prim {
-                if self.state_nzbw() == prim::$prim::get_nzbw() {
-                    prim::$prim::from_state(
+            pub fn $to_name(&self) -> dag::$prim {
+                if self.state_nzbw() == dag::$prim::get_nzbw() {
+                    dag::$prim::from_state(
                         self.state(),
                     )
                 } else {
-                    prim::$prim::new(
+                    dag::$prim::new(
                         SignResize([self.state()]),
                     )
                 }
@@ -102,8 +103,8 @@ macro_rules! ref_self_output_bool {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             #[must_use]
-            pub fn $fn_name(&self) -> prim::bool {
-                prim::bool::new($enum_var([self.state()]))
+            pub fn $fn_name(&self) -> dag::bool {
+                dag::bool::new($enum_var([self.state()]))
             }
         )*
     };
@@ -113,9 +114,9 @@ macro_rules! compare {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             #[must_use]
-            pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
+            pub fn $fn_name(&self, rhs: &Bits) -> Option<dag::bool> {
                 if self.bw() == rhs.bw() {
-                    Some(prim::bool::new($enum_var([self.state(), rhs.state()])))
+                    Some(dag::bool::new($enum_var([self.state(), rhs.state()])))
                 } else {
                     None
                 }
@@ -128,9 +129,9 @@ macro_rules! compare_reversed {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             #[must_use]
-            pub fn $fn_name(&self, rhs: &Bits) -> Option<prim::bool> {
+            pub fn $fn_name(&self, rhs: &Bits) -> Option<dag::bool> {
                 if self.bw() == rhs.bw() {
-                    Some(prim::bool::new($enum_var([rhs.state(), self.state()])))
+                    Some(dag::bool::new($enum_var([rhs.state(), self.state()])))
                 } else {
                     None
                 }
@@ -143,7 +144,7 @@ macro_rules! shift {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             #[must_use]
-            pub fn $fn_name(&mut self, s: impl Into<prim::usize>) -> Option<()> {
+            pub fn $fn_name(&mut self, s: impl Into<dag::usize>) -> Option<()> {
                 self.update_state(
                     self.state_nzbw(),
                     $enum_var([self.state(), s.into().state()])
@@ -158,8 +159,8 @@ macro_rules! ref_self_output_usize {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             #[must_use]
-            pub fn $fn_name(&self) -> prim::usize {
-                prim::usize::new($enum_var([self.state()]))
+            pub fn $fn_name(&self) -> dag::usize {
+                dag::usize::new($enum_var([self.state()]))
             }
         )*
     };
@@ -252,39 +253,39 @@ impl Bits {
     pub fn zero_assign(&mut self) {
         self.update_state(
             self.state_nzbw(),
-            Op::Literal(awint_ext::ExtAwi::zero(self.nzbw())),
+            Op::Literal(awi::ExtAwi::zero(self.nzbw())),
         );
     }
 
     pub fn umax_assign(&mut self) {
         self.update_state(
             self.state_nzbw(),
-            Op::Literal(awint_ext::ExtAwi::umax(self.nzbw())),
+            Op::Literal(awi::ExtAwi::umax(self.nzbw())),
         );
     }
 
     pub fn imax_assign(&mut self) {
         self.update_state(
             self.state_nzbw(),
-            Op::Literal(awint_ext::ExtAwi::imax(self.nzbw())),
+            Op::Literal(awi::ExtAwi::imax(self.nzbw())),
         );
     }
 
     pub fn imin_assign(&mut self) {
         self.update_state(
             self.state_nzbw(),
-            Op::Literal(awint_ext::ExtAwi::imin(self.nzbw())),
+            Op::Literal(awi::ExtAwi::imin(self.nzbw())),
         );
     }
 
     pub fn uone_assign(&mut self) {
         self.update_state(
             self.state_nzbw(),
-            Op::Literal(awint_ext::ExtAwi::uone(self.nzbw())),
+            Op::Literal(awi::ExtAwi::uone(self.nzbw())),
         );
     }
 
-    pub fn mux_assign(&mut self, rhs: &Self, b: impl Into<prim::bool>) -> Option<()> {
+    pub fn mux_assign(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
         if self.bw() == rhs.bw() {
             self.update_state(
                 self.state_nzbw(),
@@ -326,7 +327,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn get(&self, inx: impl Into<prim::usize>) -> Option<prim::bool> {
+    pub fn get(&self, inx: impl Into<dag::usize>) -> Option<dag::bool> {
         let inx = inx.into().state();
         if let Literal(ref lit) = inx.get_state().unwrap().op {
             // optimization for the meta lowering
@@ -338,14 +339,14 @@ impl Bits {
                     self.bw()
                 );
             }
-            Some(prim::bool::new(StaticGet([self.state()], inx)))
+            Some(dag::bool::new(StaticGet([self.state()], inx)))
         } else {
-            Some(prim::bool::new(Get([self.state(), inx])))
+            Some(dag::bool::new(Get([self.state(), inx])))
         }
     }
 
     #[must_use]
-    pub fn set(&mut self, inx: impl Into<prim::usize>, bit: impl Into<prim::bool>) -> Option<()> {
+    pub fn set(&mut self, inx: impl Into<dag::usize>, bit: impl Into<dag::bool>) -> Option<()> {
         let inx = inx.into().state();
         if let Literal(ref lit) = inx.get_state().unwrap().op {
             // optimization for the meta lowering
@@ -373,10 +374,10 @@ impl Bits {
     #[must_use]
     pub fn field(
         &mut self,
-        to: impl Into<prim::usize>,
+        to: impl Into<dag::usize>,
         rhs: &Self,
-        from: impl Into<prim::usize>,
-        width: impl Into<prim::usize>,
+        from: impl Into<dag::usize>,
+        width: impl Into<dag::usize>,
     ) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -394,9 +395,9 @@ impl Bits {
     #[must_use]
     pub fn field_to(
         &mut self,
-        to: impl Into<prim::usize>,
+        to: impl Into<dag::usize>,
         rhs: &Self,
-        width: impl Into<prim::usize>,
+        width: impl Into<dag::usize>,
     ) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -414,8 +415,8 @@ impl Bits {
     pub fn field_from(
         &mut self,
         rhs: &Self,
-        from: impl Into<prim::usize>,
-        width: impl Into<prim::usize>,
+        from: impl Into<dag::usize>,
+        width: impl Into<dag::usize>,
     ) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -430,7 +431,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn field_width(&mut self, rhs: &Self, width: impl Into<prim::usize>) -> Option<()> {
+    pub fn field_width(&mut self, rhs: &Self, width: impl Into<dag::usize>) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
             FieldWidth([self.state(), rhs.state(), width.into().state()]),
@@ -441,9 +442,9 @@ impl Bits {
     #[must_use]
     pub fn field_bit(
         &mut self,
-        to: impl Into<prim::usize>,
+        to: impl Into<dag::usize>,
         rhs: &Self,
-        from: impl Into<prim::usize>,
+        from: impl Into<dag::usize>,
     ) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -457,21 +458,21 @@ impl Bits {
         Some(())
     }
 
-    pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<prim::bool>) {
+    pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
         self.update_state(
             self.state_nzbw(),
             Resize([rhs.state(), extension.into().state()]),
         );
     }
 
-    pub fn zero_resize_assign(&mut self, rhs: &Self) -> prim::bool {
-        let b = prim::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
+    pub fn zero_resize_assign(&mut self, rhs: &Self) -> dag::bool {
+        let b = dag::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
         self.update_state(self.state_nzbw(), ZeroResize([rhs.state()]));
         b
     }
 
-    pub fn sign_resize_assign(&mut self, rhs: &Self) -> prim::bool {
-        let b = prim::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
+    pub fn sign_resize_assign(&mut self, rhs: &Self) -> dag::bool {
+        let b = dag::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
         self.update_state(self.state_nzbw(), SignResize([rhs.state()]));
         b
     }
@@ -548,21 +549,21 @@ impl Bits {
         self.neg_assign(rhs_msb);
     }
 
-    pub fn inc_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
+    pub fn inc_assign(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
-        let out = prim::bool::new(IncCout([self.state(), b.state()]));
+        let out = dag::bool::new(IncCout([self.state(), b.state()]));
         self.update_state(self.state_nzbw(), Inc([self.state(), b.state()]));
         out
     }
 
-    pub fn dec_assign(&mut self, cin: impl Into<prim::bool>) -> prim::bool {
+    pub fn dec_assign(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
-        let out = prim::bool::new(DecCout([self.state(), b.state()]));
+        let out = dag::bool::new(DecCout([self.state(), b.state()]));
         self.update_state(self.state_nzbw(), Dec([self.state(), b.state()]));
         out
     }
 
-    pub fn neg_assign(&mut self, neg: impl Into<prim::bool>) {
+    pub fn neg_assign(&mut self, neg: impl Into<dag::bool>) {
         let b = neg.into();
         self.update_state(self.state_nzbw(), Neg([self.state(), b.state()]));
     }
@@ -570,15 +571,15 @@ impl Bits {
     #[must_use]
     pub fn cin_sum_assign(
         &mut self,
-        cin: impl Into<prim::bool>,
+        cin: impl Into<dag::bool>,
         lhs: &Self,
         rhs: &Self,
-    ) -> Option<(prim::bool, prim::bool)> {
+    ) -> Option<(dag::bool, dag::bool)> {
         if (self.bw() == lhs.bw()) && (lhs.bw() == rhs.bw()) {
             let b = cin.into();
             let out = Some((
-                prim::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
-                prim::bool::new(SignedOverflow([b.state(), lhs.state(), rhs.state()])),
+                dag::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
+                dag::bool::new(SignedOverflow([b.state(), lhs.state(), rhs.state()])),
             ));
             self.update_state(
                 self.state_nzbw(),
@@ -605,15 +606,15 @@ impl Bits {
     // TODO for now assume they pass
 
     pub fn unstable_le_checks<const N: usize>(
-        _le_checks: [(impl Into<prim::usize>, impl Into<prim::usize>); N],
+        _le_checks: [(impl Into<dag::usize>, impl Into<dag::usize>); N],
     ) -> Option<()> {
         Some(())
     }
 
     pub fn unstable_common_checks<const N: usize, const M: usize>(
-        _common_cw: impl Into<prim::usize>,
-        _ge: [impl Into<prim::usize>; N],
-        _eq: [impl Into<prim::usize>; M],
+        _common_cw: impl Into<dag::usize>,
+        _ge: [impl Into<dag::usize>; N],
+        _eq: [impl Into<dag::usize>; M],
     ) -> Option<()> {
         Some(())
     }

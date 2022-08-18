@@ -17,6 +17,15 @@
 //! of `Bits` and calculate a DAG equivalent to the function. The function can
 //! be called like normal and can have the typical compiler optimizations
 //! applied, while the DAG can be inspected for more complicated things.
+//!
+//! ## Important Notes
+//!
+//! - The macros from `awint_dag` use whatever `usize`, `ExtAwi`, `InlAwi`, and
+//!   `Bits` structs are imported in their scope. If you are mixing regular and
+//!   mimicking types and are getting name collisions in macros, you can glob
+//!   import `awint::awi::*` or `awint::dag::*` in the same scope as the macro
+//!   (or add an extra block scope around the macro to glob import in), which
+//!   should fix the errors.
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::needless_range_loop)]

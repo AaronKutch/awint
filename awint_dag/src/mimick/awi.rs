@@ -7,9 +7,10 @@ use std::{
     rc::Rc,
 };
 
+use awint_ext::awi;
 use awint_internals::*;
 
-use crate::{mimick::Bits, primitive as prim, Lineage, Op, PState};
+use crate::{dag, Bits, Lineage, Op, PState};
 
 /// Mimicking `awint_core::InlAwi`.
 ///
@@ -67,8 +68,8 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::from_bits(
-            awint_core::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
+        Self::new(Op::Literal(awi::ExtAwi::from_bits(
+            awi::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
         )))
     }
 
@@ -79,27 +80,27 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn zero() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::zero(bw(BW))))
+        Self::new(Op::Literal(awi::ExtAwi::zero(bw(BW))))
     }
 
     pub fn umax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::umax(bw(BW))))
+        Self::new(Op::Literal(awi::ExtAwi::umax(bw(BW))))
     }
 
     pub fn imax() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::imax(bw(BW))))
+        Self::new(Op::Literal(awi::ExtAwi::imax(bw(BW))))
     }
 
     pub fn imin() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::imin(bw(BW))))
+        Self::new(Op::Literal(awi::ExtAwi::imin(bw(BW))))
     }
 
     pub fn uone() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Literal(awint_ext::ExtAwi::uone(bw(BW))))
+        Self::new(Op::Literal(awi::ExtAwi::uone(bw(BW))))
     }
 }
 
@@ -175,22 +176,22 @@ macro_rules! forward_inlawi_fmt {
 
 forward_inlawi_fmt!(Display LowerHex UpperHex Octal Binary);
 
-impl InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
-    pub fn from_bool(x: impl Into<prim::bool>) -> Self {
+impl InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
+    pub fn from_bool(x: impl Into<dag::bool>) -> Self {
         let mut awi = Self::zero();
         awi.const_as_mut().bool_assign(x);
         awi
     }
 }
 
-impl From<bool> for InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
-    fn from(x: bool) -> Self {
+impl From<dag::bool> for InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
+    fn from(x: dag::bool) -> Self {
         Self::from_bool(x)
     }
 }
 
-impl From<prim::bool> for InlAwi<1, { awint_core::Bits::unstable_raw_digits(1) }> {
-    fn from(x: prim::bool) -> Self {
+impl From<awi::bool> for InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
+    fn from(x: awi::bool) -> Self {
         Self::from_bool(x)
     }
 }
@@ -199,40 +200,40 @@ macro_rules! inlawi_from {
     ($($w:expr, $u:ident $from_u:ident $u_assign:ident
         $i:ident $from_i:ident $i_assign:ident);*;) => {
         $(
-            impl InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
-                pub fn $from_u(x: impl Into<prim::$u>) -> Self {
+            impl InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
+                pub fn $from_u(x: impl Into<dag::$u>) -> Self {
                     let mut awi = Self::zero();
                     awi.const_as_mut().$u_assign(x);
                     awi
                 }
 
-                pub fn $from_i(x: impl Into<prim::$i>) -> Self {
+                pub fn $from_i(x: impl Into<dag::$i>) -> Self {
                     let mut awi = Self::zero();
                     awi.const_as_mut().$i_assign(x);
                     awi
                 }
             }
 
-            impl From<$u> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
-                fn from(x: $u) -> Self {
+            impl From<dag::$u> for InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
+                fn from(x: dag::$u) -> Self {
                     Self::$from_u(x)
                 }
             }
 
-            impl From<$i> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
-                fn from(x: $i) -> Self {
+            impl From<dag::$i> for InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
+                fn from(x: dag::$i) -> Self {
                     Self::$from_i(x)
                 }
             }
 
-            impl From<prim::$u> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
-                fn from(x: prim::$u) -> Self {
+            impl From<awi::$u> for InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
+                fn from(x: awi::$u) -> Self {
                     Self::$from_u(x)
                 }
             }
 
-            impl From<prim::$i> for InlAwi<$w, {awint_core::Bits::unstable_raw_digits($w)}> {
-                fn from(x: prim::$i) -> Self {
+            impl From<awi::$i> for InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
+                fn from(x: awi::$i) -> Self {
                     Self::$from_i(x)
                 }
             }
@@ -249,42 +250,42 @@ inlawi_from!(
 );
 
 type UsizeInlAwi =
-    InlAwi<{ usize::BITS as usize }, { Bits::unstable_raw_digits(usize::BITS as usize) }>;
+    InlAwi<{ awi::usize::BITS as usize }, { awi::Bits::unstable_raw_digits(usize::BITS as usize) }>;
 
 impl UsizeInlAwi {
-    pub fn from_usize(x: impl Into<prim::usize>) -> Self {
+    pub fn from_usize(x: impl Into<dag::usize>) -> Self {
         let mut awi = Self::zero();
         awi.const_as_mut().usize_assign(x);
         awi
     }
 
-    pub fn from_isize(x: impl Into<prim::isize>) -> Self {
+    pub fn from_isize(x: impl Into<dag::isize>) -> Self {
         let mut awi = Self::zero();
         awi.const_as_mut().isize_assign(x);
         awi
     }
 }
 
-impl From<usize> for UsizeInlAwi {
-    fn from(x: usize) -> Self {
+impl From<dag::usize> for UsizeInlAwi {
+    fn from(x: dag::usize) -> Self {
         Self::from_usize(x)
     }
 }
 
-impl From<isize> for UsizeInlAwi {
-    fn from(x: isize) -> Self {
+impl From<dag::isize> for UsizeInlAwi {
+    fn from(x: dag::isize) -> Self {
         Self::from_isize(x)
     }
 }
 
-impl From<prim::usize> for UsizeInlAwi {
-    fn from(x: prim::usize) -> Self {
+impl From<awi::usize> for UsizeInlAwi {
+    fn from(x: awi::usize) -> Self {
         Self::from_usize(x)
     }
 }
 
-impl From<prim::isize> for UsizeInlAwi {
-    fn from(x: prim::isize) -> Self {
+impl From<awi::isize> for UsizeInlAwi {
+    fn from(x: awi::isize) -> Self {
         Self::from_isize(x)
     }
 }
@@ -333,52 +334,52 @@ impl ExtAwi {
     }
 
     pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::zero(bw)))
+        Self::new(bw, Op::Literal(awi::ExtAwi::zero(bw)))
     }
 
     pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::umax(bw)))
+        Self::new(bw, Op::Literal(awi::ExtAwi::umax(bw)))
     }
 
     pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imax(bw)))
+        Self::new(bw, Op::Literal(awi::ExtAwi::imax(bw)))
     }
 
     pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::imin(bw)))
+        Self::new(bw, Op::Literal(awi::ExtAwi::imin(bw)))
     }
 
     pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awint_ext::ExtAwi::uone(bw)))
+        Self::new(bw, Op::Literal(awi::ExtAwi::uone(bw)))
     }
 
     #[doc(hidden)]
-    pub fn panicking_opaque(bw: usize) -> Self {
+    pub fn panicking_opaque(bw: awi::usize) -> Self {
         Self::opaque(NonZeroUsize::new(bw).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_zero(bw: usize) -> Self {
+    pub fn panicking_zero(bw: awi::usize) -> Self {
         Self::zero(NonZeroUsize::new(bw).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_umax(bw: usize) -> Self {
+    pub fn panicking_umax(bw: awi::usize) -> Self {
         Self::umax(NonZeroUsize::new(bw).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_imax(bw: usize) -> Self {
+    pub fn panicking_imax(bw: awi::usize) -> Self {
         Self::imax(NonZeroUsize::new(bw).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_imin(bw: usize) -> Self {
+    pub fn panicking_imin(bw: awi::usize) -> Self {
         Self::imin(NonZeroUsize::new(bw).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_uone(bw: usize) -> Self {
+    pub fn panicking_uone(bw: awi::usize) -> Self {
         Self::uone(NonZeroUsize::new(bw).unwrap())
     }
 }
@@ -449,9 +450,9 @@ impl From<&Bits> for ExtAwi {
     }
 }
 
-impl From<&awint_core::Bits> for ExtAwi {
-    fn from(bits: &awint_core::Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awint_ext::ExtAwi::from(bits)))
+impl From<&awi::Bits> for ExtAwi {
+    fn from(bits: &awi::Bits) -> ExtAwi {
+        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits)))
     }
 }
 
@@ -465,19 +466,19 @@ macro_rules! extawi_from {
     ($($ty:ident, $from:ident);*;) => {
         $(
             impl ExtAwi {
-                pub fn $from(x: impl Into<prim::$ty>) -> Self {
+                pub fn $from(x: impl Into<dag::$ty>) -> Self {
                     Self::from(InlAwi::$from(x))
                 }
             }
 
-            impl From<$ty> for ExtAwi {
-                fn from(x: $ty) -> Self {
+            impl From<dag::$ty> for ExtAwi {
+                fn from(x: dag::$ty) -> Self {
                     Self::$from(x)
                 }
             }
 
-            impl From<prim::$ty> for ExtAwi {
-                fn from(x: prim::$ty) -> Self {
+            impl From<awi::$ty> for ExtAwi {
+                fn from(x: awi::$ty) -> Self {
                     Self::$from(x)
                 }
             }

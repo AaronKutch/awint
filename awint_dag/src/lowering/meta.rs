@@ -784,12 +784,9 @@ pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
 /// `to_usize` on the result
 pub fn count_ones(x: &Bits) -> ExtAwi {
     // a tuple of an intermediate sum and the max possible value of that sum
-    let mut ranks: Vec<Vec<(ExtAwi, awint_ext::ExtAwi)>> = vec![vec![]];
+    let mut ranks: Vec<Vec<(ExtAwi, awi::ExtAwi)>> = vec![vec![]];
     for i in 0..x.bw() {
-        ranks[0].push((
-            ExtAwi::from(x.get(i).unwrap()),
-            awint_ext::ExtAwi::from(true),
-        ));
+        ranks[0].push((ExtAwi::from(x.get(i).unwrap()), awi::ExtAwi::from(true)));
     }
     loop {
         let prev_rank = ranks.last().unwrap();

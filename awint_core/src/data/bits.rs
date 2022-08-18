@@ -32,8 +32,10 @@ use const_fn::const_fn;
 const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 
 /// A reference to the bits in an `InlAwi`, `ExtAwi`, or other backing
-/// construct. This allows the same functions that operate on a dynamic `ExtAwi`
-/// at runtime to also operate on an `InlAwi` at compile time.
+/// construct. If a function is written just in terms of `Bits`, it can work on
+/// mixed references to `InlAwi`s from this crate, `ExtAwi`s, and `FP<B>`s.
+/// `const` big integer arithmetic is possible if the backing type is `InlAwi`
+/// and the "const_support" flag is enabled.
 ///
 /// `Bits` do **not** know signedness. Instead, the methods on `Bits` are
 /// specified to interpret the bits as unsigned or signed two's complement

@@ -1,6 +1,6 @@
 //! This crate compiles all the interfaces of `awint_core`, `awint_ext`, and
-//! `awint_macros`. Enabling the "dag" feature flag also enables `dag_prelude`
-//! and `dag` modules and a reexport of `awint_dag`.
+//! `awint_macros`. Enabling the "dag" feature flag also enables the
+//! `dag_prelude` and `dag` modules and a reexport of `awint_dag`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -30,8 +30,8 @@ pub mod dag_prelude {
 }
 
 /// Contains all the regular arbitrary width integer structs and most of
-/// `core::primitive::*`, in case of using the regular structs in a context with
-/// structs from `awint_dag`.
+/// `core::primitive::*`. This is useful when using the regular structs in a
+/// context with structs imported from `awint_dag`.
 pub mod awi {
     pub use awint_core::awi::*;
     #[cfg(feature = "alloc")]
