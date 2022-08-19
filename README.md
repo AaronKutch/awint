@@ -33,7 +33,7 @@ Note: By default, "const_support" and "std" are turned on, use `default-features
 select specific features to avoid requiring nightly.
 
 NOTE: As of Rust 1.64, if you try to use "const_support" with the macros you may get strange
-`erroneous constant used` and `deref_mut` errors unless you add all of
+"erroneous constant used" and "deref_mut" errors unless you add all of
 ```
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]

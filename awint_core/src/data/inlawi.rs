@@ -49,15 +49,13 @@ use crate::Bits;
 /// // Because `InlAwi`'s construction functions are `const`, we can make full
 /// // use of `Bits` `const` abilities
 /// const AWI: inlawi_ty!(100) = {
-///     let mut awi0 = inlawi!(123i100);
-///     let x = awi0.const_as_mut();
-///     let awi1 = inlawi!(2i100);
-///     let y = awi1.const_as_ref();
+///     let mut x = inlawi!(123i100);
+///     let y = inlawi!(2i100);
 ///     x.neg_assign(true);
-///     const_fn(x, y);
-///     awi0
+///     const_fn(&mut x, &y);
+///     x
 /// };
-/// const X: &'static Bits = AWI.const_as_ref();
+/// const X: &'static Bits = &AWI;
 ///
 /// assert_eq!(X, inlawi!(-246i100).const_as_ref());
 /// ```

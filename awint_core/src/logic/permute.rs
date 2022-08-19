@@ -316,17 +316,18 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
+    /// use awint::prelude::*;
     /// let mut input = inlawi!(0x4321u16);
     /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit
     /// let shift = 4;
     ///
-    /// output.copy_assign(&input).unwrap();
     /// // temporary clone of the input
     /// let mut tmp = ExtAwi::from(input);
+    /// cc!(input; output).unwrap();
     /// if shift != 0 {
     ///     if shift >= input.bw() {
+    ///         // the actual function would return `None`
     ///         panic!();
     ///     }
     ///     output.shl_assign(shift).unwrap();
@@ -348,7 +349,7 @@ impl Bits {
     /// assert_eq!(array, [3, 2, 1, 4]);
     /// assert_eq!(0x4321u16.rotate_left(4), 0x3214);
     /// let mut x = inlawi!(0x4321u16);
-    /// x.rotl_assign(4);
+    /// x.rotl_assign(4).unwrap();
     /// // `Bits` has the preferred endianness
     /// assert_eq!(x, inlawi!(0x3214u16));
     /// ```

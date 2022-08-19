@@ -32,7 +32,7 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 ///
 /// ```
 /// #![feature(const_mut_refs)]
-/// use awint::{bw, inlawi, Bits, ExtAwi, InlAwi};
+/// use awint::prelude::*;
 ///
 /// const fn example(x0: &mut Bits, x1: &Bits) {
 ///     // when dealing with `Bits` with different bitwidths, use the
@@ -44,18 +44,15 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 /// }
 ///
 /// // using `bw` function for quick `NonZeroUsize` construction from a literal
-/// let mut awi0 = ExtAwi::zero(bw(100));
+/// let mut x = ExtAwi::zero(bw(100));
+/// assert!(x.is_zero());
 /// // constructing an `ExtAwi` from an `InlAwi`
-/// let awi1 = ExtAwi::from(inlawi!(-123i16));
-/// // `ExtAwi` implements `DerefMut`, but a mutable `Bits` reference can also
-/// // be acquired like this.
-/// let x0: &mut Bits = awi0.const_as_mut();
-/// assert!(x0.is_zero());
-/// example(x0, awi1.const_as_ref());
-/// assert_eq!(x0, inlawi!(-246i100).const_as_ref());
+/// let y = ExtAwi::from(inlawi!(-123i16));
+/// example(&mut x, &y);
+/// assert_eq!(x.as_ref(), inlawi!(-246i100).as_ref());
 /// // you can freely mix references originating from both `ExtAwi` and `InlAwi`
-/// example(x0, inlawi!(0x10u16).const_as_ref());
-/// assert_eq!(awi0, ExtAwi::from(inlawi!(0x20u100)));
+/// example(&mut x, &inlawi!(0x10u16));
+/// assert_eq!(x, extawi!(0x20u100));
 /// ```
 #[repr(transparent)]
 pub struct ExtAwi {
