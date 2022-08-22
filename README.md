@@ -19,7 +19,7 @@ maximum flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within
 a feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
 (which requires `ExtAwi`), the flag would be activated for the common compilation of `awint_core`.
 The `awint_macros` crate is a proc-macro crate with several construction utilities.
-The `awint_dag` crate is a WIP.
+The `awint_dag` crate supplies a way to use `awint` types as a psuedo-DSL.
 The `awint` crate compiles these interfaces together and enables or disables different parts of the
 system depending on these feature flags:
 
@@ -52,8 +52,9 @@ prioritized. Please open an issue or PR if you would like these implemented fast
 - We need a macro for simpler syntax. The base `_assign` functions can have virtual counterparts
   (e.g. `x.add_assign(y)` would have the alternative `z = x.add(y)` or `z = x + y`) and the macro
   optimizes storage creation and routing.
-- Add more functions to `FP`
 - Add some missing functions to the mimicking primitives in `awint_dag`
+- There are many things more to be done with `awint_dag`
+- Add more functions to `FP`
 - A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track
