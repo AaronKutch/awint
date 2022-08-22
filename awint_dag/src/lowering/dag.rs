@@ -18,6 +18,7 @@ use crate::{
     EvalError, Op, PState,
 };
 
+/// Contains DAGs of mimicking struct operations
 #[derive(Debug)]
 pub struct Dag {
     pub dag: Arena<PNode, Node<PNode>>,
@@ -46,10 +47,12 @@ impl<B: Borrow<PNode>> IndexMut<B> for Dag {
 }
 
 impl Dag {
-    /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
-    /// version. The optional `note`s should be included in the DAG reachable
-    /// from the `leaves`, and should be `Opaque` if they should remain
-    /// unmutated through optimizations.
+    /// Constructs a directed acyclic graph from the source trees of `PState`s
+    /// from mimicking structs. The optional `note`s should be `Opaque` if
+    /// they should remain unmutated through optimizations. The `noted` are
+    /// pushed in order to the `Dag.noted`. If a `noted` is not found in the
+    /// source trees of the `leaves` or is optimized away, its entry in
+    /// `Dag.noted` is replaced with a `None`.
     ///
     /// If an error occurs, the DAG (which may be in an unfinished or completely
     /// broken state) is still returned along with the error enum, so that debug
@@ -237,8 +240,8 @@ impl Dag {
         self[ptr].nzbw
     }
 
-    /// Decrements the reference count on `p`, removing its tree if the count
-    /// goes to 0.
+    /// Decrements the reference count on `p`, and propogating removals if it
+    /// goes to zero.
     pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {
         self[p].rc = if let Some(x) = self[p].rc.checked_sub(1) {
             x

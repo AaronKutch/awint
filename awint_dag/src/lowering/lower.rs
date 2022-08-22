@@ -805,4 +805,15 @@ impl Dag {
             Ok(())
         }
     }
+
+    /// Lowers all trees of the nodes in `self.noted`
+    pub fn lower_all_noted(&mut self) -> Result<(), EvalError> {
+        self.visit_gen += 1;
+        for i in 0..self.noted.len() {
+            if let Some(note) = self.noted[i] {
+                self.lower_tree(note, self.visit_gen)?;
+            }
+        }
+        Ok(())
+    }
 }

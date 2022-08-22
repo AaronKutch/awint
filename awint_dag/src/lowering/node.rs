@@ -6,6 +6,8 @@ use triple_arena_render::{DebugNode, DebugNodeTrait};
 
 use crate::{EvalError, Op};
 
+/// a `Node` in a `Dag` that includes the operation and other data used in
+/// algorithms
 #[derive(Debug, Clone)]
 pub struct Node<P: Ptr> {
     /// Bitwidth

@@ -2,9 +2,7 @@ use std::num::NonZeroUsize;
 
 use crate::PState;
 
-/// The mimicking structs have extra information that the lowering logic needs
-/// but that can't be exposed in their public interfaces. This trait exposes
-/// extra functions on mimicking structs.
+/// A trait for mimicking structs that allows access to the internal state
 pub trait Lineage {
     fn state_nzbw(&self) -> NonZeroUsize {
         self.state().get_nzbw()

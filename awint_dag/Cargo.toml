@@ -19,5 +19,8 @@ awint_macros = { version = "0.6.0", path = "../awint_macros", default-features =
 triple_arena = "0.6"
 triple_arena_render = { version = "0.6", optional = true }
 
+[dev-dependencies]
+awint = { path = "../awint" }
+
 [features]
 debug = ["triple_arena_render"]

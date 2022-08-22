@@ -504,4 +504,15 @@ impl Dag {
         }
         Ok(())
     }
+
+    /// Evaluates all trees of the nodes in `self.noted`
+    pub fn eval_all_noted(&mut self) -> Result<(), EvalError> {
+        self.visit_gen += 1;
+        for i in 0..self.noted.len() {
+            if let Some(note) = self.noted[i] {
+                self.eval_tree(note, self.visit_gen)?;
+            }
+        }
+        Ok(())
+    }
 }
