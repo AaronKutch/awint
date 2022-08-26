@@ -1,6 +1,6 @@
 [package]
 name = "awint_macro_internals"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -9,17 +9,17 @@ repository = "https://github.com/AaronKutch/awint"
 description = "Internal macro utilities for the `awint` system of crates"
 
 [dependencies]
-awint_core = { version = "0.6.0", path = "../awint_core", default-features = false }
-awint_ext = { version = "0.6.0", path = "../awint_ext", default-features = false }
+awint_core = { version = "0.7.0", path = "../awint_core", default-features = false }
+awint_ext = { version = "0.7.0", path = "../awint_ext", default-features = false }
 proc-macro2 = "1.0"
-triple_arena = "0.5"
-triple_arena_render = { version = "0.5", optional = true }
+triple_arena = "0.6"
+triple_arena_render = { version = "0.6", optional = true }
 
 # for examples
 [dev-dependencies]
 awint = { path = "../awint" }
 
 [features]
-# Enables impls for debugging purposes. Note: I did not name it "dbg" because I have to check that
-# no `dbg!` macros are in the crates.
+# Enables impls for debugging purposes. Also enables generation counters. Note: I did not name it
+# "dbg" because I have to check that no `dbg!` macros are in the crates.
 debug = ["triple_arena_render"]

@@ -18,7 +18,7 @@ pub enum Bind {
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub enum Value {
     /// value comes from bitwidth of binding
-    Bitwidth(Ptr<PBind>),
+    Bitwidth(PBind),
     /// value comes from `usize` literal or variable
     Usize(String),
 }
@@ -26,13 +26,13 @@ pub enum Value {
 /// Bitwidth as described by a single value or one value minus another
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub enum Width {
-    Single(Ptr<PVal>),
-    Range(Ptr<PVal>, Ptr<PVal>),
+    Single(PVal),
+    Range(PVal, PVal),
 }
 
 /// For concatenation widths
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
-pub struct CWidth(Vec<Ptr<PWidth>>);
+pub struct CWidth(Vec<PWidth>);
 
 pub struct Lower<'a> {
     /// The first bool is if the binding is used, the second is for if it needs
@@ -45,7 +45,7 @@ pub struct Lower<'a> {
     pub widths: BiMap<PWidth, Width, (bool, bool)>,
     // the bool is if the cw is used
     pub cw: BiMap<PCWidth, CWidth, bool>,
-    pub dynamic_width: Option<Ptr<PCWidth>>,
+    pub dynamic_width: Option<PCWidth>,
     pub names: Names<'a>,
     pub fn_names: FnNames<'a>,
 }
@@ -72,18 +72,13 @@ impl<'a> Lower<'a> {
             let var = txt[..(txt.len() - 5)].to_owned();
             if let Some(p) = self.binds.contains(&Bind::Txt(var)) {
                 self.binds.a_get_mut(p).0 = true;
-                return format!(
-                    "{}({}_{})",
-                    self.fn_names.get_bw,
-                    self.names.bind,
-                    p.get_raw()
-                )
+                return format!("{}({}_{})", self.fn_names.get_bw, self.names.bind, p.inx())
             }
         }
         chars_to_string(txt)
     }
 
-    pub fn lower_bound(&mut self, usb: &Usb) -> Ptr<PVal> {
+    pub fn lower_bound(&mut self, usb: &Usb) -> PVal {
         if let Some(x) = usb.static_val() {
             self.values
                 .insert(Value::Usize(format!("{}", x)), false)
@@ -106,7 +101,7 @@ impl<'a> Lower<'a> {
 
     /// Returns the width corresponding to the range of the component, and
     /// internally pushes the upperbound-bitwidth check.
-    pub fn lower_comp(&mut self, comp: &mut Component) -> Option<Ptr<PWidth>> {
+    pub fn lower_comp(&mut self, comp: &mut Component) -> Option<PWidth> {
         if comp.is_unbounded_filler() {
             return None
         }
@@ -205,9 +200,9 @@ impl<'a> Lower<'a> {
                         s,
                         "({}_{},{}_{})",
                         self.names.value,
-                        lo.get_raw(),
+                        lo.inx(),
                         self.names.value,
-                        hi.get_raw()
+                        hi.inx()
                     )
                     .unwrap();
                 }
@@ -251,13 +246,13 @@ impl<'a> Lower<'a> {
                             if !eq.is_empty() {
                                 eq += ",";
                             }
-                            write!(eq, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+                            write!(eq, "{}_{}", self.names.cw, cw.inx()).unwrap();
                         }
                     } else {
                         if !ge.is_empty() {
                             ge += ",";
                         }
-                        write!(ge, "{}_{}", self.names.cw, cw.get_raw()).unwrap();
+                        write!(ge, "{}_{}", self.names.cw, cw.inx()).unwrap();
                     }
                 }
             }
@@ -343,7 +338,7 @@ impl<'a> Lower<'a> {
                 width1 = true;
             }
         }
-        let width_s = format!("{}_{}", self.names.width, width.get_raw());
+        let width_s = format!("{}_{}", self.names.width, width.inx());
         if msb_align {
             // subtract the shift amount first
             if first_in_align {
@@ -353,7 +348,7 @@ impl<'a> Lower<'a> {
                     self.names.shl,
                     self.names.cw,
                     self.names.width,
-                    width.get_raw()
+                    width.inx()
                 )
                 .unwrap();
             } else {
@@ -362,21 +357,21 @@ impl<'a> Lower<'a> {
                     "{}-={}_{};",
                     self.names.shl,
                     self.names.width,
-                    width.get_raw()
+                    width.inx()
                 )
                 .unwrap();
             }
         }
         self.widths.a_get_mut(width).1 = true;
         if let Some(bind) = comp.bind {
-            let bind_s = format!("{}_{}", self.names.bind, bind.get_raw());
+            let bind_s = format!("{}_{}", self.names.bind, bind.inx());
             if from_buf {
                 *self.binds.a_get_mut(bind) = (true, true);
                 if let Some(start) = comp.start {
                     *self.values.a_get_mut(start) = true;
                 }
                 let start_s = if let Some(start) = comp.start {
-                    format!("{}_{}", self.names.value, start.get_raw())
+                    format!("{}_{}", self.names.value, start.inx())
                 } else {
                     String::new()
                 };
@@ -403,7 +398,7 @@ impl<'a> Lower<'a> {
                     *self.values.a_get_mut(start) = true;
                 }
                 let start_s = if let Some(start) = comp.start {
-                    format!("{}_{}", self.names.value, start.get_raw())
+                    format!("{}_{}", self.names.value, start.inx())
                 } else {
                     String::new()
                 };
@@ -435,7 +430,7 @@ impl<'a> Lower<'a> {
                     "let mut {}={}_{};",
                     self.names.shl,
                     self.names.width,
-                    width.get_raw()
+                    width.inx()
                 )
                 .unwrap();
             } else {
@@ -444,7 +439,7 @@ impl<'a> Lower<'a> {
                     "{}+={}_{};",
                     self.names.shl,
                     self.names.width,
-                    width.get_raw()
+                    width.inx()
                 )
                 .unwrap();
             }
@@ -465,7 +460,7 @@ impl<'a> Lower<'a> {
                     "{}({}_{},{}){};\n",
                     self.fn_names.copy_assign,
                     self.names.bind,
-                    sink.get_raw(),
+                    sink.inx(),
                     self.names.awi_ref,
                     self.fn_names.unwrap
                 )
@@ -476,7 +471,7 @@ impl<'a> Lower<'a> {
                     self.fn_names.copy_assign,
                     self.names.awi_ref,
                     self.names.bind,
-                    sink.get_raw(),
+                    sink.inx(),
                     self.fn_names.unwrap
                 )
             }
@@ -552,9 +547,9 @@ impl<'a> Lower<'a> {
                             "{}({}_{},{}_{}){};",
                             self.fn_names.copy_assign,
                             self.names.bind,
-                            sink.get_raw(),
+                            sink.inx(),
                             self.names.bind,
-                            src.get_raw(),
+                            src.inx(),
                             self.fn_names.unwrap
                         )
                         .unwrap();
@@ -570,13 +565,13 @@ impl<'a> Lower<'a> {
         let mut s = String::new();
         for (p_cw, (cw, used)) in self.cw.arena() {
             if *used {
-                write!(s, "let {}_{}=", self.names.cw, p_cw.get_raw()).unwrap();
+                write!(s, "let {}_{}=", self.names.cw, p_cw.inx()).unwrap();
                 for (i, w) in cw.0.iter().enumerate() {
                     self.widths.a_get_mut(w).1 = true;
                     if i != 0 {
                         write!(s, "+").unwrap();
                     }
-                    write!(s, "{}_{}", self.names.width, w.get_raw()).unwrap();
+                    write!(s, "{}_{}", self.names.width, w.inx()).unwrap();
                 }
                 writeln!(s, ";").unwrap();
             }
@@ -595,9 +590,9 @@ impl<'a> Lower<'a> {
                             s,
                             "let {}_{}={}_{};",
                             self.names.width,
-                            p_w.get_raw(),
+                            p_w.inx(),
                             self.names.value,
-                            v.get_raw()
+                            v.inx()
                         )
                         .unwrap();
                     }
@@ -608,11 +603,11 @@ impl<'a> Lower<'a> {
                             s,
                             "let {}_{}={}_{}-{}_{};",
                             self.names.width,
-                            p_w.get_raw(),
+                            p_w.inx(),
                             self.names.value,
-                            v1.get_raw(),
+                            v1.inx(),
                             self.names.value,
-                            v0.get_raw()
+                            v0.inx()
                         )
                         .unwrap();
                     }
@@ -633,10 +628,10 @@ impl<'a> Lower<'a> {
                             s,
                             "let {}_{}={}({}_{});",
                             self.names.value,
-                            p_v.get_raw(),
+                            p_v.inx(),
                             self.fn_names.get_bw,
                             self.names.bind,
-                            b.get_raw()
+                            b.inx()
                         )
                         .unwrap();
                     }
@@ -645,7 +640,7 @@ impl<'a> Lower<'a> {
                             s,
                             "let {}_{}:usize={};",
                             self.names.value,
-                            p_v.get_raw(),
+                            p_v.inx(),
                             string
                         )
                         .unwrap();
@@ -669,7 +664,7 @@ impl<'a> Lower<'a> {
                             s,
                             "let {}_{}:{}=&{};",
                             self.names.bind,
-                            p_b.get_raw(),
+                            p_b.inx(),
                             self.fn_names.bits_ref,
                             (lit_construction_fn)(ExtAwi::from_bits(awi))
                         )
@@ -684,7 +679,7 @@ impl<'a> Lower<'a> {
                                 s,
                                 "let {}_{}:{}=&mut {};",
                                 self.names.bind,
-                                p_b.get_raw(),
+                                p_b.inx(),
                                 self.fn_names.mut_bits_ref,
                                 chars
                             )
@@ -694,7 +689,7 @@ impl<'a> Lower<'a> {
                                 s,
                                 "let {}_{}:{}=&{};",
                                 self.names.bind,
-                                p_b.get_raw(),
+                                p_b.inx(),
                                 self.fn_names.bits_ref,
                                 chars
                             )

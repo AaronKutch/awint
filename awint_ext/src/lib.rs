@@ -37,3 +37,10 @@ pub mod prelude {
         ExtAwi,
     };
 }
+
+/// Subset of `awint::awi`
+pub mod awi {
+    pub use awint_core::awi::*;
+
+    pub use crate::ExtAwi;
+}

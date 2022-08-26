@@ -2,181 +2,181 @@
 
 use std::{
     borrow::Borrow,
-    collections::{hash_map::Entry, HashMap},
     num::NonZeroUsize,
     ops::{Index, IndexMut},
-    rc::Rc,
+    vec,
 };
 
 use awint_core::Bits;
 use awint_internals::BITS;
-use triple_arena::{Arena, Ptr, PtrTrait};
+use triple_arena::Arena;
 use Op::*;
 
 use crate::{
-    common::{EvalError, Op, State},
-    lowering::{Node, PtrEqRc},
+    lowering::{Node, PNode},
+    state::next_state_visit_gen,
+    EvalError, Op, PState,
 };
 
+/// Contains DAGs of mimicking struct operations
 #[derive(Debug)]
-pub struct Dag<P: PtrTrait> {
-    pub dag: Arena<P, Node<P>>,
+pub struct Dag {
+    pub dag: Arena<PNode, Node<PNode>>,
     /// for keeping nodes alive and having an ordered list for identification
-    pub noted: Vec<Ptr<P>>,
+    pub noted: Vec<Option<PNode>>,
     /// A kind of generation counter tracking the highest `visit_num` number
     pub visit_gen: u64,
+    /// for capacity reuse in `add_group`
+    pub tmp_stack: Vec<(usize, PNode, PState)>,
+    /// for capacity reuse in `dec_rc`
+    pub tmp_pnode_stack: Vec<PNode>,
 }
 
-impl<P: PtrTrait, B: Borrow<Ptr<P>>> Index<B> for Dag<P> {
-    type Output = Node<P>;
+impl<B: Borrow<PNode>> Index<B> for Dag {
+    type Output = Node<PNode>;
 
-    fn index(&self, index: B) -> &Node<P> {
+    fn index(&self, index: B) -> &Node<PNode> {
         self.dag.get(*index.borrow()).unwrap()
     }
 }
 
-impl<P: PtrTrait, B: Borrow<Ptr<P>>> IndexMut<B> for Dag<P> {
-    fn index_mut(&mut self, index: B) -> &mut Node<P> {
+impl<B: Borrow<PNode>> IndexMut<B> for Dag {
+    fn index_mut(&mut self, index: B) -> &mut Node<PNode> {
         self.dag.get_mut(*index.borrow()).unwrap()
     }
 }
 
-impl<P: PtrTrait> Dag<P> {
-    /// Constructs a directed acyclic graph from the leaf sinks of a mimicking
-    /// version. The optional `note`s should be included in the DAG reachable
-    /// from the `leaves`, and should be `Opaque` if they should remain
-    /// unmutated through optimizations.
+impl Dag {
+    /// Constructs a directed acyclic graph from the source trees of `PState`s
+    /// from mimicking structs. The optional `note`s should be `Opaque` if
+    /// they should remain unmutated through optimizations. The `noted` are
+    /// pushed in order to the `Dag.noted`. If a `noted` is not found in the
+    /// source trees of the `leaves` or is optimized away, its entry in
+    /// `Dag.noted` is replaced with a `None`.
     ///
     /// If an error occurs, the DAG (which may be in an unfinished or completely
     /// broken state) is still returned along with the error enum, so that debug
     /// tools like `render_to_svg_file` can be used.
-    pub fn new(leaves: &[Rc<State>], noted: &[Rc<State>]) -> (Self, Result<(), EvalError>) {
+    pub fn new(leaves: &[PState], noted: &[PState]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
             dag: Arena::new(),
             noted: vec![],
             visit_gen: 0,
+            tmp_stack: vec![],
+            tmp_pnode_stack: vec![],
         };
-        let err = res.add_group(leaves, noted, None);
+        let err = res.add_group(leaves, noted, true, 0, None);
         (res, err)
     }
 
-    /// All of the `note`s should be reachable from the `leaves`. If `added` is
-    /// supplied then new nodes will be added to it. Note: the leaves and
-    /// all their preceding nodes should not share with previously existing
-    /// nodes in this DAG or else there will be duplication.
+    /// Adds the `leaves` and their source trees to `self`. For each `noted`
+    /// node in order, the translated node is pushed to `self.noted` or `None`
+    /// is pushed if it is not found in the source trees. If `inc_noted_rc` and
+    /// a `noted` node is found, the rc is incremented. The visit numbers of
+    /// all the added nodes are set to `self.visit_gen`. Note: the leaves
+    /// and all their preceding nodes should not share with previously
+    /// existing nodes in this DAG or else there will be duplication.
     pub fn add_group(
         &mut self,
-        leaves: &[Rc<State>],
-        noted: &[Rc<State>],
-        mut added: Option<&mut Vec<Ptr<P>>>,
+        leaves: &[PState],
+        noted: &[PState],
+        inc_noted_rc: bool,
+        visit: u64,
+        mut added: Option<&mut Vec<PNode>>,
     ) -> Result<(), EvalError> {
-        // keeps track if a mimick node is already tracked in the arena
-        let mut lowerings: HashMap<PtrEqRc, Ptr<P>> = HashMap::new();
-        // DFS from leaves to avoid much allocation, but we need the hashmap to avoid
-        // retracking
-        let mut path: Vec<(usize, Ptr<P>, PtrEqRc)> = vec![];
+        // this is for the state side visits not the `visit` for `Node`s
+        let state_visit = next_state_visit_gen();
+        self.tmp_stack.clear();
         for leaf in leaves {
-            let enter_loop = match lowerings.entry(PtrEqRc(Rc::clone(leaf))) {
-                Entry::Occupied(o) => {
-                    // keep
-                    self[o.get()].rc += 1;
-                    false
+            let leaf_state = leaf.get_state().unwrap();
+            if leaf_state.visit != state_visit {
+                let p_leaf = self.dag.insert_with(|p_this| Node {
+                    nzbw: leaf_state.nzbw,
+                    visit,
+                    p_this,
+                    op: Op::Invalid,
+                    rc: 0,
+                    err: None,
+                });
+                leaf.set_state_aux(state_visit, p_leaf);
+                if let Some(ref mut v) = added {
+                    v.push(p_leaf);
                 }
-                Entry::Vacant(v) => {
-                    let mut n = Node::default();
-                    // keep leaves
-                    n.rc += 1;
-                    n.nzbw = leaf.nzbw;
-                    let p = self.dag.insert(n);
-                    v.insert(p);
-                    if let Some(ref mut v) = added {
-                        v.push(p);
-                    }
-                    path.push((0, p, PtrEqRc(Rc::clone(leaf))));
-                    true
-                }
-            };
-            if enter_loop {
+                self.tmp_stack.push((0, p_leaf, *leaf));
                 loop {
-                    let (current_i, current_p, current_rc) = path.last().unwrap();
-                    let u_ops = current_rc.0.op.operands();
-                    if let Some(t) = Op::translate_root(&current_rc.0.op) {
+                    let (current_i, current_p_node, current_p_state) =
+                        *self.tmp_stack.last().unwrap();
+                    let state = current_p_state.get_state().unwrap();
+                    if let Some(t) = Op::translate_root(&state.op) {
                         // reached a root
-                        self[current_p].op = t;
-                        self[current_p].nzbw = current_rc.0.nzbw;
-                        path.pop().unwrap();
-                        if let Some((i, ..)) = path.last_mut() {
+                        self[current_p_node].op = t;
+                        self[current_p_node].nzbw = state.nzbw;
+                        self.tmp_stack.pop().unwrap();
+                        if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
                         } else {
                             break
                         }
-                    } else if *current_i >= u_ops.len() {
+                    } else if current_i >= state.op.num_operands() {
                         // all operands should be ready
-                        self[current_p].op = Op::translate(
-                            &current_rc.0.op,
-                            |lhs: &mut [Ptr<P>], rhs: &[Rc<State>]| {
+                        self[current_p_node].op =
+                            Op::translate(&state.op, |lhs: &mut [PNode], rhs: &[PState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                    *lhs = lowerings[&PtrEqRc(Rc::clone(rhs))];
+                                    *lhs = rhs.get_state().unwrap().node_map;
                                 }
-                            },
-                        );
-                        self[current_p].nzbw = current_rc.0.nzbw;
-                        path.pop().unwrap();
-                        if let Some((i, ..)) = path.last_mut() {
+                            });
+                        self[current_p_node].nzbw = state.nzbw;
+                        self.tmp_stack.pop().unwrap();
+                        if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
                         } else {
                             break
                         }
                     } else {
                         // check next operand
-                        match lowerings
-                            .entry(PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])))
-                        {
-                            Entry::Occupied(o) => {
-                                // already explored
-                                self[o.get()].rc += 1;
-                                if let Some((i, ..)) = path.last_mut() {
-                                    *i += 1;
-                                } else {
-                                    break
-                                }
+                        let p_next = state.op.operands()[current_i];
+                        let next_state = p_next.get_state().unwrap();
+                        if next_state.visit == state_visit {
+                            // already explored
+                            self[next_state.node_map].rc += 1;
+                            if let Some((i, ..)) = self.tmp_stack.last_mut() {
+                                *i += 1;
+                            } else {
+                                break
                             }
-                            Entry::Vacant(v) => {
-                                let mut n = Node::default();
-                                n.rc += 1;
-                                let p = self.dag.insert(n);
-                                v.insert(p);
-                                if let Some(ref mut v) = added {
-                                    v.push(p);
-                                }
-                                path.push((
-                                    0,
-                                    p,
-                                    PtrEqRc(Rc::clone(&current_rc.0.op.operands()[*current_i])),
-                                ));
+                        } else {
+                            let p = self.dag.insert_with(|p_this| Node {
+                                rc: 1,
+                                p_this,
+                                nzbw: state.nzbw,
+                                op: Op::Invalid,
+                                err: None,
+                                visit,
+                            });
+                            p_next.set_state_aux(state_visit, p);
+                            if let Some(ref mut v) = added {
+                                v.push(p);
                             }
+                            self.tmp_stack.push((0, p, state.op.operands()[current_i]));
                         }
                     }
                 }
             }
         }
         // handle the noted
-        let mut err = Ok(());
-        for (i, root) in noted.iter().enumerate() {
-            match lowerings.entry(PtrEqRc(Rc::clone(root))) {
-                Entry::Occupied(o) => {
-                    self[o.get()].rc += 1;
-                    self.noted.push(*o.get());
+        for p_noted in noted {
+            let state = p_noted.get_state().unwrap();
+            if state.visit == state_visit {
+                let p_node = state.node_map;
+                if inc_noted_rc {
+                    self[p_node].rc += 1;
                 }
-                Entry::Vacant(_) => {
-                    err = Err(EvalError::OtherString(format!(
-                        "note {} is not included in DAG reached by the leaves",
-                        i
-                    )));
-                }
+                self.noted.push(Some(p_node));
+            } else {
+                self.noted.push(None);
             }
         }
-        err
+        Ok(())
     }
 
     pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
@@ -185,7 +185,7 @@ impl<P: PtrTrait> Dag<P> {
                 return Err(err.clone())
             }
         }
-        for p in &self.noted {
+        for p in self.noted.iter().flatten() {
             if self.dag.get(*p).is_none() {
                 return Err(EvalError::InvalidPtr)
             }
@@ -195,12 +195,12 @@ impl<P: PtrTrait> Dag<P> {
     }
 
     /// Returns a list of pointers to all nodes in no particular order
-    pub fn ptrs(&self) -> Vec<Ptr<P>> {
+    pub fn ptrs(&self) -> Vec<PNode> {
         self.dag.ptrs().collect()
     }
 
     /// Assumes `ptr` is a literal
-    pub fn lit(&self, ptr: Ptr<P>) -> &Bits {
+    pub fn lit(&self, ptr: PNode) -> &Bits {
         if let Literal(ref lit) = self[ptr].op {
             lit
         } else {
@@ -210,7 +210,7 @@ impl<P: PtrTrait> Dag<P> {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth 1.
-    pub fn bool(&self, ptr: Ptr<P>) -> Result<bool, EvalError> {
+    pub fn bool(&self, ptr: PNode) -> Result<bool, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == 1 {
                 Ok(lit.to_bool())
@@ -224,7 +224,7 @@ impl<P: PtrTrait> Dag<P> {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth `usize::BITS`.
-    pub fn usize(&self, ptr: Ptr<P>) -> Result<usize, EvalError> {
+    pub fn usize(&self, ptr: PNode) -> Result<usize, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == BITS {
                 Ok(lit.to_usize())
@@ -236,73 +236,119 @@ impl<P: PtrTrait> Dag<P> {
         }
     }
 
-    pub fn get_bw<B: Borrow<Ptr<P>>>(&self, ptr: B) -> Result<NonZeroUsize, EvalError> {
-        if let Some(w) = self[ptr].nzbw {
-            Ok(w)
+    pub fn get_bw<B: Borrow<PNode>>(&self, ptr: B) -> NonZeroUsize {
+        self[ptr].nzbw
+    }
+
+    /// Decrements the reference count on `p`, and propogating removals if it
+    /// goes to zero.
+    pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {
+        self[p].rc = if let Some(x) = self[p].rc.checked_sub(1) {
+            x
         } else {
-            Err(EvalError::NonStaticBitwidth)
+            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+        };
+        if self[p].rc == 0 {
+            self.tmp_pnode_stack.clear();
+            self.tmp_pnode_stack.push(p);
+            while let Some(p) = self.tmp_pnode_stack.pop() {
+                let mut delete = false;
+                if let Some(node) = self.dag.get(p) {
+                    if node.rc == 0 {
+                        delete = true;
+                    }
+                }
+                if delete {
+                    for i in 0..self[p].op.num_operands() {
+                        let op = self[p].op.operands()[i];
+                        self[op].rc = if let Some(x) = self[op].rc.checked_sub(1) {
+                            x
+                        } else {
+                            return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+                        };
+                        self.tmp_pnode_stack.push(op);
+                    }
+                    self.dag.remove(p).unwrap();
+                }
+            }
         }
+        Ok(())
     }
 
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
-    /// replaced by a set of lowered `Rc<State>` nodes with interfaces `output`
-    /// and `operands` corresponding to the original interfaces.
+    /// replaced by a set of lowered `PState` nodes with interfaces `output`
+    /// and `operands` corresponding to the original interfaces. Newly added
+    /// nodes not including `ptr` are colored with `visit`.
     pub fn graft(
         &mut self,
-        ptr: Ptr<P>,
-        list: &mut Vec<Ptr<P>>,
-        output_and_operands: &[Rc<State>],
+        ptr: PNode,
+        visit: u64,
+        output_and_operands: &[PState],
     ) -> Result<(), EvalError> {
-        if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
-            return Err(EvalError::WrongNumberOfOperands)
-        }
-        for (i, op) in self[ptr].op.operands().iter().enumerate() {
-            if self[op].nzbw != output_and_operands[i + 1].nzbw {
-                return Err(EvalError::OtherString(format!(
-                    "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of {:?}",
-                    i,
-                    output_and_operands[i + 1].nzbw,
-                    self[op].nzbw
-                )))
+        #[cfg(debug_assertions)]
+        {
+            if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
+                return Err(EvalError::WrongNumberOfOperands)
             }
-            if !output_and_operands[i + 1].op.is_opaque() {
-                return Err(EvalError::ExpectedOpaque)
+            for (i, op) in self[ptr].op.operands().iter().enumerate() {
+                let current_state = output_and_operands[i + 1].get_state().unwrap();
+                if self[op].nzbw != current_state.nzbw {
+                    return Err(EvalError::OtherString(format!(
+                        "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of \
+                         {:?}",
+                        i, current_state.nzbw, self[op].nzbw
+                    )))
+                }
+                if !current_state.op.is_opaque() {
+                    return Err(EvalError::ExpectedOpaque)
+                }
+            }
+            if self[ptr].nzbw != output_and_operands[0].get_nzbw() {
+                return Err(EvalError::WrongBitwidth)
             }
         }
-        if self[ptr].nzbw != output_and_operands[0].nzbw {
-            return Err(EvalError::WrongBitwidth)
-        }
-        // get length before adding group, the output node we remove will be put at this
-        // address
-        let list_len = list.len();
+        // note we do not increment the rc because we immediately remove the node's
+        // special status
         let err = self.add_group(
-            &[Rc::clone(&output_and_operands[0])],
+            &[output_and_operands[0]],
             output_and_operands,
-            Some(list),
+            false,
+            visit,
+            None,
         );
-        //dag.render_to_svg_file(std::path::PathBuf::from("debug.svg")).unwrap();
+        //self.render_to_svg_file(std::path::PathBuf::from("debug.svg"))
+        //    .unwrap();
         err?;
-        self.verify_integrity()?;
+        //self.verify_integrity()?;
         let start = self.noted.len() - output_and_operands.len();
+
         // graft inputs
         for i in 0..(output_and_operands.len() - 1) {
             let grafted = self.noted[start + i + 1];
             let graftee = self[ptr].op.operands()[i];
-            // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
-            // needing to change all the operands of potentially many internal nodes.
-
-            self[grafted].op = Copy([graftee]);
+            if let Some(grafted) = grafted {
+                // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
+                // needing to change all the operands of potentially many internal nodes.
+                self[grafted].op = Copy([graftee]);
+            } else {
+                // else the operand is not used because it was optimized away
+                self.dec_rc(graftee).unwrap();
+            }
         }
+
         // graft output
-        let output_p = self.noted[start];
-        let output_node = self.dag.remove(output_p).unwrap();
-        assert_eq!(list.swap_remove(list_len), output_p);
-        self.dag.replace_and_keep_gen(ptr, output_node).unwrap();
         // remove the temporary noted nodes
+        let p = self.noted[start].unwrap();
+        // this will replace the graftee's location to avoid changing downstream nodes
+        let grafted = self.dag.remove(p).unwrap();
+        let graftee = self.dag.replace_and_keep_gen(ptr, grafted).unwrap();
+
+        // preserve original reference count
+        self[ptr].rc = graftee.rc;
+        self[ptr].p_this = graftee.p_this;
+
+        // reset the `noted` to its original state
         self.noted.drain(start..);
-        // this is very important to prevent infinite cycles where literals are not
-        // being propogated and eliminating nodes
-        self.eval_tree(ptr)?;
         Ok(())
     }
 

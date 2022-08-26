@@ -164,11 +164,11 @@ impl<'a> Concat<'a> {
         assert_eq!(val.bw(), fill.bw());
         if self.align_side {
             self.ms_shift -= val.bw();
-            self.val.field_to(self.ms_shift, &val, val.bw());
-            self.fill.field_to(self.ms_shift, &fill, fill.bw());
+            self.val.field_to(self.ms_shift, &val, val.bw()).unwrap();
+            self.fill.field_to(self.ms_shift, &fill, fill.bw()).unwrap();
         } else {
-            self.val.field_to(self.ls_shift, &val, val.bw());
-            self.fill.field_to(self.ls_shift, &fill, fill.bw());
+            self.val.field_to(self.ls_shift, &val, val.bw()).unwrap();
+            self.fill.field_to(self.ls_shift, &fill, fill.bw()).unwrap();
             self.ls_shift += val.bw();
         }
     }

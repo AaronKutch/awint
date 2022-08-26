@@ -1,22 +1,20 @@
-use std::{fmt, mem, num::NonZeroUsize, ptr, rc::Rc};
+use std::{fmt, marker::PhantomData, mem, num::NonZeroUsize, ptr, rc::Rc};
 
 use crate::{
-    common::{Lineage, Op, State},
     mimick::{ExtAwi, InlAwi},
+    Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
 // TODO fix when PR 83850 is merged
 
-#[derive(Debug)]
-pub(in crate::mimick) struct InnerState(pub(crate) Rc<State>);
-
 /// Mimicking `awint_core::Bits`
 #[repr(transparent)] // for the transmute
 pub struct Bits {
-    // use different names for the different raw `InnerState`s, or else Rust can think we are
+    _no_send_or_sync: PhantomData<Rc<()>>,
+    // use different names for the different raw `PState`s, or else Rust can think we are
     // trying to go through the `Deref` impls
-    _bits_raw: [InnerState],
+    _bits_raw: [PState],
 }
 
 // Safety: `Bits` follows standard slice initialization invariants and is marked
@@ -24,15 +22,15 @@ pub struct Bits {
 // unbounded.
 
 impl<'a> Bits {
-    /// Assumes this is called on a pointer from a `[InnerState; 1]`
-    unsafe fn from_raw_parts(raw_ptr: *const InnerState) -> &'a Self {
-        unsafe { mem::transmute::<&[InnerState], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, 1)) }
+    /// Assumes this is called on a pointer from a `[PState; 1]`
+    unsafe fn from_raw_parts(raw_ptr: *const PState) -> &'a Self {
+        unsafe { mem::transmute::<&[PState], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, 1)) }
     }
 
-    /// Assumes this is called on a pointer from a `[InnerState; 1]`
-    unsafe fn from_raw_parts_mut(raw_ptr: *mut InnerState) -> &'a mut Self {
+    /// Assumes this is called on a pointer from a `[PState; 1]`
+    unsafe fn from_raw_parts_mut(raw_ptr: *mut PState) -> &'a mut Self {
         unsafe {
-            mem::transmute::<&mut [InnerState], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
+            mem::transmute::<&mut [PState], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
                 raw_ptr, 1,
             ))
         }
@@ -60,35 +58,20 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 }
 
 impl Lineage for &Bits {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        None
-    }
-
-    fn state(&self) -> Rc<State> {
-        Rc::clone(&self._bits_raw[0].0)
+    fn state(&self) -> PState {
+        self._bits_raw[0]
     }
 }
 
 impl Lineage for &mut Bits {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        None
-    }
-
-    fn state(&self) -> Rc<State> {
-        Rc::clone(&self._bits_raw[0].0)
+    fn state(&self) -> PState {
+        self._bits_raw[0]
     }
 }
 
 impl Bits {
-    // TODO if we use dynamic bitwidths do we do something like this?
-    /*
-    pub fn bw(&self) -> prim::usize {
-        prim::usize::new(BwAssign, vec![self.state()])
-    }
-    */
-
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.state().nzbw.unwrap()
+        self.state_nzbw()
     }
 
     pub fn bw(&self) -> usize {
@@ -103,15 +86,30 @@ impl Bits {
         self
     }
 
-    pub fn update_state(&mut self, nzbw: Option<NonZeroUsize>, op: Op<Rc<State>>) {
-        // other `Rc`s that need the old state will keep it alive despite this one being
-        // dropped
-        let _: Rc<State> = mem::replace(&mut self._bits_raw[0].0, State::new(nzbw, op));
+    pub(crate) fn set_state(&mut self, state: PState) {
+        // other `PState`s that need the old state will keep it alive despite this one
+        // being dropped
+        let _: PState = mem::replace(&mut self._bits_raw[0], state);
+    }
+
+    pub(crate) fn update_state(&mut self, nzbw: NonZeroUsize, op: Op<PState>) {
+        self.set_state(PState::new(nzbw, op));
+    }
+
+    #[must_use]
+    pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
+        // directly use the state of `rhs`
+        if self.bw() == rhs.bw() {
+            self.set_state(rhs.state());
+            Some(())
+        } else {
+            None
+        }
     }
 }
 
 impl fmt::Debug for Bits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Bits({:?})", self._bits_raw[0].0)
+        write!(f, "Bits({:?})", self._bits_raw[0])
     }
 }

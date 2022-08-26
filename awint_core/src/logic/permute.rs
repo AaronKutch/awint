@@ -257,6 +257,7 @@ impl Bits {
     /// Left shifts can act as a very fast multiplication by a power of two for
     /// both the signed and unsigned interpretation of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn shl_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -276,6 +277,7 @@ impl Bits {
     /// very fast floored division by a power of two for the unsigned
     /// interpretation of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn lshr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -295,6 +297,7 @@ impl Bits {
     /// fast _floored_ division by a power of two for the signed interpretation
     /// of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ashr_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -313,17 +316,18 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
+    /// use awint::prelude::*;
     /// let mut input = inlawi!(0x4321u16);
     /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit
     /// let shift = 4;
     ///
-    /// output.copy_assign(&input).unwrap();
     /// // temporary clone of the input
     /// let mut tmp = ExtAwi::from(input);
+    /// cc!(input; output).unwrap();
     /// if shift != 0 {
     ///     if shift >= input.bw() {
+    ///         // the actual function would return `None`
     ///         panic!();
     ///     }
     ///     output.shl_assign(shift).unwrap();
@@ -345,7 +349,7 @@ impl Bits {
     /// assert_eq!(array, [3, 2, 1, 4]);
     /// assert_eq!(0x4321u16.rotate_left(4), 0x3214);
     /// let mut x = inlawi!(0x4321u16);
-    /// x.rotl_assign(4);
+    /// x.rotl_assign(4).unwrap();
     /// // `Bits` has the preferred endianness
     /// assert_eq!(x, inlawi!(0x3214u16));
     /// ```
@@ -354,6 +358,7 @@ impl Bits {
     /// allocation and has many optimized branches for different input sizes and
     /// shifts.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn rotl_assign(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
@@ -419,6 +424,7 @@ impl Bits {
     ///
     /// See `Bits::rotl_assign` for more details.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn rotr_assign(&mut self, s: usize) -> Option<()> {
         let bw = self.bw();
         if s == 0 {
@@ -521,7 +527,20 @@ impl Bits {
     /// field is assigned to `self` from `rhs` starting from the bit position
     /// `s`. The shift cannot overflow because of the restriction on the
     /// bitwidth of `s`.
+    ///
+    /// ```
+    /// use awint::prelude::*;
+    /// let mut lhs = inlawi!(0xffff_ffffu32);
+    /// let mut rhs = inlawi!(0xfedc_ba98_7654_3210u64);
+    /// // `lhs.bw()` must be a power of two, `s.bw()` here is
+    /// // `log_2(32) == 5`. The value of `s` is set to what bit
+    /// // of `rhs` should be the starting bit for `lhs`.
+    /// let mut s = inlawi!(12u5);
+    /// lhs.funnel(&rhs, &s).unwrap();
+    /// assert_eq!(lhs, inlawi!(0xa9876543_u32))
+    /// ```
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         // because we later call `s.to_usize()` and assume it fits within `s.bw()`
         s.assert_cleared_unused_bits();

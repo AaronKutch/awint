@@ -37,7 +37,7 @@ fn multi_bw_inner(
     } else if b {
         x2bw0.umax_assign();
         x2bw0.shl_assign(bw1)?;
-        x2bw0.or_assign(x0bw0);
+        x2bw0.or_assign(x0bw0)?;
         eq(x1bw0, x2bw0);
     } else {
         x2bw0.copy_assign(x0bw0)?;
@@ -93,7 +93,7 @@ fn multi_bw_inner(
     x1bw1.zero_resize_assign(x1bw0);
     x1bw1.shl_assign(to).unwrap();
     // combine
-    x2bw1.or_assign(x1bw1);
+    x2bw1.or_assign(x1bw1).unwrap();
     // x1bw1 is done being used as a temporary
     x1bw1.copy_assign(x0bw1)?;
     x1bw1.field(to, x0bw0, from, width).unwrap();

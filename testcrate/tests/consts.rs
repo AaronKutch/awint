@@ -32,7 +32,7 @@ const fn consts() {
     //let z: &mut Bits = awi2.const_as_mut();
     x.u128_assign(123456789);
     y.u128_assign(9876543211);
-    x.add_assign(y);
+    x.add_assign(y).unwrap();
     y.u128_assign(10000000000);
     eq(x, y);
 
@@ -85,7 +85,7 @@ macro_rules! test_nonequal_bw {
         $($fn_binary:ident)*
     ) => {
         $(
-            $x0.$fn_unary(); // Just checking that the function exists and is constant
+            let _ = $x0.$fn_unary(); // Just checking that the function exists and is constant
         )*
         $(
             assert!($x0.$fn_unary_shift($x0.bw() - 1).is_some());
@@ -172,7 +172,7 @@ const fn bits_functions() {
     assert!(x0.field_bit(128, x1, 191).is_none());
     assert!(x0.field_bit(127, x1, 192).is_none());
 
-    assert!(x0.lut(x1, x3).is_none());
+    assert!(x0.lut_assign(x1, x3).is_none());
     assert!(x0.funnel(x1, x3).is_none());
 
     x0.short_cin_mul(0, 0);
@@ -226,6 +226,9 @@ const fn bits_functions() {
 
     assert!(x0.get(128).is_none());
     assert!(x0.set(128, false).is_none());
+
+    assert!(x0.mux_assign(x1, false).is_none());
+    assert!(x0.mux_assign(x1, true).is_none());
 
     // TODO test all const serialization
 

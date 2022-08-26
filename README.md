@@ -19,7 +19,7 @@ maximum flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within
 a feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
 (which requires `ExtAwi`), the flag would be activated for the common compilation of `awint_core`.
 The `awint_macros` crate is a proc-macro crate with several construction utilities.
-The `awint_dag` crate is a WIP.
+The `awint_dag` crate supplies a way to use `awint` types as a psuedo-DSL.
 The `awint` crate compiles these interfaces together and enables or disables different parts of the
 system depending on these feature flags:
 
@@ -33,7 +33,7 @@ Note: By default, "const_support" and "std" are turned on, use `default-features
 select specific features to avoid requiring nightly.
 
 NOTE: As of Rust 1.64, if you try to use "const_support" with the macros you may get strange
-`erroneous constant used` and `deref_mut` errors unless you add all of
+"erroneous constant used" and "deref_mut" errors unless you add all of
 ```
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
@@ -46,6 +46,16 @@ to _all_ of the crate roots where you use the macros in `const` contexts.
 These are currently unimplemented because of other developments and improvements that are being
 prioritized. Please open an issue or PR if you would like these implemented faster.
 
+- We need some kind of macro for handling fallible points, instead of `unwrap` everywhere or `?`
+  operators that make it difficult to determine panic positions, have a macro find locations of `?`
+  operators and do stuff from there.
+- We need a macro for simpler syntax. The base `_assign` functions can have virtual counterparts
+  (e.g. `x.add_assign(y)` would have the alternative `z = x.add(y)` or `z = x + y`) and the macro
+  optimizes storage creation and routing.
+- Add some missing functions to the mimicking primitives in `awint_dag`
+- There are many things more to be done with `awint_dag`
+- Add more functions to `FP`
+- A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track
    of leading zeros and ones to speed up operations on very large bitwidth integers with small

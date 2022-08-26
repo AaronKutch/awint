@@ -59,8 +59,8 @@ pub fn fuzz_step(rng: &mut Xoshiro128StarStar, x: &mut Bits, tmp: &mut Bits) {
     let r0 = (rng.next_u32() as usize) % x.bw();
     let r1 = (rng.next_u32() as usize) % x.bw();
     tmp.umax_assign();
-    tmp.shl_assign(r0);
-    tmp.rotl_assign(r1);
+    tmp.shl_assign(r0).unwrap();
+    tmp.rotl_assign(r1).unwrap();
     match rng.next_u32() % 4 {
         0 => x.or_assign(tmp),
         1 => x.and_assign(tmp),

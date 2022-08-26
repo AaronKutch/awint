@@ -1,11 +1,10 @@
 mod dag;
 mod eval;
 mod lower;
-mod meta;
+pub(crate) mod meta;
 mod node;
 
-pub use dag::*;
-pub use eval::*;
-pub use lower::*;
-pub use meta::*;
-pub use node::{Node, PtrEqRc};
+pub use dag::Dag;
+pub use node::Node;
+
+pub use crate::common::PNode;

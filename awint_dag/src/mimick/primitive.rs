@@ -1,11 +1,9 @@
-use std::{fmt, num::NonZeroUsize, ops::*, rc::Rc};
+use std::{fmt, num::NonZeroUsize, ops::*};
 
+use awint_ext::awi;
 use awint_internals::*;
 
-use crate::{
-    common::{Lineage, Op, State},
-    mimick::{primitive as prim, InlAwi},
-};
+use crate::{dag, mimick::InlAwi, Lineage, Op, PState};
 
 macro_rules! unary {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
@@ -26,8 +24,8 @@ macro_rules! unary {
 macro_rules! op_assign {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
         $(
-            impl<I> $std_trait<I> for $name where I: Into<prim::$name> {
-                fn $std_fn(&mut self, rhs: I) where I: Into<prim::$name> {
+            impl<I> $std_trait<I> for $name where I: Into<dag::$name> {
+                fn $std_fn(&mut self, rhs: I) where I: Into<dag::$name> {
                     self.0.$assign_name(&rhs.into().0).unwrap();
                 }
             }
@@ -48,10 +46,10 @@ macro_rules! triop {
                 }
             }
 
-            impl $std_trait<core::primitive::$name> for $name {
+            impl $std_trait<awi::$name> for $name {
                 type Output = Self;
 
-                fn $std_fn(self, rhs: core::primitive::$name) -> Self {
+                fn $std_fn(self, rhs: awi::$name) -> Self {
                     let mut tmp = self.clone();
                     tmp.0.$op_assign(&$name::from(rhs).0).unwrap();
                     tmp
@@ -66,33 +64,32 @@ macro_rules! prim {
         $(
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
-            pub struct $name(InlAwi<$bw, {crate::mimick::Bits::unstable_raw_digits($bw)}>);
+            #[derive(Clone, Copy)]
+            pub struct $name(InlAwi<$bw, {awi::Bits::unstable_raw_digits($bw)}>);
 
             impl Lineage for $name {
-                fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-                    Some(bw($bw))
-                }
-
-                fn state(&self) -> Rc<State> {
+                fn state(&self) -> PState {
                     self.0.state()
                 }
             }
 
             impl $name {
-                pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+                pub(crate) fn from_state(state: PState) -> Self {
+                    Self(InlAwi::from_state(state))
+                }
+
+                pub(crate) fn new(op: Op<PState>) -> Self {
                     Self(InlAwi::new(op))
                 }
-            }
 
-            impl From<core::primitive::$name> for $name {
-                fn from(x: core::primitive::$name) -> Self {
-                    Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
+                pub(crate) fn get_nzbw() -> NonZeroUsize {
+                    NonZeroUsize::new($bw).unwrap()
                 }
             }
 
-            impl Clone for $name {
-                fn clone(&self) -> Self {
-                    Self::new(Op::Copy([self.state()]))
+            impl From<awi::$name> for $name {
+                fn from(x: awi::$name) -> Self {
+                    Self::new(Op::Literal(awi::ExtAwi::from(x)))
                 }
             }
 
@@ -129,33 +126,32 @@ macro_rules! prim {
 
 /// Mimicking primitive of same name
 #[allow(non_camel_case_types)]
-pub struct bool(InlAwi<1, { crate::mimick::Bits::unstable_raw_digits(1) }>);
+#[derive(Clone, Copy)]
+pub struct bool(InlAwi<1, { awi::Bits::unstable_raw_digits(1) }>);
 
 impl Lineage for bool {
-    fn hidden_const_nzbw() -> Option<NonZeroUsize> {
-        Some(bw(1))
-    }
-
-    fn state(&self) -> Rc<State> {
+    fn state(&self) -> PState {
         self.0.state()
     }
 }
 
 impl bool {
-    pub(crate) fn new(op: Op<Rc<State>>) -> Self {
+    pub(crate) fn from_state(state: PState) -> Self {
+        Self(InlAwi::from_state(state))
+    }
+
+    pub(crate) fn new(op: Op<PState>) -> Self {
         Self(InlAwi::new(op))
     }
-}
 
-impl From<core::primitive::bool> for bool {
-    fn from(x: core::primitive::bool) -> Self {
-        Self::new(Op::Literal(awint_ext::ExtAwi::from(x)))
+    pub(crate) fn get_nzbw() -> NonZeroUsize {
+        NonZeroUsize::new(1).unwrap()
     }
 }
 
-impl Clone for bool {
-    fn clone(&self) -> Self {
-        Self::new(Op::Copy([self.state()]))
+impl From<awi::bool> for bool {
+    fn from(x: awi::bool) -> Self {
+        Self::new(Op::Literal(awi::ExtAwi::from(x)))
     }
 }
 

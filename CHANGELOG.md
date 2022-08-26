@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0] - TODO
+### Additions
+- Added `#[must_use]` where applicable
+- Added `Bits::mux_assign`
+- First workable version of `awint_dag`
+
+### Changes
+- Renamed `Bits::lut` to `Bits::lut_assign`
+- Added a second generic to some `FP` functions that allows different `Borrow<Bits>` types to work
+  together
+
 ## [0.6.0] - 2022-07-20
 ### Fixes
 - Fixed that the infallibility of some macros was being calculated wrong. A few macros now return

@@ -10,6 +10,7 @@ impl Bits {
     /// Returns the least significant bit
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn lsb(&self) -> bool {
         (self.first() & 1) != 0
     }
@@ -17,6 +18,7 @@ impl Bits {
     /// Returns the most significant bit
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn msb(&self) -> bool {
         if self.extra() == 0 {
             (self.last() as isize) < 0
@@ -29,6 +31,7 @@ impl Bits {
     /// `None` if `inx >= self.bw()`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn get(&self, inx: usize) -> Option<bool> {
         if inx >= self.bw() {
             None
@@ -41,6 +44,7 @@ impl Bits {
     /// `None` if `inx >= self.bw()`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn set(&mut self, inx: usize, bit: bool) -> Option<()> {
         if inx >= self.bw() {
             None
@@ -59,6 +63,7 @@ impl Bits {
 
     /// Returns the number of leading zero bits
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn lz(&self) -> usize {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
@@ -74,6 +79,7 @@ impl Bits {
 
     /// Returns the number of trailing zero bits
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn tz(&self) -> usize {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
@@ -89,12 +95,14 @@ impl Bits {
 
     /// Returns the number of significant bits, `self.bw() - self.lz()`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn sig(&self) -> usize {
         self.bw() - self.lz()
     }
 
     /// Returns the number of set ones
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn count_ones(&self) -> usize {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
@@ -114,8 +122,8 @@ impl Bits {
     /// returned. `width` can be zero, in which case this function just checks
     /// the input correctness and does not mutate `self`.
     ///
-    /// This function works by copying a `bw` sized bitfield from `rhs` at
-    /// bitposition `from` and overwriting `bw` bits at bitposition `to` in
+    /// This function works by copying a `width` sized bitfield from `rhs` at
+    /// bitposition `from` and overwriting `width` bits at bitposition `to` in
     /// `self`. Only the `width` bits in `self` are mutated, any bits before and
     /// after the bitfield are left unchanged.
     ///
@@ -132,6 +140,7 @@ impl Bits {
     /// assert_eq!(y, inlawi!(0xfd_42_ba9876543210u100));
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn field(&mut self, to: usize, rhs: &Self, from: usize, width: usize) -> Option<()> {
         let bw_digits = digits_u(width);
         let bw_bits = extra_u(width);
@@ -244,6 +253,7 @@ impl Bits {
 
     /// A specialization of [Bits::field] with `from` set to 0.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn field_to(&mut self, to: usize, rhs: &Self, width: usize) -> Option<()> {
         let bw_digits = digits_u(width);
         let bw_bits = extra_u(width);
@@ -329,6 +339,7 @@ impl Bits {
 
     /// A specialization of [Bits::field] with `to` set to 0.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn field_from(&mut self, rhs: &Self, from: usize, width: usize) -> Option<()> {
         let bw_digits = digits_u(width);
         let bw_bits = extra_u(width);
@@ -393,6 +404,7 @@ impl Bits {
 
     /// A specialization of [Bits::field] with `to` and `from` set to 0.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn field_width(&mut self, rhs: &Self, width: usize) -> Option<()> {
         if (width > self.bw()) || (width > rhs.bw()) {
             return None
@@ -415,6 +427,7 @@ impl Bits {
     /// A specialization of [Bits::field] with `width` set to 1.
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn field_bit(&mut self, to: usize, rhs: &Bits, from: usize) -> Option<()> {
         if let Some(b) = rhs.get(from) {
             self.set(to, b)
@@ -437,11 +450,12 @@ impl Bits {
     ///
     /// // get the third entry (this is using zero indexing)
     /// inx.usize_assign(2);
-    /// out.lut(&lut, &inx).unwrap();
+    /// out.lut_assign(&lut, &inx).unwrap();
     /// assert_eq!(out, inlawi!(3u10));
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn lut(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+    #[must_use]
+    pub const fn lut_assign(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         // because we later call `inx.to_usize()` and assume that it fits within
         // `inx.bw()`
         inx.assert_cleared_unused_bits();
@@ -486,11 +500,12 @@ impl Bits {
         None
     }
 
-    /// Set entry in lookup table. The inverse of [Bits::lut], this uses `entry`
-    /// as a bitfield to overwrite part of `self` at bit position
-    /// `inx.to_usize() * entry.bw()`. If `self.bw() != (entry.bw() *
-    /// (2^inx.bw()))`, `None` will be returned.
+    /// Set entry in lookup table. The inverse of [Bits::lut_assign], this uses
+    /// `entry` as a bitfield to overwrite part of `self` at bit position
+    /// `inx.to_usize() * entry.bw()`. If
+    /// `self.bw() != (entry.bw() * (2^inx.bw()))`, `None` will be returned.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
         // because we later call `inx.to_usize()` and assume that it fits within
         // `inx.bw()`
@@ -587,5 +602,19 @@ impl Bits {
             }
         }
         None
+    }
+
+    /// Multiplex by conditionally copy-assigning `rhs` to `self` if `b`
+    #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
+    pub const fn mux_assign(&mut self, rhs: &Bits, b: bool) -> Option<()> {
+        if self.bw() == rhs.bw() {
+            if b {
+                self.copy_assign(rhs).unwrap();
+            }
+            Some(())
+        } else {
+            None
+        }
     }
 }

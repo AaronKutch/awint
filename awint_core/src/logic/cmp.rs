@@ -19,6 +19,7 @@ impl Eq for Bits {}
 impl Bits {
     /// If `self` is zero
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn is_zero(&self) -> bool {
         for_each!(self, x, {
             if x != 0 {
@@ -30,6 +31,7 @@ impl Bits {
 
     /// If `self` is unsigned-maximum
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn is_umax(&self) -> bool {
         for_each!(self, x, {0..(self.len() - 1)} {
             if x != MAX {
@@ -45,6 +47,7 @@ impl Bits {
 
     /// If `self` is signed-maximum
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn is_imax(&self) -> bool {
         for_each!(self, x, {0..(self.len() - 1)} {
             if x != MAX {
@@ -60,6 +63,7 @@ impl Bits {
 
     /// If `self` is signed-minimum
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn is_imin(&self) -> bool {
         for_each!(self, x, {0..(self.len() - 1)} {
             if x != 0 {
@@ -75,6 +79,7 @@ impl Bits {
 
     /// If `self` is unsigned-one
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn is_uone(&self) -> bool {
         if self.first() != 1 {
             return false
@@ -89,6 +94,7 @@ impl Bits {
 
     /// Equality comparison, `self == rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_eq(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x != y {
@@ -100,6 +106,7 @@ impl Bits {
 
     /// Not-equal comparison, `self != rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_ne(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x != y {
@@ -111,6 +118,7 @@ impl Bits {
 
     /// Unsigned-less-than comparison, `self < rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ult(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
@@ -125,6 +133,7 @@ impl Bits {
 
     /// Unsigned-less-than-or-equal comparison, `self <= rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ule(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
@@ -138,6 +147,7 @@ impl Bits {
 
     /// Unsigned-greater-than comparison, `self > rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ugt(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
@@ -151,6 +161,7 @@ impl Bits {
 
     /// Unsigned-greater-than-or-equal comparison, `self >= rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn uge(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
@@ -164,6 +175,7 @@ impl Bits {
 
     /// Signed-less-than comparison, `self < rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ilt(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
@@ -182,6 +194,7 @@ impl Bits {
 
     /// Signed-less-than-or-equal comparison, `self <= rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ile(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
@@ -200,6 +213,7 @@ impl Bits {
 
     /// Signed-greater-than comparison, `self > rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn igt(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
@@ -218,6 +232,7 @@ impl Bits {
 
     /// Signed-greater-than-or-equal comparison, `self >= rhs`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn ige(&self, rhs: &Self) -> Option<bool> {
         binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {

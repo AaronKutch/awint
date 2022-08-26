@@ -665,7 +665,7 @@ use awint_macro_internals::{
 };
 use proc_macro::TokenStream;
 
-/// Specifies an `InlAwi` _type_ in terms of its bitwidth as a `usize` literal.
+/// Specifies an `InlAwi` _type_ in terms of its bitwidth
 #[proc_macro]
 pub fn inlawi_ty(input: TokenStream) -> TokenStream {
     let bw = input
@@ -691,7 +691,7 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 /// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
 /// allocation in general, but will try to avoid allocation if the common
 /// bitwdith can be determined statically, or if concatenations are all of
-/// single components. See the lib documentation of `awint_macros` for more.
+/// single components. See the crate documentation of `awint_macros` for more.
 #[proc_macro]
 pub fn cc(input: TokenStream) -> TokenStream {
     match awint_macro_cc(&input.to_string()) {

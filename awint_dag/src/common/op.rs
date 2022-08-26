@@ -22,18 +22,25 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
     // literal assign
     Literal(ExtAwi),
 
-    // the bitwidth value
+    // Static versions of `Lut`, `Get`, and `Set`
+    StaticLut([T; 1], ExtAwi),
+    StaticGet([T; 1], usize),
+    StaticSet([T; 2], usize),
+
+    // in the future we may try to do some kind of dynamic bitwidth
     //Bw,
 
     // note: we encourage common assembly code paths by putting the arrays first
 
-    // some of these do not need the width field, but for future dynamic width cases we keep these
-    Resize([T; 2], NonZeroUsize),
-    ZeroResize([T; 1], NonZeroUsize),
-    SignResize([T; 1], NonZeroUsize),
+    // These functions are special because they need self width or downstream width to operate. In
+    // earlier versions these all had fields for size, but only the overflow variants actually
+    // need it because their self width is a single bit and they are effectively parameterized
+    Resize([T; 2]),
+    ZeroResize([T; 1]),
+    SignResize([T; 1]),
     ZeroResizeOverflow([T; 1], NonZeroUsize),
     SignResizeOverflow([T; 1], NonZeroUsize),
-    Lut([T; 2], NonZeroUsize),
+    Lut([T; 2]),
 
     // these are special because although they take `&mut self`, the value of `self` is completely
     // overridden, so there is no dependency on `self.op()`.
@@ -98,6 +105,7 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
 
     Get([T; 2]),
     Set([T; 3]),
+    Mux([T; 3]),
     LutSet([T; 3]),
     Field([T; 5]),
     FieldTo([T; 4]),
@@ -157,12 +165,20 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         matches!(self, Opaque(_))
     }
 
+    /// Returns if `self` is an `Invalid`
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, Invalid)
+    }
+
     /// Returns the name of the operation
     pub fn operation_name(&self) -> &'static str {
         match *self {
             Invalid => "invalid",
             Opaque(_) => "opaque",
             Literal(_) => "literal",
+            StaticLut(..) => "static_lut",
+            StaticGet(..) => "static_get",
+            StaticSet(..) => "static_set",
             Resize(..) => "resize",
             ZeroResize(..) => "zero_resize",
             ZeroResizeOverflow(..) => "zero_reisze_overflow",
@@ -217,6 +233,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(_) => "neg",
             Get(_) => "get",
             Set(_) => "set",
+            Mux(_) => "mux",
             LutSet(_) => "lut_set",
             Field(_) => "field",
             FieldTo(_) => "field_to",
@@ -232,6 +249,12 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         // add common "lhs"
         match *self {
             Invalid | Opaque(_) | Literal(_) => (),
+            StaticLut(..) => v.push("inx"),
+            StaticGet(..) => v.push("x"),
+            StaticSet(..) => {
+                v.push("x");
+                v.push("b")
+            }
 
             Resize(..) => {
                 v.push("x");
@@ -303,6 +326,11 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
                 v.push("inx");
                 v.push("bit");
             }
+            Mux(_) => {
+                v.push("x0");
+                v.push("x1");
+                v.push("b");
+            }
             LutSet(_) => {
                 v.push("lut");
                 v.push("entry");
@@ -330,12 +358,15 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Invalid => &[],
             Opaque(v) => v,
             Literal(_) => &[],
-            Resize(v, _) => v,
-            ZeroResize(v, _) => v,
-            SignResize(v, _) => v,
+            StaticLut(v, _) => v,
+            StaticGet(v, _) => v,
+            StaticSet(v, _) => v,
+            Resize(v) => v,
+            ZeroResize(v) => v,
+            SignResize(v) => v,
             ZeroResizeOverflow(v, _) => v,
             SignResizeOverflow(v, _) => v,
-            Lut(v, _) => v,
+            Lut(v) => v,
             Copy(v) => v,
             Funnel(v) => v,
             UQuo(v) => v,
@@ -384,6 +415,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(v) => v,
             Get(v) => v,
             Set(v) => v,
+            Mux(v) => v,
             LutSet(v) => v,
             Field(v) => v.as_ref(),
             FieldTo(v) => v,
@@ -398,12 +430,15 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Invalid => &mut [],
             Opaque(v) => v,
             Literal(_) => &mut [],
-            Resize(v, _) => v,
-            ZeroResize(v, _) => v,
-            SignResize(v, _) => v,
+            StaticLut(v, _) => v,
+            StaticGet(v, _) => v,
+            StaticSet(v, _) => v,
+            Resize(v) => v,
+            ZeroResize(v) => v,
+            SignResize(v) => v,
             ZeroResizeOverflow(v, _) => v,
             SignResizeOverflow(v, _) => v,
-            Lut(v, _) => v,
+            Lut(v) => v,
             Copy(v) => v,
             Funnel(v) => v,
             UQuo(v) => v,
@@ -452,6 +487,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(v) => v,
             Get(v) => v,
             Set(v) => v,
+            Mux(v) => v,
             LutSet(v) => v,
             Field(v) => v.as_mut(),
             FieldTo(v) => v,
@@ -463,75 +499,6 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
 
     pub fn num_operands(&self) -> usize {
         self.operands().len()
-    }
-
-    /// Some variants have a bitwidth field that can be mutated with this
-    pub fn self_bitwidth_mut(&mut self) -> Option<&mut NonZeroUsize> {
-        match self {
-            Invalid => None,
-            Opaque(_) => None,
-            Literal(_) => None,
-            Resize(_, w) => Some(w),
-            ZeroResize(_, w) => Some(w),
-            SignResize(_, w) => Some(w),
-            ZeroResizeOverflow(_, w) => Some(w),
-            SignResizeOverflow(_, w) => Some(w),
-            Lut(_, w) => Some(w),
-            Copy(_) => None,
-            Funnel(_) => None,
-            UQuo(_) => None,
-            URem(_) => None,
-            IQuo(_) => None,
-            IRem(_) => None,
-            MulAdd(_) => None,
-            CinSum(_) => None,
-            UnsignedOverflow(_) => None,
-            SignedOverflow(_) => None,
-            Not(_) => None,
-            Rev(_) => None,
-            Abs(_) => None,
-            IsZero(_) => None,
-            IsUmax(_) => None,
-            IsImax(_) => None,
-            IsImin(_) => None,
-            IsUone(_) => None,
-            Lsb(_) => None,
-            Msb(_) => None,
-            Lz(_) => None,
-            Tz(_) => None,
-            Sig(_) => None,
-            CountOnes(_) => None,
-            Or(_) => None,
-            And(_) => None,
-            Xor(_) => None,
-            Shl(_) => None,
-            Lshr(_) => None,
-            Ashr(_) => None,
-            Rotl(_) => None,
-            Rotr(_) => None,
-            Add(_) => None,
-            Sub(_) => None,
-            Rsb(_) => None,
-            Eq(_) => None,
-            Ne(_) => None,
-            Ult(_) => None,
-            Ule(_) => None,
-            Ilt(_) => None,
-            Ile(_) => None,
-            Inc(_) => None,
-            IncCout(_) => None,
-            Dec(_) => None,
-            DecCout(_) => None,
-            Neg(_) => None,
-            Get(_) => None,
-            Set(_) => None,
-            LutSet(_) => None,
-            Field(_) => None,
-            FieldTo(_) => None,
-            FieldFrom(_) => None,
-            FieldWidth(_) => None,
-            FieldBit(_) => None,
-        }
     }
 
     /// If `this` has no operands (including `Opaque`s with empty `Vec`s) then
@@ -571,12 +538,15 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
                 res
             }
             Literal(lit) => Literal(lit.clone()),
-            Resize(v, w) => Resize(map2!(m, v), *w),
-            ZeroResize(v, w) => ZeroResize(map1!(m, v), *w),
-            SignResize(v, w) => SignResize(map1!(m, v), *w),
+            StaticLut(v, table) => StaticLut(map1!(m, v), table.clone()),
+            StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
+            StaticSet(v, inx) => StaticSet(map2!(m, v), *inx),
+            Resize(v) => Resize(map2!(m, v)),
+            ZeroResize(v) => ZeroResize(map1!(m, v)),
+            SignResize(v) => SignResize(map1!(m, v)),
             ZeroResizeOverflow(v, w) => ZeroResizeOverflow(map1!(m, v), *w),
             SignResizeOverflow(v, w) => SignResizeOverflow(map1!(m, v), *w),
-            Lut(v, w) => Lut(map2!(m, v), *w),
+            Lut(v) => Lut(map2!(m, v)),
             Copy(v) => Copy(map1!(m, v)),
             Funnel(v) => Funnel(map2!(m, v)),
             UQuo(v) => UQuo(map2!(m, v)),
@@ -625,6 +595,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             Neg(v) => Neg(map2!(m, v)),
             Get(v) => Get(map2!(m, v)),
             Set(v) => Set(map3!(m, v)),
+            Mux(v) => Mux(map3!(m, v)),
             LutSet(v) => LutSet(map3!(m, v)),
             Field(_) => {
                 let mut res = Field([

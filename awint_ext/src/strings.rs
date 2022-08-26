@@ -238,7 +238,7 @@ impl ExtAwi {
                 None, // avoids overflow corner case
                 fraction, radix, tmp_bw,
             )?;
-            num.add_assign(f_part.const_as_mut());
+            num.add_assign(f_part.const_as_mut()).unwrap();
         }
         let mut denominator = ExtAwi::uone(tmp_bw);
         let den = denominator.const_as_mut();
@@ -264,7 +264,7 @@ impl ExtAwi {
         Bits::udivide(quo, rem, num, den).unwrap();
         // The remainder `rem` is in the range `0..den`. We use banker's rounding to
         // choose when to round up `quo`.
-        rem.shl_assign(1);
+        rem.shl_assign(1).unwrap();
         if den.ult(rem).unwrap() {
             // past the halfway point, round up
             quo.inc_assign(true);

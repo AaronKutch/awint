@@ -104,6 +104,7 @@ macro_rules! bits_convert {
     ($($unsigned_name:ident, $uX:ident, $signed_name:ident, $iX:ident);*;) => {
         $(
             #[const_fn(cfg(feature = "const_support"))]
+            #[must_use]
             pub const fn $unsigned_name(&self) -> $uX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
@@ -130,6 +131,7 @@ macro_rules! bits_convert {
             }
 
             #[const_fn(cfg(feature = "const_support"))]
+            #[must_use]
             pub const fn $signed_name(&self) -> $iX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
@@ -170,6 +172,7 @@ impl Bits {
     );
 
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn to_bool(&self) -> bool {
         (self.first() & 1) != 0
     }

@@ -32,7 +32,7 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 ///
 /// ```
 /// #![feature(const_mut_refs)]
-/// use awint::{bw, inlawi, Bits, ExtAwi, InlAwi};
+/// use awint::prelude::*;
 ///
 /// const fn example(x0: &mut Bits, x1: &Bits) {
 ///     // when dealing with `Bits` with different bitwidths, use the
@@ -44,18 +44,15 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 /// }
 ///
 /// // using `bw` function for quick `NonZeroUsize` construction from a literal
-/// let mut awi0 = ExtAwi::zero(bw(100));
+/// let mut x = ExtAwi::zero(bw(100));
+/// assert!(x.is_zero());
 /// // constructing an `ExtAwi` from an `InlAwi`
-/// let awi1 = ExtAwi::from(inlawi!(-123i16));
-/// // `ExtAwi` implements `DerefMut`, but a mutable `Bits` reference can also
-/// // be acquired like this.
-/// let x0: &mut Bits = awi0.const_as_mut();
-/// assert!(x0.is_zero());
-/// example(x0, awi1.const_as_ref());
-/// assert_eq!(x0, inlawi!(-246i100).const_as_ref());
+/// let y = ExtAwi::from(inlawi!(-123i16));
+/// example(&mut x, &y);
+/// assert_eq!(x.as_ref(), inlawi!(-246i100).as_ref());
 /// // you can freely mix references originating from both `ExtAwi` and `InlAwi`
-/// example(x0, inlawi!(0x10u16).const_as_ref());
-/// assert_eq!(awi0, ExtAwi::from(inlawi!(0x20u100)));
+/// example(&mut x, &inlawi!(0x10u16));
+/// assert_eq!(x, extawi!(0x20u100));
 /// ```
 #[repr(transparent)]
 pub struct ExtAwi {
@@ -93,6 +90,7 @@ impl<'a> ExtAwi {
     /// Returns a reference to `self` in the form of `&Bits`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // `as_ref` on NonNull is not const yet, so we have to use transmute.
         // Safety: The explicit lifetimes make sure they do not become unbounded.
@@ -102,6 +100,7 @@ impl<'a> ExtAwi {
     /// Returns a reference to `self` in the form of `&mut Bits`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &mut Bits>(self.raw) }
@@ -110,6 +109,7 @@ impl<'a> ExtAwi {
     /// Returns the bitwidth of this `ExtAwi` as a `NonZeroUsize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn nzbw(&self) -> NonZeroUsize {
         self.const_as_ref().nzbw()
     }
@@ -117,6 +117,7 @@ impl<'a> ExtAwi {
     /// Returns the bitwidth of this `ExtAwi` as a `usize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn bw(&self) -> usize {
         self.const_as_ref().bw()
     }
@@ -124,6 +125,7 @@ impl<'a> ExtAwi {
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.const_as_ref().len()
     }
@@ -132,6 +134,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn raw_len(&self) -> usize {
         self.const_as_ref().raw_len()
     }
@@ -143,6 +146,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub fn as_ptr(&self) -> *const usize {
         self.const_as_ref().as_ptr()
     }
@@ -153,6 +157,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub fn as_mut_ptr(&mut self) -> *mut usize {
         self.const_as_mut().as_mut_ptr()
     }
@@ -160,6 +165,7 @@ impl<'a> ExtAwi {
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn layout(&self) -> Layout {
         layout(self.nzbw())
     }

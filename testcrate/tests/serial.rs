@@ -161,9 +161,8 @@ fn all_hex_byte_combos() {
                     assert!(awi.is_zero());
                 }
                 _ => {
-                    assert!(awi
-                        .bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
-                        .is_err());
+                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                        .unwrap_err();
                 }
             }
             // set back
@@ -192,7 +191,7 @@ fn all_single_byte_combos() {
                         tmp.u8_assign(v);
                         assert!(awi == tmp);
                     } else {
-                        assert!(res.is_err());
+                        res.unwrap_err();
                     }
                 }
                 b'a'..=b'z' => {
@@ -202,7 +201,7 @@ fn all_single_byte_combos() {
                         tmp.u8_assign(v);
                         assert!(awi == tmp);
                     } else {
-                        assert!(res.is_err());
+                        res.unwrap_err();
                     }
                 }
                 b'A'..=b'Z' => {
@@ -212,7 +211,7 @@ fn all_single_byte_combos() {
                         tmp.u8_assign(v);
                         assert!(awi == tmp);
                     } else {
-                        assert!(res.is_err());
+                        res.unwrap_err();
                     }
                 }
                 b'_' => {
@@ -220,7 +219,7 @@ fn all_single_byte_combos() {
                     assert!(awi.is_zero());
                 }
                 _ => {
-                    assert!(res.is_err());
+                    res.unwrap_err();
                 }
             }
         }

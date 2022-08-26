@@ -31,6 +31,7 @@ impl Bits {
     /// Unsigned-divides `self` by `div`, sets `self` to the quotient, and
     /// returns the remainder. Returns `None` if `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn short_udivide_inplace_assign(&mut self, div: usize) -> Option<usize> {
         if div == 0 {
             return None
@@ -53,6 +54,7 @@ impl Bits {
     // returns the remainder. Returns `None` if `self.bw() != duo.bw()` or
     // `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn short_udivide_assign(&mut self, duo: &Self, div: usize) -> Option<usize> {
         if div == 0 || self.bw() != duo.bw() {
             return None
@@ -106,6 +108,7 @@ impl Bits {
     /// remainder to `rem`. Returns `None` if any bitwidths are not equal or
     /// `div.is_zero()`.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
         // prevent any potential problems with the assumptions that many subroutines
         // make
@@ -334,7 +337,7 @@ impl Bits {
                 // quotient can have 0 or 1 added to it
                 if div_lz == duo_lz && div.ule(rem).unwrap() {
                     quo.inc_assign(true);
-                    rem.sub_assign(div);
+                    rem.sub_assign(div).unwrap();
                 }
                 return Some(())
             }
@@ -368,6 +371,7 @@ impl Bits {
     /// `div.is_zero()`. `duo` and `div` are marked mutable but their values are
     /// not changed by this function.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn idivide(
         quo: &mut Self,
         rem: &mut Self,

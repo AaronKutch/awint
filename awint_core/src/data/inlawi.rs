@@ -49,15 +49,13 @@ use crate::Bits;
 /// // Because `InlAwi`'s construction functions are `const`, we can make full
 /// // use of `Bits` `const` abilities
 /// const AWI: inlawi_ty!(100) = {
-///     let mut awi0 = inlawi!(123i100);
-///     let x = awi0.const_as_mut();
-///     let awi1 = inlawi!(2i100);
-///     let y = awi1.const_as_ref();
+///     let mut x = inlawi!(123i100);
+///     let y = inlawi!(2i100);
 ///     x.neg_assign(true);
-///     const_fn(x, y);
-///     awi0
+///     const_fn(&mut x, &y);
+///     x
 /// };
-/// const X: &'static Bits = AWI.const_as_ref();
+/// const X: &'static Bits = &AWI;
 ///
 /// assert_eq!(X, inlawi!(-246i100).const_as_ref());
 /// ```
@@ -84,6 +82,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns a reference to `self` in the form of `&Bits`.
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_ref(&'a self) -> &'a Bits {
         // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
@@ -95,6 +94,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns a reference to `self` in the form of `&mut Bits`.
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
@@ -105,6 +105,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     /// Returns the bitwidth of this type of `InlAwi` as a `NonZeroUsize`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_nzbw() -> NonZeroUsize {
         assert_inlawi_invariants::<BW, LEN>();
         NonZeroUsize::new(BW).unwrap()
@@ -112,6 +113,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     /// Returns the bitwidth of this type of `InlAwi` as a `usize`
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_bw() -> usize {
         assert_inlawi_invariants::<BW, LEN>();
         BW
@@ -120,6 +122,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns the raw length of this type of `InlAwi` as a `usize`
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn const_raw_len() -> usize {
         assert_inlawi_invariants::<BW, LEN>();
         LEN
@@ -128,6 +131,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// The same as `Self::const_nzbw()` except that it takes `&self`, this
     /// exists to help with macros
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn nzbw(&self) -> NonZeroUsize {
         Self::const_nzbw()
     }
@@ -135,12 +139,14 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// The same as `Self::const_bw()` except that it takes `&self`, this exists
     /// to help with macros
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn bw(&self) -> usize {
         Self::const_bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
     pub const fn len(&self) -> usize {
         Self::const_raw_len() - 1
     }

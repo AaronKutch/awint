@@ -85,7 +85,7 @@ fn fp_identities_inner(
 
     // overflowing truncation
     cc!(x0bw0; x3bw0)?;
-    FP::otruncate_assign(x2bw1, x3bw0);
+    let _ = FP::otruncate_assign(x2bw1, x3bw0);
     FP::truncate_assign(x3bw1, x3bw0);
     // assert equal to original truncation
     eq(x2bw1, x3bw1);

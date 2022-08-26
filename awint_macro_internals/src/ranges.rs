@@ -1,5 +1,4 @@
 use awint_core::Bits;
-use triple_arena::Ptr;
 
 use crate::{chars_to_string, usize_to_i128, Ast, CCMacroError, Delimiter, PText, Text};
 
@@ -277,7 +276,7 @@ impl Usbr {
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
 /// being a constant we can parse, which passes upward the `Usb` and `Usbr`
 /// chain to get calculated into a static width.
-pub fn parse_usb(ast: &mut Ast, usb_txt: Ptr<PText>) -> Result<Usb, CCMacroError> {
+pub fn parse_usb(ast: &mut Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
     assert!(!ast.txt[usb_txt].is_empty());
     let mut usb_inner = usb_txt;
     let mut invalid = false;
@@ -401,7 +400,7 @@ pub fn parse_usb(ast: &mut Ast, usb_txt: Ptr<PText>) -> Result<Usb, CCMacroError
 /// return a single bit range if ".." or "..=" does not exist.
 pub fn parse_range(
     ast: &mut Ast,
-    range_txt: Ptr<PText>,
+    range_txt: PText,
     allow_single_bit_range: bool,
 ) -> Result<Usbr, Option<CCMacroError>> {
     // We want to do the ".."/"..=" separation followed by "+"/"-" optimization, so

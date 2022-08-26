@@ -2,65 +2,54 @@ use std::fmt::Write;
 
 use awint_core::Bits;
 use awint_ext::ExtAwi;
-use triple_arena::{Ptr, PtrTrait};
 use Op::*;
 
 use crate::{
-    common::{EvalError, Op},
-    lowering::Dag,
+    lowering::{Dag, PNode},
+    EvalError, Op,
 };
 
-impl<P: PtrTrait> Dag<P> {
+impl Dag {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
-    pub fn eval_node(&mut self, node: Ptr<P>) -> Result<(), EvalError> {
-        macro_rules! check_bw {
-            ($lhs:expr, $rhs:expr) => {
-                if $lhs != $rhs {
-                    return Err(EvalError::WrongBitwidth)
-                }
-            };
-        }
-        let op = self[node].op.take();
-        for source in op.operands() {
-            self[source].rc = if let Some(x) = self[source].rc.checked_sub(1) {
-                x
-            } else {
-                return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
-            };
-        }
-        let self_w = if let Some(w) = self[node].nzbw {
-            w
-        } else {
-            return Err(EvalError::NonStaticBitwidth)
-        };
-        // need this for errors
-        let op_err = op.clone();
+    pub fn eval_node(&mut self, node: PNode, visit: u64) -> Result<(), EvalError> {
+        let op = self[node].op.clone();
+        let self_w = self[node].nzbw;
         let mut r = ExtAwi::zero(self_w);
-        let option = match op {
+        let option = match op.clone() {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => return Err(EvalError::Unevaluatable),
             Literal(_) => return Err(EvalError::Unevaluatable),
-            Resize([a, b], w) => {
-                check_bw!(w, self_w);
+            StaticLut([a], lit) => r.lut_assign(&lit, self.lit(a)),
+            StaticGet([a], inx) => {
+                if let Some(b) = self.lit(a).get(inx) {
+                    r.bool_assign(b);
+                    Some(())
+                } else {
+                    None
+                }
+            }
+            StaticSet([a, b], inx) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.set(inx, self.bool(b)?)
+                } else {
+                    None
+                }
+            }
+            Resize([a, b]) => {
                 r.resize_assign(self.lit(a), self.bool(b)?);
                 Some(())
             }
-            ZeroResize([a], w) => {
-                check_bw!(w, self_w);
+            ZeroResize([a]) => {
                 r.zero_resize_assign(self.lit(a));
                 Some(())
             }
-            SignResize([a], w) => {
-                check_bw!(w, self_w);
+            SignResize([a]) => {
                 r.sign_resize_assign(self.lit(a));
                 Some(())
             }
             Copy([a]) => r.copy_assign(self.lit(a)),
-            Lut([a, b], w) => {
-                check_bw!(w, self_w);
-                r.lut(self.lit(a), self.lit(b))
-            }
+            Lut([a, b]) => r.lut_assign(self.lit(a), self.lit(b)),
             Funnel([a, b]) => r.funnel(self.lit(a), self.lit(b)),
             CinSum([a, b, c]) => {
                 if r.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
@@ -301,6 +290,13 @@ impl<P: PtrTrait> Dag<P> {
                     None
                 }
             }
+            Mux([a, b, c]) => {
+                if r.copy_assign(self.lit(a)).is_some() {
+                    r.mux_assign(self.lit(b), self.bool(c)?)
+                } else {
+                    None
+                }
+            }
             LutSet([a, b, c]) => {
                 if r.copy_assign(self.lit(a)).is_some() {
                     r.lut_set(self.lit(b), self.lit(c))
@@ -350,7 +346,8 @@ impl<P: PtrTrait> Dag<P> {
             }
             MulAdd([a, b, c]) => {
                 if r.copy_assign(self.lit(a)).is_some() {
-                    r.mul_add_assign(self.lit(b), self.lit(c))
+                    r.arb_umul_add_assign(self.lit(b), self.lit(c));
+                    Some(())
                 } else {
                     None
                 }
@@ -365,7 +362,7 @@ impl<P: PtrTrait> Dag<P> {
             }
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
-                let mut t = ExtAwi::zero(self.get_bw(b)?);
+                let mut t = ExtAwi::zero(self.get_bw(b));
                 if let Some((o, _)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
                     r.bool_assign(o);
                     Some(())
@@ -374,7 +371,7 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
             SignedOverflow([a, b, c]) => {
-                let mut t = ExtAwi::zero(self.get_bw(b)?);
+                let mut t = ExtAwi::zero(self.get_bw(b));
                 if let Some((_, o)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
                     r.bool_assign(o);
                     Some(())
@@ -383,7 +380,7 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
             IncCout([a, b]) => {
-                let mut t = ExtAwi::zero(self.get_bw(a)?);
+                let mut t = ExtAwi::zero(self.get_bw(a));
                 if t.copy_assign(self.lit(a)).is_some() {
                     r.bool_assign(t.inc_assign(self.bool(b)?));
                     Some(())
@@ -392,7 +389,7 @@ impl<P: PtrTrait> Dag<P> {
                 }
             }
             DecCout([a, b]) => {
-                let mut t = ExtAwi::zero(self.get_bw(a)?);
+                let mut t = ExtAwi::zero(self.get_bw(a));
                 if t.copy_assign(self.lit(a)).is_some() {
                     r.bool_assign(t.dec_assign(self.bool(b)?));
                     Some(())
@@ -428,28 +425,32 @@ impl<P: PtrTrait> Dag<P> {
             }
         };
         if option.is_none() {
-            let operands = op_err.operands();
+            let operands = op.operands();
             let mut s = String::new();
             for op in operands {
                 write!(s, "{:?}, ", self[op]).unwrap();
             }
             Err(EvalError::OtherString(format!(
                 "evaluation failure on operation {:?} ({})",
-                op_err, s
+                op, s
             )))
         } else {
+            for source in op.operands() {
+                self.dec_rc(*source).unwrap();
+            }
             self[node].op = Literal(r);
+            self[node].visit = visit;
             Ok(())
         }
     }
 
-    /// Evaluates the tree leading to `leaf` as much as possible
-    pub fn eval_tree(&mut self, leaf: Ptr<P>) -> Result<(), EvalError> {
-        self.visit_gen += 1;
-        let gen = self.visit_gen;
+    /// Evaluates the source tree of `leaf` as much as possible. Only evaluates
+    /// nodes not equal to `visit`, evaluated nodes have their visit number set
+    /// to `visit`.
+    pub fn eval_tree(&mut self, leaf: PNode, visit: u64) -> Result<(), EvalError> {
         // DFS from leaf to roots
         // the bool is set to false when an unevaluatabe node is in the sources
-        let mut path: Vec<(usize, Ptr<P>, bool)> = vec![(0, leaf, true)];
+        let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
             let (i, p, b) = path[path.len() - 1];
             /*if !self.dag.contains(p) {
@@ -473,9 +474,13 @@ impl<P: PtrTrait> Dag<P> {
                 // checked all sources
                 path.pop().unwrap();
                 if b {
-                    if let Err(e) = self.eval_node(p) {
-                        self[p].err = Some(e.clone());
-                        return Err(e)
+                    match self.eval_node(p, visit) {
+                        Ok(()) => {}
+                        Err(EvalError::Unevaluatable) => {}
+                        Err(e) => {
+                            self[p].err = Some(e.clone());
+                            return Err(e)
+                        }
                     }
                 }
                 if path.is_empty() {
@@ -485,27 +490,29 @@ impl<P: PtrTrait> Dag<P> {
                     path.last_mut().unwrap().2 = false;
                 }
             } else {
-                let next_p = ops[i];
-                if self[next_p].visit_num == gen {
+                let p_next = ops[i];
+                if self[p_next].visit == visit {
                     // peek at node for evaluatableness but do not visit node, this prevents
                     // exponential growth
                     path.last_mut().unwrap().0 += 1;
-                    path.last_mut().unwrap().2 &= self[next_p].op.is_literal();
+                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                 } else {
-                    self[next_p].visit_num = gen;
-                    path.push((0, next_p, true));
+                    self[p_next].visit = visit;
+                    path.push((0, p_next, true));
                 }
             }
         }
         Ok(())
     }
 
-    pub fn cull(&mut self) {
-        // cull unused nodes
-        for p in self.ptrs() {
-            if self[p].rc == 0 {
-                self.dag.remove(p).unwrap();
+    /// Evaluates all trees of the nodes in `self.noted`
+    pub fn eval_all_noted(&mut self) -> Result<(), EvalError> {
+        self.visit_gen += 1;
+        for i in 0..self.noted.len() {
+            if let Some(note) = self.noted[i] {
+                self.eval_tree(note, self.visit_gen)?;
             }
         }
+        Ok(())
     }
 }

@@ -1,7 +1,6 @@
 name: Awint CI
 
-# FIXME
-on: []
+on: [pull_request]
 
 env:
   # NOTE: do not set RUSTFLAGS here, because it overwrites
@@ -22,6 +21,7 @@ jobs:
           rustup default nightly
       - name: Run test suite
         run: |
+          cargo bench
           cargo test --all-features
           cargo test --release --all-features
 
@@ -78,6 +78,8 @@ jobs:
           cargo build --no-default-features --features=std
           cargo build --no-default-features --features=rand_support
           cargo build --no-default-features --features=serde_support
+          cargo build --no-default-features --features=dag
+          cargo build --no-default-features --features=dag,rand_support,serde_support
           cargo build --no-default-features
 
   rustfmt:

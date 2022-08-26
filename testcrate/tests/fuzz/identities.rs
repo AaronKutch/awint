@@ -81,11 +81,11 @@ fn identities_inner(
     x3.copy_assign(x1)?;
     x4.copy_assign(x0)?;
     x5.copy_assign(x1)?;
-    x2.and_assign(x3);
+    x2.and_assign(x3)?;
     x2.not_assign();
     x4.not_assign();
     x5.not_assign();
-    x4.or_assign(x5);
+    x4.or_assign(x5)?;
     eq(x2, x4);
 
     // XOR negation
@@ -235,6 +235,13 @@ fn identities_inner(
     assert_eq!(x3.count_ones(), 1);
     assert_eq!(x3.tz(), s0);
 
+    // mux_assign
+    x2.copy_assign(x0)?;
+    x2.mux_assign(x1, false)?;
+    assert_eq!(x2, x0);
+    x2.mux_assign(x1, true)?;
+    assert_eq!(x2, x1);
+
     // reversal
     x2.copy_assign(x0)?;
     let lz = x2.lz();
@@ -342,11 +349,11 @@ fn identities_inner(
 
     // multiplication and left shift
     x2.uone_assign();
-    x2.shl_assign(s0);
+    x2.shl_assign(s0)?;
     x4.zero_assign();
     x4.mul_add_assign(x0, x2)?;
     x3.copy_assign(x0)?;
-    x3.shl_assign(s0);
+    x3.shl_assign(s0)?;
     // (x3 << s) == (x3 * (1 << s))
     eq(x3, x4);
 
@@ -528,7 +535,7 @@ macro_rules! edge_cases {
             $x.lshr_assign($fuzz_lengths[i0]).unwrap();
             for i1 in i0..$fuzz_lengths.len() {
                 $x2.umax_assign();
-                $x2.shl_assign($fuzz_lengths[i1 - i0]);
+                $x2.shl_assign($fuzz_lengths[i1 - i0]).unwrap();
                 $x.and_assign($x2).unwrap();
                 $inner
             }
