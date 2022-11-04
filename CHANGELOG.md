@@ -1,6 +1,8 @@
 # Changelog
 
-## [0.7.0] - TODO
+## [0.8.0] - TODO
+
+## [0.7.0] - 2022-08-22
 ### Additions
 - Added `#[must_use]` where applicable
 - Added `Bits::mux_assign`

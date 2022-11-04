@@ -691,7 +691,7 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 /// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
 /// allocation in general, but will try to avoid allocation if the common
 /// bitwdith can be determined statically, or if concatenations are all of
-/// single components. See the crate documentation of `awint_macros` for more.
+/// single components. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn cc(input: TokenStream) -> TokenStream {
     match awint_macro_cc(&input.to_string()) {
@@ -701,8 +701,7 @@ pub fn cc(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an `InlAwi`. See the crate documentation of `awint_macros` for
-/// more.
+/// construct an `InlAwi`. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
     match awint_macro_inlawi(&input.to_string()) {
@@ -712,8 +711,7 @@ pub fn inlawi(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an `ExtAwi`. See the crate documentation of `awint_macros` for
-/// more.
+/// construct an `ExtAwi`. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
     match awint_macro_extawi(&input.to_string()) {
