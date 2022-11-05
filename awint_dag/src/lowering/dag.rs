@@ -240,6 +240,14 @@ impl Dag {
         self[ptr].nzbw
     }
 
+    /// Marks existing node as noted
+    pub fn mark_noted(&mut self, p: PNode) -> Option<()> {
+        let node = self.dag.get_mut(p)?;
+        node.rc = node.rc.checked_add(1).unwrap();
+        self.noted.push(Some(p));
+        Some(())
+    }
+
     /// Decrements the reference count on `p`, and propogating removals if it
     /// goes to zero.
     pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {

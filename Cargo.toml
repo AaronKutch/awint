@@ -11,3 +11,5 @@ members = [
     "binaries",
     "testcrate",
 ]
+
+[patch.crates-io]
