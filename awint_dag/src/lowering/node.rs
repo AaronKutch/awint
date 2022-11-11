@@ -6,10 +6,10 @@ use triple_arena_render::{DebugNode, DebugNodeTrait};
 
 use crate::{EvalError, Op};
 
-/// a `Node` in a `Dag` that includes the operation and other data used in
-/// algorithms
+/// An Operational Node for an `OpDag` that includes the operation and other
+/// data used in algorithms
 #[derive(Debug, Clone)]
-pub struct Node<P: Ptr> {
+pub struct OpNode<P: Ptr> {
     /// Bitwidth
     pub nzbw: NonZeroUsize,
     /// Operation
@@ -22,7 +22,7 @@ pub struct Node<P: Ptr> {
 }
 
 /*
-impl Hash for Node {
+impl Hash for OpNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.nzbw.hash(state);
         self.op.hash(state);
@@ -30,17 +30,17 @@ impl Hash for Node {
     }
 }
 
-impl PartialEq for Node {
+impl PartialEq for OpNode {
     fn eq(&self, other: &Self) -> bool {
         (self.nzbw == other.nzbw) && (self.op == other.op) && (self.ops == other.ops)
     }
 }
 */
 
-impl<P: Ptr> Node<P> {}
+impl<P: Ptr> OpNode<P> {}
 
 #[cfg(feature = "debug")]
-impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
+impl<P: Ptr> DebugNodeTrait<P> for OpNode<P> {
     fn debug_node(p_this: P, this: &Self) -> DebugNode<P> {
         let names = this.op.operand_names();
         let mut res = DebugNode {

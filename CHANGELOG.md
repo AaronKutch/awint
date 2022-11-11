@@ -1,6 +1,8 @@
 # Changelog
 
 ## [0.8.0] - TODO
+### Changes
+- Renamed `Node` and `Dag` to `OpNode` and `OpDag`
 
 ## [0.7.0] - 2022-08-22
 ### Additions

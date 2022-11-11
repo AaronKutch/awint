@@ -6,14 +6,14 @@ use awint_core::bw;
 use awint_macros::{extawi, inlawi};
 
 use crate::{
-    lowering::{meta::*, Dag, PNode},
+    lowering::{meta::*, OpDag, PNode},
     mimick::{Bits, ExtAwi, InlAwi},
     EvalError, Lineage,
     Op::*,
     StateEpoch,
 };
 
-impl Dag {
+impl OpDag {
     /// Lowers everything down to `Invalid`, `Opaque`, `Copy`, `StaticGet`,
     /// `StaticSet`, and `StaticLut`. New nodes that may be unlowered are
     /// colored with `visit`. Returns `true` if the node is already lowered.

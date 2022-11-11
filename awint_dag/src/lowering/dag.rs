@@ -13,15 +13,16 @@ use triple_arena::Arena;
 use Op::*;
 
 use crate::{
-    lowering::{Node, PNode},
+    lowering::{OpNode, PNode},
     state::next_state_visit_gen,
     EvalError, Op, PState,
 };
 
-/// Contains DAGs of mimicking struct operations
+/// An Operational Directed Acyclic Graph. Contains DAGs of mimicking struct
+/// `Op` operations.
 #[derive(Debug, Clone)]
-pub struct Dag {
-    pub dag: Arena<PNode, Node<PNode>>,
+pub struct OpDag {
+    pub dag: Arena<PNode, OpNode<PNode>>,
     /// for keeping nodes alive and having an ordered list for identification
     pub noted: Vec<Option<PNode>>,
     /// A kind of generation counter tracking the highest `visit_num` number
@@ -32,27 +33,27 @@ pub struct Dag {
     pub tmp_pnode_stack: Vec<PNode>,
 }
 
-impl<B: Borrow<PNode>> Index<B> for Dag {
-    type Output = Node<PNode>;
+impl<B: Borrow<PNode>> Index<B> for OpDag {
+    type Output = OpNode<PNode>;
 
-    fn index(&self, index: B) -> &Node<PNode> {
+    fn index(&self, index: B) -> &OpNode<PNode> {
         self.dag.get(*index.borrow()).unwrap()
     }
 }
 
-impl<B: Borrow<PNode>> IndexMut<B> for Dag {
-    fn index_mut(&mut self, index: B) -> &mut Node<PNode> {
+impl<B: Borrow<PNode>> IndexMut<B> for OpDag {
+    fn index_mut(&mut self, index: B) -> &mut OpNode<PNode> {
         self.dag.get_mut(*index.borrow()).unwrap()
     }
 }
 
-impl Dag {
+impl OpDag {
     /// Constructs a directed acyclic graph from the source trees of `PState`s
     /// from mimicking structs. The optional `note`s should be `Opaque` if
     /// they should remain unmutated through optimizations. The `noted` are
-    /// pushed in order to the `Dag.noted`. If a `noted` is not found in the
+    /// pushed in order to the `OpDag.noted`. If a `noted` is not found in the
     /// source trees of the `leaves` or is optimized away, its entry in
-    /// `Dag.noted` is replaced with a `None`.
+    /// `OpDag.noted` is replaced with a `None`.
     ///
     /// If an error occurs, the DAG (which may be in an unfinished or completely
     /// broken state) is still returned along with the error enum, so that debug
@@ -84,13 +85,13 @@ impl Dag {
         visit: u64,
         mut added: Option<&mut Vec<PNode>>,
     ) -> Result<(), EvalError> {
-        // this is for the state side visits not the `visit` for `Node`s
+        // this is for the state side visits not the `visit` for `OpNode`s
         let state_visit = next_state_visit_gen();
         self.tmp_stack.clear();
         for leaf in leaves {
             let leaf_state = leaf.get_state().unwrap();
             if leaf_state.visit != state_visit {
-                let p_leaf = self.dag.insert(Node {
+                let p_leaf = self.dag.insert(OpNode {
                     nzbw: leaf_state.nzbw,
                     visit,
                     op: Op::Invalid,
@@ -144,7 +145,7 @@ impl Dag {
                                 break
                             }
                         } else {
-                            let p = self.dag.insert(Node {
+                            let p = self.dag.insert(OpNode {
                                 rc: 1,
                                 nzbw: state.nzbw,
                                 op: Op::Invalid,

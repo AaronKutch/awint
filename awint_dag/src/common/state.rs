@@ -51,9 +51,10 @@ thread_local!(pub static EPOCH_GEN: RefCell<u64> = RefCell::new(0));
 /// if used after the lifetime.
 ///
 /// In most use cases, you should create a `StateEpoch` for the lifetime of a
-/// group of mimicking types that are never used after being converted to `Dag`
-/// form or used by a function like `Dag::add_group` or `Dag::graft`. Once in
-/// `Dag` form, you do not have to worry about any thread local weirdness.
+/// group of mimicking types that are never used after being converted to
+/// `OpDag` form or used by a function like `OpDag::add_group` or
+/// `OpDag::graft`. Once in `OpDag` form, you do not have to worry about any
+/// thread local weirdness.
 ///
 /// # Panics
 ///

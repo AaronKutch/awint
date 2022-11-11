@@ -65,9 +65,9 @@
 //!
 //! //#[cfg(feature = "dag")]
 //! //{
-//!     use awint::awint_dag::{Dag, Lineage};
+//!     use awint::awint_dag::{OpDag, Lineage};
 //!     let noted = [out.state()];
-//!     let (mut graph, res) = Dag::new(&noted, &noted);
+//!     let (mut graph, res) = OpDag::new(&noted, &noted);
 //!
 //!     // will do basic evaluations on DAGs
 //!     graph.eval_all_noted().unwrap();
@@ -83,7 +83,7 @@
 //!     res.unwrap();
 //!
 //!     // lower into purely static copies, gets, sets, and lookup tables.
-//!     // You will want to design algorithms on the resulting `Dag` or
+//!     // You will want to design algorithms on the resulting `OpDag` or
 //!     // further translate into another form.
 //!     graph.lower_all_noted().unwrap();
 //!
@@ -166,7 +166,7 @@ mod common;
 pub mod lowering;
 pub mod mimick;
 pub use common::{EvalError, Lineage, Op, PNode, PState, State, StateEpoch};
-pub use lowering::{Dag, Node};
+pub use lowering::{OpDag, OpNode};
 pub use mimick::primitive;
 
 /// Raw access to thread-local `State` related things

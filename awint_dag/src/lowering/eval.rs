@@ -5,11 +5,11 @@ use awint_ext::ExtAwi;
 use Op::*;
 
 use crate::{
-    lowering::{Dag, PNode},
+    lowering::{OpDag, PNode},
     EvalError, Op,
 };
 
-impl Dag {
+impl OpDag {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
     pub fn eval_node(&mut self, node: PNode, visit: u64) -> Result<(), EvalError> {

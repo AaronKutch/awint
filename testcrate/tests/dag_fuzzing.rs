@@ -2,7 +2,7 @@ use std::{cmp::min, num::NonZeroUsize};
 
 use awint::{
     awi,
-    awint_dag::{lowering::Dag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
+    awint_dag::{lowering::OpDag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
     dag,
 };
 use awint_internals::BITS;
@@ -134,7 +134,7 @@ impl Mem {
     /// Makes sure that plain evaluation works
     pub fn eval_and_verify_equal(&mut self) -> Result<(), EvalError> {
         for pair in self.a.vals() {
-            let (mut dag, res) = Dag::new(&[pair.dag.state()], &[pair.dag.state()]);
+            let (mut dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
             let leaf = dag.noted[0].unwrap();
             dag.visit_gen += 1;
@@ -151,7 +151,7 @@ impl Mem {
     /// Makes sure that lowering works
     pub fn lower_and_verify_equal(&mut self) -> Result<(), EvalError> {
         for pair in self.a.vals() {
-            let (mut dag, res) = Dag::new(&[pair.dag.state()], &[pair.dag.state()]);
+            let (mut dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
             // if all constants are known, the lowering will simply become an evaluation. We
             // convert half of the literals to opaques at random, lower the dag, and finally
@@ -824,7 +824,7 @@ fn dag_fuzzing() {
     for val in m.a.vals() {
         leaves.push(val.dag.state());
     }
-    let (mut dag, _) = Dag::new(&leaves, &leaves);
+    let (mut dag, _) = OpDag::new(&leaves, &leaves);
     dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
         .unwrap();*/
 }

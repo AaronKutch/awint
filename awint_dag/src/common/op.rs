@@ -8,7 +8,7 @@ use std::{
 use awint_ext::ExtAwi;
 use Op::*;
 
-/// Mimicking operation
+/// A mimicking `Op`eration
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> {
     // A state used transiently by some algorithms, will cause errors if reached

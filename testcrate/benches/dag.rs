@@ -2,7 +2,7 @@
 
 extern crate test;
 use awint::dag_prelude::*;
-use awint_dag::{lowering::Dag, Lineage};
+use awint_dag::{lowering::OpDag, Lineage};
 use test::Bencher;
 use triple_arena::ptr_struct;
 
@@ -16,7 +16,7 @@ fn lower_funnel(bencher: &mut Bencher) {
         let s = inlawi!(opaque: ..5);
         out.funnel(&rhs, &s).unwrap();
 
-        let (mut dag, res) = Dag::new(&[out.state()], &[out.state()]);
+        let (mut dag, res) = OpDag::new(&[out.state()], &[out.state()]);
         res.unwrap();
         dag.visit_gen += 1;
         dag.lower_tree(dag.noted.last().unwrap().unwrap(), dag.visit_gen)

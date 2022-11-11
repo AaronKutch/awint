@@ -4,7 +4,7 @@ mod lower;
 pub(crate) mod meta;
 mod node;
 
-pub use dag::Dag;
-pub use node::Node;
+pub use dag::OpDag;
+pub use node::OpNode;
 
 pub use crate::common::PNode;
