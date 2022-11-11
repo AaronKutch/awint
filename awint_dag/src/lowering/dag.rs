@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// Contains DAGs of mimicking struct operations
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Dag {
     pub dag: Arena<PNode, Node<PNode>>,
     /// for keeping nodes alive and having an ordered list for identification
