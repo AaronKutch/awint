@@ -90,10 +90,9 @@ impl Dag {
         for leaf in leaves {
             let leaf_state = leaf.get_state().unwrap();
             if leaf_state.visit != state_visit {
-                let p_leaf = self.dag.insert_with(|p_this| Node {
+                let p_leaf = self.dag.insert(Node {
                     nzbw: leaf_state.nzbw,
                     visit,
-                    p_this,
                     op: Op::Invalid,
                     rc: 0,
                     err: None,
@@ -145,9 +144,8 @@ impl Dag {
                                 break
                             }
                         } else {
-                            let p = self.dag.insert_with(|p_this| Node {
+                            let p = self.dag.insert(Node {
                                 rc: 1,
-                                p_this,
                                 nzbw: state.nzbw,
                                 op: Op::Invalid,
                                 err: None,
@@ -353,7 +351,6 @@ impl Dag {
 
         // preserve original reference count
         self[ptr].rc = graftee.rc;
-        self[ptr].p_this = graftee.p_this;
 
         // reset the `noted` to its original state
         self.noted.drain(start..);

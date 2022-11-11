@@ -34,3 +34,4 @@ rand_support = ["awint_core/rand_support"]
 serde_support = ["awint_core/serde_support", "awint_ext/serde_support"]
 # Turns on `awint_dag` support. Note: this activates `std`.
 dag = ["awint_dag", "std"]
+debug = ["awint_dag/debug"]

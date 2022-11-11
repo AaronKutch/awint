@@ -13,7 +13,7 @@ use crate::mimick::{Bits, ExtAwi, InlAwi};
 // and `set` and only literal macros within loop blocks.
 
 /// Given `inx.bw()` bits, this returns `2^inx.bw()` signals for every possible
-/// state of `inx`. The `i`th signal is true only if `inx.to_usize() == 1`.
+/// state of `inx`. The `i`th signal is true only if `inx.to_usize() == i`.
 /// `cap` optionally restricts the number of signals. If `cap` is 0, there is
 /// one signal line set to true unconditionally.
 pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {

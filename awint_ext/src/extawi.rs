@@ -323,7 +323,6 @@ impl DerefMut for ExtAwi {
     }
 }
 
-/// A quick way of getting an `&Bits` reference
 impl Index<RangeFull> for ExtAwi {
     type Output = Bits;
 
@@ -347,7 +346,6 @@ impl AsRef<Bits> for ExtAwi {
     }
 }
 
-/// A quick way of getting an `&mut Bits` reference
 impl IndexMut<RangeFull> for ExtAwi {
     #[inline]
     fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {

@@ -137,7 +137,7 @@ mod debug {
     use super::*;
     use crate::chars_to_string;
     impl DebugNodeTrait<PText> for Vec<Text> {
-        fn debug_node(this: &Self) -> DebugNode<PText> {
+        fn debug_node(_p_this: PText, this: &Self) -> DebugNode<PText> {
             let mut node = DebugNode {
                 sources: vec![],
                 center: vec![],

@@ -250,6 +250,14 @@ impl Bits {
         self.update_state(self.state_nzbw(), Opaque(vec![self.state()]));
     }
 
+    pub fn opaque_assign_with(&mut self, with: &[&Bits]) {
+        let mut v = vec![self.state()];
+        for x in with {
+            v.push(x.state());
+        }
+        self.update_state(self.state_nzbw(), Opaque(v));
+    }
+
     pub fn zero_assign(&mut self) {
         self.update_state(
             self.state_nzbw(),

@@ -19,8 +19,6 @@ pub struct Node<P: Ptr> {
     pub err: Option<EvalError>,
     /// Used in algorithms to check for visitation
     pub visit: u64,
-    /// `Ptr` to self
-    pub p_this: P,
 }
 
 /*
@@ -43,7 +41,7 @@ impl<P: Ptr> Node<P> {}
 
 #[cfg(feature = "debug")]
 impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
-    fn debug_node(this: &Self) -> DebugNode<P> {
+    fn debug_node(p_this: P, this: &Self) -> DebugNode<P> {
         let names = this.op.operand_names();
         let mut res = DebugNode {
             sources: this
@@ -76,11 +74,7 @@ impl<P: Ptr> DebugNodeTrait<P> for Node<P> {
             res.center.push(format!("ERROR: {:?}", err));
         }
         res.center.push(format!("{} - {}", this.nzbw, this.rc));
-        if this.p_this == Ptr::invalid() {
-            res.center.push("Invalid".to_owned());
-        } else {
-            res.center.push(format!("{:?}", this.p_this));
-        }
+        res.center.push(format!("{:?}", p_this));
         res
     }
 }

@@ -28,7 +28,7 @@ const MAX_CONCATS: usize = 4;
 // enough to get multiple components on each side of an unbounded filler
 const MAX_COMPS: usize = 5;
 // max total bitwidth. needs to be low so that special cases manifest
-const MAX_BW: usize = 5 * (MAX_COMPS as usize);
+const MAX_BW: usize = 5 * MAX_COMPS;
 
 #[derive(Debug, Clone, Copy)]
 enum Align {
@@ -97,10 +97,7 @@ impl<'a> Concat<'a> {
         specified_initialization: bool,
         only_one_concat: bool,
     ) -> Self {
-        let num_comps = min(
-            (((rng.next_u32() as usize) % MAX_COMPS) + 1) as usize,
-            bw.get(),
-        );
+        let num_comps = min(((rng.next_u32() as usize) % MAX_COMPS) + 1, bw.get());
         Self {
             val: ExtAwi::zero(bw),
             fill: ExtAwi::zero(bw),

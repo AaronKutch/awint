@@ -172,7 +172,7 @@ pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u1
     // tmp1 and tmp2 straddle the boundary. We have to handle three carries
     let (sum0, carry0) = tmp0.overflowing_add(tmp1.wrapping_shl(64));
     let (sum0, carry1) = sum0.overflowing_add(tmp2.wrapping_shl(64));
-    let (sum0, carry2) = sum0.overflowing_add(add as u128);
+    let (sum0, carry2) = sum0.overflowing_add(add);
     let sum1 = tmp3
         .wrapping_add(tmp1.wrapping_shr(64))
         .wrapping_add(tmp2.wrapping_shr(64))
