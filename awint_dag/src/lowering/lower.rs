@@ -20,7 +20,7 @@ impl OpDag {
     pub fn lower_node(&mut self, ptr: PNode, visit: u64) -> Result<bool, EvalError> {
         // create a temporary epoch for the grafting in this function
         let epoch = StateEpoch::new();
-        if !self.dag.contains(ptr) {
+        if !self.a.contains(ptr) {
             return Err(EvalError::InvalidPtr)
         }
         let start_op = self[ptr].op.clone();
@@ -813,6 +813,21 @@ impl OpDag {
             if let Some(note) = self.noted[i] {
                 self.lower_tree(note, self.visit_gen)?;
             }
+        }
+        Ok(())
+    }
+
+    pub fn lower_all(&mut self) -> Result<(), EvalError> {
+        self.visit_gen += 1;
+        let (mut p, mut b) = self.a.first_ptr();
+        loop {
+            if b {
+                break
+            }
+            if !matches!(self.a[p].op, StaticGet(..) | StaticSet(..) | StaticLut(..) | Copy(_) | Opaque(_)) {
+                self.lower_tree(p, self.visit_gen)?;
+            }
+            self.a.next_ptr(&mut p, &mut b);
         }
         Ok(())
     }

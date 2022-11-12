@@ -22,7 +22,7 @@ use crate::{
 /// `Op` operations.
 #[derive(Debug, Clone)]
 pub struct OpDag {
-    pub dag: Arena<PNode, OpNode<PNode>>,
+    pub a: Arena<PNode, OpNode<PNode>>,
     /// for keeping nodes alive and having an ordered list for identification
     pub noted: Vec<Option<PNode>>,
     /// A kind of generation counter tracking the highest `visit_num` number
@@ -37,13 +37,13 @@ impl<B: Borrow<PNode>> Index<B> for OpDag {
     type Output = OpNode<PNode>;
 
     fn index(&self, index: B) -> &OpNode<PNode> {
-        self.dag.get(*index.borrow()).unwrap()
+        self.a.get(*index.borrow()).unwrap()
     }
 }
 
 impl<B: Borrow<PNode>> IndexMut<B> for OpDag {
     fn index_mut(&mut self, index: B) -> &mut OpNode<PNode> {
-        self.dag.get_mut(*index.borrow()).unwrap()
+        self.a.get_mut(*index.borrow()).unwrap()
     }
 }
 
@@ -60,7 +60,7 @@ impl OpDag {
     /// tools like `render_to_svg_file` can be used.
     pub fn new(leaves: &[PState], noted: &[PState]) -> (Self, Result<(), EvalError>) {
         let mut res = Self {
-            dag: Arena::new(),
+            a: Arena::new(),
             noted: vec![],
             visit_gen: 0,
             tmp_stack: vec![],
@@ -91,7 +91,7 @@ impl OpDag {
         for leaf in leaves {
             let leaf_state = leaf.get_state().unwrap();
             if leaf_state.visit != state_visit {
-                let p_leaf = self.dag.insert(OpNode {
+                let p_leaf = self.a.insert(OpNode {
                     nzbw: leaf_state.nzbw,
                     visit,
                     op: Op::Invalid,
@@ -145,7 +145,7 @@ impl OpDag {
                                 break
                             }
                         } else {
-                            let p = self.dag.insert(OpNode {
+                            let p = self.a.insert(OpNode {
                                 rc: 1,
                                 nzbw: state.nzbw,
                                 op: Op::Invalid,
@@ -179,13 +179,13 @@ impl OpDag {
     }
 
     pub fn verify_integrity(&mut self) -> Result<(), EvalError> {
-        for v in self.dag.vals() {
+        for v in self.a.vals() {
             if let Some(ref err) = v.err {
                 return Err(err.clone())
             }
         }
         for p in self.noted.iter().flatten() {
-            if self.dag.get(*p).is_none() {
+            if self.a.get(*p).is_none() {
                 return Err(EvalError::InvalidPtr)
             }
         }
@@ -195,7 +195,7 @@ impl OpDag {
 
     /// Returns a list of pointers to all nodes in no particular order
     pub fn ptrs(&self) -> Vec<PNode> {
-        self.dag.ptrs().collect()
+        self.a.ptrs().collect()
     }
 
     /// Assumes `ptr` is a literal
@@ -241,7 +241,7 @@ impl OpDag {
 
     /// Marks existing node as noted
     pub fn mark_noted(&mut self, p: PNode) -> Option<()> {
-        let node = self.dag.get_mut(p)?;
+        let node = self.a.get_mut(p)?;
         node.rc = node.rc.checked_add(1).unwrap();
         self.noted.push(Some(p));
         Some(())
@@ -260,7 +260,7 @@ impl OpDag {
             self.tmp_pnode_stack.push(p);
             while let Some(p) = self.tmp_pnode_stack.pop() {
                 let mut delete = false;
-                if let Some(node) = self.dag.get(p) {
+                if let Some(node) = self.a.get(p) {
                     if node.rc == 0 {
                         delete = true;
                     }
@@ -275,7 +275,7 @@ impl OpDag {
                         };
                         self.tmp_pnode_stack.push(op);
                     }
-                    self.dag.remove(p).unwrap();
+                    self.a.remove(p).unwrap();
                 }
             }
         }
@@ -347,8 +347,8 @@ impl OpDag {
         // remove the temporary noted nodes
         let p = self.noted[start].unwrap();
         // this will replace the graftee's location to avoid changing downstream nodes
-        let grafted = self.dag.remove(p).unwrap();
-        let graftee = self.dag.replace_and_keep_gen(ptr, grafted).unwrap();
+        let grafted = self.a.remove(p).unwrap();
+        let graftee = self.a.replace_and_keep_gen(ptr, grafted).unwrap();
 
         // preserve original reference count
         self[ptr].rc = graftee.rc;
@@ -362,7 +362,7 @@ impl OpDag {
     #[cfg(feature = "debug")]
     pub fn render_to_svg_file(&mut self, out_file: std::path::PathBuf) -> Result<(), EvalError> {
         let res = self.verify_integrity();
-        triple_arena_render::render_to_svg_file(&self.dag, false, out_file).unwrap();
+        triple_arena_render::render_to_svg_file(&self.a, false, out_file).unwrap();
         res
     }
 }
