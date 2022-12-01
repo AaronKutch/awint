@@ -49,12 +49,13 @@ prioritized. Please open an issue or PR if you would like these implemented fast
 - We need some kind of macro for handling fallible points, instead of `unwrap` everywhere or `?`
   operators that make it difficult to determine panic positions, have a macro find locations of `?`
   operators and do stuff from there.
-- We need a macro for simpler syntax. The base `_assign` functions can have virtual counterparts
-  (e.g. `x.add_assign(y)` would have the alternative `z = x.add(y)` or `z = x + y`) and the macro
-  optimizes storage creation and routing.
+- We need a macro for optimizing 2 input, 1 output functions to our inplace style functions.
+  The base `_assign` functions can have virtual counterparts (e.g. `x.add_assign(y)` would have the
+  alternative `z = x.add(y)` or `z = x + y`) and the macro optimizes storage creation and routing.
 - Add some missing functions to the mimicking primitives in `awint_dag`
 - There are many things more to be done with `awint_dag`
 - Add more functions to `FP`
+- Some kind of matching macro
 - A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track

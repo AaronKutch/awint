@@ -31,6 +31,15 @@
 //! sink would need to be aware of all dynamic fillers in the source.
 
 // TODO
+// we can implement repeating by syntax like
+// `inlawi!( (expr)[..] * 4 )` `extawi!( var[..] * num_repeats )`, require
+// square brackets to make sure we don't have something like a dynamic `Mul`
+// implementing type
+//
+// should we implement it however? Most often it is used in single bit stuff, I
+// can't think of occurances with more than 1 bit.
+
+// TODO
 // Known issues:
 //
 // there are more cases where we could avoid buffers

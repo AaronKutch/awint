@@ -824,7 +824,10 @@ impl OpDag {
             if b {
                 break
             }
-            if !matches!(self.a[p].op, StaticGet(..) | StaticSet(..) | StaticLut(..) | Copy(_) | Opaque(_)) {
+            if !matches!(
+                self.a[p].op,
+                StaticGet(..) | StaticSet(..) | StaticLut(..) | Copy(_) | Opaque(_)
+            ) {
                 self.lower_tree(p, self.visit_gen)?;
             }
             self.a.next_ptr(&mut p, &mut b);

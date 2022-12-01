@@ -128,7 +128,7 @@ impl Bits {
     /// after the bitfield are left unchanged.
     ///
     /// ```
-    /// use awint::{Bits, inlawi, InlAwi};
+    /// use awint::{inlawi, Bits, InlAwi};
     /// // As an example, two hexadecimal digits will be overwritten
     /// // starting with the 12th digit in `y` using a bitfield with
     /// // value 0x42u8 extracted from `x`.
@@ -441,7 +441,7 @@ impl Bits {
     /// (self.bw() * (2^inx.bw()))`, `None` will be returned.
     ///
     /// ```
-    /// use awint::{Bits, inlawi, InlAwi};
+    /// use awint::{inlawi, Bits, InlAwi};
     /// let mut out = inlawi!(0u10);
     /// // lookup table consisting of 4 10-bit entries
     /// let lut = inlawi!(4u10, 3u10, 2u10, 1u10);

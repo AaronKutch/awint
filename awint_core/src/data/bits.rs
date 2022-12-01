@@ -706,8 +706,11 @@ impl fmt::LowerHex for Bits {
     /// Lowercase hexadecimal formatting.
     ///
     /// ```
-    /// use awint::{Bits, InlAwi, inlawi};
-    /// assert_eq!(format!("{:x}", inlawi!(0xfedcba9876543210u100)), "0xfedcba98_76543210_u100");
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(
+    ///     format!("{:x}", inlawi!(0xfedcba9876543210u100)),
+    ///     "0xfedcba98_76543210_u100"
+    /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_hexadecimal(f, false)
@@ -718,8 +721,11 @@ impl fmt::UpperHex for Bits {
     /// Uppercase hexadecimal formatting.
     ///
     /// ```
-    /// use awint::{Bits, InlAwi, inlawi};
-    /// assert_eq!(format!("{:X}", inlawi!(0xFEDCBA9876543210u100)), "0xFEDCBA98_76543210_u100");
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(
+    ///     format!("{:X}", inlawi!(0xFEDCBA9876543210u100)),
+    ///     "0xFEDCBA98_76543210_u100"
+    /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_hexadecimal(f, true)
@@ -730,8 +736,11 @@ impl fmt::Octal for Bits {
     /// Octal formatting.
     ///
     /// ```
-    /// use awint::{Bits, InlAwi, inlawi};
-    /// assert_eq!(format!("{:o}", inlawi!(0o776543210u100)), "0o7_76543210_u100");
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(
+    ///     format!("{:o}", inlawi!(0o776543210u100)),
+    ///     "0o7_76543210_u100"
+    /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_octal(f)
