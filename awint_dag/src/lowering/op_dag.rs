@@ -192,11 +192,6 @@ impl OpDag {
         Ok(())
     }
 
-    /// Returns a list of pointers to all nodes in no particular order
-    pub fn ptrs(&self) -> Vec<PNode> {
-        self.a.ptrs().collect()
-    }
-
     /// Assumes `ptr` is a literal
     pub fn lit(&self, ptr: PNode) -> &Bits {
         if let Literal(ref lit) = self[ptr].op {

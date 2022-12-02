@@ -2,7 +2,8 @@
 
 ## [0.8.0] - TODO
 ### Changes
-- Renamed `Node` and `Dag` to `OpNode` and `OpDag`. Updated `triple_arena` version.
+- Renamed `Node` and `Dag` to `OpNode` and `OpDag`
+- Updated `triple_arena` version, which changes some things in `awint_dag`
 
 ## [0.7.0] - 2022-08-22
 ### Additions
