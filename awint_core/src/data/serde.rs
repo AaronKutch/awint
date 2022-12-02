@@ -162,12 +162,9 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
         }
         let mut awi = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
-        let result = awi.const_as_mut().power_of_two_bytes_assign(
-            None,
-            bits.as_bytes(),
-            16,
-            pad.const_as_mut(),
-        );
+        let result =
+            awi.const_as_mut()
+                .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
@@ -196,12 +193,9 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
         }
         let mut awi = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
-        let result = awi.const_as_mut().power_of_two_bytes_assign(
-            None,
-            bits.as_bytes(),
-            16,
-            pad.const_as_mut(),
-        );
+        let result =
+            awi.const_as_mut()
+                .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }

@@ -19,39 +19,39 @@ impl OpDag {
             Invalid => return Err(EvalError::Unevaluatable),
             Opaque(_) => return Err(EvalError::Unevaluatable),
             Literal(_) => return Err(EvalError::Unevaluatable),
-            StaticLut([a], lit) => r.lut_assign(&lit, self.lit(a)),
+            StaticLut([a], lit) => r.lut_(&lit, self.lit(a)),
             StaticGet([a], inx) => {
                 if let Some(b) = self.lit(a).get(inx) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
                 }
             }
             StaticSet([a, b], inx) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.set(inx, self.bool(b)?)
                 } else {
                     None
                 }
             }
             Resize([a, b]) => {
-                r.resize_assign(self.lit(a), self.bool(b)?);
+                r.resize_(self.lit(a), self.bool(b)?);
                 Some(())
             }
             ZeroResize([a]) => {
-                r.zero_resize_assign(self.lit(a));
+                r.zero_resize_(self.lit(a));
                 Some(())
             }
             SignResize([a]) => {
-                r.sign_resize_assign(self.lit(a));
+                r.sign_resize_(self.lit(a));
                 Some(())
             }
-            Copy([a]) => r.copy_assign(self.lit(a)),
-            Lut([a, b]) => r.lut_assign(self.lit(a), self.lit(b)),
-            Funnel([a, b]) => r.funnel(self.lit(a), self.lit(b)),
+            Copy([a]) => r.copy_(self.lit(a)),
+            Lut([a, b]) => r.lut_(self.lit(a), self.lit(b)),
+            Funnel([a, b]) => r.funnel_(self.lit(a), self.lit(b)),
             CinSum([a, b, c]) => {
-                if r.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c))
+                if r.cin_sum_(self.bool(a)?, self.lit(b), self.lit(c))
                     .is_some()
                 {
                     Some(())
@@ -60,144 +60,144 @@ impl OpDag {
                 }
             }
             Not([a]) => {
-                let e = r.copy_assign(self.lit(a));
-                r.not_assign();
+                let e = r.copy_(self.lit(a));
+                r.not_();
                 e
             }
             Rev([a]) => {
-                let e = r.copy_assign(self.lit(a));
-                r.rev_assign();
+                let e = r.copy_(self.lit(a));
+                r.rev_();
                 e
             }
             Abs([a]) => {
-                let e = r.copy_assign(self.lit(a));
-                r.abs_assign();
+                let e = r.copy_(self.lit(a));
+                r.abs_();
                 e
             }
             IsZero([a]) => {
-                r.bool_assign(self.lit(a).is_zero());
+                r.bool_(self.lit(a).is_zero());
                 Some(())
             }
             IsUmax([a]) => {
-                r.bool_assign(self.lit(a).is_umax());
+                r.bool_(self.lit(a).is_umax());
                 Some(())
             }
             IsImax([a]) => {
-                r.bool_assign(self.lit(a).is_imax());
+                r.bool_(self.lit(a).is_imax());
                 Some(())
             }
             IsImin([a]) => {
-                r.bool_assign(self.lit(a).is_imin());
+                r.bool_(self.lit(a).is_imin());
                 Some(())
             }
             IsUone([a]) => {
-                r.bool_assign(self.lit(a).is_uone());
+                r.bool_(self.lit(a).is_uone());
                 Some(())
             }
             Lsb([a]) => {
-                r.bool_assign(self.lit(a).lsb());
+                r.bool_(self.lit(a).lsb());
                 Some(())
             }
             Msb([a]) => {
-                r.bool_assign(self.lit(a).msb());
+                r.bool_(self.lit(a).msb());
                 Some(())
             }
             Lz([a]) => {
-                r.usize_assign(self.lit(a).lz());
+                r.usize_(self.lit(a).lz());
                 Some(())
             }
             Tz([a]) => {
-                r.usize_assign(self.lit(a).tz());
+                r.usize_(self.lit(a).tz());
                 Some(())
             }
             Sig([a]) => {
-                r.usize_assign(self.lit(a).sig());
+                r.usize_(self.lit(a).sig());
                 Some(())
             }
             CountOnes([a]) => {
-                r.usize_assign(self.lit(a).count_ones());
+                r.usize_(self.lit(a).count_ones());
                 Some(())
             }
             Or([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.or_assign(self.lit(b))
+                if r.copy_(self.lit(a)).is_some() {
+                    r.or_(self.lit(b))
                 } else {
                     None
                 }
             }
             And([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.and_assign(self.lit(b))
+                if r.copy_(self.lit(a)).is_some() {
+                    r.and_(self.lit(b))
                 } else {
                     None
                 }
             }
             Xor([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.xor_assign(self.lit(b))
+                if r.copy_(self.lit(a)).is_some() {
+                    r.xor_(self.lit(b))
                 } else {
                     None
                 }
             }
             Shl([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.shl_assign(self.usize(b)?)
+                if r.copy_(self.lit(a)).is_some() {
+                    r.shl_(self.usize(b)?)
                 } else {
                     None
                 }
             }
             Lshr([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.lshr_assign(self.usize(b)?)
+                if r.copy_(self.lit(a)).is_some() {
+                    r.lshr_(self.usize(b)?)
                 } else {
                     None
                 }
             }
             Ashr([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.ashr_assign(self.usize(b)?)
+                if r.copy_(self.lit(a)).is_some() {
+                    r.ashr_(self.usize(b)?)
                 } else {
                     None
                 }
             }
             Rotl([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.rotl_assign(self.usize(b)?)
+                if r.copy_(self.lit(a)).is_some() {
+                    r.rotl_(self.usize(b)?)
                 } else {
                     None
                 }
             }
             Rotr([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.rotr_assign(self.usize(b)?)
+                if r.copy_(self.lit(a)).is_some() {
+                    r.rotr_(self.usize(b)?)
                 } else {
                     None
                 }
             }
             Add([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.add_assign(self.lit(b))
+                if r.copy_(self.lit(a)).is_some() {
+                    r.add_(self.lit(b))
                 } else {
                     None
                 }
             }
             Sub([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.sub_assign(self.lit(b))
+                if r.copy_(self.lit(a)).is_some() {
+                    r.sub_(self.lit(b))
                 } else {
                     None
                 }
             }
             Rsb([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.rsb_assign(self.lit(b))
+                if r.copy_(self.lit(a)).is_some() {
+                    r.rsb_(self.lit(b))
                 } else {
                     None
                 }
             }
             Eq([a, b]) => {
                 if let Some(b) = self.lit(a).const_eq(self.lit(b)) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
@@ -205,7 +205,7 @@ impl OpDag {
             }
             Ne([a, b]) => {
                 if let Some(b) = self.lit(a).const_ne(self.lit(b)) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
@@ -213,7 +213,7 @@ impl OpDag {
             }
             Ult([a, b]) => {
                 if let Some(b) = self.lit(a).ult(self.lit(b)) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
@@ -221,7 +221,7 @@ impl OpDag {
             }
             Ule([a, b]) => {
                 if let Some(b) = self.lit(a).ule(self.lit(b)) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
@@ -229,7 +229,7 @@ impl OpDag {
             }
             Ilt([a, b]) => {
                 if let Some(b) = self.lit(a).ilt(self.lit(b)) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
@@ -237,74 +237,74 @@ impl OpDag {
             }
             Ile([a, b]) => {
                 if let Some(b) = self.lit(a).ile(self.lit(b)) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
                 }
             }
             Inc([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.inc_assign(self.bool(b)?);
+                if r.copy_(self.lit(a)).is_some() {
+                    r.inc_(self.bool(b)?);
                     Some(())
                 } else {
                     None
                 }
             }
             Dec([a, b]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.dec_assign(self.bool(b)?);
+                if r.copy_(self.lit(a)).is_some() {
+                    r.dec_(self.bool(b)?);
                     Some(())
                 } else {
                     None
                 }
             }
             Neg([a, b]) => {
-                let e = r.copy_assign(self.lit(a));
-                r.neg_assign(self.bool(b)?);
+                let e = r.copy_(self.lit(a));
+                r.neg_(self.bool(b)?);
                 e
             }
             ZeroResizeOverflow([a], w) => {
                 let mut tmp_awi = ExtAwi::zero(w);
-                r.bool_assign(tmp_awi.zero_resize_assign(self.lit(a)));
+                r.bool_(tmp_awi.zero_resize_(self.lit(a)));
                 Some(())
             }
             SignResizeOverflow([a], w) => {
                 let mut tmp_awi = ExtAwi::zero(w);
-                r.bool_assign(tmp_awi.sign_resize_assign(self.lit(a)));
+                r.bool_(tmp_awi.sign_resize_(self.lit(a)));
                 Some(())
             }
             Get([a, b]) => {
                 if let Some(b) = self.lit(a).get(self.usize(b)?) {
-                    r.bool_assign(b);
+                    r.bool_(b);
                     Some(())
                 } else {
                     None
                 }
             }
             Set([a, b, c]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.set(self.usize(b)?, self.bool(c)?)
                 } else {
                     None
                 }
             }
             Mux([a, b, c]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.mux_assign(self.lit(b), self.bool(c)?)
+                if r.copy_(self.lit(a)).is_some() {
+                    r.mux_(self.lit(b), self.bool(c)?)
                 } else {
                     None
                 }
             }
             LutSet([a, b, c]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.lut_set(self.lit(b), self.lit(c))
                 } else {
                     None
                 }
             }
             Field(v) => {
-                if r.copy_assign(self.lit(v[0])).is_some() {
+                if r.copy_(self.lit(v[0])).is_some() {
                     r.field(
                         self.usize(v[1])?,
                         self.lit(v[2]),
@@ -316,36 +316,36 @@ impl OpDag {
                 }
             }
             FieldTo([a, b, c, d]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.field_to(self.usize(b)?, self.lit(c), self.usize(d)?)
                 } else {
                     None
                 }
             }
             FieldFrom([a, b, c, d]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.field_from(self.lit(b), self.usize(c)?, self.usize(d)?)
                 } else {
                     None
                 }
             }
             FieldWidth([a, b, c]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.field_width(self.lit(b), self.usize(c)?)
                 } else {
                     None
                 }
             }
             FieldBit([a, b, c, d]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
+                if r.copy_(self.lit(a)).is_some() {
                     r.field_bit(self.usize(b)?, self.lit(c), self.usize(d)?)
                 } else {
                     None
                 }
             }
             MulAdd([a, b, c]) => {
-                if r.copy_assign(self.lit(a)).is_some() {
-                    r.arb_umul_add_assign(self.lit(b), self.lit(c));
+                if r.copy_(self.lit(a)).is_some() {
+                    r.arb_umul_add_(self.lit(b), self.lit(c));
                     Some(())
                 } else {
                     None
@@ -362,8 +362,8 @@ impl OpDag {
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
                 let mut t = ExtAwi::zero(self.get_bw(b));
-                if let Some((o, _)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
-                    r.bool_assign(o);
+                if let Some((o, _)) = t.cin_sum_(self.bool(a)?, self.lit(b), self.lit(c)) {
+                    r.bool_(o);
                     Some(())
                 } else {
                     None
@@ -371,8 +371,8 @@ impl OpDag {
             }
             SignedOverflow([a, b, c]) => {
                 let mut t = ExtAwi::zero(self.get_bw(b));
-                if let Some((_, o)) = t.cin_sum_assign(self.bool(a)?, self.lit(b), self.lit(c)) {
-                    r.bool_assign(o);
+                if let Some((_, o)) = t.cin_sum_(self.bool(a)?, self.lit(b), self.lit(c)) {
+                    r.bool_(o);
                     Some(())
                 } else {
                     None
@@ -380,8 +380,8 @@ impl OpDag {
             }
             IncCout([a, b]) => {
                 let mut t = ExtAwi::zero(self.get_bw(a));
-                if t.copy_assign(self.lit(a)).is_some() {
-                    r.bool_assign(t.inc_assign(self.bool(b)?));
+                if t.copy_(self.lit(a)).is_some() {
+                    r.bool_(t.inc_(self.bool(b)?));
                     Some(())
                 } else {
                     None
@@ -389,8 +389,8 @@ impl OpDag {
             }
             DecCout([a, b]) => {
                 let mut t = ExtAwi::zero(self.get_bw(a));
-                if t.copy_assign(self.lit(a)).is_some() {
-                    r.bool_assign(t.dec_assign(self.bool(b)?));
+                if t.copy_(self.lit(a)).is_some() {
+                    r.bool_(t.dec_(self.bool(b)?));
                     Some(())
                 } else {
                     None
@@ -402,8 +402,7 @@ impl OpDag {
                 let mut t1 = ExtAwi::zero(self_w);
                 match op {
                     IQuo([a, b]) => {
-                        if let (Some(()), Some(())) =
-                            (t0.copy_assign(self.lit(a)), t1.copy_assign(self.lit(b)))
+                        if let (Some(()), Some(())) = (t0.copy_(self.lit(a)), t1.copy_(self.lit(b)))
                         {
                             Bits::idivide(&mut r, &mut t, &mut t0, &mut t1)
                         } else {
@@ -411,8 +410,7 @@ impl OpDag {
                         }
                     }
                     IRem([a, b]) => {
-                        if let (Some(()), Some(())) =
-                            (t0.copy_assign(self.lit(a)), t1.copy_assign(self.lit(b)))
+                        if let (Some(()), Some(())) = (t0.copy_(self.lit(a)), t1.copy_(self.lit(b)))
                         {
                             Bits::idivide(&mut t, &mut r, &mut t0, &mut t1)
                         } else {

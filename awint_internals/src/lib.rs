@@ -14,7 +14,8 @@
 #![allow(clippy::manual_range_contains)]
 #![allow(clippy::needless_range_loop)]
 
-// TODO when const traits are stabilized, try introducing the `BitsInternals` trait again
+// TODO when const traits are stabilized, try introducing the `BitsInternals`
+// trait again
 
 mod macros;
 mod serde_common;

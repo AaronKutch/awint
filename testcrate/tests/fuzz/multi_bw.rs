@@ -26,8 +26,8 @@ fn multi_bw_inner(
     let bw1 = x0bw1.bw();
 
     // basic resize assign
-    x1bw1.resize_assign(x0bw0, b);
-    x1bw0.resize_assign(x1bw1, b);
+    x1bw1.resize_(x0bw0, b);
+    x1bw0.resize_(x1bw1, b);
     if !x0bw0.const_eq(x1bw0)? {
         assert!(bw1 < bw0);
     }
@@ -35,19 +35,19 @@ fn multi_bw_inner(
         // only truncation should be lossy
         eq(x0bw0, x1bw0);
     } else if b {
-        x2bw0.umax_assign();
-        x2bw0.shl_assign(bw1)?;
-        x2bw0.or_assign(x0bw0)?;
+        x2bw0.umax_();
+        x2bw0.shl_(bw1)?;
+        x2bw0.or_(x0bw0)?;
         eq(x1bw0, x2bw0);
     } else {
-        x2bw0.copy_assign(x0bw0)?;
-        x2bw0.range_and_assign(0..bw1)?;
+        x2bw0.copy_(x0bw0)?;
+        x2bw0.range_and_(0..bw1)?;
         eq(x1bw0, x2bw0);
     }
 
     // zero resize assign
-    let o0 = x1bw1.zero_resize_assign(x0bw0);
-    let o1 = x1bw0.zero_resize_assign(x1bw1);
+    let o0 = x1bw1.zero_resize_(x0bw0);
+    let o1 = x1bw0.zero_resize_(x1bw1);
     // the overflow should only occur the first time if it does
     assert!(!o1);
     if o0 {
@@ -58,8 +58,8 @@ fn multi_bw_inner(
     }
 
     // sign resize assign
-    let o0 = x1bw1.sign_resize_assign(x0bw0);
-    let o1 = x1bw0.sign_resize_assign(x1bw1);
+    let o0 = x1bw1.sign_resize_(x0bw0);
+    let o1 = x1bw0.sign_resize_(x1bw1);
     assert!(!o1);
     if o0 {
         assert!(bw1 < bw0);
@@ -81,21 +81,21 @@ fn multi_bw_inner(
         (rng.next_u32() as usize) % (bw1 - width)
     };
     // set x2bw1 to what x1bw1 will be without the copied field
-    x1bw1.copy_assign(x0bw1)?;
-    x1bw1.range_and_assign(0..to).unwrap();
-    x2bw1.copy_assign(x0bw1)?;
-    x2bw1.range_and_assign((to + width)..bw1).unwrap();
-    x2bw1.or_assign(x1bw1)?;
+    x1bw1.copy_(x0bw1)?;
+    x1bw1.range_and_(0..to).unwrap();
+    x2bw1.copy_(x0bw1)?;
+    x2bw1.range_and_((to + width)..bw1).unwrap();
+    x2bw1.or_(x1bw1)?;
     // set x1bw1 to what the x1bw1 will be with only the copied field
-    x1bw0.copy_assign(x0bw0)?;
-    x1bw0.range_and_assign(from..(from + width)).unwrap();
-    x1bw0.lshr_assign(from).unwrap();
-    x1bw1.zero_resize_assign(x1bw0);
-    x1bw1.shl_assign(to).unwrap();
+    x1bw0.copy_(x0bw0)?;
+    x1bw0.range_and_(from..(from + width)).unwrap();
+    x1bw0.lshr_(from).unwrap();
+    x1bw1.zero_resize_(x1bw0);
+    x1bw1.shl_(to).unwrap();
     // combine
-    x2bw1.or_assign(x1bw1).unwrap();
+    x2bw1.or_(x1bw1).unwrap();
     // x1bw1 is done being used as a temporary
-    x1bw1.copy_assign(x0bw1)?;
+    x1bw1.copy_(x0bw1)?;
     x1bw1.field(to, x0bw0, from, width).unwrap();
     eq(x1bw1, x2bw1);
     x1bw1.field(0, x0bw0, from, width).unwrap();
@@ -112,22 +112,22 @@ fn multi_bw_inner(
     eq(x1bw1, x2bw1);
 
     // arbitrary width multiplication
-    x1bw0.copy_assign(x0bw0)?;
-    x2bw0.zero_resize_assign(x0bw1);
-    x3bw0.zero_resize_assign(x0bw2);
-    x1bw0.mul_add_assign(x2bw0, x3bw0)?;
-    x2bw0.copy_assign(x0bw0)?;
-    x2bw0.arb_umul_add_assign(x0bw1, x0bw2);
+    x1bw0.copy_(x0bw0)?;
+    x2bw0.zero_resize_(x0bw1);
+    x3bw0.zero_resize_(x0bw2);
+    x1bw0.mul_add_(x2bw0, x3bw0)?;
+    x2bw0.copy_(x0bw0)?;
+    x2bw0.arb_umul_add_(x0bw1, x0bw2);
     eq(x1bw0, x2bw0);
     // signed version
-    x1bw0.copy_assign(x0bw0)?;
-    x2bw0.sign_resize_assign(x0bw1);
-    x3bw0.sign_resize_assign(x0bw2);
-    x1bw0.mul_add_assign(x2bw0, x3bw0)?;
-    x2bw0.copy_assign(x0bw0)?;
-    x1bw1.copy_assign(x0bw1)?;
-    x1bw2.copy_assign(x0bw2)?;
-    x2bw0.arb_imul_add_assign(x1bw1, x1bw2);
+    x1bw0.copy_(x0bw0)?;
+    x2bw0.sign_resize_(x0bw1);
+    x3bw0.sign_resize_(x0bw2);
+    x1bw0.mul_add_(x2bw0, x3bw0)?;
+    x2bw0.copy_(x0bw0)?;
+    x1bw1.copy_(x0bw1)?;
+    x1bw2.copy_(x0bw2)?;
+    x2bw0.arb_imul_add_(x1bw1, x1bw2);
     // make sure it did not mutate these arguments
     eq(x1bw1, x0bw1);
     eq(x1bw2, x0bw2);
@@ -161,9 +161,9 @@ fn multi_bw_inner(
         match ExtAwi::from_str_radix(sign, &string, radix, bw(bw1)) {
             Ok(awi) => {
                 if sign.is_none() {
-                    x1bw1.zero_resize_assign(x0bw0);
+                    x1bw1.zero_resize_(x0bw0);
                 } else {
-                    x1bw1.sign_resize_assign(x0bw0);
+                    x1bw1.sign_resize_(x0bw0);
                 }
                 eq(x1bw1, &awi);
             }
@@ -232,7 +232,7 @@ pub fn u8_slice() {
         let mut x0 = ExtAwi::zero(bw(w));
         let mut x1 = ExtAwi::zero(bw(w));
         let inx = (rng.next_u32() as usize) % ((2 * (258 / 8)) + 1);
-        x0.u8_slice_assign(&array[..inx]);
+        x0.u8_slice_(&array[..inx]);
         assert!(x0.sig() <= (inx * 8));
         for (i, byte) in array.iter().take(inx).enumerate() {
             let r0 = cmp::min(i * 8, w);
@@ -240,7 +240,7 @@ pub fn u8_slice() {
             cc!(InlAwi::from_u8(*byte); .., x1[r0..r1]; ..8).unwrap();
         }
         assert_eq!(x0, x1);
-        x0.rand_assign_using(&mut rng).unwrap();
+        x0.rand_(&mut rng).unwrap();
         x0.to_u8_slice(&mut array[..inx]);
         let mut byte = InlAwi::from_u8(0);
         for (i, item) in array.iter().take(inx).enumerate() {

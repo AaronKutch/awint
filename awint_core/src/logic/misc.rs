@@ -449,13 +449,13 @@ impl Bits {
     /// let mut inx = inlawi!(0u2);
     ///
     /// // get the third entry (this is using zero indexing)
-    /// inx.usize_assign(2);
-    /// out.lut_assign(&lut, &inx).unwrap();
+    /// inx.usize_(2);
+    /// out.lut_(&lut, &inx).unwrap();
     /// assert_eq!(out, inlawi!(3u10));
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn lut_assign(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+    pub const fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         // because we later call `inx.to_usize()` and assume that it fits within
         // `inx.bw()`
         inx.assert_cleared_unused_bits();
@@ -500,7 +500,7 @@ impl Bits {
         None
     }
 
-    /// Set entry in lookup table. The inverse of [Bits::lut_assign], this uses
+    /// Set entry in lookup table. The inverse of [Bits::lut_], this uses
     /// `entry` as a bitfield to overwrite part of `self` at bit position
     /// `inx.to_usize() * entry.bw()`. If
     /// `self.bw() != (entry.bw() * (2^inx.bw()))`, `None` will be returned.
@@ -607,10 +607,10 @@ impl Bits {
     /// Multiplex by conditionally copy-assigning `rhs` to `self` if `b`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn mux_assign(&mut self, rhs: &Bits, b: bool) -> Option<()> {
+    pub const fn mux_(&mut self, rhs: &Bits, b: bool) -> Option<()> {
         if self.bw() == rhs.bw() {
             if b {
-                self.copy_assign(rhs).unwrap();
+                self.copy_(rhs).unwrap();
             }
             Some(())
         } else {

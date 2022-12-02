@@ -167,7 +167,7 @@ impl Concatenation {
                     let total_i128 = w0.checked_add(w1).unwrap();
                     let total = i128_to_nonzerousize(total_i128).unwrap();
                     let mut combined = ExtAwi::zero(total);
-                    combined.zero_resize_assign(&lit0);
+                    combined.zero_resize_(&lit0);
                     combined
                         .field_to(
                             i128_to_usize(w0).unwrap(),

@@ -24,7 +24,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// One-assigns `this`. Returns `None` if a positive one value is not
     /// representable.
     #[must_use]
-    pub fn one_assign(this: &mut Self) -> Option<()> {
+    pub fn one_(this: &mut Self) -> Option<()> {
         // if fp is negative, one can certainly not be represented
         let fp = itousize(this.fp())?;
         // if `this.signed() && fp == this.bw()`, trying to set the one would set the
@@ -32,8 +32,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
         if fp > this.bw().wrapping_sub(this.signed() as usize) {
             None
         } else {
-            this.const_as_mut().zero_assign();
-            this.const_as_mut().usize_or_assign(1, fp);
+            this.const_as_mut().zero_();
+            this.const_as_mut().usize_or_(1, fp);
             Some(())
         }
     }
@@ -53,10 +53,10 @@ impl<B: BorrowMut<Bits>> FP<B> {
         (lo, this.ibw().wrapping_sub(1).wrapping_add(lo))
     }
 
-    /// The same as [FP::truncate_assign] except it always intreprets arguments
+    /// The same as [FP::truncate_] except it always intreprets arguments
     /// as unsigned
-    pub fn utruncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) {
-        this.zero_assign();
+    pub fn utruncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) {
+        this.zero_();
         let lbb = FP::rel_sb(this);
         let rbb = FP::rel_sb(rhs);
 
@@ -81,22 +81,22 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// zeros on both ends, aligns the fixed points, and copies from `rhs`
     /// to `this`. For the case of `rhs.signed()`, the absolute value of
     /// `rhs` is used for truncation to `this` followed by
-    /// `this.neg_assign(rhs.msb() && this.signed())`.
-    pub fn truncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) {
+    /// `this.neg_(rhs.msb() && this.signed())`.
+    pub fn truncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) {
         let mut b = rhs.is_negative();
         // reinterpret as unsigned to avoid imin overflow
-        rhs.const_as_mut().neg_assign(b);
-        FP::utruncate_assign(this, rhs);
-        rhs.const_as_mut().neg_assign(b);
+        rhs.const_as_mut().neg_(b);
+        FP::utruncate_(this, rhs);
+        rhs.const_as_mut().neg_(b);
         b &= this.signed();
-        this.const_as_mut().neg_assign(b);
+        this.const_as_mut().neg_(b);
     }
 
-    /// The same as [FP::otruncate_assign] except it always intreprets arguments
+    /// The same as [FP::otruncate_] except it always intreprets arguments
     /// as unsigned
-    #[must_use = "use `utruncate_assign` if you do not need the overflow booleans"]
-    pub fn outruncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) -> (bool, bool) {
-        this.zero_assign();
+    #[must_use = "use `utruncate_` if you do not need the overflow booleans"]
+    pub fn outruncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) -> (bool, bool) {
+        this.zero_();
         if rhs.is_zero() {
             return (false, false)
         }
@@ -144,28 +144,28 @@ impl<B: BorrowMut<Bits>> FP<B> {
     }
 
     /// Overflow-truncate-assigns `rhs` to `this`. The same as
-    /// [FP::truncate_assign], except that a tuple of booleans is returned. The
+    /// [FP::truncate_], except that a tuple of booleans is returned. The
     /// first indicates if the least significant numerical bit was truncated,
     /// and the second indicates if the most significant numerical bit was
     /// truncated. Additionally, if `this.is_negative() != rhs.is_negative()`,
     /// the second overflow is set.
     ///
     /// What this means is that if transitive truncations return no overflow,
-    /// then numerical value is preserved. If only `FP::otruncate_assign(...).0`
+    /// then numerical value is preserved. If only `FP::otruncate_(...).0`
     /// is true, then less significant numerical values were changed and only
     /// some kind of truncation rounding has occured to the numerical value. If
-    /// `FP::otruncate_assign(...).1` is true, then the numerical value could be
+    /// `FP::otruncate_(...).1` is true, then the numerical value could be
     /// dramatically changed.
-    #[must_use = "use `truncate_assign` if you do not need the overflow booleans"]
-    pub fn otruncate_assign<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> (bool, bool) {
+    #[must_use = "use `truncate_` if you do not need the overflow booleans"]
+    pub fn otruncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> (bool, bool) {
         let mut b = rhs.is_negative();
         // reinterpret as unsigned to avoid imin overflow
-        rhs.const_as_mut().neg_assign(b);
-        let o = FP::outruncate_assign(this, rhs);
-        rhs.const_as_mut().neg_assign(b);
+        rhs.const_as_mut().neg_(b);
+        let o = FP::outruncate_(this, rhs);
+        rhs.const_as_mut().neg_(b);
         // imin works correctly
         b &= this.signed();
-        this.const_as_mut().neg_assign(b);
+        this.const_as_mut().neg_(b);
         (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
     }
 
@@ -221,9 +221,9 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let is_zero = this.is_zero();
         let is_negative = this.is_negative();
         let mut unsigned = ExtAwi::zero(this.nzbw());
-        unsigned.copy_assign(this).unwrap();
+        unsigned.copy_(this).unwrap();
         // reinterpret as unsigned for `imin`
-        unsigned.neg_assign(is_negative);
+        unsigned.neg_(is_negative);
         // safe because of invariants
         let tot_lz = unsigned.lz() as isize;
 
@@ -288,8 +288,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
                 // round up
                 true
             };
-            tmp.lshr_assign(calc_fp).unwrap();
-            tmp.inc_assign(inc);
+            tmp.lshr_(calc_fp).unwrap();
+            tmp.inc_(inc);
             // note: we do not unwrap here in case of resource exhaustion
             let mut s = ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, calc_digits)?;
             // trim off zeroes

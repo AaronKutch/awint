@@ -2,17 +2,20 @@
 
 ## [0.8.0] - TODO
 ### Changes
+- Renamed all `*_assign` functions to `*_` functions
+- Renamed `funnel` to `funnel_`
+- Renamed `rand_assign_using` to `rand_`
 - Renamed `Node` and `Dag` to `OpNode` and `OpDag`
 - Updated `triple_arena` version, which changes some things in `awint_dag`
 
 ## [0.7.0] - 2022-08-22
 ### Additions
 - Added `#[must_use]` where applicable
-- Added `Bits::mux_assign`
+- Added `Bits::mux_`
 - First workable version of `awint_dag`
 
 ### Changes
-- Renamed `Bits::lut` to `Bits::lut_assign`
+- Renamed `Bits::lut` to `Bits::lut_`
 - Added a second generic to some `FP` functions that allows different `Borrow<Bits>` types to work
   together
 
@@ -73,7 +76,7 @@
   are actually consistent across architectures.
 
 ### Additions
-- Added the portable `Bits::u8_slice_assign` and `Bits::to_u8_slice` functions.
+- Added the portable `Bits::u8_slice_` and `Bits::to_u8_slice` functions.
 - The hidden functions `Bits::as_bytes_full_width_nonportable` and its mutable counterpart were
   added for situations where direct byte slice references are needed, but note that these need a lot
   of special handling to make them portable.
@@ -84,7 +87,7 @@
 
 ### Changes
 - Updated to 2021 edition
-- `neg_assign` now takes a boolean that conditionally activates it
+- `neg_` now takes a boolean that conditionally activates it
 - Some string conversion functions no longer include a sign indicator in their output, and accept
   empty strings as 0
 - Renamed all `_triop` functions to `_assign` functions. The short divisions are differentiated by
@@ -96,6 +99,6 @@
   many circumstances now.
 - Added generic `FP` struct for fixed-point arithmetic and `FPType`
 - Added `const_nzbw` and `const_bw` to `InlAwi`
-- Added `lut_set`, `neg_add_assign`, `mul_assign`, `arb_umul_add_assign`, and `arb_imul_add_assign`
+- Added `lut_set`, `neg_add_`, `mul_`, `arb_umul_add_`, and `arb_imul_add_`
   to `Bits`
 - Added `from_bytes_general` and `from_str_general` to `ExtAwi`

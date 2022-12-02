@@ -130,12 +130,9 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
         let w = bw(w);
         let mut awi = ExtAwi::zero(w);
         let mut pad = ExtAwi::zero(w);
-        let result = awi.const_as_mut().power_of_two_bytes_assign(
-            None,
-            bits.as_bytes(),
-            16,
-            pad.const_as_mut(),
-        );
+        let result =
+            awi.const_as_mut()
+                .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
@@ -158,12 +155,9 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
         let w = bw(w);
         let mut awi = ExtAwi::zero(w);
         let mut pad = ExtAwi::zero(w);
-        let result = awi.const_as_mut().power_of_two_bytes_assign(
-            None,
-            bits.as_bytes(),
-            16,
-            pad.const_as_mut(),
-        );
+        let result =
+            awi.const_as_mut()
+                .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }

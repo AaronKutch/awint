@@ -48,12 +48,12 @@
 //!         let mut s2 = inlawi!(0u4);
 //!         let mut s3 = inlawi!(0u4);
 //!         cc!(self.0; s3, s2, s1, s0)?;
-//!         s2.xor_assign(&s0)?;
-//!         s3.xor_assign(&s1)?;
-//!         s1.xor_assign(&s2)?;
-//!         s0.xor_assign(&s3)?;
-//!         s3.rotl_assign(1)?;
-//!         s2.mux_assign(&input, s0.get(2)?)?;
+//!         s2.xor_(&s0)?;
+//!         s3.xor_(&s1)?;
+//!         s1.xor_(&s2)?;
+//!         s0.xor_(&s3)?;
+//!         s3.rotl_(1)?;
+//!         s2.mux_(&input, s0.get(2)?)?;
 //!         cc!(s3, s2, s1, s0; self.0)?;
 //!         Some(s2)
 //!     }
@@ -105,7 +105,7 @@
 //! ## Important Notes
 //!
 //! - If you try to use a mimicking `bool` in an `if` statement or with some
-//!   binary operations you will get an error. `Bits::mux_assign` can be used to
+//!   binary operations you will get an error. `Bits::mux_` can be used to
 //!   conditionally merge the result of two computational paths instead of using
 //!   `if` statements.
 //!
@@ -118,34 +118,34 @@
 //!   let x = inlawi!(10101010);
 //!   // make use of the primitive conversion functions to do things
 //!   let mut y = InlAwi::from_u8(0);
-//!   y.opaque_assign();
+//!   y.opaque_();
 //!
 //!   // error: expected `bool`, found struct `bool`
 //!   //if lhs.ult(&rhs).unwrap() {
-//!   //    lhs.xor_assign(&x).unwrap();
+//!   //    lhs.xor_(&x).unwrap();
 //!   //} else {
-//!   //    lhs.lshr_assign(y.to_usize()).unwrap();
+//!   //    lhs.lshr_(y.to_usize()).unwrap();
 //!   //};
 //!
 //!   // a little more cumbersome, but we get to use all the features of
 //!   // normal Rust in metaprogramming and don't have to support an entire DSL
 //!
 //!   let mut tmp0 = inlawi!(lhs; ..8).unwrap();
-//!   tmp0.xor_assign(&x).unwrap();
+//!   tmp0.xor_(&x).unwrap();
 //!   let mut tmp1 = inlawi!(lhs; ..8).unwrap();
-//!   tmp1.lshr_assign(y.to_usize()).unwrap();
+//!   tmp1.lshr_(y.to_usize()).unwrap();
 //!
 //!   let lt = lhs.ult(&rhs).unwrap();
-//!   lhs.mux_assign(&tmp0, lt).unwrap();
-//!   lhs.mux_assign(&tmp1, !lt).unwrap();
+//!   lhs.mux_(&tmp0, lt).unwrap();
+//!   lhs.mux_(&tmp1, !lt).unwrap();
 //!   ```
 //!
 //! - The mimicking types have an extra `opaque` constructor kind that has no
-//!   definitive bit pattern. This can be accessed through
-//!   `Bits::opaque_assign`, `ExtAwi::opaque(w)`, `InlAwi::opaque()`, and in
-//!   macros like `inlawi!(opaque: ..8)`. This is useful for placeholder values
-//!   in algorithms that prevents evaluation from doing anything with the sink
-//!   tree of these values.
+//!   definitive bit pattern. This can be accessed through `Bits::opaque_`,
+//!   `ExtAwi::opaque(w)`, `InlAwi::opaque()`, and in macros like
+//!   `inlawi!(opaque: ..8)`. This is useful for placeholder values in
+//!   algorithms that prevents evaluation from doing anything with the sink tree
+//!   of these values.
 //! - The macros from `awint_dag` use whatever `usize`, `ExtAwi`, `InlAwi`, and
 //!   `Bits` structs are imported in their scope. If you are mixing regular and
 //!   mimicking types and are getting name collisions in macros, you can glob

@@ -15,10 +15,10 @@ fn main() -> ! {
     let awi1 = inlawi!(54321i20);
     let mut x0 = awi0.const_as_mut();
     let x1 = awi1.const_as_ref();
-    x0.add_assign(x1).unwrap();
+    x0.add_(x1).unwrap();
     assert!(x0.is_zero());
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    x0.rand_assign_using(&mut rng).unwrap();
+    x0.rand_(&mut rng).unwrap();
     cc!(x1; x0).unwrap();
     let _ = inlawi!(umax: .., x0; ..100).unwrap();
 

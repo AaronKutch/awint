@@ -32,7 +32,7 @@ impl Bits {
     /// returns the remainder. Returns `None` if `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn short_udivide_inplace_assign(&mut self, div: usize) -> Option<usize> {
+    pub const fn short_udivide_inplace_(&mut self, div: usize) -> Option<usize> {
         if div == 0 {
             return None
         }
@@ -55,7 +55,7 @@ impl Bits {
     // `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn short_udivide_assign(&mut self, duo: &Self, div: usize) -> Option<usize> {
+    pub const fn short_udivide_(&mut self, duo: &Self, div: usize) -> Option<usize> {
         if div == 0 || self.bw() != duo.bw() {
             return None
         }
@@ -94,14 +94,14 @@ impl Bits {
         // Because `lz_diff < BITS`, the quotient will fit in one `usize`
         let mut small_quo: usize = dd_division(duo_sig_dd, div_sig_dd).0 .0;
         // using `rem` as a temporary
-        rem.copy_assign(div).unwrap();
+        rem.copy_(div).unwrap();
         let uof = rem.short_cin_mul(0, small_quo);
-        rem.rsb_assign(duo).unwrap();
+        rem.rsb_(duo).unwrap();
         if (uof != 0) || rem.msb() {
-            rem.add_assign(div).unwrap();
+            rem.add_(div).unwrap();
             small_quo -= 1;
         }
-        quo.usize_assign(small_quo);
+        quo.usize_(small_quo);
     }
 
     /// Unsigned-divides `duo` by `div` and assigns the quotient to `quo` and
@@ -130,12 +130,12 @@ impl Bits {
         // quotient is 0 or 1 branch
         if div_lz <= duo_lz {
             if duo.uge(div).unwrap() {
-                quo.uone_assign();
-                rem.copy_assign(duo).unwrap();
-                rem.sub_assign(div).unwrap();
+                quo.uone_();
+                rem.copy_(duo).unwrap();
+                rem.sub_(div).unwrap();
             } else {
-                quo.zero_assign();
-                rem.copy_assign(duo).unwrap();
+                quo.zero_();
+                rem.copy_(duo).unwrap();
             }
             return Some(())
         }
@@ -144,8 +144,8 @@ impl Bits {
         if (w - duo_lz) <= BITS {
             let tmp_duo = duo.to_usize();
             let tmp_div = div.to_usize();
-            quo.usize_assign(tmp_duo.wrapping_div(tmp_div));
-            rem.usize_assign(tmp_duo.wrapping_rem(tmp_div));
+            quo.usize_(tmp_duo.wrapping_div(tmp_div));
+            rem.usize_(tmp_duo.wrapping_rem(tmp_div));
             return Some(())
         }
 
@@ -157,10 +157,10 @@ impl Bits {
                     (duo.first(), duo.get_unchecked(1)),
                     (div.first(), div.get_unchecked(1)),
                 );
-                // using `usize_assign` to make sure other digits are zeroed
-                quo.usize_assign(tmp.0 .0);
+                // using `usize_` to make sure other digits are zeroed
+                quo.usize_(tmp.0 .0);
                 *quo.get_unchecked_mut(1) = tmp.0 .1;
-                rem.usize_assign(tmp.1 .0);
+                rem.usize_(tmp.1 .0);
                 *rem.get_unchecked_mut(1) = tmp.1 .1;
             }
             return Some(())
@@ -172,8 +172,8 @@ impl Bits {
 
         // short division branch
         if w - div_lz <= BITS {
-            let tmp = quo.short_udivide_assign(duo, div.to_usize()).unwrap();
-            rem.usize_assign(tmp);
+            let tmp = quo.short_udivide_(duo, div.to_usize()).unwrap();
+            rem.usize_(tmp);
             return Some(())
         }
 
@@ -201,9 +201,9 @@ impl Bits {
         let div_extra = w - div_lz - BITS;
         let div_sig_d = div.get_digit(div_extra);
         let div_sig_d_add1 = widen_add(div_sig_d, 1, 0);
-        quo.zero_assign();
+        quo.zero_();
         // use `rem` as "duo" from now on
-        rem.copy_assign(duo).unwrap();
+        rem.copy_(duo).unwrap();
         loop {
             let duo_extra = w - duo_lz - (BITS * 2) + 1;
             // using `<` instead of `<=` because of the change to `duo_extra`
@@ -256,7 +256,7 @@ impl Bits {
                 };
                 unsafe {
                     subdigits_mut!(quo, { next..len }, subquo, {
-                        subquo.inc_assign(carry);
+                        subquo.inc_(carry);
                     });
                 }
 
@@ -317,7 +317,7 @@ impl Bits {
                     });
                 }
                 if rem.msb() {
-                    rem.add_assign(div).unwrap();
+                    rem.add_(div).unwrap();
                     small_quo -= 1;
                 }
                 // add `quo_add` to `quo`
@@ -325,7 +325,7 @@ impl Bits {
                 *quo.first_mut() = tmp.0;
                 unsafe {
                     subdigits_mut!(quo, { 1..len }, subquo, {
-                        subquo.inc_assign(tmp.1 != 0);
+                        subquo.inc_(tmp.1 != 0);
                     });
                 }
                 return Some(())
@@ -336,8 +336,8 @@ impl Bits {
             if div_lz <= duo_lz {
                 // quotient can have 0 or 1 added to it
                 if div_lz == duo_lz && div.ule(rem).unwrap() {
-                    quo.inc_assign(true);
-                    rem.sub_assign(div).unwrap();
+                    quo.inc_(true);
+                    rem.sub_(div).unwrap();
                 }
                 return Some(())
             }
@@ -350,15 +350,15 @@ impl Bits {
                         (rem.first(), rem.get_unchecked(1)),
                         (div.first(), div.get_unchecked(1)),
                     );
-                    // using `usize_assign` to make sure other digits are zeroed
+                    // using `usize_` to make sure other digits are zeroed
                     let tmp0 = widen_add(quo.first(), tmp.0 .0, 0);
 
                     *quo.first_mut() = tmp0.0;
                     // tmp.0.1 is zero, just handle the carry now
                     subdigits_mut!(quo, { 1..len }, subquo, {
-                        subquo.inc_assign(tmp0.1 != 0);
+                        subquo.inc_(tmp0.1 != 0);
                     });
-                    rem.usize_assign(tmp.1 .0);
+                    rem.usize_(tmp.1 .0);
                     *rem.get_unchecked_mut(1) = tmp.1 .1;
                 }
                 return Some(())
@@ -384,13 +384,13 @@ impl Bits {
         }
         let duo_msb = duo.msb();
         let div_msb = div.msb();
-        duo.neg_assign(duo_msb);
-        div.neg_assign(div_msb);
+        duo.neg_(duo_msb);
+        div.neg_(div_msb);
         Bits::udivide(quo, rem, duo, div).unwrap();
-        duo.neg_assign(duo_msb);
-        rem.neg_assign(duo_msb);
-        div.neg_assign(div_msb);
-        quo.neg_assign(duo_msb != div_msb);
+        duo.neg_(duo_msb);
+        rem.neg_(duo_msb);
+        div.neg_(div_msb);
+        quo.neg_(duo_msb != div_msb);
         Some(())
     }
 }

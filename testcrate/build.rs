@@ -439,7 +439,7 @@ impl<'a> Concat<'a> {
                 }
 
                 let mut awi = ExtAwi::zero(bw(referenced_bw));
-                awi.rand_assign_using(self.rng).unwrap();
+                awi.rand_(self.rng).unwrap();
 
                 // 0 is literal, 1 is variable
                 let mut range = if comp_type == 0 {
@@ -452,8 +452,8 @@ impl<'a> Concat<'a> {
 
                 if let Some(ref mut start) = range.0 {
                     let mut tmp = ExtAwi::zero(bw(awi.bw() - *start));
-                    awi.lshr_assign(*start).unwrap();
-                    tmp.zero_resize_assign(&awi);
+                    awi.lshr_(*start).unwrap();
+                    tmp.zero_resize_(&awi);
                     awi = tmp;
                     if let Some(ref mut end) = range.1 {
                         *end -= *start;
@@ -462,7 +462,7 @@ impl<'a> Concat<'a> {
                 }
                 if let Some(end) = range.1 {
                     let mut tmp = ExtAwi::zero(bw(end));
-                    tmp.zero_resize_assign(&awi);
+                    tmp.zero_resize_(&awi);
                     awi = tmp;
                 }
                 let nzbw = awi.nzbw();
@@ -492,7 +492,7 @@ impl<'a> Concat<'a> {
             if !matches!(self.rand_usize() % 8, 0..=5) {
                 // variable
                 let mut awi = ExtAwi::zero(bw(referenced_bw));
-                awi.rand_assign_using(self.rng).unwrap();
+                awi.rand_(self.rng).unwrap();
 
                 let tmp = self.gen_variable(bitwidth, referenced_bw, &awi, false);
                 let start = tmp.0;
@@ -644,17 +644,17 @@ fn main() {
             let mut tmp = ExtAwi::zero(nzbw);
             match align {
                 Align::Ls => {
-                    tmp.zero_resize_assign(&source_fill);
+                    tmp.zero_resize_(&source_fill);
                     source_fill = tmp.clone();
-                    tmp.zero_resize_assign(&source_val);
+                    tmp.zero_resize_(&source_val);
                     source_val = tmp.clone();
                 }
                 Align::Ms => {
-                    source_fill.lshr_assign(diff).unwrap();
-                    tmp.zero_resize_assign(&source_fill);
+                    source_fill.lshr_(diff).unwrap();
+                    tmp.zero_resize_(&source_fill);
                     source_fill = tmp.clone();
-                    source_val.lshr_assign(diff).unwrap();
-                    tmp.zero_resize_assign(&source_val);
+                    source_val.lshr_(diff).unwrap();
+                    tmp.zero_resize_(&source_val);
                     source_val = tmp.clone();
                 }
                 Align::Any => unreachable!(),
@@ -668,8 +668,8 @@ fn main() {
             3 => (ExtAwi::imin(nzbw), "imin".to_owned()),
             _ => (ExtAwi::uone(nzbw), "uone".to_owned()),
         };
-        source.and_assign(&source_fill).unwrap();
-        source.or_assign(&source_val).unwrap();
+        source.and_(&source_fill).unwrap();
+        source.or_(&source_val).unwrap();
         let (macro_root, eq_fn) = if is_cc {
             ("cc".to_owned(), "eq_unit".to_owned())
         } else if is_inlawi {

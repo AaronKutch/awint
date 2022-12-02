@@ -46,7 +46,7 @@ impl Component {
                 if let Some(ref end) = self.range.end {
                     if let Some(x) = end.static_val() {
                         let mut tmp = ExtAwi::zero(i128_to_nonzerousize(x)?);
-                        tmp.zero_resize_assign(lit);
+                        tmp.zero_resize_(lit);
                         *lit = tmp;
                     }
                 }

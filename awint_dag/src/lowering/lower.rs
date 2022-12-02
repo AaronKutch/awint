@@ -141,7 +141,7 @@ impl OpDag {
             Funnel([x, s]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let s = ExtAwi::opaque(self.get_bw(s));
-                let out = funnel(&x, &s);
+                let out = funnel_(&x, &s);
                 self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
             }
             FieldFrom([lhs, rhs, from, width]) => {
@@ -376,7 +376,7 @@ impl OpDag {
             Abs([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let mut out = x.clone();
-                out.neg_assign(x.msb());
+                out.neg_(x.msb());
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             Add([lhs, rhs]) => {
@@ -389,17 +389,17 @@ impl OpDag {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut rhs_tmp = rhs.clone();
-                rhs_tmp.neg_assign(true);
+                rhs_tmp.neg_(true);
                 let mut out = lhs.clone();
-                out.add_assign(&rhs_tmp).unwrap();
+                out.add_(&rhs_tmp).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Rsb([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut out = lhs.clone();
-                out.neg_assign(true);
-                out.add_assign(&rhs).unwrap();
+                out.neg_(true);
+                out.add_(&rhs).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             FieldTo([lhs, to, rhs, width]) => {
@@ -496,7 +496,7 @@ impl OpDag {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut out = equal(&lhs, &rhs);
-                out.not_assign();
+                out.not_();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ult([lhs, rhs]) => {
@@ -504,11 +504,11 @@ impl OpDag {
                 let lhs = ExtAwi::opaque(w);
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut not_lhs = lhs.clone();
-                not_lhs.not_assign();
+                not_lhs.not_();
                 let mut tmp = ExtAwi::zero(w);
                 // TODO should probably use some short termination circuit like what
                 // `tsmear_inx` uses
-                let (out, _) = tmp.cin_sum_assign(false, &not_lhs, &rhs).unwrap();
+                let (out, _) = tmp.cin_sum_(false, &not_lhs, &rhs).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ule([lhs, rhs]) => {
@@ -516,9 +516,9 @@ impl OpDag {
                 let lhs = ExtAwi::opaque(w);
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut not_lhs = lhs.clone();
-                not_lhs.not_assign();
+                not_lhs.not_();
                 let mut tmp = ExtAwi::zero(w);
-                let (out, _) = tmp.cin_sum_assign(true, &not_lhs, &rhs).unwrap();
+                let (out, _) = tmp.cin_sum_(true, &not_lhs, &rhs).unwrap();
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ilt([lhs, rhs]) => {
@@ -530,7 +530,7 @@ impl OpDag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, lhs.msb()).unwrap();
                     tmp.set(1, rhs.msb()).unwrap();
-                    out.lut_assign(&inlawi!(0010), &tmp).unwrap();
+                    out.lut_(&inlawi!(0010), &tmp).unwrap();
                 } else {
                     let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
                     let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
@@ -541,7 +541,7 @@ impl OpDag {
                     tmp.set(2, rhs.msb()).unwrap();
                     // if `lhs.msb() != rhs.msb()` then `lhs.msb()` determines signed-less-than,
                     // otherwise `lo_lt` determines
-                    out.lut_assign(&inlawi!(10001110), &tmp).unwrap();
+                    out.lut_(&inlawi!(10001110), &tmp).unwrap();
                 }
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
@@ -554,7 +554,7 @@ impl OpDag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, lhs.msb()).unwrap();
                     tmp.set(1, rhs.msb()).unwrap();
-                    out.lut_assign(&inlawi!(1011), &tmp).unwrap();
+                    out.lut_(&inlawi!(1011), &tmp).unwrap();
                 } else {
                     let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
                     let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
@@ -563,7 +563,7 @@ impl OpDag {
                     tmp.set(0, lo_lt).unwrap();
                     tmp.set(1, lhs.msb()).unwrap();
                     tmp.set(2, rhs.msb()).unwrap();
-                    out.lut_assign(&inlawi!(10001110), &tmp).unwrap();
+                    out.lut_(&inlawi!(10001110), &tmp).unwrap();
                 }
                 self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
@@ -617,7 +617,7 @@ impl OpDag {
                 let mut out = ExtAwi::zero(bw(1));
                 let w = w.get();
                 if w < x.bw() {
-                    out.bool_assign(!extawi!(x[w..]).unwrap().is_zero());
+                    out.bool_(!extawi!(x[w..]).unwrap().is_zero());
                 }
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
@@ -631,7 +631,7 @@ impl OpDag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, critical.is_zero()).unwrap();
                     tmp.set(1, critical.is_umax()).unwrap();
-                    out.lut_assign(&inlawi!(1001), &tmp).unwrap();
+                    out.lut_(&inlawi!(1001), &tmp).unwrap();
                 }
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
@@ -660,7 +660,7 @@ impl OpDag {
                         x0.clone()
                     }
                 } else {
-                    mux_assign(&x0, &x1, &inx_tmp)
+                    mux_(&x0, &x1, &inx_tmp)
                 };
                 self.graft(ptr, v, &[
                     out.state(),
@@ -691,13 +691,13 @@ impl OpDag {
                 // keeping arguments opaque
                 let mut tmp_duo = duo.clone();
                 let mut tmp_div = div.clone();
-                tmp_duo.neg_assign(duo_msb);
-                tmp_div.neg_assign(div_msb);
+                tmp_duo.neg_(duo_msb);
+                tmp_div.neg_(div_msb);
                 let mut quo = division(&tmp_duo, &tmp_div).0;
                 let mut tmp0 = InlAwi::from(duo_msb);
                 let tmp1 = InlAwi::from(div_msb);
-                tmp0.xor_assign(&tmp1).unwrap();
-                quo.neg_assign(tmp0.to_bool());
+                tmp0.xor_(&tmp1).unwrap();
+                quo.neg_(tmp0.to_bool());
                 self.graft(ptr, v, &[quo.state(), duo.state(), div.state()])?;
             }
             IRem([duo, div]) => {
@@ -708,10 +708,10 @@ impl OpDag {
                 // keeping arguments opaque
                 let mut tmp_duo = duo.clone();
                 let mut tmp_div = div.clone();
-                tmp_duo.neg_assign(duo_msb);
-                tmp_div.neg_assign(div_msb);
+                tmp_duo.neg_(duo_msb);
+                tmp_div.neg_(div_msb);
                 let mut rem = division(&tmp_duo, &tmp_div).1;
-                rem.neg_assign(duo_msb);
+                rem.neg_(duo_msb);
                 self.graft(ptr, v, &[rem.state(), duo.state(), div.state()])?;
             }
         }

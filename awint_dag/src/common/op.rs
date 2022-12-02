@@ -186,7 +186,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             SignResizeOverflow(..) => "sign_resize_overflow",
             Lut(..) => "lut",
             Copy(_) => "copy",
-            Funnel(_) => "funnel",
+            Funnel(_) => "funnel_",
             UQuo(_) => "uquo",
             URem(_) => "urem",
             IQuo(_) => "iquo",

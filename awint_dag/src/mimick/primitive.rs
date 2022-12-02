@@ -20,7 +20,7 @@ macro_rules! unary {
     };
 }
 
-macro_rules! op_assign {
+macro_rules! op_ {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {
         $(
             impl<I> $std_trait<I> for $name where I: Into<dag::$name> {
@@ -33,14 +33,14 @@ macro_rules! op_assign {
 }
 
 macro_rules! triop {
-    ($name:ident; $($std_trait:ident $std_fn:ident $op_assign:ident),*,) => {
+    ($name:ident; $($std_trait:ident $std_fn:ident $op_:ident),*,) => {
         $(
             impl $std_trait for $name {
                 type Output = Self;
 
                 fn $std_fn(self, rhs: Self) -> Self {
                     let mut tmp = self.clone();
-                    tmp.0.$op_assign(&rhs.0).unwrap();
+                    tmp.0.$op_(&rhs.0).unwrap();
                     tmp
                 }
             }
@@ -50,7 +50,7 @@ macro_rules! triop {
 
                 fn $std_fn(self, rhs: awi::$name) -> Self {
                     let mut tmp = self.clone();
-                    tmp.0.$op_assign(&$name::from(rhs).0).unwrap();
+                    tmp.0.$op_(&$name::from(rhs).0).unwrap();
                     tmp
                 }
             }
@@ -101,23 +101,23 @@ macro_rules! prim {
             forward_debug_fmt!($name);
 
             unary!($name;
-                Not not not_assign,
+                Not not not_,
             );
 
-            op_assign!($name;
-                AddAssign add_assign add_assign,
-                SubAssign sub_assign sub_assign,
-                BitOrAssign bitor_assign or_assign,
-                BitAndAssign bitand_assign and_assign,
-                BitXorAssign bitxor_assign xor_assign,
+            op_!($name;
+                AddAssign add_assign add_,
+                SubAssign sub_assign sub_,
+                BitOrAssign bitor_assign or_,
+                BitAndAssign bitand_assign and_,
+                BitXorAssign bitxor_assign xor_,
             );
 
             triop!($name;
-                Add add add_assign,
-                Sub sub sub_assign,
-                BitOr bitor or_assign,
-                BitAnd bitand and_assign,
-                BitXor bitxor xor_assign,
+                Add add add_,
+                Sub sub sub_,
+                BitOr bitor or_,
+                BitAnd bitand and_,
+                BitXor bitxor xor_,
             );
         )*
     };
@@ -163,19 +163,19 @@ impl fmt::Debug for bool {
 forward_debug_fmt!(bool);
 
 unary!(bool;
-    Not not not_assign,
+    Not not not_,
 );
 
-op_assign!(bool;
-    BitOrAssign bitor_assign or_assign,
-    BitAndAssign bitand_assign and_assign,
-    BitXorAssign bitxor_assign xor_assign,
+op_!(bool;
+    BitOrAssign bitor_assign or_,
+    BitAndAssign bitand_assign and_,
+    BitXorAssign bitxor_assign xor_,
 );
 
 triop!(bool;
-    BitOr bitor or_assign,
-    BitAnd bitand and_assign,
-    BitXor bitxor xor_assign,
+    BitOr bitor or_,
+    BitAnd bitand and_,
+    BitXor bitxor xor_,
 );
 
 prim!(

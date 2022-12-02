@@ -73,28 +73,28 @@ fn fp_identities_inner(
 
     // truncation
     cc!(x0bw0; x3bw0)?;
-    x3bw0.neg_assign(x0bw0.is_negative());
+    x3bw0.neg_(x0bw0.is_negative());
     cc!(zero: .., x3bw0, ..align0; pad0).unwrap();
     cc!(zero: pad0; .., x2bw1, ..align1)?;
-    x2bw1.neg_assign(x0bw1.signed() && x0bw0.is_negative());
+    x2bw1.neg_(x0bw1.signed() && x0bw0.is_negative());
     cc!(x0bw0; x3bw0)?;
-    FP::truncate_assign(x3bw1, x3bw0);
+    FP::truncate_(x3bw1, x3bw0);
     // make sure arg not mutated
     eq(x3bw0, x0bw0);
     eq(x2bw1, x3bw1);
 
     // overflowing truncation
     cc!(x0bw0; x3bw0)?;
-    let _ = FP::otruncate_assign(x2bw1, x3bw0);
-    FP::truncate_assign(x3bw1, x3bw0);
+    let _ = FP::otruncate_(x2bw1, x3bw0);
+    FP::truncate_(x3bw1, x3bw0);
     // assert equal to original truncation
     eq(x2bw1, x3bw1);
     // restart
     cc!(x0bw0; x3bw0)?;
-    let o = FP::otruncate_assign(x2bw1, x3bw0);
+    let o = FP::otruncate_(x2bw1, x3bw0);
     // make sure not mutated
     eq(x3bw0, x0bw0);
-    x3bw0.neg_assign(x0bw0.is_negative());
+    x3bw0.neg_(x0bw0.is_negative());
     // find if low and high bits get cut off
     cc!(zero: .., x3bw0, ..align0; pad0).unwrap();
     if !pad0.is_zero() {
@@ -112,8 +112,8 @@ fn fp_identities_inner(
 
     // test transitive preservation of numerical value
     cc!(x0bw0; x3bw0)?;
-    let o0 = FP::otruncate_assign(x2bw1, x3bw0);
-    let o1 = FP::otruncate_assign(x4bw0, x2bw1);
+    let o0 = FP::otruncate_(x2bw1, x3bw0);
+    let o1 = FP::otruncate_(x4bw0, x2bw1);
     if !(o0.0 || o0.1 || o1.0 || o1.1) {
         eq(x3bw0, x4bw0);
     }

@@ -33,7 +33,7 @@ impl Bits {
     /// Add-assigns `lhs * rhs` to `self` and returns if overflow happened
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn short_mul_add_assign(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
+    pub const fn short_mul_add_(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
         let mut mul_carry = 0;
         let mut add_carry = 0;
         unsafe_binop_for_each_mut!(
@@ -57,7 +57,7 @@ impl Bits {
     /// operands eliminates the need for an allocating temporary.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
+    pub const fn mul_add_(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
             return None
         }
@@ -84,11 +84,11 @@ impl Bits {
     /// mutated arbitrarily.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn mul_assign(&mut self, rhs: &Self, pad: &mut Self) -> Option<()> {
+    pub const fn mul_(&mut self, rhs: &Self, pad: &mut Self) -> Option<()> {
         if self.bw() != rhs.bw() || self.bw() != pad.bw() {
             return None
         }
-        pad.zero_assign();
+        pad.zero_();
         unsafe {
             const_for!(self_i in {0..self.len()} {
                 // carry from the short multiplication
@@ -105,7 +105,7 @@ impl Bits {
             });
         }
         pad.clear_unused_bits();
-        self.copy_assign(pad).unwrap();
+        self.copy_(pad).unwrap();
         Some(())
     }
 
@@ -114,19 +114,19 @@ impl Bits {
     /// ```
     /// use awint::prelude::*;
     ///
-    /// fn arb_umul_assign(add: &mut Bits, lhs: &Bits, rhs: &Bits) {
+    /// fn arb_umul_(add: &mut Bits, lhs: &Bits, rhs: &Bits) {
     ///     let mut resized_lhs = ExtAwi::zero(add.nzbw());
     ///     // Note that this function is specified as unsigned,
-    ///     // because we use `zero_resize_assign`
-    ///     resized_lhs.zero_resize_assign(lhs);
+    ///     // because we use `zero_resize_`
+    ///     resized_lhs.zero_resize_(lhs);
     ///     let mut resized_rhs = ExtAwi::zero(add.nzbw());
-    ///     resized_rhs.zero_resize_assign(rhs);
-    ///     add.mul_add_assign(&resized_lhs, &resized_rhs).unwrap();
+    ///     resized_rhs.zero_resize_(rhs);
+    ///     add.mul_add_(&resized_lhs, &resized_rhs).unwrap();
     /// }
     /// ```
     /// except that it avoids allocation and is more efficient overall
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn arb_umul_add_assign(&mut self, lhs: &Self, rhs: &Self) {
+    pub const fn arb_umul_add_(&mut self, lhs: &Self, rhs: &Self) {
         // first, we swap references so that `x0.bw() <= x1.bw()`
         let (x0, x1) = if lhs.bw() <= rhs.bw() {
             (lhs, rhs)
@@ -184,15 +184,15 @@ impl Bits {
     /// to `self`. `duo` and `div` are marked mutable but their values are
     /// not changed by this function.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn arb_imul_add_assign(&mut self, lhs: &mut Self, rhs: &mut Self) {
+    pub const fn arb_imul_add_(&mut self, lhs: &mut Self, rhs: &mut Self) {
         let lhs_msb = lhs.msb();
         let rhs_msb = rhs.msb();
-        lhs.neg_assign(lhs_msb);
-        rhs.neg_assign(rhs_msb);
-        self.neg_assign(lhs_msb != rhs_msb);
-        self.arb_umul_add_assign(lhs, rhs);
-        lhs.neg_assign(lhs_msb);
-        rhs.neg_assign(rhs_msb);
-        self.neg_assign(lhs_msb != rhs_msb);
+        lhs.neg_(lhs_msb);
+        rhs.neg_(rhs_msb);
+        self.neg_(lhs_msb != rhs_msb);
+        self.arb_umul_add_(lhs, rhs);
+        lhs.neg_(lhs_msb);
+        rhs.neg_(rhs_msb);
+        self.neg_(lhs_msb != rhs_msb);
     }
 }

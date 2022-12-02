@@ -452,7 +452,7 @@
 //! assert_eq!(x, ExtAwi::umax(bw(8)));
 //!
 //! let mut x = extawi!(0u64);
-//! // equivalent to `x.umax_assign()`
+//! // equivalent to `x.umax_()`
 //! cc!(umax: ..; x);
 //! assert_eq!(x, ExtAwi::umax(bw(64)));
 //!
@@ -641,7 +641,7 @@
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
 //!   with full range; var_1[..]; var_2[..]; var_3[..], ...`, the macros use
-//!   `Bits::copy_assign` to directly copy without an intermediate buffer. This
+//!   `Bits::copy_` to directly copy without an intermediate buffer. This
 //!   copy assigning mode cannot copy between `Bits` references that point to
 //!   the same underlying storage, because it results in aliasing. Thus, trying
 //!   to do something like `cc!(x; x)` results in the borrow checker complaining

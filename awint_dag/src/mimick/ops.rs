@@ -167,40 +167,40 @@ macro_rules! ref_self_output_usize {
 /// # Note
 ///
 /// These functions are all mimicks of functions for [awint_ext::Bits], except
-/// for the special `opaque_assign` that can never be evaluated.
+/// for the special `opaque_` that can never be evaluated.
 impl Bits {
     unary!(
-        not_assign Not,
-        rev_assign Rev,
-        abs_assign Abs,
+        not_ Not,
+        rev_ Rev,
+        abs_ Abs,
     );
 
     binary!(
-        or_assign Or,
-        and_assign And,
-        xor_assign Xor,
-        add_assign Add,
-        sub_assign Sub,
-        rsb_assign Rsb,
+        or_ Or,
+        and_ And,
+        xor_ Xor,
+        add_ Add,
+        sub_ Sub,
+        rsb_ Rsb,
     );
 
     zero_cast!(
-        bool bool_assign  to_bool,
-        usize usize_assign to_usize,
-        u8 u8_assign to_u8,
-        u16 u16_assign to_u16,
-        u32 u32_assign to_u32,
-        u64 u64_assign to_u64,
-        u128 u128_assign to_u128,
+        bool bool_  to_bool,
+        usize usize_ to_usize,
+        u8 u8_ to_u8,
+        u16 u16_ to_u16,
+        u32 u32_ to_u32,
+        u64 u64_ to_u64,
+        u128 u128_ to_u128,
     );
 
     sign_cast!(
-        isize isize_assign to_isize,
-        i8 i8_assign to_i8,
-        i16 i16_assign to_i16,
-        i32 i32_assign to_i32,
-        i64 i64_assign to_i64,
-        i128 i128_assign to_i128,
+        isize isize_ to_isize,
+        i8 i8_ to_i8,
+        i16 i16_ to_i16,
+        i32 i32_ to_i32,
+        i64 i64_ to_i64,
+        i128 i128_ to_i128,
     );
 
     ref_self_output_bool!(
@@ -230,11 +230,11 @@ impl Bits {
     );
 
     shift!(
-        shl_assign Shl,
-        lshr_assign Lshr,
-        ashr_assign Ashr,
-        rotl_assign Rotl,
-        rotr_assign Rotr,
+        shl_ Shl,
+        lshr_ Lshr,
+        ashr_ Ashr,
+        rotl_ Rotl,
+        rotr_ Rotr,
     );
 
     ref_self_output_usize!(
@@ -244,11 +244,11 @@ impl Bits {
         count_ones CountOnes,
     );
 
-    pub fn opaque_assign(&mut self) {
+    pub fn opaque_(&mut self) {
         self.update_state(self.state_nzbw(), Opaque(vec![self.state()]));
     }
 
-    pub fn opaque_assign_with(&mut self, with: &[&Bits]) {
+    pub fn opaque_with_(&mut self, with: &[&Bits]) {
         let mut v = vec![self.state()];
         for x in with {
             v.push(x.state());
@@ -256,42 +256,42 @@ impl Bits {
         self.update_state(self.state_nzbw(), Opaque(v));
     }
 
-    pub fn zero_assign(&mut self) {
+    pub fn zero_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::zero(self.nzbw())),
         );
     }
 
-    pub fn umax_assign(&mut self) {
+    pub fn umax_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::umax(self.nzbw())),
         );
     }
 
-    pub fn imax_assign(&mut self) {
+    pub fn imax_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::imax(self.nzbw())),
         );
     }
 
-    pub fn imin_assign(&mut self) {
+    pub fn imin_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::imin(self.nzbw())),
         );
     }
 
-    pub fn uone_assign(&mut self) {
+    pub fn uone_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::uone(self.nzbw())),
         );
     }
 
-    pub fn mux_assign(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
+    pub fn mux_(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
         if self.bw() == rhs.bw() {
             self.update_state(
                 self.state_nzbw(),
@@ -304,7 +304,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn lut_assign(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+    pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {
             if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
@@ -464,27 +464,27 @@ impl Bits {
         Some(())
     }
 
-    pub fn resize_assign(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
+    pub fn resize_(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
         self.update_state(
             self.state_nzbw(),
             Resize([rhs.state(), extension.into().state()]),
         );
     }
 
-    pub fn zero_resize_assign(&mut self, rhs: &Self) -> dag::bool {
+    pub fn zero_resize_(&mut self, rhs: &Self) -> dag::bool {
         let b = dag::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
         self.update_state(self.state_nzbw(), ZeroResize([rhs.state()]));
         b
     }
 
-    pub fn sign_resize_assign(&mut self, rhs: &Self) -> dag::bool {
+    pub fn sign_resize_(&mut self, rhs: &Self) -> dag::bool {
         let b = dag::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
         self.update_state(self.state_nzbw(), SignResize([rhs.state()]));
         b
     }
 
     #[must_use]
-    pub fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
+    pub fn funnel_(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         if (s.bw() >= (BITS - 1))
             || ((1usize << s.bw()) != self.bw())
             || ((self.bw() << 1) != rhs.bw())
@@ -519,7 +519,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn mul_add_assign(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
+    pub fn mul_add_(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         if (self.bw() == lhs.bw()) && (lhs.bw() == rhs.bw()) {
             self.update_state(
                 self.state_nzbw(),
@@ -531,51 +531,51 @@ impl Bits {
         }
     }
 
-    pub fn arb_umul_add_assign(&mut self, lhs: &Bits, rhs: &Bits) {
+    pub fn arb_umul_add_(&mut self, lhs: &Bits, rhs: &Bits) {
         self.update_state(
             self.state_nzbw(),
             MulAdd([self.state(), lhs.state(), rhs.state()]),
         );
     }
 
-    pub fn arb_imul_add_assign(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
+    pub fn arb_imul_add_(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
         let mut lhs = dag::ExtAwi::from_bits(lhs);
         let mut rhs = dag::ExtAwi::from_bits(rhs);
         let lhs_msb = lhs.msb();
         let rhs_msb = rhs.msb();
-        lhs.neg_assign(lhs_msb);
-        rhs.neg_assign(rhs_msb);
-        self.neg_assign(lhs_msb);
-        self.neg_assign(rhs_msb);
+        lhs.neg_(lhs_msb);
+        rhs.neg_(rhs_msb);
+        self.neg_(lhs_msb);
+        self.neg_(rhs_msb);
         self.update_state(
             self.state_nzbw(),
             MulAdd([self.state(), lhs.state(), rhs.state()]),
         );
-        self.neg_assign(lhs_msb);
-        self.neg_assign(rhs_msb);
+        self.neg_(lhs_msb);
+        self.neg_(rhs_msb);
     }
 
-    pub fn inc_assign(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
+    pub fn inc_(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
         let out = dag::bool::new(IncCout([self.state(), b.state()]));
         self.update_state(self.state_nzbw(), Inc([self.state(), b.state()]));
         out
     }
 
-    pub fn dec_assign(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
+    pub fn dec_(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
         let out = dag::bool::new(DecCout([self.state(), b.state()]));
         self.update_state(self.state_nzbw(), Dec([self.state(), b.state()]));
         out
     }
 
-    pub fn neg_assign(&mut self, neg: impl Into<dag::bool>) {
+    pub fn neg_(&mut self, neg: impl Into<dag::bool>) {
         let b = neg.into();
         self.update_state(self.state_nzbw(), Neg([self.state(), b.state()]));
     }
 
     #[must_use]
-    pub fn cin_sum_assign(
+    pub fn cin_sum_(
         &mut self,
         cin: impl Into<dag::bool>,
         lhs: &Self,

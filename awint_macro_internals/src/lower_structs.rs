@@ -452,13 +452,13 @@ impl<'a> Lower<'a> {
             if matches!(&concat.comps[0].c_type, ComponentType::Filler) {
                 return String::new()
             }
-            // use copy_assign
+            // use copy_
             let sink = &concat.comps[0].bind.unwrap();
             if from_buf {
                 *self.binds.a_get_mut(sink) = (true, true);
                 return format!(
                     "{}({}_{},{}){};\n",
-                    self.fn_names.copy_assign,
+                    self.fn_names.copy_,
                     self.names.bind,
                     sink.inx(),
                     self.names.awi_ref,
@@ -468,7 +468,7 @@ impl<'a> Lower<'a> {
                 self.binds.a_get_mut(sink).0 = true;
                 return format!(
                     "{}({},{}_{}){};\n",
-                    self.fn_names.copy_assign,
+                    self.fn_names.copy_,
                     self.names.awi_ref,
                     self.names.bind,
                     sink.inx(),
@@ -545,7 +545,7 @@ impl<'a> Lower<'a> {
                         writeln!(
                             s,
                             "{}({}_{},{}_{}){};",
-                            self.fn_names.copy_assign,
+                            self.fn_names.copy_,
                             self.names.bind,
                             sink.inx(),
                             self.names.bind,

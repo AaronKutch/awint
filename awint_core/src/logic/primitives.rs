@@ -5,7 +5,7 @@ use crate::Bits;
 
 // TODO these could probably be optimized, check assembly
 
-macro_rules! bits_assign {
+macro_rules! bits_ {
     ($($unsigned_name:ident, $uX:ident, $signed_name:ident, $iX:ident);*;) => {
         $(
             #[const_fn(cfg(feature = "const_support"))]
@@ -84,18 +84,18 @@ macro_rules! bits_assign {
 /// than the primitive bitwidth. If the primitive is signed, then sign extension
 /// will be used if `self.bw()` is larger than the primitive bitwidth.
 impl Bits {
-    bits_assign!(
-        u8_assign, u8, i8_assign, i8;
-        u16_assign, u16, i16_assign, i16;
-        u32_assign, u32, i32_assign, i32;
-        u64_assign, u64, i64_assign, i64;
-        u128_assign, u128, i128_assign, i128;
-        usize_assign, usize, isize_assign, isize;
+    bits_!(
+        u8_, u8, i8_, i8;
+        u16_, u16, i16_, i16;
+        u32_, u32, i32_, i32;
+        u64_, u64, i64_, i64;
+        u128_, u128, i128_, i128;
+        usize_, usize, isize_, isize;
     );
 
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn bool_assign(&mut self, x: bool) {
-        self.zero_assign();
+    pub const fn bool_(&mut self, x: bool) {
+        self.zero_();
         *self.first_mut() = x as usize;
     }
 }

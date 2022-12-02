@@ -35,11 +35,11 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// #![feature(const_mut_refs)]
 /// use awint::prelude::*;
 ///
-/// const fn example(x0: &mut Bits, x1: &Bits) {
+/// const fn const_example(x0: &mut Bits, x1: &Bits) {
 ///     // when dealing with `Bits` with different bitwidths, use the
-///     // `_resize_assign` functions or the concatenations of components
+///     // `*_resize_` functions or the concatenations of components
 ///     // macros with unbounded fillers from `awint_macros`
-///     x0.sign_resize_assign(x1);
+///     x0.sign_resize_(x1);
 ///     // multiply in place by 2 for an example
 ///     x0.short_cin_mul(0, 2);
 /// }
@@ -49,10 +49,10 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// assert!(x.is_zero());
 /// // constructing an `ExtAwi` from an `InlAwi`
 /// let y = ExtAwi::from(inlawi!(-123i16));
-/// example(&mut x, &y);
+/// const_example(&mut x, &y);
 /// assert_eq!(x.as_ref(), inlawi!(-246i100).as_ref());
 /// // you can freely mix references originating from both `ExtAwi` and `InlAwi`
-/// example(&mut x, &inlawi!(0x10u16));
+/// const_example(&mut x, &inlawi!(0x10u16));
 /// assert_eq!(x, extawi!(0x20u100));
 /// ```
 #[repr(transparent)]
@@ -176,7 +176,7 @@ impl<'a> ExtAwi {
     /// `ExtAwi`.
     pub fn from_bits(bits: &Bits) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bits.nzbw());
-        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp.const_as_mut().copy_(bits).unwrap();
         tmp
     }
 
@@ -372,7 +372,7 @@ impl AsMut<Bits> for ExtAwi {
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bits.nzbw());
-        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp.const_as_mut().copy_(bits).unwrap();
         tmp
     }
 }
@@ -381,7 +381,7 @@ impl From<&Bits> for ExtAwi {
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
         let mut tmp = ExtAwi::zero(awi.nzbw());
-        tmp.const_as_mut().copy_assign(awi.const_as_ref()).unwrap();
+        tmp.const_as_mut().copy_(awi.const_as_ref()).unwrap();
         tmp
     }
 }
@@ -401,24 +401,24 @@ macro_rules! extawi_from_ty {
 
 impl ExtAwi {
     extawi_from_ty!(
-        u8 from_u8 u8_assign;
-        u16 from_u16 u16_assign;
-        u32 from_u32 u32_assign;
-        u64 from_u64 u64_assign;
-        u128 from_u128 u128_assign;
-        usize from_usize usize_assign;
-        i8 from_i8 i8_assign;
-        i16 from_i16 i16_assign;
-        i32 from_i32 i32_assign;
-        i64 from_i64 i64_assign;
-        i128 from_i128 i128_assign;
-        isize from_isize isize_assign;
+        u8 from_u8 u8_;
+        u16 from_u16 u16_;
+        u32 from_u32 u32_;
+        u64 from_u64 u64_;
+        u128 from_u128 u128_;
+        usize from_usize usize_;
+        i8 from_i8 i8_;
+        i16 from_i16 i16_;
+        i32 from_i32 i32_;
+        i64 from_i64 i64_;
+        i128 from_i128 i128_;
+        isize from_isize isize_;
     );
 
     /// Creates an `ExtAwi` with one bit set to this `bool`
     pub fn from_bool(x: bool) -> Self {
         let mut tmp = ExtAwi::zero(bw(1));
-        tmp.const_as_mut().bool_assign(x);
+        tmp.const_as_mut().bool_(x);
         tmp
     }
 }
@@ -426,7 +426,7 @@ impl ExtAwi {
 impl From<bool> for ExtAwi {
     fn from(x: bool) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bw(1));
-        tmp.const_as_mut().bool_assign(x);
+        tmp.const_as_mut().bool_(x);
         tmp
     }
 }
@@ -446,16 +446,16 @@ macro_rules! extawi_from {
 }
 
 extawi_from!(
-    u8, u8_assign;
-    u16, u16_assign;
-    u32, u32_assign;
-    u64, u64_assign;
-    u128, u128_assign;
-    usize, usize_assign;
-    i8, i8_assign;
-    i16, i16_assign;
-    i32, i32_assign;
-    i64, i64_assign;
-    i128, i128_assign;
-    isize, isize_assign;
+    u8, u8_;
+    u16, u16_;
+    u32, u32_;
+    u64, u64_;
+    u128, u128_;
+    usize, usize_;
+    i8, i8_;
+    i16, i16_;
+    i32, i32_;
+    i64, i64_;
+    i128, i128_;
+    isize, isize_;
 );

@@ -97,7 +97,7 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn copy_assign(&mut self, rhs: &Self) -> Option<()> {
+    pub fn copy_(&mut self, rhs: &Self) -> Option<()> {
         // directly use the state of `rhs`
         if self.bw() == rhs.bw() {
             self.set_state(rhs.state());

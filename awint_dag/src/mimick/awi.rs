@@ -181,7 +181,7 @@ forward_inlawi_fmt!(Display LowerHex UpperHex Octal Binary);
 impl InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
     pub fn from_bool(x: impl Into<dag::bool>) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().bool_assign(x);
+        awi.const_as_mut().bool_(x);
         awi
     }
 }
@@ -199,19 +199,19 @@ impl From<awi::bool> for InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
 }
 
 macro_rules! inlawi_from {
-    ($($w:expr, $u:ident $from_u:ident $u_assign:ident
-        $i:ident $from_i:ident $i_assign:ident);*;) => {
+    ($($w:expr, $u:ident $from_u:ident $u_:ident
+        $i:ident $from_i:ident $i_:ident);*;) => {
         $(
             impl InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
                 pub fn $from_u(x: impl Into<dag::$u>) -> Self {
                     let mut awi = Self::zero();
-                    awi.const_as_mut().$u_assign(x);
+                    awi.const_as_mut().$u_(x);
                     awi
                 }
 
                 pub fn $from_i(x: impl Into<dag::$i>) -> Self {
                     let mut awi = Self::zero();
-                    awi.const_as_mut().$i_assign(x);
+                    awi.const_as_mut().$i_(x);
                     awi
                 }
             }
@@ -244,11 +244,11 @@ macro_rules! inlawi_from {
 }
 
 inlawi_from!(
-    8, u8 from_u8 u8_assign i8 from_i8 i8_assign;
-    16, u16 from_u16 u16_assign i16 from_i16 i16_assign;
-    32, u32 from_u32 u32_assign i32 from_i32 i32_assign;
-    64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
-    128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
+    8, u8 from_u8 u8_ i8 from_i8 i8_;
+    16, u16 from_u16 u16_ i16 from_i16 i16_;
+    32, u32 from_u32 u32_ i32 from_i32 i32_;
+    64, u64 from_u64 u64_ i64 from_i64 i64_;
+    128, u128 from_u128 u128_ i128 from_i128 i128_;
 );
 
 type UsizeInlAwi =
@@ -257,13 +257,13 @@ type UsizeInlAwi =
 impl UsizeInlAwi {
     pub fn from_usize(x: impl Into<dag::usize>) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().usize_assign(x);
+        awi.const_as_mut().usize_(x);
         awi
     }
 
     pub fn from_isize(x: impl Into<dag::isize>) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().isize_assign(x);
+        awi.const_as_mut().isize_(x);
         awi
     }
 }

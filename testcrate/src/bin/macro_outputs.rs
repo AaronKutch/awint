@@ -12,7 +12,7 @@ const TEST_FN_NAMES: FnNames = FnNames {
     le_fn: "le",
     common_fn: "c_fn",
     max_fn: "max",
-    copy_assign: "copy",
+    copy_: "copy",
     field: "field",
     field_to: "field_to",
     field_from: "field_from",

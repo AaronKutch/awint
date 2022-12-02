@@ -1,7 +1,7 @@
 use awint::{awint_internals::BITS, prelude::*};
 use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 
-/// [Bits::lut_assign] needs its own test because of its special requirements
+/// [Bits::lut_] needs its own test because of its special requirements
 #[test]
 fn lut_and_field() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
@@ -18,15 +18,15 @@ fn lut_and_field() {
         for pow in 1..pow_max {
             let mul = 1 << pow;
             let mut awi_lut = ExtAwi::zero(bw(out_bw * mul));
-            awi_lut.rand_assign_using(&mut rng).unwrap();
+            awi_lut.rand_(&mut rng).unwrap();
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let out = awi_out.const_as_mut();
             let lut = awi_lut.const_as_ref();
             let inx = awi_inx.const_as_mut();
             for i in 0..mul {
-                inx.usize_assign(i);
-                out.lut_assign(lut, inx).unwrap();
-                tmp0.zero_resize_assign(out);
+                inx.usize_(i);
+                out.lut_(lut, inx).unwrap();
+                tmp0.zero_resize_(out);
                 tmp1.field_from(lut, i * out.bw(), out.bw()).unwrap();
                 assert_eq!(tmp0, tmp1);
             }
@@ -34,7 +34,7 @@ fn lut_and_field() {
     }
 }
 
-/// Test [Bits::lut_assign] and [Bits::lut_set]
+/// Test [Bits::lut_] and [Bits::lut_set]
 #[test]
 fn lut_and_lut_set() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
@@ -53,22 +53,22 @@ fn lut_and_lut_set() {
             let mul = 1 << pow;
             let mut awi_lut = ExtAwi::zero(bw(entry_bw * mul));
             let lut = awi_lut.const_as_mut();
-            lut.rand_assign_using(&mut rng).unwrap();
+            lut.rand_(&mut rng).unwrap();
             let mut awi_lut_copy = ExtAwi::zero(lut.nzbw());
             let lut_copy = awi_lut_copy.const_as_mut();
-            lut_copy.copy_assign(lut).unwrap();
+            lut_copy.copy_(lut).unwrap();
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let inx = awi_inx.const_as_mut();
             for _ in 0..mul {
-                inx.rand_assign_using(&mut rng).unwrap();
-                entry.rand_assign_using(&mut rng).unwrap();
-                entry_copy.copy_assign(entry).unwrap();
+                inx.rand_(&mut rng).unwrap();
+                entry.rand_(&mut rng).unwrap();
+                entry_copy.copy_(entry).unwrap();
                 // before `lut_set`, copy the old entry
-                entry_old.lut_assign(lut, inx).unwrap();
+                entry_old.lut_(lut, inx).unwrap();
                 // set new value
                 lut.lut_set(entry, inx).unwrap();
                 // get the value that was set
-                entry.lut_assign(lut, inx).unwrap();
+                entry.lut_(lut, inx).unwrap();
                 assert_eq!(entry, entry_copy);
                 // restore to original state and make sure nothing else was overwritten
                 lut.lut_set(entry_old, inx).unwrap();
@@ -79,7 +79,7 @@ fn lut_and_lut_set() {
 }
 
 #[test]
-fn funnel() {
+fn funnel_() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     #[cfg(miri)]
     let max_pow = 7;
@@ -91,18 +91,18 @@ fn funnel() {
         let mut awi_rhs = ExtAwi::zero(bw(2 * awi_lhs.bw()));
         let mut awi_alt0 = ExtAwi::zero(bw(awi_rhs.bw()));
         let mut awi_alt1 = ExtAwi::zero(bw(awi_lhs.bw()));
-        awi_rhs.rand_assign_using(&mut rng).unwrap();
+        awi_rhs.rand_(&mut rng).unwrap();
         let shift = awi_shift.const_as_mut();
         let lhs = awi_lhs.const_as_mut();
         let rhs = awi_rhs.const_as_mut();
         let alt0 = awi_alt0.const_as_mut();
         let alt1 = awi_alt1.const_as_mut();
         for s in 0..lhs.bw() {
-            alt0.copy_assign(rhs).unwrap();
-            alt0.lshr_assign(s).unwrap();
-            alt1.zero_resize_assign(alt0);
-            shift.usize_assign(s);
-            lhs.funnel(rhs, shift).unwrap();
+            alt0.copy_(rhs).unwrap();
+            alt0.lshr_(s).unwrap();
+            alt1.zero_resize_(alt0);
+            shift.usize_(s);
+            lhs.funnel_(rhs, shift).unwrap();
             assert_eq!(lhs, alt1);
         }
     }
@@ -114,19 +114,19 @@ fn awint_internals_test() {
     let mut lhs = inlawi!(0u128);
     let mut rhs = inlawi!(0u128);
     let mut add = inlawi!(0u128);
-    lhs.rand_assign_using(&mut rng).unwrap();
-    rhs.rand_assign_using(&mut rng).unwrap();
-    add.rand_assign_using(&mut rng).unwrap();
+    lhs.rand_(&mut rng).unwrap();
+    rhs.rand_(&mut rng).unwrap();
+    add.rand_(&mut rng).unwrap();
     let (lo, hi) =
         awint::awint_internals::widening_mul_add_u128(lhs.to_u128(), rhs.to_u128(), add.to_u128());
     let mut tmp0 = extawi!(0u128);
     let mut tmp1 = extawi!(0u128);
-    tmp0.u128_assign(lo);
-    tmp1.u128_assign(hi);
+    tmp0.u128_(lo);
+    tmp1.u128_(hi);
     let lhs = inlawi!(zero: ..,lhs;..256).unwrap();
     let rhs = inlawi!(zero: ..,rhs;..256).unwrap();
     let mut add = inlawi!(zero: ..,add;..256).unwrap();
-    add.mul_add_assign(&lhs, &rhs).unwrap();
+    add.mul_add_(&lhs, &rhs).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
 }
 

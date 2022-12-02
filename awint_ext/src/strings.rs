@@ -101,12 +101,12 @@ impl ExtAwi {
 
     /// Creates an `ExtAwi` representing the given arguments. This function
     /// performs allocation. This is a wrapper around
-    /// [awint_core::Bits::bytes_radix_assign] that zero or sign resizes the
+    /// [awint_core::Bits::bytes_radix_] that zero or sign resizes the
     /// result to match `bw`.
     ///
     /// # Errors
     ///
-    /// See the error conditions of [Bits::bytes_radix_assign]. Note that `-` is
+    /// See the error conditions of [Bits::bytes_radix_]. Note that `-` is
     /// an invalid character even though `to_vec_radix` can return `-`. This
     /// is because we need to handle both unsigned and signed integer
     /// inputs, specified only by `sign`. If the input is a negative signed
@@ -129,15 +129,15 @@ impl ExtAwi {
 
         let tmp = awi.const_as_mut();
         // note: do not unwrap in case of exhaustion
-        tmp.bytes_radix_assign(sign, src, radix, pad0.const_as_mut(), pad1.const_as_mut())?;
+        tmp.bytes_radix_(sign, src, radix, pad0.const_as_mut(), pad1.const_as_mut())?;
 
         let mut final_awi = ExtAwi::zero(bw);
         let x = final_awi.const_as_mut();
         if sign.is_none() {
-            if x.zero_resize_assign(tmp) {
+            if x.zero_resize_(tmp) {
                 return Err(Overflow)
             }
-        } else if x.sign_resize_assign(tmp) {
+        } else if x.sign_resize_(tmp) {
             return Err(Overflow)
         }
         Ok(final_awi)
@@ -240,7 +240,7 @@ impl ExtAwi {
                 None, // avoids overflow corner case
                 fraction, radix, tmp_bw,
             )?;
-            num.add_assign(f_part.const_as_mut()).unwrap();
+            num.add_(f_part.const_as_mut()).unwrap();
         }
         let mut denominator = ExtAwi::uone(tmp_bw);
         let den = denominator.const_as_mut();
@@ -255,9 +255,9 @@ impl ExtAwi {
             }
         }
         if fp < 0 {
-            den.shl_assign(fp.unsigned_abs()).unwrap();
+            den.shl_(fp.unsigned_abs()).unwrap();
         } else {
-            num.shl_assign(fp.unsigned_abs()).unwrap();
+            num.shl_(fp.unsigned_abs()).unwrap();
         }
         let mut quotient = ExtAwi::zero(tmp_bw);
         let quo = quotient.const_as_mut();
@@ -266,26 +266,26 @@ impl ExtAwi {
         Bits::udivide(quo, rem, num, den).unwrap();
         // The remainder `rem` is in the range `0..den`. We use banker's rounding to
         // choose when to round up `quo`.
-        rem.shl_assign(1).unwrap();
+        rem.shl_(1).unwrap();
         if den.ult(rem).unwrap() {
             // past the halfway point, round up
-            quo.inc_assign(true);
+            quo.inc_(true);
         } else if den == rem {
             // round to even
             let odd = quo.lsb();
-            quo.inc_assign(odd);
+            quo.inc_(odd);
         } // else truncated is correct
         if let Some(true) = sign {
-            quo.neg_assign(true);
+            quo.neg_(true);
         }
 
         let mut res = ExtAwi::zero(bw);
         let x = res.const_as_mut();
         if sign.is_none() {
-            if x.zero_resize_assign(quo) {
+            if x.zero_resize_(quo) {
                 return Err(Overflow)
             }
-        } else if x.sign_resize_assign(quo) {
+        } else if x.sign_resize_(quo) {
             return Err(Overflow)
         }
         Ok(res)
