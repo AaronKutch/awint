@@ -46,7 +46,7 @@ impl Bits {
     /// Not-assigns `self`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn not_assign(&mut self) {
-        for_each_mut!(self, x, { *x = !*x }, true);
+        unsafe_for_each_mut!(self, x, { *x = !*x }, true);
     }
 
     /// Copy-assigns the bits of `rhs` to `self`
@@ -66,21 +66,21 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn or_assign(&mut self, rhs: &Self) -> Option<()> {
-        binop_for_each_mut!(self, rhs, x, y, { *x |= y }, false)
+        unsafe_binop_for_each_mut!(self, rhs, x, y, { *x |= y }, false)
     }
 
     /// And-assigns `rhs` to `self`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn and_assign(&mut self, rhs: &Self) -> Option<()> {
-        binop_for_each_mut!(self, rhs, x, y, { *x &= y }, false)
+        unsafe_binop_for_each_mut!(self, rhs, x, y, { *x &= y }, false)
     }
 
     /// Xor-assigns `rhs` to `self`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn xor_assign(&mut self, rhs: &Self) -> Option<()> {
-        binop_for_each_mut!(self, rhs, x, y, { *x ^= y }, false)
+        unsafe_binop_for_each_mut!(self, rhs, x, y, { *x ^= y }, false)
     }
 
     /// And-assigns a range of ones to `self`. Useful for masking. An empty or

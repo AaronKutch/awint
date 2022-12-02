@@ -624,7 +624,7 @@ impl<'a> Bits {
         //    range.end - range.start,
         //);
         let digit = if val { MAX } else { 0 };
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             { range.start..range.end }

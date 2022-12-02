@@ -11,7 +11,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn short_cin_mul(&mut self, cin: usize, rhs: usize) -> usize {
         let mut carry = cin;
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             {
@@ -36,7 +36,7 @@ impl Bits {
     pub const fn short_mul_add_assign(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
         let mut mul_carry = 0;
         let mut add_carry = 0;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             lhs,
             self_x,

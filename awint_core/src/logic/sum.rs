@@ -13,7 +13,7 @@ impl Bits {
         if !cin {
             return false
         }
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             {0..(self.len() - 1)}
@@ -51,7 +51,7 @@ impl Bits {
         if cin {
             return true
         }
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             {0..(self.len() - 1)}
@@ -106,7 +106,7 @@ impl Bits {
     #[must_use]
     pub const fn add_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 0;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             rhs,
             x,
@@ -125,7 +125,7 @@ impl Bits {
     #[must_use]
     pub const fn sub_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             rhs,
             x,
@@ -144,7 +144,7 @@ impl Bits {
     #[must_use]
     pub const fn rsb_assign(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             rhs,
             x,

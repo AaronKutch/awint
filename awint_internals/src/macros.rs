@@ -28,7 +28,7 @@ macro_rules! const_for {
 
 /// `f(x)` is run on every digit from first to last.
 #[macro_export]
-macro_rules! for_each {
+macro_rules! unsafe_for_each {
     ($lhs:ident, $x:ident, $f:block) => {
         unsafe {
             // Safety: This accesses all regular digits within their bounds
@@ -51,7 +51,7 @@ macro_rules! for_each {
 
 /// `f(x)` is run on every digit from first to last.
 #[macro_export]
-macro_rules! for_each_mut {
+macro_rules! unsafe_for_each_mut {
     ($lhs:ident, $x:ident, $f:block, $clear_unused_bits:expr) => {
         unsafe {
             // Safety: This accesses all regular digits within their bounds
@@ -81,7 +81,7 @@ macro_rules! for_each_mut {
 /// If `lhs.bw() != rhs.bw()`, this returns `None`, otherwise `f(x, y)` is run
 /// on every corresponding pair of digits from first to last.
 #[macro_export]
-macro_rules! binop_for_each {
+macro_rules! unsafe_binop_for_each {
     ($lhs:ident, $rhs:ident, $x:ident, $y:ident, $f:block) => {
         if $lhs.bw() != $rhs.bw() {
             return None
@@ -136,7 +136,7 @@ macro_rules! binop_for_each {
 /// If `lhs.bw() != rhs.bw()`, this returns `None`, otherwise `f(x, y)` is run
 /// on every corresponding pair of digits from first to last.
 #[macro_export]
-macro_rules! binop_for_each_mut {
+macro_rules! unsafe_binop_for_each_mut {
     ($lhs:ident, $rhs:ident, $x:ident, $y:ident, $f:block, $clear_unused_bits:expr) => {
         if $lhs.bw() != $rhs.bw() {
             return None
