@@ -4,6 +4,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[doc(hidden)]
+pub use awint_core::awint_internals;
 pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 #[cfg(feature = "dag")]
 pub use awint_dag;

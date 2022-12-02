@@ -1,7 +1,6 @@
 use std::{fmt, num::NonZeroUsize, ops::*};
 
-use awint_ext::awi;
-use awint_internals::*;
+use awint_ext::{awi, awint_internals::*};
 
 use crate::{dag, mimick::InlAwi, Lineage, Op, PState};
 
@@ -60,12 +59,12 @@ macro_rules! triop {
 }
 
 macro_rules! prim {
-    ($($name:ident $assign:ident $bw:expr),*,) => {
+    ($($name:ident $assign:ident $w:expr),*,) => {
         $(
             /// Mimicking primitive of same name
             #[allow(non_camel_case_types)]
             #[derive(Clone, Copy)]
-            pub struct $name(InlAwi<$bw, {awi::Bits::unstable_raw_digits($bw)}>);
+            pub struct $name(InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}>);
 
             impl Lineage for $name {
                 fn state(&self) -> PState {
@@ -83,7 +82,7 @@ macro_rules! prim {
                 }
 
                 pub(crate) fn get_nzbw() -> NonZeroUsize {
-                    NonZeroUsize::new($bw).unwrap()
+                    NonZeroUsize::new($w).unwrap()
                 }
             }
 

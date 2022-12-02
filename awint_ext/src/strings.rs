@@ -2,9 +2,11 @@ use alloc::{string::String, vec::Vec};
 use core::{cmp, num::NonZeroUsize};
 
 use awint_core::Bits;
-use awint_internals::{SerdeError::*, *};
 
-use crate::ExtAwi;
+use crate::{
+    awint_internals::{SerdeError::*, *},
+    ExtAwi,
+};
 
 /// # non-`const` string representation conversion
 impl ExtAwi {
@@ -116,7 +118,7 @@ impl ExtAwi {
         radix: u8,
         bw: NonZeroUsize,
     ) -> Result<ExtAwi, SerdeError> {
-        let tmp_bw = awint_internals::bw(
+        let tmp_bw = crate::awint_internals::bw(
             (sign.is_some() as usize)
                 .checked_add(bits_upper_bound(src.len(), radix)?)
                 .ok_or(Overflow)?,
@@ -366,27 +368,27 @@ impl core::str::FromStr for ExtAwi {
                 // binary case
 
                 // do not count `_` for the bitwidth
-                let mut bw = 0;
+                let mut w = 0;
                 for c in s {
                     if *c != b'_' {
-                        bw += 1;
+                        w += 1;
                     }
                 }
-                if bw == 0 {
+                if w == 0 {
                     return Err(Empty)
                 }
-                return ExtAwi::from_bytes_radix(None, s, 2, NonZeroUsize::new(bw).unwrap())
+                return ExtAwi::from_bytes_radix(None, s, 2, bw(w))
             }
             _ => return Err(Empty),
         };
 
         // find bitwidth
-        let bw = if i.checked_add(1).ok_or(Overflow)? < s.len() {
+        let w = if i.checked_add(1).ok_or(Overflow)? < s.len() {
             match String::from_utf8(Vec::from(&s[i.checked_add(1).ok_or(Overflow)?..]))
                 .unwrap()
                 .parse::<usize>()
             {
-                Ok(bw) => bw,
+                Ok(w) => w,
                 Err(_) => return Err(InvalidChar),
             }
         } else {
@@ -422,7 +424,7 @@ impl core::str::FromStr for ExtAwi {
             return Err(Empty)
         }
 
-        match NonZeroUsize::new(bw) {
+        match NonZeroUsize::new(w) {
             None => Err(ZeroBitwidth),
             Some(bw) => ExtAwi::from_bytes_radix(sign, src, radix, bw),
         }

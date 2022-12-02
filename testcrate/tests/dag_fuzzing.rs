@@ -3,9 +3,9 @@ use std::{cmp::min, num::NonZeroUsize};
 use awint::{
     awi,
     awint_dag::{lowering::OpDag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
+    awint_internals::BITS,
     dag,
 };
-use awint_internals::BITS;
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
@@ -134,12 +134,12 @@ impl Mem {
     /// Makes sure that plain evaluation works
     pub fn eval_and_verify_equal(&mut self) -> Result<(), EvalError> {
         for pair in self.a.vals() {
-            let (mut dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
+            let (mut op_dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
-            let leaf = dag.noted[0].unwrap();
-            dag.visit_gen += 1;
-            dag.eval_tree(leaf, dag.visit_gen)?;
-            if let Op::Literal(ref lit) = dag[leaf].op {
+            let leaf = op_dag.noted[0].unwrap();
+            op_dag.visit_gen += 1;
+            op_dag.eval_tree(leaf, op_dag.visit_gen)?;
+            if let Op::Literal(ref lit) = op_dag[leaf].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
@@ -151,14 +151,14 @@ impl Mem {
     /// Makes sure that lowering works
     pub fn lower_and_verify_equal(&mut self) -> Result<(), EvalError> {
         for pair in self.a.vals() {
-            let (mut dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
+            let (mut op_dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
             res?;
             // if all constants are known, the lowering will simply become an evaluation. We
             // convert half of the literals to opaques at random, lower the dag, and finally
             // convert back and evaluate to check that the lowering did not break the DAG
             // function.
             let mut literals = vec![];
-            for (p, node) in &mut dag.dag {
+            for (p, node) in &mut op_dag.a {
                 if node.op.is_literal() && ((self.rng.next_u32() & 1) == 0) {
                     if let Op::Literal(lit) = node.op.take() {
                         literals.push((p, lit));
@@ -168,13 +168,13 @@ impl Mem {
                     }
                 }
             }
-            let leaf = dag.noted[0].unwrap();
-            dag.visit_gen += 1;
-            let res = dag.lower_tree(leaf, dag.visit_gen);
+            let leaf = op_dag.noted[0].unwrap();
+            op_dag.visit_gen += 1;
+            let res = op_dag.lower_tree(leaf, op_dag.visit_gen);
             res.unwrap();
-            //dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
+            //op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
             //    .unwrap();
-            for node in dag.dag.vals() {
+            for node in op_dag.a.vals() {
                 if !matches!(
                     node.op,
                     Op::Opaque(_)
@@ -188,16 +188,16 @@ impl Mem {
                 }
             }
             for (p, lit) in literals {
-                if let Some(op) = dag.dag.get_mut(p) {
+                if let Some(op) = op_dag.a.get_mut(p) {
                     // we are not respecting gen counters in release mode so we need this check
                     if op.op.is_opaque() {
                         op.op = Op::Literal(lit);
                     }
                 } // else the literal was culled
             }
-            dag.visit_gen += 1;
-            dag.eval_tree(leaf, dag.visit_gen)?;
-            if let Op::Literal(ref lit) = dag[leaf].op {
+            op_dag.visit_gen += 1;
+            op_dag.eval_tree(leaf, op_dag.visit_gen)?;
+            if let Op::Literal(ref lit) = op_dag[leaf].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
@@ -824,14 +824,14 @@ fn dag_fuzzing() {
     for val in m.a.vals() {
         leaves.push(val.dag.state());
     }
-    let (mut dag, _) = OpDag::new(&leaves, &leaves);
-    dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
+    let (mut op_dag, _) = OpDag::new(&leaves, &leaves);
+    op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
         .unwrap();*/
 }
 
 #[test]
 fn state_epochs() {
-    use awint_dag::primitive::u8;
+    use awint::dag::u8;
     let state = {
         let _epoch0 = StateEpoch::new();
         let x: &u8 = &7.into();

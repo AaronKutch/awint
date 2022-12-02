@@ -87,7 +87,7 @@
 //!     // further translate into another form.
 //!     graph.lower_all_noted().unwrap();
 //!
-//!     for node in graph.dag.vals() {
+//!     for node in graph.a.vals() {
 //!         use awint::awint_dag::Op::*;
 //!         assert!(matches!(
 //!             node.op,
@@ -171,7 +171,7 @@ pub use mimick::primitive;
 
 /// Raw access to thread-local `State` related things
 pub mod state {
-    pub use super::common::{
+    pub use crate::common::{
         clear_thread_local_state, next_state_visit_gen, StateEpoch, EPOCH_GEN, EPOCH_STACK,
         STATE_ARENA, STATE_VISIT_GEN,
     };

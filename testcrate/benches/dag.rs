@@ -1,8 +1,10 @@
 #![feature(test)]
 
 extern crate test;
-use awint::dag_prelude::*;
-use awint_dag::{lowering::OpDag, Lineage};
+use awint::{
+    awint_dag::{Lineage, OpDag},
+    dag_prelude::*,
+};
 use test::Bencher;
 use triple_arena::ptr_struct;
 
@@ -16,10 +18,11 @@ fn lower_funnel(bencher: &mut Bencher) {
         let s = inlawi!(opaque: ..5);
         out.funnel(&rhs, &s).unwrap();
 
-        let (mut dag, res) = OpDag::new(&[out.state()], &[out.state()]);
+        let (mut op_dag, res) = OpDag::new(&[out.state()], &[out.state()]);
         res.unwrap();
-        dag.visit_gen += 1;
-        dag.lower_tree(dag.noted.last().unwrap().unwrap(), dag.visit_gen)
+        op_dag.visit_gen += 1;
+        op_dag
+            .lower_tree(op_dag.noted.last().unwrap().unwrap(), op_dag.visit_gen)
             .unwrap();
     })
 }

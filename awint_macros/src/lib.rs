@@ -668,15 +668,15 @@ use proc_macro::TokenStream;
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth
 #[proc_macro]
 pub fn inlawi_ty(input: TokenStream) -> TokenStream {
-    let bw = input
+    let w = input
         .to_string()
         .parse::<u128>()
         .expect("Input should parse as an unsigned integer");
     assert!(
-        bw != 0,
+        w != 0,
         "Tried to make an `InlAwi` type with an invalid bitwidth of 0"
     );
-    unstable_native_inlawi_ty(bw).parse().unwrap()
+    unstable_native_inlawi_ty(w).parse().unwrap()
 }
 
 // TODO `0x1234.5678p4i32p16`

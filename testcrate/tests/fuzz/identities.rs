@@ -55,7 +55,7 @@ fn identities_inner(
     // bitwidth, because it is otherwise a pain to figure out what line the error
     // originates from.
 
-    let bw = x0.bw();
+    let w = x0.bw();
 
     // bytes check
     for b in x2
@@ -156,7 +156,7 @@ fn identities_inner(
     x4.copy_assign(x0)?;
     if s0 != 0 {
         x2.shl_assign(s0).unwrap();
-        x3.lshr_assign(bw - s0).unwrap();
+        x3.lshr_assign(w - s0).unwrap();
         x2.or_assign(x3)?;
     }
     x4.rotl_assign(s0).unwrap();
@@ -169,7 +169,7 @@ fn identities_inner(
     x2.shl_assign(s0).unwrap();
     if s1 != 0 {
         x3.umax_assign();
-        x3.lshr_assign(bw - s1).unwrap();
+        x3.lshr_assign(w - s1).unwrap();
     } else {
         x3.zero_assign();
     }
@@ -185,7 +185,7 @@ fn identities_inner(
     x2.copy_assign(x0)?;
     x3.copy_assign(x0)?;
     x4.copy_assign(x1)?;
-    x4.range_and_assign(cmp::min(bw, s0)..cmp::min(bw, s0 + BITS))
+    x4.range_and_assign(cmp::min(w, s0)..cmp::min(w, s0 + BITS))
         .unwrap();
     x2.or_assign(x4)?;
     x4.lshr_assign(s0).unwrap();
@@ -201,7 +201,7 @@ fn identities_inner(
     if x0.msb() {
         if s0 != 0 {
             x4.umax_assign();
-            x4.shl_assign(bw - s0).unwrap();
+            x4.shl_assign(w - s0).unwrap();
         } else {
             x4.zero_assign();
         }
@@ -213,17 +213,17 @@ fn identities_inner(
     x2.copy_assign(x0)?;
     x3.copy_assign(x0)?;
     x2.range_and_assign(0..s0).unwrap();
-    x3.range_and_assign(s0..bw).unwrap();
+    x3.range_and_assign(s0..w).unwrap();
     assert_eq!(x0.count_ones(), x2.count_ones() + x3.count_ones());
 
     // leading and trailing zeros
-    if x0.lz() + x0.tz() >= bw {
+    if x0.lz() + x0.tz() >= w {
         assert!(x0.is_zero());
         assert_eq!(x0.count_ones(), 0);
-        assert_eq!(x0.lz(), bw);
-        assert_eq!(x0.tz(), bw);
+        assert_eq!(x0.lz(), w);
+        assert_eq!(x0.tz(), w);
     } else {
-        assert!(x0.count_ones() <= (bw - x0.lz() - x0.tz()));
+        assert!(x0.count_ones() <= (w - x0.lz() - x0.tz()));
     }
 
     // bit get and set
@@ -432,7 +432,7 @@ fn identities_inner(
     // the signed version is handled in `identities`
 
     // const string serialization
-    if bw <= 257 {
+    if w <= 257 {
         let radix = ((rng.next_u32() % 35) + 2) as u8;
         let tmp_rng = rng.next_u32();
         let sign = if (tmp_rng & 0b1) != 0 {
@@ -468,25 +468,25 @@ fn identities_inner(
 /// gives `[0, 1, 7, 8, 15, 16, 31, 32, 63, 64, 127, 128, 255, 256, 511, 512,
 /// 1023, 1024, 1535, 1536, 2046, 2047]`.
 #[allow(dead_code)]
-fn fuzz_lengths(bw: usize) -> Vec<usize> {
-    if bw < 4 {
-        return (0..bw).collect()
+fn fuzz_lengths(w: usize) -> Vec<usize> {
+    if w < 4 {
+        return (0..w).collect()
     }
     let mut v = vec![0, 1];
     let mut x = 8;
-    while x < (bw / 2) {
+    while x < (w / 2) {
         v.push(x - 1);
         v.push(x);
         x *= 2;
     }
-    while x < (bw - 2) {
+    while x < (w - 2) {
         v.push(x - 1);
         v.push(x);
         x = x + (x / 2);
     }
     // crucial for `imin` cases
-    v.push(bw - 2);
-    v.push(bw - 1);
+    v.push(w - 2);
+    v.push(w - 1);
     v
 }
 
@@ -548,17 +548,17 @@ macro_rules! edge_cases {
 /// greatly reduced.
 pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
     let [x0, x1, x2, x3, x4, x5] = tmp;
-    let bw = x0.bw();
-    let mut rng = Xoshiro128StarStar::seed_from_u64(seed + (bw as u64));
+    let w = x0.bw();
+    let mut rng = Xoshiro128StarStar::seed_from_u64(seed + (w as u64));
 
     // edge case fuzzing
     #[cfg(not(debug_assertions))]
     {
-        let fl = fuzz_lengths(bw);
+        let fl = fuzz_lengths(w);
         edge_cases!(fl, x0, x2, {
             edge_cases!(fl, x1, x3, {
-                let s0 = (rng.next_u32() as usize) % bw;
-                let s1 = (rng.next_u32() as usize) % bw;
+                let s0 = (rng.next_u32() as usize) % w;
+                let s1 = (rng.next_u32() as usize) % w;
                 identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
             })
         })
@@ -568,8 +568,8 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
     for _ in 0..iters {
         fuzz_step(&mut rng, x0, x2);
         fuzz_step(&mut rng, x1, x2);
-        let s0 = (rng.next_u32() as usize) % bw;
-        let s1 = (rng.next_u32() as usize) % bw;
+        let s0 = (rng.next_u32() as usize) % w;
+        let s1 = (rng.next_u32() as usize) % w;
 
         identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
 

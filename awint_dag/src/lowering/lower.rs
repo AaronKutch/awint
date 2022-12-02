@@ -2,7 +2,7 @@
 
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint_core::bw;
+use awint_ext::bw;
 use awint_macros::{extawi, inlawi};
 
 use crate::{

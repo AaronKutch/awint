@@ -130,15 +130,15 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
     where
         V: MapAccess<'de>,
     {
-        let mut bw: Option<usize> = None;
+        let mut w: Option<usize> = None;
         let mut bits: Option<&str> = None;
         while let Some(key) = map.next_key()? {
             match key {
                 Field::Bw => {
-                    if bw.is_some() {
+                    if w.is_some() {
                         return Err(de::Error::duplicate_field("bw"))
                     }
-                    bw = Some(map.next_value()?);
+                    w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
@@ -148,13 +148,13 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                 }
             }
         }
-        let bw = bw.ok_or_else(|| de::Error::missing_field("bw"))?;
+        let w = w.ok_or_else(|| de::Error::missing_field("bw"))?;
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
-        if bw == 0 {
+        if w == 0 {
             // in case someone made `BW == 0` manually
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
-        if bw != BW {
+        if w != BW {
             return Err(de::Error::custom(
                 "`bw` field does not equal `BW` of `InlAwi<BW, LEN>` type this deserialization is \
                  happening on",
@@ -178,17 +178,17 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
     where
         V: SeqAccess<'de>,
     {
-        let bw: usize = seq
+        let w: usize = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
         let bits: &str = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-        if bw == 0 {
+        if w == 0 {
             // in case someone made `BW == 0` manually
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
-        if bw != BW {
+        if w != BW {
             return Err(de::Error::custom(
                 "`bw` field does not equal `BW` of `InlAwi<BW, LEN>` type this deserialization is \
                  happening on",

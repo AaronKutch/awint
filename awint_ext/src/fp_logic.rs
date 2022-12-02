@@ -6,9 +6,11 @@ use core::{
 };
 
 use awint_core::Bits;
-use awint_internals::{bits_upper_bound, SerdeError, SerdeError::*};
 
-use crate::{ExtAwi, FP};
+use crate::{
+    awint_internals::{bits_upper_bound, SerdeError, SerdeError::*},
+    ExtAwi, FP,
+};
 
 fn itousize(i: isize) -> Option<usize> {
     usize::try_from(i).ok()

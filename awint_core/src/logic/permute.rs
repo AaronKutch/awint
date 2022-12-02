@@ -426,13 +426,13 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn rotr_assign(&mut self, s: usize) -> Option<()> {
-        let bw = self.bw();
+        let w = self.bw();
         if s == 0 {
             return Some(())
-        } else if s >= bw {
+        } else if s >= w {
             return None
         }
-        self.rotl_assign(bw - s)
+        self.rotl_assign(w - s)
     }
 
     /// Reverse-bit-order-assigns `self`. The least significant bit becomes the

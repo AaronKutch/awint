@@ -1,5 +1,4 @@
-use awint::prelude::*;
-use awint_internals::BITS;
+use awint::{awint_internals::BITS, prelude::*};
 use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 
 /// [Bits::lut_assign] needs its own test because of its special requirements
@@ -119,7 +118,7 @@ fn awint_internals_test() {
     rhs.rand_assign_using(&mut rng).unwrap();
     add.rand_assign_using(&mut rng).unwrap();
     let (lo, hi) =
-        awint_internals::widening_mul_add_u128(lhs.to_u128(), rhs.to_u128(), add.to_u128());
+        awint::awint_internals::widening_mul_add_u128(lhs.to_u128(), rhs.to_u128(), add.to_u128());
     let mut tmp0 = extawi!(0u128);
     let mut tmp1 = extawi!(0u128);
     tmp0.u128_assign(lo);

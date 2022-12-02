@@ -7,8 +7,7 @@ use std::{
     vec,
 };
 
-use awint_core::Bits;
-use awint_internals::BITS;
+use awint_ext::{awint_internals::BITS, Bits};
 use triple_arena::Arena;
 use Op::*;
 

@@ -1,26 +1,26 @@
 use awint::prelude::*;
 
 macro_rules! construction {
-    ($($bw:expr)*) => {
+    ($($w:expr)*) => {
         $(
-            let inlawi = inlawi!(zero: ..$bw);
-            let extawi = ExtAwi::zero(bw($bw));
+            let inlawi = inlawi!(zero: ..$w);
+            let extawi = ExtAwi::zero(bw($w));
             assert!(inlawi.const_as_ref().is_zero());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi!(umax: ..$bw);
-            let extawi = ExtAwi::umax(bw($bw));
+            let inlawi = inlawi!(umax: ..$w);
+            let extawi = ExtAwi::umax(bw($w));
             assert!(inlawi.const_as_ref().is_umax());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi!(imax: ..$bw);
-            let extawi = ExtAwi::imax(bw($bw));
+            let inlawi = inlawi!(imax: ..$w);
+            let extawi = ExtAwi::imax(bw($w));
             assert!(inlawi.const_as_ref().is_imax());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi!(imin: ..$bw);
-            let extawi = ExtAwi::imin(bw($bw));
+            let inlawi = inlawi!(imin: ..$w);
+            let extawi = ExtAwi::imin(bw($w));
             assert!(inlawi.const_as_ref().is_imin());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
-            let inlawi = inlawi!(uone: ..$bw);
-            let extawi = ExtAwi::uone(bw($bw));
+            let inlawi = inlawi!(uone: ..$w);
+            let extawi = ExtAwi::uone(bw($w));
             assert!(inlawi.const_as_ref().is_uone());
             assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
         )*

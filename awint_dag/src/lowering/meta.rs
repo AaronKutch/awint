@@ -2,8 +2,7 @@
 
 use std::{cmp::min, mem, num::NonZeroUsize};
 
-use awint_ext::awi;
-use awint_internals::BITS;
+use awint_ext::{awi, awint_internals::BITS};
 use awint_macros::*;
 
 use crate::mimick::{Bits, ExtAwi, InlAwi};
@@ -574,12 +573,12 @@ for i in 0..lb {
 pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), inlawi_ty!(1)) {
     assert_eq!(cin.bw(), 1);
     assert_eq!(lhs.bw(), rhs.bw());
-    let bw = lhs.bw();
+    let w = lhs.bw();
     // full adder
     let lut = inlawi!(1110_1001_1001_0100);
     let mut out = ExtAwi::zero(lhs.nzbw());
     let mut carry = InlAwi::from(cin.to_bool());
-    for i in 0..bw {
+    for i in 0..w {
         let mut carry_sum = inlawi!(00);
         let mut inx = inlawi!(000);
         inx.set(0, carry.to_bool()).unwrap();
@@ -591,9 +590,9 @@ pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), in
     }
     let mut signed_overflow = inlawi!(0);
     let mut inx = inlawi!(000);
-    inx.set(0, lhs.get(bw - 1).unwrap()).unwrap();
-    inx.set(1, rhs.get(bw - 1).unwrap()).unwrap();
-    inx.set(2, out.get(bw - 1).unwrap()).unwrap();
+    inx.set(0, lhs.get(w - 1).unwrap()).unwrap();
+    inx.set(1, rhs.get(w - 1).unwrap()).unwrap();
+    inx.set(2, out.get(w - 1).unwrap()).unwrap();
     signed_overflow
         .lut_assign(&inlawi!(0001_1000), &inx)
         .unwrap();

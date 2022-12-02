@@ -7,8 +7,10 @@ use std::{
     rc::Rc,
 };
 
-use awint_ext::awi;
-use awint_internals::*;
+use awint_ext::{
+    awi,
+    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
+};
 
 use crate::{dag, Bits, Lineage, Op, PState};
 
@@ -329,58 +331,58 @@ impl ExtAwi {
         Self::from_state(bits.state())
     }
 
-    pub fn opaque(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Opaque(vec![]))
+    pub fn opaque(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Opaque(vec![]))
     }
 
-    pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::zero(bw)))
+    pub fn zero(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::zero(w)))
     }
 
-    pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::umax(bw)))
+    pub fn umax(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::umax(w)))
     }
 
-    pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::imax(bw)))
+    pub fn imax(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::imax(w)))
     }
 
-    pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::imin(bw)))
+    pub fn imin(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::imin(w)))
     }
 
-    pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::uone(bw)))
-    }
-
-    #[doc(hidden)]
-    pub fn panicking_opaque(bw: awi::usize) -> Self {
-        Self::opaque(NonZeroUsize::new(bw).unwrap())
+    pub fn uone(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::uone(w)))
     }
 
     #[doc(hidden)]
-    pub fn panicking_zero(bw: awi::usize) -> Self {
-        Self::zero(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_opaque(w: awi::usize) -> Self {
+        Self::opaque(NonZeroUsize::new(w).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_umax(bw: awi::usize) -> Self {
-        Self::umax(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_zero(w: awi::usize) -> Self {
+        Self::zero(NonZeroUsize::new(w).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_imax(bw: awi::usize) -> Self {
-        Self::imax(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_umax(w: awi::usize) -> Self {
+        Self::umax(NonZeroUsize::new(w).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_imin(bw: awi::usize) -> Self {
-        Self::imin(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_imax(w: awi::usize) -> Self {
+        Self::imax(NonZeroUsize::new(w).unwrap())
     }
 
     #[doc(hidden)]
-    pub fn panicking_uone(bw: awi::usize) -> Self {
-        Self::uone(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_imin(w: awi::usize) -> Self {
+        Self::imin(NonZeroUsize::new(w).unwrap())
+    }
+
+    #[doc(hidden)]
+    pub fn panicking_uone(w: awi::usize) -> Self {
+        Self::uone(NonZeroUsize::new(w).unwrap())
     }
 }
 

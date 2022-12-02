@@ -23,8 +23,8 @@ impl Bits {
     /// `target_pointer_width` because it corresponds to whatever architecture
     /// the procedural macro crate is running for).
     #[inline]
-    pub const fn unstable_raw_digits(bw: usize) -> usize {
-        raw_digits(bw)
+    pub const fn unstable_raw_digits(w: usize) -> usize {
+        raw_digits(w)
     }
 
     #[inline]

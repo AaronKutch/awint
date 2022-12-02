@@ -1,20 +1,26 @@
-//! This crate contains common utilities for crates within the `awint` system.
-//! Some of these are highly unsafe macros that were only placed here because
+//! This crate contains common developer utilities for crates within the `awint`
+//! system, such as macros that needed a separate crate because
 //! `#[macro_export]` unconditionally causes macros to be publicly accessible.
-//! To prevent them from being accessible from intended user-facing crates, this
-//! `_internals` crate was made. The safety requirements of these macros may
-//! change over time, so this crate should never be used outside of this system.
+//! In rare circumstances, someone might want to use `BitsInternals` for new
+//! storage types or highly optimized routines, but most users should never have
+//! to interact with this. Be aware that safety requirements can change over
+//! time, check `bits.rs` under `awint_core`.
+//!
+//! There is a hidden reexport of this crate for `awint_core`, `awint_ext`, and
+//! `awint`.
 
 #![no_std]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
 #![allow(clippy::needless_range_loop)]
 
+mod bits_internals;
 mod macros;
 mod serde_common;
 
 use core::num::NonZeroUsize;
 
+pub use bits_internals::BitsInternals;
 pub use serde_common::*;
 
 /// Maximum bitwidth of an inline `Awi`
@@ -29,56 +35,56 @@ pub const MAX: usize = usize::MAX;
 ///
 /// # Panics
 ///
-/// If `bw == 0`, this function will panic.
+/// If `w == 0`, this function will panic.
 #[inline]
 #[track_caller]
-pub const fn bw(bw: usize) -> NonZeroUsize {
-    match NonZeroUsize::new(bw) {
+pub const fn bw(w: usize) -> NonZeroUsize {
+    match NonZeroUsize::new(w) {
         None => {
             panic!("tried to construct an invalid bitwidth of 0 using the `awint::bw` function")
         }
-        Some(bw) => bw,
+        Some(w) => w,
     }
 }
 
-/// Returns the number of extra bits given `bw`
+/// Returns the number of extra bits given `w`
 #[inline]
-pub const fn extra_u(bw: usize) -> usize {
-    bw & (BITS - 1)
+pub const fn extra_u(w: usize) -> usize {
+    w & (BITS - 1)
 }
 
 /// Returns the number of _whole_ digits (not including a digit with unused
-/// bits) given `bw`
+/// bits) given `w`
 #[inline]
-pub const fn digits_u(bw: usize) -> usize {
-    bw.wrapping_shr(BITS.trailing_zeros())
+pub const fn digits_u(w: usize) -> usize {
+    w.wrapping_shr(BITS.trailing_zeros())
 }
 
-/// Returns the number of extra bits given `bw`
+/// Returns the number of extra bits given `w`
 #[inline]
-pub const fn extra(bw: NonZeroUsize) -> usize {
-    extra_u(bw.get())
+pub const fn extra(w: NonZeroUsize) -> usize {
+    extra_u(w.get())
 }
 
 /// Returns the number of _whole_ digits (not including a digit with unused
-/// bits) given `bw`
+/// bits) given `w`
 #[inline]
-pub const fn digits(bw: NonZeroUsize) -> usize {
-    digits_u(bw.get())
+pub const fn digits(w: NonZeroUsize) -> usize {
+    digits_u(w.get())
 }
 
-/// Returns the number of `usize` digits needed to represent `bw`, including any
+/// Returns the number of `usize` digits needed to represent `w`, including any
 /// digit with unused bits
 #[inline]
-pub const fn regular_digits(bw: NonZeroUsize) -> usize {
-    digits(bw).wrapping_add((extra(bw) != 0) as usize)
+pub const fn regular_digits(w: NonZeroUsize) -> usize {
+    digits(w).wrapping_add((extra(w) != 0) as usize)
 }
 
 /// Returns `regular_digits + 1` to account for the bitwidth digit
 #[inline]
-pub const fn raw_digits(bw: usize) -> usize {
-    digits_u(bw)
-        .wrapping_add((extra_u(bw) != 0) as usize)
+pub const fn raw_digits(w: usize) -> usize {
+    digits_u(w)
+        .wrapping_add((extra_u(w) != 0) as usize)
         .wrapping_add(1)
 }
 
@@ -117,8 +123,8 @@ pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(r
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
     }
-    let bw = raw[raw.len() - 1];
-    if bw != BW {
+    let w = raw[raw.len() - 1];
+    if w != BW {
         panic!("bitwidth digit does not equal BW")
     }
 }

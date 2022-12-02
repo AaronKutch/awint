@@ -4,10 +4,6 @@
 //! strictly `no-std` and `no-alloc`, not even requiring an allocator to be
 //! compiled. This crate supplies the `Bits` reference type and the `InlAwi`
 //! storage type.
-//!
-//! Almost all fallible functions in this crate returns a handleable `Option` or
-//! `Result`. The only exceptions are some `core::ops` implementations and the
-//! `bw` function.
 
 #![cfg_attr(feature = "const_support", feature(const_maybe_uninit_as_mut_ptr))]
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
@@ -32,6 +28,8 @@
 #![allow(clippy::question_mark)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+#[doc(hidden)]
+pub use awint_internals;
 pub use awint_internals::{bw, SerdeError};
 
 pub(crate) mod data;

@@ -1,11 +1,9 @@
 // Note: we use `impl Into<...>` heavily instead of `U: Into<...>` generics,
 // because it allows arguments to be different types
 
-use awint_ext::awi;
-use awint_internals::BITS;
+use awint_ext::{awi, awint_internals::BITS};
 use Op::*;
 
-use super::ExtAwi;
 use crate::{dag, mimick::Bits, Lineage, Op};
 
 macro_rules! unary {
@@ -168,7 +166,7 @@ macro_rules! ref_self_output_usize {
 
 /// # Note
 ///
-/// These functions are all mirrors of functions for [awint_core::Bits], except
+/// These functions are all mimicks of functions for [awint_ext::Bits], except
 /// for the special `opaque_assign` that can never be evaluated.
 impl Bits {
     unary!(
@@ -541,8 +539,8 @@ impl Bits {
     }
 
     pub fn arb_imul_add_assign(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
-        let mut lhs = ExtAwi::from_bits(lhs);
-        let mut rhs = ExtAwi::from_bits(rhs);
+        let mut lhs = dag::ExtAwi::from_bits(lhs);
+        let mut rhs = dag::ExtAwi::from_bits(rhs);
         let lhs_msb = lhs.msb();
         let rhs_msb = rhs.msb();
         lhs.neg_assign(lhs_msb);
@@ -607,8 +605,8 @@ impl Bits {
         t
     }
 
-    pub const fn unstable_raw_digits(bw: usize) -> usize {
-        awint_internals::raw_digits(bw)
+    pub const fn unstable_raw_digits(w: usize) -> usize {
+        awint_ext::awint_internals::raw_digits(w)
     }
 
     // TODO for now assume they pass

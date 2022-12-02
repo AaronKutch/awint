@@ -11,16 +11,17 @@ use core::{
 };
 
 use awint_core::{Bits, InlAwi};
-use awint_internals::*;
 use const_fn::const_fn;
 
+use crate::awint_internals::*;
+
 #[inline]
-pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
+pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
     unsafe {
         // Safety: this produces the exact number of bytes needed to satisfy the raw
         // invariants of `Bits`.
         Layout::from_size_align_unchecked(
-            (regular_digits(bw) + 1) * mem::size_of::<usize>(),
+            (regular_digits(w) + 1) * mem::size_of::<usize>(),
             mem::align_of::<usize>(),
         )
     }
@@ -180,80 +181,80 @@ impl<'a> ExtAwi {
     }
 
     /// Zero-value construction with bitwidth `bw`
-    pub fn zero(bw: NonZeroUsize) -> Self {
+    pub fn zero(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
-            let ptr: *mut usize = alloc_zeroed(layout(bw)).cast();
+            let ptr: *mut usize = alloc_zeroed(layout(w)).cast();
             // set bitwidth
-            ptr.add(regular_digits(bw)).write(bw.get());
-            ExtAwi::from_raw_parts(ptr, regular_digits(bw) + 1)
+            ptr.add(regular_digits(w)).write(w.get());
+            ExtAwi::from_raw_parts(ptr, regular_digits(w) + 1)
         }
     }
 
     /// Unsigned-maximum-value construction with bitwidth `bw`
-    pub fn umax(bw: NonZeroUsize) -> Self {
+    pub fn umax(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
-            let ptr: *mut usize = alloc(layout(bw)).cast();
+            let ptr: *mut usize = alloc(layout(w)).cast();
             // initialize everything except for the bitwidth
-            ptr.write_bytes(u8::MAX, regular_digits(bw));
+            ptr.write_bytes(u8::MAX, regular_digits(w));
             // set bitwidth
-            ptr.add(regular_digits(bw)).write(bw.get());
-            ExtAwi::from_raw_parts(ptr, regular_digits(bw) + 1)
+            ptr.add(regular_digits(w)).write(w.get());
+            ExtAwi::from_raw_parts(ptr, regular_digits(w) + 1)
         };
         x.const_as_mut().clear_unused_bits();
         x
     }
 
     /// Signed-maximum-value construction with bitwidth `bw`
-    pub fn imax(bw: NonZeroUsize) -> Self {
-        let mut awi = Self::umax(bw);
+    pub fn imax(w: NonZeroUsize) -> Self {
+        let mut awi = Self::umax(w);
         *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
         awi
     }
 
     /// Signed-minimum-value construction with bitwidth `bw`
-    pub fn imin(bw: NonZeroUsize) -> Self {
-        let mut awi = Self::zero(bw);
+    pub fn imin(w: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(w);
         *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
         awi
     }
 
     /// Unsigned-one-value construction with bitwidth `bw`
-    pub fn uone(bw: NonZeroUsize) -> Self {
-        let mut awi = Self::zero(bw);
+    pub fn uone(w: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(w);
         *awi.const_as_mut().first_mut() = 1;
         awi
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_zero(bw: usize) -> Self {
-        Self::zero(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_zero(w: usize) -> Self {
+        Self::zero(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_umax(bw: usize) -> Self {
-        Self::umax(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_umax(w: usize) -> Self {
+        Self::umax(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_imax(bw: usize) -> Self {
-        Self::imax(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_imax(w: usize) -> Self {
+        Self::imax(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_imin(bw: usize) -> Self {
-        Self::imin(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_imin(w: usize) -> Self {
+        Self::imin(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_uone(bw: usize) -> Self {
-        Self::uone(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_uone(w: usize) -> Self {
+        Self::uone(NonZeroUsize::new(w).unwrap())
     }
 }
 

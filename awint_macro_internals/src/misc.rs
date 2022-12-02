@@ -1,7 +1,6 @@
 use std::num::NonZeroUsize;
 
-use awint_core::Bits;
-use awint_ext::ExtAwi;
+use awint_ext::{Bits, ExtAwi};
 use triple_arena::ptr_struct;
 
 #[cfg(feature = "debug")]
@@ -56,9 +55,9 @@ pub fn unstable_native_inlawi(bits: &Bits) -> String {
 }
 
 /// Returns architecture-independent Rust code that returns an
-/// `InlAwi` type with bitwidth `bw`.
-pub fn unstable_native_inlawi_ty(bw: u128) -> String {
-    format!("InlAwi::<{},{{Bits::unstable_raw_digits({})}}>", bw, bw,)
+/// `InlAwi` type with bitwidth `w`.
+pub fn unstable_native_inlawi_ty(w: u128) -> String {
+    format!("InlAwi::<{},{{Bits::unstable_raw_digits({})}}>", w, w,)
 }
 
 pub fn awint_must_use(s: &str) -> String {

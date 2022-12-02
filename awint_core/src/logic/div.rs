@@ -116,8 +116,8 @@ impl Bits {
         rem.assert_cleared_unused_bits();
         duo.assert_cleared_unused_bits();
         div.assert_cleared_unused_bits();
-        let bw = quo.bw();
-        if div.is_zero() || bw != rem.bw() || bw != duo.bw() || bw != div.bw() {
+        let w = quo.bw();
+        if div.is_zero() || w != rem.bw() || w != duo.bw() || w != div.bw() {
             return None
         }
         // This is a version of the "trifecta" division algorithm adapted for bigints.
@@ -141,7 +141,7 @@ impl Bits {
         }
 
         // small division branch
-        if (bw - duo_lz) <= BITS {
+        if (w - duo_lz) <= BITS {
             let tmp_duo = duo.to_usize();
             let tmp_div = div.to_usize();
             quo.usize_assign(tmp_duo.wrapping_div(tmp_div));
@@ -151,7 +151,7 @@ impl Bits {
 
         // double digit division branch. This is needed or else some branches below
         // cannot rely on there being at least two digits of significant bits.
-        if (bw - duo_lz) <= BITS * 2 {
+        if (w - duo_lz) <= BITS * 2 {
             unsafe {
                 let tmp = dd_division(
                     (duo.first(), duo.get_unchecked(1)),
@@ -171,7 +171,7 @@ impl Bits {
         // that handle differing lengths.
 
         // short division branch
-        if bw - div_lz <= BITS {
+        if w - div_lz <= BITS {
             let tmp = quo.short_udivide_assign(duo, div.to_usize()).unwrap();
             rem.usize_assign(tmp);
             return Some(())
@@ -198,19 +198,19 @@ impl Bits {
         // possible to handle, but causes more problems than it is worth as seen from an
         // earlier implementation in the `apint` crate.
 
-        let div_extra = bw - div_lz - BITS;
+        let div_extra = w - div_lz - BITS;
         let div_sig_d = div.get_digit(div_extra);
         let div_sig_d_add1 = widen_add(div_sig_d, 1, 0);
         quo.zero_assign();
         // use `rem` as "duo" from now on
         rem.copy_assign(duo).unwrap();
         loop {
-            let duo_extra = bw - duo_lz - (BITS * 2) + 1;
+            let duo_extra = w - duo_lz - (BITS * 2) + 1;
             // using `<` instead of `<=` because of the change to `duo_extra`
             if div_extra < duo_extra {
                 // Undersubtracting long division step
 
-                // `get_dd_unchecked` will not work, e.x. bw = 192 and duo_lz = 0, it will
+                // `get_dd_unchecked` will not work, e.x. w = 192 and duo_lz = 0, it will
                 // attempt to access an imaginary zero bit beyond the bitwidth
                 let duo_sig_dd = unsafe {
                     let digits = digits_u(duo_extra);
@@ -299,7 +299,7 @@ impl Bits {
                 }
             } else {
                 // Two possibility algorithm
-                let i = bw - duo_lz - (BITS * 2);
+                let i = w - duo_lz - (BITS * 2);
                 let duo_sig_dd = rem.get_double_digit(i);
                 let div_sig_dd = div.get_double_digit(i);
                 // Because `lz_diff < BITS`, the quotient will fit in one `usize`
@@ -344,7 +344,7 @@ impl Bits {
 
             // duo fits in two digits. Only possible if `div` fits into two digits, but it
             // is not worth it to unroll further
-            if (bw - duo_lz) <= (BITS * 2) {
+            if (w - duo_lz) <= (BITS * 2) {
                 unsafe {
                     let tmp = dd_division(
                         (rem.first(), rem.get_unchecked(1)),
@@ -378,8 +378,8 @@ impl Bits {
         duo: &mut Self,
         div: &mut Self,
     ) -> Option<()> {
-        let bw = quo.bw();
-        if div.is_zero() || bw != rem.bw() || bw != duo.bw() || bw != div.bw() {
+        let w = quo.bw();
+        if div.is_zero() || w != rem.bw() || w != duo.bw() || w != div.bw() {
             return None
         }
         let duo_msb = duo.msb();

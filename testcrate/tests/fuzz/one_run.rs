@@ -6,7 +6,7 @@ use crate::fuzz::{check_invariants, eq};
 
 pub fn one_run(array: [&mut Bits; 4]) -> Option<()> {
     let [x2, x3, x4, x5] = array;
-    let bw = x2.bw();
+    let w = x2.bw();
     x2.zero_assign();
     x3.zero_assign();
     x4.zero_assign();
@@ -24,7 +24,7 @@ pub fn one_run(array: [&mut Bits; 4]) -> Option<()> {
     x2.imax_assign();
     check_invariants(x2);
     assert!(x2.is_imax());
-    if bw != 1 {
+    if w != 1 {
         assert!(x2.lsb());
     } else {
         assert!(!x2.lsb());
@@ -33,7 +33,7 @@ pub fn one_run(array: [&mut Bits; 4]) -> Option<()> {
     x2.imin_assign();
     check_invariants(x2);
     assert!(x2.is_imin());
-    if bw != 1 {
+    if w != 1 {
         assert!(!x2.lsb());
     } else {
         assert!(x2.lsb());
@@ -42,7 +42,7 @@ pub fn one_run(array: [&mut Bits; 4]) -> Option<()> {
     x2.uone_assign();
     check_invariants(x2);
     assert!(x2.lsb());
-    if bw != 1 {
+    if w != 1 {
         assert!(!x2.msb());
     } else {
         assert!(x2.msb());

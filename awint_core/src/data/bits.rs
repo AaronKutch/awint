@@ -270,11 +270,11 @@ impl<'a> Bits {
         unsafe {
             // Safety: The bitwidth is stored in the last raw slice element. The bitwidth is
             // nonzero if invariants were maintained.
-            let bw = self.raw_get_unchecked(self.raw_len() - 1);
+            let w = self.raw_get_unchecked(self.raw_len() - 1);
             // If something with zeroing allocation or mutations accidentally breaks during
             // development, it will probably manifest itself here
-            debug_assert!(bw != 0);
-            NonZeroUsize::new_unchecked(bw)
+            debug_assert!(w != 0);
+            NonZeroUsize::new_unchecked(w)
         }
     }
 

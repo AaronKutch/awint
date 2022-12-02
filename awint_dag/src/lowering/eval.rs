@@ -1,7 +1,6 @@
 use std::fmt::Write;
 
-use awint_core::Bits;
-use awint_ext::ExtAwi;
+use awint_ext::{Bits, ExtAwi};
 use Op::*;
 
 use crate::{
@@ -453,7 +452,7 @@ impl OpDag {
         let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
             let (i, p, b) = path[path.len() - 1];
-            /*if !self.dag.contains(p) {
+            /*if !self.a.contains(p) {
                 self.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
                     .unwrap();
                 panic!();

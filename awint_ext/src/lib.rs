@@ -28,6 +28,9 @@ mod fp_logic;
 mod serde;
 mod strings;
 
+#[doc(hidden)]
+pub use awint_core::awint_internals;
+pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 pub use extawi::ExtAwi;
 pub use fp::{FPType, FP};
 
