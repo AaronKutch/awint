@@ -2,8 +2,7 @@
 
 ## [0.8.0] - TODO
 ### Changes
-- Moved a lot of hidden developer functions to `awint::awint_internals::BitsInternals`
-- Renamed `Node` and `Dag` to `OpNode` and `OpDag`
+- Renamed `Node` and `Dag` to `OpNode` and `OpDag`. Updated `triple_arena` version.
 
 ## [0.7.0] - 2022-08-22
 ### Additions

@@ -14,13 +14,13 @@
 #![allow(clippy::manual_range_contains)]
 #![allow(clippy::needless_range_loop)]
 
-mod bits_internals;
+// TODO when const traits are stabilized, try introducing the `BitsInternals` trait again
+
 mod macros;
 mod serde_common;
 
 use core::num::NonZeroUsize;
 
-pub use bits_internals::BitsInternals;
 pub use serde_common::*;
 
 /// Maximum bitwidth of an inline `Awi`
