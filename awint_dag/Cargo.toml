@@ -13,12 +13,11 @@ categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
 [dependencies]
 awint_ext = { version = "0.7.0", path = "../awint_ext", default-features = false }
+awint_macro_internals = { version = "0.7.0", path = "../awint_macro_internals", default-features = false }
 awint_macros = { version = "0.7.0", path = "../awint_macros", default-features = false }
-triple_arena = "0.6"
-triple_arena_render = { version = "0.6", optional = true }
 
 [dev-dependencies]
 awint = { path = "../awint" }
 
 [features]
-debug = ["triple_arena_render"]
+debug = ["awint_macro_internals/debug"]

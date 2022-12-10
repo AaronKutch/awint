@@ -1,10 +1,8 @@
 use std::num::NonZeroUsize;
 
-use triple_arena::Ptr;
 #[cfg(feature = "debug")]
-use triple_arena_render::{DebugNode, DebugNodeTrait};
-
-use crate::{EvalError, Op};
+use crate::triple_arena_render::{DebugNode, DebugNodeTrait};
+use crate::{triple_arena::Ptr, EvalError, Op};
 
 /// An Operational Node for an `OpDag` that includes the operation and other
 /// data used in algorithms

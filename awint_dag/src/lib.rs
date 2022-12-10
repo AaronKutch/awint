@@ -165,6 +165,9 @@
 mod common;
 pub mod lowering;
 pub mod mimick;
+pub use awint_macro_internals::triple_arena;
+#[cfg(feature = "debug")]
+pub use awint_macro_internals::triple_arena_render;
 pub use common::{EvalError, Lineage, Op, PNode, PState, State, StateEpoch};
 pub use lowering::{OpDag, OpNode};
 pub use mimick::primitive;

@@ -3,9 +3,10 @@ use std::{
     num::NonZeroUsize,
 };
 
-use triple_arena::{ptr_struct, Arena, Ptr};
-
-use crate::common::Op;
+use crate::{
+    common::Op,
+    triple_arena::{ptr_struct, Arena, Ptr},
+};
 
 #[cfg(debug_assertions)]
 ptr_struct!(PState; PNode);

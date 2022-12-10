@@ -6,11 +6,11 @@ use awint::{
     awint_internals::BITS,
     dag,
 };
+use awint_macro_internals::triple_arena::{ptr_struct, Arena};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
 };
-use triple_arena::{ptr_struct, Arena};
 
 // miri is just here to check that the unsized deref hacks are working
 const N: (u32, u32) = if cfg!(miri) {

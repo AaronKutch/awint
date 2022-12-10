@@ -31,6 +31,9 @@ pub use names::*;
 pub use ranges::*;
 pub use token_stream::*;
 pub use token_tree::*;
+pub use triple_arena;
+#[cfg(feature = "debug")]
+pub use triple_arena_render;
 
 pub fn awint_macro_cc(input: &str) -> Result<String, String> {
     let code_gen = CodeGen {

@@ -8,12 +8,12 @@ use std::{
 };
 
 use awint_ext::{awint_internals::BITS, Bits};
-use triple_arena::Arena;
 use Op::*;
 
 use crate::{
     lowering::{OpNode, PNode},
     state::next_state_visit_gen,
+    triple_arena::Arena,
     EvalError, Op, PState,
 };
 
@@ -356,7 +356,7 @@ impl OpDag {
     #[cfg(feature = "debug")]
     pub fn render_to_svg_file(&mut self, out_file: std::path::PathBuf) -> Result<(), EvalError> {
         let res = self.verify_integrity();
-        triple_arena_render::render_to_svg_file(&self.a, false, out_file).unwrap();
+        crate::triple_arena_render::render_to_svg_file(&self.a, false, out_file).unwrap();
         res
     }
 }
