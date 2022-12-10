@@ -1,6 +1,7 @@
-//! This crate compiles all the interfaces of `awint_core`, `awint_ext`, and
-//! `awint_macros`. Enabling the "dag" feature flag also enables the
-//! `dag_prelude` and `dag` modules and a reexport of `awint_dag`.
+//! This crate compiles all the interfaces of `awint_core`,
+//! `awint_macros`, and `awint_ext` (when the default "alloc" feature is
+//! enabled). Enabling the "dag" feature flag also enables the `dag_prelude` and
+//! `dag` modules and a reexport of `awint_dag`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 

@@ -1,7 +1,7 @@
 //! This crate contains common developer utilities for crates within the `awint`
 //! system, such as macros that needed a separate crate because
 //! `#[macro_export]` unconditionally causes macros to be publicly accessible.
-//! In rare circumstances, someone might want to use `BitsInternals` for new
+//! In rare circumstances, someone might want to use the items here for new
 //! storage types or highly optimized routines, but most users should never have
 //! to interact with this. Be aware that safety requirements can change over
 //! time, check `bits.rs` under `awint_core`.
