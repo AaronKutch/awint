@@ -428,8 +428,7 @@ impl OpDag {
                 write!(s, "{:?}, ", self[op]).unwrap();
             }
             Err(EvalError::OtherString(format!(
-                "evaluation failure on operation {:?} ({})",
-                op, s
+                "evaluation failure on operation {op:?} ({s})"
             )))
         } else {
             for source in op.operands() {

@@ -60,19 +60,19 @@ impl<P: Ptr> DebugNodeTrait<P> for OpNode<P> {
                 .collect(),
             center: match this.op {
                 Op::Opaque(_) => vec![format!("opaque {}", this.nzbw)],
-                Op::Literal(ref awi) => vec![format!("{}", awi)],
-                Op::StaticLut(_, ref awi) => vec![format!("lut {}", awi)],
-                Op::StaticGet(_, inx) => vec![format!("get {}", inx)],
-                Op::StaticSet(_, inx) => vec![format!("set {}", inx)],
+                Op::Literal(ref awi) => vec![format!("{awi}")],
+                Op::StaticLut(_, ref awi) => vec![format!("lut {awi}")],
+                Op::StaticGet(_, inx) => vec![format!("get {inx}")],
+                Op::StaticSet(_, inx) => vec![format!("set {inx}")],
                 _ => vec![this.op.operation_name().to_owned()],
             },
             sinks: vec![],
         };
         if let Some(ref err) = this.err {
-            res.center.push(format!("ERROR: {:?}", err));
+            res.center.push(format!("ERROR: {err:?}"));
         }
         res.center.push(format!("{} - {}", this.nzbw, this.rc));
-        res.center.push(format!("{:?}", p_this));
+        res.center.push(format!("{p_this:?}"));
         res
     }
 }

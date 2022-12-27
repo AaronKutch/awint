@@ -81,7 +81,7 @@ impl<'a> Lower<'a> {
     pub fn lower_bound(&mut self, usb: &Usb) -> PVal {
         if let Some(x) = usb.static_val() {
             self.values
-                .insert(Value::Usize(format!("{}", x)), false)
+                .insert(Value::Usize(format!("{x}")), false)
                 .either()
         } else {
             let txt = self.try_txt_bound_to_binding(&usb.s);
@@ -117,7 +117,7 @@ impl<'a> Lower<'a> {
             }
             let p_val = self
                 .values
-                .insert(Value::Usize(format!("{}", w)), false)
+                .insert(Value::Usize(format!("{w}")), false)
                 .either();
             if need_extra_check {
                 if let Some(ref end) = comp.range.end {

@@ -47,7 +47,7 @@ impl<T> OpaqueInternal<T> {
     {
         OpaqueInternal {
             is_some: self.is_some,
-            t: self.t.clone(),
+            t: self.t,
         }
     }
 }
@@ -131,7 +131,7 @@ impl<T> Option<T> {
     {
         match self {
             None => None,
-            Some(t) => Some(t.clone()),
+            Some(t) => Some(t),
             Opaque(z) => Opaque(z.cloned()),
         }
     }
@@ -158,7 +158,7 @@ impl<T> Option<T> {
             Some(t) => Some(f(t)),
             Opaque(z) => Opaque(OpaqueInternal {
                 is_some: z.is_some,
-                t: z.t.map(|tmp| f(tmp)),
+                t: z.t.map(f),
             }),
         }
     }

@@ -226,9 +226,8 @@ pub fn stage4(
                 if this_bw != prev_bw {
                     return Err(CCMacroError::new(
                         format!(
-                            "determined statically that concatenations {} and {} have unequal \
-                             bitwidths {} and {}",
-                            original_common_i, concat_i, prev_bw, this_bw
+                            "determined statically that concatenations {original_common_i} and \
+                             {concat_i} have unequal bitwidths {prev_bw} and {this_bw}"
                         ),
                         concat.txt,
                     ))
@@ -320,10 +319,9 @@ pub fn stage4(
                         return Err(CCMacroError {
                             red_text: vec![],
                             error: format!(
-                                "concatenations {} and {} have unbounded fillers aligned opposite \
-                                 each other, and no concatenation has a statically or dynamically \
-                                 determinable width",
-                                concat_i, concat_j
+                                "concatenations {concat_i} and {concat_j} have unbounded fillers \
+                                 aligned opposite each other, and no concatenation has a \
+                                 statically or dynamically determinable width"
                             ),
                             help: Some(
                                 "append a filler-only concatenation such as \"; ..64 ;\" or \"; \

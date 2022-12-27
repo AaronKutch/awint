@@ -67,7 +67,7 @@ pub fn cc_macro<
             } else {
                 "".to_owned()
             };
-            return Err(error_and_help(&format!("input failed to tokenize: {}{}", e, note),
+            return Err(error_and_help(&format!("input failed to tokenize: {e}{note}"),
                 "for further information see the library documentation of `awint_macros` \
                 https://docs.rs/awint_macros/"))
         }

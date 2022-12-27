@@ -23,10 +23,7 @@ fn eq(lhs: &FP<ExtAwi>, rhs: &FP<ExtAwi>) {
             rhs.bw()
         )
     }) {
-        panic!(
-            "lhs and rhs are not equal when they should be:\nlhs:{:?} rhs:{:?}",
-            lhs, rhs
-        );
+        panic!("lhs and rhs are not equal when they should be:\nlhs:{lhs:?} rhs:{rhs:?}");
     }
 }
 

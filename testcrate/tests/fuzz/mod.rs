@@ -29,10 +29,7 @@ fn eq(lhs: &Bits, rhs: &Bits) {
             rhs.bw()
         )
     }) {
-        panic!(
-            "lhs and rhs are not equal when they should be:\nlhs:{:?} rhs:{:?}",
-            lhs, rhs
-        );
+        panic!("lhs and rhs are not equal when they should be:\nlhs:{lhs:?} rhs:{rhs:?}");
     }
 }
 
@@ -48,10 +45,7 @@ fn ne(lhs: &Bits, rhs: &Bits) {
             rhs.bw()
         )
     }) {
-        panic!(
-            "lhs and rhs are equal when they should not be:\nlhs:{:?} rhs:{:?}",
-            lhs, rhs
-        );
+        panic!("lhs and rhs are equal when they should not be:\nlhs:{lhs:?} rhs:{rhs:?}");
     }
 }
 

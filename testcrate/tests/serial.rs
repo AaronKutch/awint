@@ -103,22 +103,22 @@ fn fmt_strings() {
     );
 
     let fpbits = FP::new(true, inlawi!(-0xabcd1234i36), 16).unwrap();
-    assert_eq!(format!("{:x}", fpbits), "-0xabcd.1234_i36f16");
-    assert_eq!(format!("{:X}", fpbits), "-0xABCD.1234_i36f16");
-    assert_eq!(format!("{:o}", fpbits), "-0o125715.04432_i36f16");
+    assert_eq!(format!("{fpbits:x}"), "-0xabcd.1234_i36f16");
+    assert_eq!(format!("{fpbits:X}"), "-0xABCD.1234_i36f16");
+    assert_eq!(format!("{fpbits:o}"), "-0o125715.04432_i36f16");
     assert_eq!(
-        format!("{:b}", fpbits),
+        format!("{fpbits:b}"),
         "-0b1010101111001101.00010010001101_i36f16"
     );
-    assert_eq!(format!("{:?}", fpbits), "-43981.07111_i36f16");
-    assert_eq!(format!("{}", fpbits), "-43981.07111_i36f16");
+    assert_eq!(format!("{fpbits:?}"), "-43981.07111_i36f16");
+    assert_eq!(format!("{fpbits}"), "-43981.07111_i36f16");
 
     let fpbits = FP::new(false, inlawi!(1u11), -16).unwrap();
-    assert_eq!(format!("{}", fpbits), "65536.0_u11f-16");
+    assert_eq!(format!("{fpbits}"), "65536.0_u11f-16");
     let fpbits = FP::new(false, inlawi!(1u11), 16).unwrap();
-    assert_eq!(format!("{}", fpbits), "0.00002_u11f16");
+    assert_eq!(format!("{fpbits}"), "0.00002_u11f16");
     let fpbits = FP::new(false, inlawi!(11111111111), 16).unwrap();
-    assert_eq!(format!("{}", fpbits), "0.03123_u11f16");
+    assert_eq!(format!("{fpbits}"), "0.03123_u11f16");
 }
 
 #[cfg(not(miri))]

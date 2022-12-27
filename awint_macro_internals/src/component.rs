@@ -233,9 +233,8 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                             Err(e) => {
                                 return Err(CCMacroError::new(
                                     format!(
-                                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` \
-                                         which returned SerdeError::{:?}",
-                                        s, e
+                                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{s}\")` \
+                                         which returned SerdeError::{e:?}"
                                     ),
                                     mid_txt,
                                 ))

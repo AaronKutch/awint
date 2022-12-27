@@ -213,12 +213,12 @@ impl<'a> Concat<'a> {
         let start_s = if let Some(start) = range.0 {
             Some(if self.rand_bool() || self.static_width {
                 // static
-                format!("{}", start)
+                format!("{start}")
             } else {
                 // else arbitrary
                 let vnum = self.next_unique();
-                write!(self.prior_sets, "let s{} = {};", vnum, start).unwrap();
-                format!("s{}", vnum)
+                write!(self.prior_sets, "let s{vnum} = {start};").unwrap();
+                format!("s{vnum}")
             })
         } else {
             None
@@ -231,7 +231,7 @@ impl<'a> Concat<'a> {
                 // else arbitrary
                 let vnum = self.next_unique();
                 write!(self.prior_sets, "let e{} = {};", vnum, end - inclusive).unwrap();
-                format!("e{}", vnum)
+                format!("e{vnum}")
             })
         } else {
             None
@@ -254,28 +254,28 @@ impl<'a> Concat<'a> {
             (None, Some(end)) => {
                 if inclusive {
                     if self.rand_bool() {
-                        format!("[..={}]", end)
+                        format!("[..={end}]")
                     } else {
-                        format!("[0..={}]", end)
+                        format!("[0..={end}]")
                     }
                 } else if self.rand_bool() {
-                    format!("[..{}]", end)
+                    format!("[..{end}]")
                 } else {
-                    format!("[0..{}]", end)
+                    format!("[0..{end}]")
                 }
             }
             (Some(start), None) => {
                 if inclusive {
-                    format!("[{}..=]", start)
+                    format!("[{start}..=]")
                 } else {
-                    format!("[{}..]", start)
+                    format!("[{start}..]")
                 }
             }
             (Some(start), Some(end)) => {
                 if inclusive {
-                    format!("[{}..={}]", start, end)
+                    format!("[{start}..={end}]")
                 } else {
-                    format!("[{}..{}]", start, end)
+                    format!("[{start}..{end}]")
                 }
             }
         }
@@ -301,7 +301,7 @@ impl<'a> Concat<'a> {
             (None, None)
         };
         let index = self.gen_index(range);
-        self.push_comp(format!("{:?}{}", awi, index));
+        self.push_comp(format!("{awi:?}{index}"));
         range
     }
 
@@ -341,35 +341,33 @@ impl<'a> Concat<'a> {
                 };
                 writeln!(
                     self.prior_sets,
-                    "let {}awi{} = inlawi!({:?});let mut bits{} = awi{}.const_as_{}();",
-                    mutability, vnum, awi, vnum, vnum, ref_fn
+                    "let {mutability}awi{vnum} = inlawi!({awi:?});let mut bits{vnum} = \
+                     awi{vnum}.const_as_{ref_fn}();"
                 )
                 .unwrap();
-                format!("bits{}", vnum)
+                format!("bits{vnum}")
             }
             // InlAwi
             1 => {
                 writeln!(
                     self.prior_sets,
-                    "let {}inl{} = inlawi!({:?});",
-                    mutability, vnum, awi
+                    "let {mutability}inl{vnum} = inlawi!({awi:?});"
                 )
                 .unwrap();
-                format!("inl{}", vnum)
+                format!("inl{vnum}")
             }
             // ExtAwi
             _ => {
                 writeln!(
                     self.prior_sets,
-                    "let {}ext{} = extawi!({:?});",
-                    mutability, vnum, awi
+                    "let {mutability}ext{vnum} = extawi!({awi:?});",
                 )
                 .unwrap();
-                format!("ext{}", vnum)
+                format!("ext{vnum}")
             }
         };
         let index = self.gen_index(range);
-        self.push_comp(format!("{}{}", ref_s, index));
+        self.push_comp(format!("{ref_s}{index}"));
         (range.0, range.1, ref_s)
     }
 
@@ -402,22 +400,22 @@ impl<'a> Concat<'a> {
             (None, None, true) => "..=".to_owned(),
             (None, Some(end), false) => {
                 if self.rand_bool() {
-                    format!("..{}", end)
+                    format!("..{end}")
                 } else {
-                    format!("0..{}", end)
+                    format!("0..{end}")
                 }
             }
             (None, Some(end), true) => {
                 if self.rand_bool() {
-                    format!("..={}", end)
+                    format!("..={end}")
                 } else {
-                    format!("0..={}", end)
+                    format!("0..={end}")
                 }
             }
-            (Some(start), None, false) => format!("{}..", start),
-            (Some(start), None, true) => format!("{}..=", start),
-            (Some(start), Some(end), false) => format!("{}..{}", start, end),
-            (Some(start), Some(end), true) => format!("{}..={}", start, end),
+            (Some(start), None, false) => format!("{start}.."),
+            (Some(start), None, true) => format!("{start}..="),
+            (Some(start), Some(end), false) => format!("{start}..{end}"),
+            (Some(start), Some(end), true) => format!("{start}..={end}"),
         };
         self.push_comp(range_s);
         (if let Some(start) = range.0 { start } else { 0 }, range.1)
@@ -514,17 +512,17 @@ impl<'a> Concat<'a> {
                 // this should just be a single assertion with no dynamic `_result` or `shl`
                 // assignments.
                 if self.align_side {
-                    writeln!(self.assertions, "_shl -= {};", sc).unwrap();
+                    writeln!(self.assertions, "_shl -= {sc};").unwrap();
                 }
                 write!(
                     self.assertions,
-                    "let mut _result = inlawi!({:?});\n_result.field({}, &_source, _shl, \
-                     {}).unwrap();\nassert_eq!({}.const_as_ref(), _result.const_as_ref());\n",
-                    awi, start, sc, ref_s
+                    "let mut _result = inlawi!({awi:?});\n_result.field({start}, &_source, _shl, \
+                     {sc}).unwrap();\nassert_eq!({ref_s}.const_as_ref(), \
+                     _result.const_as_ref());\n"
                 )
                 .unwrap();
                 if !self.align_side {
-                    writeln!(self.assertions, "_shl += {};", sc).unwrap();
+                    writeln!(self.assertions, "_shl += {sc};").unwrap();
                 }
             } else {
                 // filler
@@ -533,9 +531,9 @@ impl<'a> Concat<'a> {
                     let sc = end - start;
                     self.non_unbounded_width += sc;
                     if self.align_side {
-                        writeln!(self.assertions, "_shl -= {};", sc).unwrap();
+                        writeln!(self.assertions, "_shl -= {sc};").unwrap();
                     } else {
-                        writeln!(self.assertions, "_shl += {};", sc).unwrap();
+                        writeln!(self.assertions, "_shl += {sc};").unwrap();
                     }
                 } else {
                     self.assertions += "let mut _shl = _source.bw();";
@@ -558,7 +556,7 @@ fn main() {
     let mut vnum = 0;
     // number of tests generated
     for test_i in 0..NUM_TESTS {
-        writeln!(s, "// {}", test_i).unwrap();
+        writeln!(s, "// {test_i}").unwrap();
         // make unbounded source fillers more common, where more edge cases are
         let awi_type = match rng.next_u32() % 8 {
             0..=5 => 0,
@@ -690,7 +688,7 @@ fn main() {
             ("extawi".to_owned(), "eq_ext".to_owned())
         };
         let init = if specified_initialization {
-            format!("{}:", construct_fn)
+            format!("{construct_fn}:")
         } else {
             String::new()
         };
@@ -698,13 +696,15 @@ fn main() {
         let eq_rhs = if is_cc {
             "()".to_owned()
         } else {
-            format!("{}!({:?})", macro_root, source)
+            format!("{macro_root}!({source:?})")
         };
 
         write!(
             s,
-            "let _source = inlawi!({:?});\n{}{}(&{}!({}{}),\n{}\n);\n{}\n",
-            source, prior_sets, eq_fn, macro_root, init, concats, eq_rhs, assertions
+            "let _source = \
+             inlawi!({source:?});\n{prior_sets}{eq_fn}(&{macro_root}!({init}{concats}),\n{eq_rhs}\\
+             \
+             n);\n{assertions}\n"
         )
         .unwrap();
     }

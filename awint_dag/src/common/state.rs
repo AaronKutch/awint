@@ -42,6 +42,12 @@ impl Assertions {
     }
 }
 
+impl Default for Assertions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // TODO if we commit to stacklike epoch management then we could use something
 // different than a general `Arena`
 

@@ -179,7 +179,7 @@ pub fn cc_macro_code_gen<
 
     // inner code consisting of the zero check, construction of returning or
     // buffers, fielding, and return values
-    let mut inner0 = format!("{}{}{}", construction, fielding, returning);
+    let mut inner0 = format!("{construction}{fielding}{returning}");
 
     // very tricky
     if !ast.guaranteed_nonzero_width {
@@ -207,7 +207,7 @@ pub fn cc_macro_code_gen<
     let inner1 = if common_checks.is_empty() {
         inner0
     } else {
-        format!("if {} {{\n{}\n}}else{{None}}", common_checks, inner0)
+        format!("if {common_checks} {{\n{inner0}\n}}else{{None}}")
     };
 
     // designate the common concatenation width
@@ -239,19 +239,19 @@ pub fn cc_macro_code_gen<
     // concat width checks
     let cws = l.lower_cws();
     let widths = l.lower_widths();
-    let inner2 = format!("{}{}{}{}", widths, cws, common_cw, inner1);
+    let inner2 = format!("{widths}{cws}{common_cw}{inner1}");
 
     // reversal checks
     let inner3 = if lt_checks.is_empty() {
         inner2
     } else {
-        format!("if {} {{\n{}\n}}else{{None}}", lt_checks, inner2)
+        format!("if {lt_checks} {{\n{inner2}\n}}else{{None}}")
     };
 
     let values = l.lower_values();
     let bindings = l.lower_bindings(code_gen.lit_construction_fn);
 
-    let inner4 = format!("{{\n{}{}{}}}", bindings, values, inner3);
+    let inner4 = format!("{{\n{bindings}{values}{inner3}}}");
     if wrap_must_use {
         (code_gen.must_use)(&inner4)
     } else {

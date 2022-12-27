@@ -278,7 +278,7 @@ impl Bits {
                     }
                     // Safety: we strictly capped the range of possible values above with `& 0b1111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    f.write_fmt(format_args!("{}", c))?;
+                    f.write_fmt(format_args!("{c}"))?;
                     if ((j1 % 8) == 0) && (j1 != 0) {
                         f.write_fmt(format_args!("_"))?;
                     }
@@ -304,7 +304,7 @@ impl Bits {
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    if let Err(e) = f.write_fmt(format_args!("{}", c)) {
+                    if let Err(e) = f.write_fmt(format_args!("{c}")) {
                         return Err(e)
                     }
                     if ((j1 % 8) == 0) && (j1 != 0) {
@@ -333,7 +333,7 @@ impl Bits {
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b1`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    if let Err(e) = f.write_fmt(format_args!("{}", c)) {
+                    if let Err(e) = f.write_fmt(format_args!("{c}")) {
                         return Err(e)
                     }
                     if ((j1 % 8) == 0) && (j1 != 0) {

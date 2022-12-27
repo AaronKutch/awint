@@ -363,13 +363,13 @@ pub fn parse_usb(ast: &mut Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
     if let Some((mut lhs, mut rhs)) = lhs_rhs {
         lhs.simplify().map_err(|e| {
             CCMacroError::new(
-                format!("failed simplifying left side of subexpression: {}", e),
+                format!("failed simplifying left side of subexpression: {e}"),
                 usb_txt,
             )
         })?;
         rhs.simplify().map_err(|e| {
             CCMacroError::new(
-                format!("failed simplifying right side of subexpression: {}", e),
+                format!("failed simplifying right side of subexpression: {e}"),
                 usb_txt,
             )
         })?;

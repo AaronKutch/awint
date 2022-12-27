@@ -5,8 +5,8 @@ use awint::{
     awint_dag::{Lineage, OpDag},
     dag_prelude::*,
 };
+use awint_macro_internals::triple_arena::ptr_struct;
 use test::Bencher;
-use triple_arena::ptr_struct;
 
 ptr_struct!(P0; P1; P2);
 

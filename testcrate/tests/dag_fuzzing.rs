@@ -184,7 +184,7 @@ impl Mem {
                         | Op::StaticSet(_, _)
                         | Op::StaticLut(_, _)
                 ) {
-                    panic!("did not lower all the way: {:?}", node);
+                    panic!("did not lower all the way: {node:?}");
                 }
             }
             for (p, lit) in literals {
