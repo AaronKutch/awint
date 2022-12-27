@@ -170,7 +170,10 @@ pub use awint_macro_internals::triple_arena;
 pub use awint_macro_internals::triple_arena_render;
 pub use common::{EvalError, Lineage, Op, PNode, PState, State, StateEpoch};
 pub use lowering::{OpDag, OpNode};
-pub use mimick::primitive;
+pub use mimick::{
+    assertion::{internal_assert, internal_assert_eq, internal_assert_ne},
+    primitive,
+};
 
 /// Raw access to thread-local `State` related things
 pub mod state {

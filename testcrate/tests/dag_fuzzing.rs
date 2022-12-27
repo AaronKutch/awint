@@ -4,7 +4,7 @@ use awint::{
     awi,
     awint_dag::{lowering::OpDag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
     awint_internals::BITS,
-    dag,
+    dag, dag_prelude,
 };
 use awint_macro_internals::triple_arena::{ptr_struct, Arena};
 use rand_xoshiro::{
@@ -851,4 +851,20 @@ fn state_epoch_fail() {
     let epoch1 = StateEpoch::new();
     drop(epoch0);
     drop(epoch1);
+}
+
+#[test]
+fn dag_assertions() {
+    use awint::awint_dag::{assert, assert_eq, assert_ne};
+    use dag_prelude::*;
+    let epoch0 = StateEpoch::new();
+    let x = inlawi!(13u8);
+    let y = inlawi!(13u8);
+    let z = inlawi!(99u8);
+    let is_true = x.lsb();
+    assert!(true);
+    assert!(is_true);
+    assert_eq!(x, y);
+    assert_ne!(x, z);
+    core::assert_eq!(epoch0.assertions().bits.len(), 4);
 }

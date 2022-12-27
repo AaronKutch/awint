@@ -368,7 +368,8 @@ impl AsMut<Bits> for ExtAwi {
     }
 }
 
-// we unfortunately can't do something like `impl<B: Borrow<Bits>> From<B>` because specialization is not stabilized
+// we unfortunately can't do something like `impl<B: Borrow<Bits>> From<B>`
+// because specialization is not stabilized
 
 /// Creates an `ExtAwi` from copying a `Bits` reference
 impl From<&Bits> for ExtAwi {

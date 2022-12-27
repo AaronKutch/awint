@@ -1,10 +1,8 @@
-use std::{
-    cell::{RefCell, RefMut},
-    num::NonZeroUsize,
-};
+use std::{cell::RefCell, num::NonZeroUsize};
 
 use crate::{
     common::Op,
+    dag,
     triple_arena::{ptr_struct, Arena, Ptr},
 };
 
@@ -19,7 +17,7 @@ ptr_struct!(PState(); PNode());
 /// `Ptr`s to `States` in a thread local arena, so that they can change their
 /// state without borrowing issues or mutating `States` (which could be used as
 /// operands by other `States`).
-#[derive(Hash, Clone, PartialEq, Eq, Debug)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
 pub struct State {
     /// Bitwidth
     pub nzbw: NonZeroUsize,
@@ -33,16 +31,70 @@ pub struct State {
     pub prev_in_epoch: Option<PState>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Assertions {
+    pub bits: Vec<dag::bool>,
+}
+
+impl Assertions {
+    pub fn new() -> Self {
+        Self { bits: vec![] }
+    }
+}
+
 // TODO if we commit to stacklike epoch management then we could use something
 // different than a general `Arena`
 
-thread_local!(pub static STATE_ARENA: RefCell<Arena<PState, State>> = RefCell::new(Arena::new()));
-thread_local!(pub static STATE_VISIT_GEN: RefCell<u64> = RefCell::new(0));
 thread_local!(
-    pub static EPOCH_STACK: RefCell<Vec<(u64, Option<PState>)>> = RefCell::new(vec![(0, None)])
+    /// Contains the actual `State`s. Note that [PState]
+    /// has additional methods to automatically manage this.
+    pub static STATE_ARENA: RefCell<Arena<PState, State>> = RefCell::new(Arena::new())
 );
-thread_local!(pub static EPOCH_GEN: RefCell<u64> = RefCell::new(0));
+thread_local!(
+    /// The current visitation generation for algorithms, use `next_state_visit_gen`
+    pub static STATE_VISIT_GEN: RefCell<u64> = RefCell::new(0)
+);
+thread_local!(
+    /// The Epoch stack, with each layer having the generation, a free list pointer, and assertions
+    pub static EPOCH_STACK: RefCell<Vec<(u64, Option<PState>, Assertions)>>
+        = RefCell::new(vec![(0, None, Assertions::new())])
+);
+thread_local!(
+    /// The current Epoch generation
+    pub static EPOCH_GEN: RefCell<u64> = RefCell::new(0)
+);
 
+/// Gets a new visitation generation for algorithms on [STATE_ARENA]
+pub fn next_state_visit_gen() -> u64 {
+    STATE_VISIT_GEN.with(|f| {
+        let gen = f.borrow().checked_add(1).unwrap();
+        *f.borrow_mut() = gen;
+        gen
+    })
+}
+
+/// Registers `bit` to the assertions of the current epoch
+pub fn register_assertion_bit(bit: dag::bool) {
+    EPOCH_STACK.with(|f| {
+        f.borrow_mut().last_mut().unwrap().2.bits.push(bit);
+    });
+}
+
+/// Calls `clear_and_shrink` on the thread local state arena. Panics if there
+/// are active `StateEpoch`s.
+pub fn clear_thread_local_state() {
+    EPOCH_STACK.with(|f| {
+        if f.borrow().len() != 1 {
+            panic!("called `clear_thread_local_state` when not all `StateEpoch`s are dropped")
+        }
+    });
+    // use `clear_and_shrink` because this function will be called to reduce
+    // absolute resource usage
+    STATE_ARENA.with(|f| f.borrow_mut().clear_and_shrink())
+}
+
+/// Manages the lifetimes and assertions of `State`s created by mimicking types.
+///
 /// During the lifetime of a `StateEpoch` struct, all thread local `State`s
 /// created will be kept until the struct is dropped, in which case the capacity
 /// for those states are reclaimed and their `PState`s invalidated. If mimick
@@ -50,6 +102,12 @@ thread_local!(pub static EPOCH_GEN: RefCell<u64> = RefCell::new(0));
 /// reference will retain their validity, but variables operated on by mutable
 /// reference during the lifetime will probably be invalidated and cause panics
 /// if used after the lifetime.
+///
+/// Additionally, assertion bits from [crate::mimick::assert],
+/// [crate::mimick::assert_eq], corresponding macros, and
+/// [crate::mimick::Option::unwrap] are associated with the newest level
+/// `StateEpoch` alive at the time they are created. Use
+/// [StateEpoch::assertions] to acquire these.
 ///
 /// In most use cases, you should create a `StateEpoch` for the lifetime of a
 /// group of mimicking types that are never used after being converted to
@@ -75,16 +133,37 @@ impl StateEpoch {
             gen
         });
         EPOCH_STACK.with(|f| {
-            f.borrow_mut().push((this_epoch_gen, None));
+            f.borrow_mut()
+                .push((this_epoch_gen, None, Assertions::new()));
         });
         Self { this_epoch_gen }
+    }
+
+    /// Gets the assertions associated with this Epoch (not including assertions
+    /// from when sub-epochs are alive or from before the this Epoch was
+    /// created)
+    pub fn assertions(&self) -> Assertions {
+        let mut res = Assertions::new();
+        EPOCH_STACK.with(|f| {
+            for (i, layer) in f.borrow().iter().enumerate().rev() {
+                if layer.0 == self.this_epoch_gen {
+                    res = layer.2.clone();
+                    break
+                }
+                if i == 0 {
+                    // shouldn't be reachable even with leaks
+                    unreachable!();
+                }
+            }
+        });
+        res
     }
 }
 
 impl Drop for StateEpoch {
     fn drop(&mut self) {
         EPOCH_STACK.with(|f| {
-            let mut epoch_stack: RefMut<Vec<(u64, Option<PState>)>> = f.borrow_mut();
+            let mut epoch_stack = f.borrow_mut();
             let top_gen = epoch_stack.last().unwrap().0;
             if top_gen == self.this_epoch_gen {
                 // remove all the states associated with this epoch
@@ -109,9 +188,9 @@ impl Drop for StateEpoch {
 
 impl PState {
     /// Enters a new `State` from the given components into the thread local
-    /// arena and registered for the current `StateEpoch`. Returns a `PState`
-    /// referencing that `State`, which will only be removed when the current
-    /// `StateEpoch` is dropped.
+    /// arena and registers it for the current `StateEpoch`. Returns a `PState`
+    /// `Ptr` to it that will only be invalidated when the current `StateEpoch`
+    /// is dropped.
     pub fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         STATE_ARENA.with(|f| {
             f.borrow_mut().insert_with(|p_this| State {
@@ -131,7 +210,7 @@ impl PState {
         })
     }
 
-    /// Gets `State` pointed to by `self` from the thread local arena
+    /// Gets the `State` pointed to by `self` from the thread local arena
     pub fn get_state(&self) -> Option<State> {
         STATE_ARENA.with(|f| f.borrow().get(*self).cloned())
     }
@@ -153,28 +232,6 @@ impl PState {
             }
         })
     }
-}
-
-/// Gets a new visit generation
-pub fn next_state_visit_gen() -> u64 {
-    STATE_VISIT_GEN.with(|f| {
-        let gen = f.borrow().checked_add(1).unwrap();
-        *f.borrow_mut() = gen;
-        gen
-    })
-}
-
-/// Calls `clear_and_shrink` on the thread local state arena. Panics if there
-/// are active `StateEpoch`s.
-pub fn clear_thread_local_state() {
-    EPOCH_STACK.with(|f| {
-        if f.borrow().len() != 1 {
-            panic!("called `clear_thread_local_state` when not all `StateEpoch`s are dropped")
-        }
-    });
-    // use `clear_and_shrink` because this function will be called to reduce
-    // absolute resource usage
-    STATE_ARENA.with(|f| f.borrow_mut().clear_and_shrink())
 }
 
 impl Default for StateEpoch {
