@@ -1,7 +1,7 @@
 use core::option::Option as StdOption;
 use std::{
     borrow::{Borrow, BorrowMut},
-    mem,
+    mem, ops,
     ops::{Deref, DerefMut},
 };
 
@@ -205,6 +205,46 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>> Option<T> {
                     t
                 } else {
                     panic!("called `Option::unwrap_or()` on an unrealizable `Opaque` value")
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "try_support")]
+impl<T> ops::Residual<T> for Option<!> {
+    type TryType = Option<T>;
+}
+
+#[cfg(feature = "try_support")]
+impl<T> ops::FromResidual<Option<!>> for Option<T> {
+    fn from_residual(residual: Option<!>) -> Self {
+        match residual {
+            None => None,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "try_support")]
+impl<T> ops::Try for Option<T> {
+    type Output = T;
+    type Residual = Option<!>;
+
+    fn from_output(output: Self::Output) -> Self {
+        Some(output)
+    }
+
+    fn branch(self) -> std::ops::ControlFlow<Self::Residual, Self::Output> {
+        use std::ops::ControlFlow;
+        match self {
+            None => ControlFlow::Break(None),
+            Some(t) => ControlFlow::Continue(t),
+            Opaque(z) => {
+                if let StdSome(t) = z.t {
+                    ControlFlow::Continue(t)
+                } else {
+                    panic!("called `Try::branch` on an unrealizable `Opaque` value")
                 }
             }
         }

@@ -20,4 +20,5 @@ awint_macros = { version = "0.7.0", path = "../awint_macros", default-features =
 awint = { path = "../awint" }
 
 [features]
+try_support = []
 debug = ["awint_macro_internals/debug"]

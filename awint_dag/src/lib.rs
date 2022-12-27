@@ -161,6 +161,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::comparison_chain)]
+#![cfg_attr(feature = "try_support", feature(try_trait_v2))]
+#![cfg_attr(feature = "try_support", feature(try_trait_v2_residual))]
+#![cfg_attr(feature = "try_support", feature(never_type))]
 
 mod common;
 pub mod lowering;

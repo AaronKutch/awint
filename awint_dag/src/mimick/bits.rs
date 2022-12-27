@@ -97,13 +97,13 @@ impl Bits {
     }
 
     #[must_use]
-    pub fn copy_(&mut self, rhs: &Self) -> Option<()> {
+    pub fn copy_(&mut self, rhs: &Self) -> crate::mimick::Option<()> {
         // directly use the state of `rhs`
         if self.bw() == rhs.bw() {
             self.set_state(rhs.state());
-            Some(())
+            crate::mimick::Option::Some(())
         } else {
-            None
+            crate::mimick::Option::None
         }
     }
 }

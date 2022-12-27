@@ -24,6 +24,8 @@ awint_macros = { version = "0.7.0", path = "../awint_macros" }
 default = ["const_support", "std"]
 # Turns on nightly features required for some functions to be marked `const`
 const_support = ["awint_core/const_support", "awint_ext/const_support"]
+# Turns on nightly features required for `Try` to work with some mimick types
+try_support = ["awint_dag/try_support"]
 # Turns on parts of the crate that require `alloc`
 alloc = ["awint_ext"]
 # Turns on parts of the crate that require `std`
