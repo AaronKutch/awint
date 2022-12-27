@@ -191,7 +191,10 @@ pub use crate::mimick::{Bits, ExtAwi, InlAwi};
 /// All mimicking structs
 pub mod dag {
     pub use crate::{
-        mimick::{Bits, ExtAwi, InlAwi},
+        mimick::{
+            Bits, ExtAwi, InlAwi, Option,
+            Option::{None, Some},
+        },
         primitive::*,
     };
 }

@@ -36,9 +36,12 @@ pub mod dag_prelude {
 /// `core::primitive::*`. This is useful when using the regular structs in a
 /// context with structs imported from `awint_dag`.
 pub mod awi {
+    #[cfg(not(feature = "alloc"))]
     pub use awint_core::awi::*;
     #[cfg(feature = "alloc")]
-    pub use awint_ext::ExtAwi;
+    pub use awint_ext::awi::*;
+    pub use Option::{None, Some};
+    pub use Result::{Err, Ok};
 }
 
 /// Contains all the mimicking arbitrary width integer structs and the mimicking

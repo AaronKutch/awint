@@ -30,6 +30,17 @@ pub const BITS: usize = usize::BITS as usize;
 /// Maximum value of an inline `Awi`
 pub const MAX: usize = usize::MAX;
 
+/// Subset of `awint::awi`
+pub mod awi {
+    // everything except for `char`, `str`, `f32`, and `f64`
+    pub use core::primitive::{
+        bool, i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize,
+    };
+
+    pub use Option::{self, None, Some};
+    pub use Result::{self, Err, Ok};
+}
+
 /// Utility free function for converting a `usize` to a `NonZeroUsize`. This is
 /// mainly intended for usage with literals, and shouldn't be used for fallible
 /// conversions.

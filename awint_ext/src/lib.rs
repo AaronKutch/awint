@@ -44,6 +44,8 @@ pub mod prelude {
 /// Subset of `awint::awi`
 pub mod awi {
     pub use awint_core::awi::*;
+    pub use Option::{None, Some};
+    pub use Result::{Err, Ok};
 
     pub use crate::ExtAwi;
 }

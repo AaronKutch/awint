@@ -1,7 +1,7 @@
 use core::option::Option as StdOption;
 use std::{
     borrow::{Borrow, BorrowMut},
-    mem, ops,
+    mem,
     ops::{Deref, DerefMut},
 };
 
@@ -11,6 +11,7 @@ use crate::{common::register_assertion_bit, dag, mimick::*};
 
 // the type itself must be public, but nothing else about it can
 #[derive(Debug, Clone, Copy)]
+#[doc(hidden)]
 pub struct OpaqueInternal<T> {
     is_some: dag::bool,
     t: StdOption<T>,
@@ -59,7 +60,8 @@ pub enum Option<T> {
     Opaque(OpaqueInternal<T>),
 }
 
-use crate::mimick::Option::*;
+use crate::mimick::Option::Opaque;
+pub use crate::mimick::Option::{None, Some};
 
 impl<T> Option<T> {
     pub fn as_ref(&self) -> Option<&T> {
@@ -212,12 +214,12 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>> Option<T> {
 }
 
 #[cfg(feature = "try_support")]
-impl<T> ops::Residual<T> for Option<!> {
+impl<T> std::ops::Residual<T> for Option<!> {
     type TryType = Option<T>;
 }
 
 #[cfg(feature = "try_support")]
-impl<T> ops::FromResidual<Option<!>> for Option<T> {
+impl<T> std::ops::FromResidual<Option<!>> for Option<T> {
     fn from_residual(residual: Option<!>) -> Self {
         match residual {
             None => None,
@@ -227,7 +229,7 @@ impl<T> ops::FromResidual<Option<!>> for Option<T> {
 }
 
 #[cfg(feature = "try_support")]
-impl<T> ops::Try for Option<T> {
+impl<T> std::ops::Try for Option<T> {
     type Output = T;
     type Residual = Option<!>;
 
