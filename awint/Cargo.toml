@@ -17,23 +17,24 @@ categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 awint_core = { version = "0.7.0", path = "../awint_core", default-features = false }
 awint_dag = { version = "0.7.0", path = "../awint_dag", default-features = false, optional = true }
 awint_ext = { version = "0.7.0", path = "../awint_ext", default-features = false, optional = true }
+awint_macro_internals = { version = "0.7.0", path = "../awint_macro_internals", default-features = false, optional = true }
 awint_macros = { version = "0.7.0", path = "../awint_macros" }
 
 # note: running the tests requires `--all-features`
 [features]
-default = ["const_support", "std"]
+default = ["try_support", "const_support", "std"]
 # Turns on nightly features required for some functions to be marked `const`
-const_support = ["awint_core/const_support", "awint_ext/const_support"]
+const_support = ["awint_core/const_support", "awint_ext?/const_support"]
 # Turns on nightly features required for `Try` to work with some mimick types
-try_support = ["awint_dag/try_support"]
+try_support = ["awint_dag?/try_support"]
 # Turns on parts of the crate that require `alloc`
 alloc = ["awint_ext"]
 # Turns on parts of the crate that require `std`
-std = ["alloc"]
+std = ["alloc", "awint_macro_internals"]
 # Turns on `rand` support
 rand_support = ["awint_core/rand_support"]
 # Turns on `serde` support
-serde_support = ["awint_core/serde_support", "awint_ext/serde_support"]
+serde_support = ["awint_core/serde_support", "awint_ext?/serde_support"]
 # Turns on `awint_dag` support. Note: this activates `std`.
 dag = ["awint_dag", "std"]
-debug = ["awint_dag/debug"]
+debug = ["awint_dag/debug", "awint_macro_internals/debug"]

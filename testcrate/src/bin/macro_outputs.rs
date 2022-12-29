@@ -3,22 +3,22 @@ use std::{
     fs::{File, OpenOptions},
 };
 
-use awint_macro_internals::{cc_macro, CodeGen, FnNames, AWINT_NAMES};
+use awint::awint_macro_internals::{cc_macro, CodeGen, FnNames, AWINT_NAMES};
 
 const TEST_FN_NAMES: FnNames = FnNames {
     get_bw: "bw",
     mut_bits_ref: "&mut B",
     bits_ref: "&B",
-    le_fn: "le",
-    common_fn: "c_fn",
+    usize_add: "add",
+    usize_sub: "sub",
     max_fn: "max",
+    cc_checks_fn: "check_fn",
     copy_: "copy",
     field: "field",
     field_to: "field_to",
     field_from: "field_from",
     field_width: "field_width",
     field_bit: "field_bit",
-    unwrap: ".unwrap()",
     bw_call: &['.', 'b', 'w', '(', ')'],
 };
 

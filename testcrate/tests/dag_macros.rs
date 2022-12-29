@@ -1,4 +1,4 @@
-use awint::dag_prelude::*;
+use awint::{awi, dag_prelude::*};
 
 // just copied from `macros.rs` and all asserts stripped (since the DAG
 // currently assumes all operations succeed)
@@ -15,7 +15,7 @@ fn dag_macros() {
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     // dynamic ranges
-    let x: usize = 8;
+    let x = 8;
     let awi = ExtAwi::zero(bw(12));
     let _ = extawi!(0x98765_u20[x..(x + awi.bw())]).unwrap();
     // unbounded fillers

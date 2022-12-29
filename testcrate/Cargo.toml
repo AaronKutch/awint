@@ -6,10 +6,9 @@ publish = false
 
 [dependencies]
 # the "debug" feature enabled here is a test for the flag and the generation counters it enables
-awint_macro_internals = { path = "../awint_macro_internals", features = ["debug"] }
+awint = { path = "../awint", features = ["rand_support", "serde_support", "dag", "debug"] }
 
 [dev-dependencies]
-awint = { path = "../awint", features = ["std", "rand_support", "serde_support", "dag", "debug"] }
 rand_xoshiro = "0.6"
 ron = "0.7"
 

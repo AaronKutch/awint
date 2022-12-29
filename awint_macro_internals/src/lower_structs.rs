@@ -87,13 +87,19 @@ impl<'a> Lower<'a> {
             let txt = self.try_txt_bound_to_binding(&usb.s);
             if usb.x < 0 {
                 self.values
-                    .insert(Value::Usize(format!("{}-{}", txt, -usb.x)), false)
+                    .insert(
+                        Value::Usize(format!("{}({},{})", self.fn_names.usize_sub, txt, -usb.x)),
+                        false,
+                    )
                     .either()
             } else if usb.x == 0 {
                 self.values.insert(Value::Usize(txt), false).either()
             } else {
                 self.values
-                    .insert(Value::Usize(format!("{}+{}", txt, usb.x)), false)
+                    .insert(
+                        Value::Usize(format!("{}({},{})", self.fn_names.usize_add, txt, usb.x)),
+                        false,
+                    )
                     .either()
             }
         }
@@ -185,47 +191,44 @@ impl<'a> Lower<'a> {
     }
 
     /// Checks that ranges aren't reversed and the upper bounds are not beyond
-    /// bitwidths
-    pub fn lower_le_checks(&mut self) -> String {
-        let mut s = String::new();
+    /// bitwidths. Returns `true` and "0;0" for both strings if there are no
+    /// checks (for `awint_dag` purposes)
+    pub fn lower_le_checks(&mut self) -> (bool, String, String) {
+        let mut s0 = String::new();
+        let mut s1 = String::new();
         for (width, used) in self.widths.arena_mut().vals_mut() {
             if used.0 {
                 if let Width::Range(lo, hi) = width {
-                    if !s.is_empty() {
-                        s += ",";
+                    if !s0.is_empty() {
+                        s0 += ",";
+                        s1 += ",";
                     }
                     *self.values.a_get_mut(*lo) = true;
                     *self.values.a_get_mut(*hi) = true;
-                    write!(
-                        s,
-                        "({}_{},{}_{})",
-                        self.names.value,
-                        lo.inx(),
-                        self.names.value,
-                        hi.inx()
-                    )
-                    .unwrap();
+                    write!(s0, "{}_{}", self.names.value, lo.inx(),).unwrap();
+                    write!(s1, "{}_{}", self.names.value, hi.inx()).unwrap();
                 }
             }
         }
-        if s.is_empty() {
-            s
+        if s0.is_empty() {
+            (true, "0;0".to_owned(), "0;0".to_owned())
         } else {
-            format!("{}([{}]).is_some()", self.fn_names.le_fn, s)
+            (false, s0, s1)
         }
     }
 
     /// Checks that we aren't trying to squeeze unbounded fillers into
     /// negative widths for nondeterministic cases and that deterministic concat
-    /// widths are equal to the common bitwidth
-    pub fn lower_common_checks(&mut self, ast: &Ast) -> String {
+    /// widths are equal to the common bitwidth. Returns `true` and "0;0" for
+    /// both strings if there are no checks (for `awint_dag` purposes)
+    pub fn lower_common_checks(&mut self, ast: &Ast) -> (bool, String, String) {
         if matches!(
             ast.overall_alignment,
             FillerAlign::Single | FillerAlign::Lsb | FillerAlign::Msb
         ) {
             // always infallible except potentially with respect to 0 bitwidth return
             // situations which is handled elsewhere
-            return String::new()
+            return (true, "0;0".to_owned(), "0;0".to_owned())
         }
         let mut ge = String::new();
         let mut eq = String::new();
@@ -258,19 +261,15 @@ impl<'a> Lower<'a> {
             }
         }
         if eq.is_empty() && ge.is_empty() {
-            String::new()
+            (true, "0;0".to_owned(), "0;0".to_owned())
         } else {
-            // this is to get type annotations working for `awint_dag` purposes
             if eq.is_empty() {
-                eq += "0;0";
+                eq = "0;0".to_owned();
             }
             if ge.is_empty() {
-                ge += "0;0";
+                ge = "0;0".to_owned();
             }
-            format!(
-                "{}({},[{}],[{}]).is_some()",
-                self.fn_names.common_fn, self.names.cw, ge, eq
-            )
+            (false, ge, eq)
         }
     }
 
@@ -290,35 +289,54 @@ impl<'a> Lower<'a> {
             match (to, from) {
                 (Some(to), Some(from)) => write!(
                     s,
-                    "{}({},{},{},{})",
+                    "let _ = {}({},{},{},{});",
                     self.fn_names.field_bit, lhs, to, rhs, from
                 )
                 .unwrap(),
-                (Some(to), None) => {
-                    write!(s, "{}({},{},{},0)", self.fn_names.field_bit, lhs, to, rhs).unwrap()
-                }
-                (None, Some(from)) => {
-                    write!(s, "{}({},0,{},{})", self.fn_names.field_bit, lhs, rhs, from).unwrap()
-                }
-                (None, None) => {
-                    write!(s, "{}({},0,{},0)", self.fn_names.field_bit, lhs, rhs).unwrap()
-                }
+                (Some(to), None) => write!(
+                    s,
+                    "let _ = {}({},{},{},0);",
+                    self.fn_names.field_bit, lhs, to, rhs
+                )
+                .unwrap(),
+                (None, Some(from)) => write!(
+                    s,
+                    "let _ = {}({},0,{},{});",
+                    self.fn_names.field_bit, lhs, rhs, from
+                )
+                .unwrap(),
+                (None, None) => write!(
+                    s,
+                    "let _ = {}({},0,{},0);",
+                    self.fn_names.field_bit, lhs, rhs
+                )
+                .unwrap(),
             }
-            write!(s, "{};", self.fn_names.unwrap).unwrap();
         } else {
             match (to, from) {
-                (Some(to), Some(from)) => {
-                    write!(s, "{}({},{},{},{}", self.fn_names.field, lhs, to, rhs, from).unwrap()
+                (Some(to), Some(from)) => write!(
+                    s,
+                    "let _ = {}({},{},{},{}",
+                    self.fn_names.field, lhs, to, rhs, from
+                )
+                .unwrap(),
+                (Some(to), None) => write!(
+                    s,
+                    "let _ = {}({},{},{}",
+                    self.fn_names.field_to, lhs, to, rhs
+                )
+                .unwrap(),
+                (None, Some(from)) => write!(
+                    s,
+                    "let _ = {}({},{},{}",
+                    self.fn_names.field_from, lhs, rhs, from
+                )
+                .unwrap(),
+                (None, None) => {
+                    write!(s, "let _ = {}({},{}", self.fn_names.field_width, lhs, rhs).unwrap()
                 }
-                (Some(to), None) => {
-                    write!(s, "{}({},{},{}", self.fn_names.field_to, lhs, to, rhs).unwrap()
-                }
-                (None, Some(from)) => {
-                    write!(s, "{}({},{},{}", self.fn_names.field_from, lhs, rhs, from).unwrap()
-                }
-                (None, None) => write!(s, "{}({},{}", self.fn_names.field_width, lhs, rhs).unwrap(),
             }
-            write!(s, ",{}){};", width, self.fn_names.unwrap).unwrap();
+            write!(s, ",{width});").unwrap();
         }
     }
 
@@ -344,8 +362,9 @@ impl<'a> Lower<'a> {
             if first_in_align {
                 write!(
                     s,
-                    "let mut {}={}-{}_{};",
+                    "let mut {}={}({},{}_{});",
                     self.names.shl,
+                    self.fn_names.usize_sub,
                     self.names.cw,
                     self.names.width,
                     width.inx()
@@ -354,7 +373,9 @@ impl<'a> Lower<'a> {
             } else {
                 write!(
                     s,
-                    "{}-={}_{};",
+                    "{}={}({},{}_{});",
+                    self.names.shl,
+                    self.fn_names.usize_sub,
                     self.names.shl,
                     self.names.width,
                     width.inx()
@@ -436,7 +457,9 @@ impl<'a> Lower<'a> {
             } else {
                 write!(
                     s,
-                    "{}+={}_{};",
+                    "{}={}({},{}_{});",
+                    self.names.shl,
+                    self.fn_names.usize_add,
                     self.names.shl,
                     self.names.width,
                     width.inx()
@@ -457,22 +480,20 @@ impl<'a> Lower<'a> {
             if from_buf {
                 *self.binds.a_get_mut(sink) = (true, true);
                 return format!(
-                    "{}({}_{},{}){};\n",
+                    "let _ = {}({}_{},{});\n",
                     self.fn_names.copy_,
                     self.names.bind,
                     sink.inx(),
                     self.names.awi_ref,
-                    self.fn_names.unwrap
                 )
             } else {
                 self.binds.a_get_mut(sink).0 = true;
                 return format!(
-                    "{}({},{}_{}){};\n",
+                    "let _ = {}({},{}_{});\n",
                     self.fn_names.copy_,
                     self.names.awi_ref,
                     self.names.bind,
                     sink.inx(),
-                    self.fn_names.unwrap
                 )
             }
         }
@@ -544,13 +565,12 @@ impl<'a> Lower<'a> {
                         *self.binds.a_get_mut(sink) = (true, true);
                         writeln!(
                             s,
-                            "{}({}_{},{}_{}){};",
+                            "let _ = {}({}_{},{}_{});",
                             self.fn_names.copy_,
                             self.names.bind,
                             sink.inx(),
                             self.names.bind,
-                            src.inx(),
-                            self.fn_names.unwrap
+                            src.inx()
                         )
                         .unwrap();
                     }
@@ -565,15 +585,22 @@ impl<'a> Lower<'a> {
         let mut s = String::new();
         for (p_cw, (cw, used)) in self.cw.arena() {
             if *used {
-                write!(s, "let {}_{}=", self.names.cw, p_cw.inx()).unwrap();
+                let mut tmp = String::new();
                 for (i, w) in cw.0.iter().enumerate() {
                     self.widths.a_get_mut(w).1 = true;
-                    if i != 0 {
-                        write!(s, "+").unwrap();
+                    if i == 0 {
+                        tmp = format!("{}_{}", self.names.width, w.inx());
+                    } else {
+                        tmp = format!(
+                            "{}({},{}_{})",
+                            self.fn_names.usize_add,
+                            tmp,
+                            self.names.width,
+                            w.inx()
+                        );
                     }
-                    write!(s, "{}_{}", self.names.width, w.inx()).unwrap();
                 }
-                writeln!(s, ";").unwrap();
+                write!(s, "let {}_{}={};", self.names.cw, p_cw.inx(), tmp).unwrap();
             }
         }
         s
@@ -601,9 +628,10 @@ impl<'a> Lower<'a> {
                         *self.values.a_get_mut(v1) = true;
                         writeln!(
                             s,
-                            "let {}_{}={}_{}-{}_{};",
+                            "let {}_{}={}({}_{},{}_{});",
                             self.names.width,
                             p_w.inx(),
+                            self.fn_names.usize_sub,
                             self.names.value,
                             v1.inx(),
                             self.names.value,
@@ -636,14 +664,7 @@ impl<'a> Lower<'a> {
                         .unwrap();
                     }
                     Value::Usize(string) => {
-                        writeln!(
-                            s,
-                            "let {}_{}:usize={};",
-                            self.names.value,
-                            p_v.inx(),
-                            string
-                        )
-                        .unwrap();
+                        writeln!(s, "let {}_{}={};", self.names.value, p_v.inx(), string).unwrap();
                     }
                 }
             }

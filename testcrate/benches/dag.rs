@@ -3,9 +3,9 @@
 extern crate test;
 use awint::{
     awint_dag::{Lineage, OpDag},
+    awint_macro_internals::triple_arena::ptr_struct,
     dag_prelude::*,
 };
-use awint_macro_internals::triple_arena::ptr_struct;
 use test::Bencher;
 
 ptr_struct!(P0; P1; P2);

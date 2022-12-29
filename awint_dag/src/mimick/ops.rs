@@ -1,10 +1,16 @@
 // Note: we use `impl Into<...>` heavily instead of `U: Into<...>` generics,
 // because it allows arguments to be different types
 
+use std::marker::PhantomData;
+
 use awint_ext::{awi, awint_internals::BITS};
 use Op::*;
 
-use crate::{dag, mimick::Bits, Lineage, Op};
+use crate::{
+    dag,
+    mimick::{Bits, None, Option, Some},
+    Lineage, Op,
+};
 
 macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
@@ -306,7 +312,7 @@ impl Bits {
     #[must_use]
     pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {
-            if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
+            if let awi::Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
                 if lut_len == lut.bw() {
                     self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]));
                     return Some(())
@@ -319,7 +325,7 @@ impl Bits {
     #[must_use]
     pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
         if inx.bw() < BITS {
-            if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
+            if let awi::Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
                 if lut_len == self.bw() {
                     self.update_state(
                         self.state_nzbw(),
@@ -599,30 +605,57 @@ impl Bits {
 }
 
 #[doc(hidden)]
+pub struct CCResult<T> {
+    run_fielding: awi::bool,
+    success: dag::bool,
+    _phantom_data: PhantomData<T>,
+}
+
+impl<T> CCResult<T> {
+    pub const fn run_fielding(&self) -> bool {
+        self.run_fielding
+    }
+
+    pub const fn wrap(self, t: T) -> dag::Option<T> {
+        Option::Opaque(crate::mimick::OpaqueInternal {
+            is_some: self.success,
+            t: awi::Some(t),
+        })
+    }
+
+    pub const fn wrap_none(self) -> Option<T> {
+        None
+    }
+}
+
+impl CCResult<()> {
+    pub const fn wrap_if_success(self) -> Option<()> {
+        Option::Opaque(crate::mimick::OpaqueInternal {
+            is_some: self.success,
+            t: awi::Some(()),
+        })
+    }
+}
+
+#[doc(hidden)]
 impl Bits {
     #[must_use]
     pub const fn must_use<T>(t: T) -> T {
         t
     }
 
+    #[inline]
+    pub fn usize_add(lhs: impl Into<dag::usize>, rhs: impl Into<dag::usize>) -> dag::usize {
+        lhs.into().wrapping_add(rhs.into())
+    }
+
+    #[inline]
+    pub fn usize_sub(lhs: impl Into<dag::usize>, rhs: impl Into<dag::usize>) -> dag::usize {
+        lhs.into().wrapping_sub(rhs.into())
+    }
+
     pub const fn unstable_raw_digits(w: usize) -> usize {
         awint_ext::awint_internals::raw_digits(w)
-    }
-
-    // TODO for now assume they pass
-
-    pub fn unstable_le_checks<const N: usize>(
-        _le_checks: [(impl Into<dag::usize>, impl Into<dag::usize>); N],
-    ) -> Option<()> {
-        Some(())
-    }
-
-    pub fn unstable_common_checks<const N: usize, const M: usize>(
-        _common_cw: impl Into<dag::usize>,
-        _ge: [impl Into<dag::usize>; N],
-        _eq: [impl Into<dag::usize>; M],
-    ) -> Option<()> {
-        Some(())
     }
 
     pub fn unstable_max<const N: usize>(x: [awi::usize; N]) -> awi::usize {
@@ -633,5 +666,51 @@ impl Bits {
             }
         }
         max
+    }
+
+    pub fn unstable_cc_checks<const LE: usize, const GE: usize, const EQ: usize, T>(
+        le0: [impl Into<dag::usize>; LE],
+        le1: [impl Into<dag::usize>; LE],
+        ge: [impl Into<dag::usize>; GE],
+        eq: [impl Into<dag::usize>; EQ],
+        cw: impl Into<dag::usize>,
+        check_nonzero_cw: awi::bool,
+        ok_on_zero: awi::bool,
+    ) -> CCResult<T> {
+        // it is just barely possible to avoid non-copy and `impl _` errors
+        let le0: Box<[_]> = Box::from(le0);
+        let mut le0: Vec<_> = Vec::from(le0);
+        let le1: Box<[_]> = Box::from(le1);
+        let mut le1: Vec<_> = Vec::from(le1);
+        let ge: Box<[_]> = Box::from(ge);
+        let mut ge: Vec<_> = Vec::from(ge);
+        let eq: Box<[_]> = Box::from(eq);
+        let mut eq: Vec<_> = Vec::from(eq);
+        use dag::InlAwi;
+        let cw = InlAwi::from_usize(cw.into());
+        let mut b = true.into();
+        for _ in 0..LE {
+            b &= InlAwi::from_usize(le0.pop().unwrap().into())
+                .ule(&InlAwi::from_usize(le1.pop().unwrap().into()))
+                .unwrap();
+        }
+        for _ in 0..GE {
+            b &= cw
+                .uge(&InlAwi::from_usize(ge.pop().unwrap().into()))
+                .unwrap();
+        }
+        for _ in 0..EQ {
+            b &= cw
+                .const_eq(&InlAwi::from_usize(eq.pop().unwrap().into()))
+                .unwrap();
+        }
+        if check_nonzero_cw && (!ok_on_zero) {
+            b &= !cw.is_zero();
+        }
+        CCResult {
+            run_fielding: true,
+            success: b,
+            _phantom_data: PhantomData,
+        }
     }
 }

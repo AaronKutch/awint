@@ -84,6 +84,16 @@ macro_rules! prim {
                 pub(crate) fn get_nzbw() -> NonZeroUsize {
                     NonZeroUsize::new($w).unwrap()
                 }
+
+                pub fn wrapping_add(mut self, rhs: impl Into<Self>) -> Self {
+                    let _ = self.0.add_(&rhs.into().0);
+                    self
+                }
+
+                pub fn wrapping_sub(mut self, rhs: impl Into<Self>) -> Self {
+                    let _ = self.0.sub_(&rhs.into().0);
+                    self
+                }
             }
 
             impl From<awi::$name> for $name {

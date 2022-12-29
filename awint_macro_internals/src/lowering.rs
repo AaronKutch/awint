@@ -136,78 +136,17 @@ pub fn cc_macro_code_gen<
     for concat in &mut ast.cc {
         l.lower_concat(concat);
     }
-    let lt_checks = l.lower_le_checks();
-    let common_checks = l.lower_common_checks(&ast);
+    let (lt_infallible, lt_checks0, lt_checks1) = l.lower_le_checks();
+    let (common_infallible, common_checks0, common_checks1) = l.lower_common_checks(&ast);
 
-    let common_infallible = lt_checks.is_empty() && common_checks.is_empty();
+    let checks_infallible = lt_infallible && common_infallible;
 
     // edge case: `extawi!(zero: ..r)` is infallible with respect to range and
     // common checks but is fallible with respect to nonzero width
     let infallible = if is_returning {
-        common_infallible && ast.guaranteed_nonzero_width
+        checks_infallible && ast.guaranteed_nonzero_width
     } else {
-        common_infallible
-    };
-
-    let construction = if need_buffer {
-        let mut s = vec![];
-        if let Some(init) = ast.txt_init {
-            ast.chars_assign_subtree(&mut s, init);
-        }
-        let s = chars_to_string(&s);
-        // buffer and reference to buffer
-        format!(
-            "let mut {}={};let {}=&mut {};\n",
-            names.awi,
-            (code_gen.construction_fn)(&s, ast.common_bw, Some(names.cw)),
-            names.awi_ref,
-            names.awi,
-        )
-    } else {
-        String::new()
-    };
-
-    let fielding = l.lower_fielding(&ast, source_has_filler, need_buffer);
-
-    let returning = match (is_returning, infallible) {
-        (false, false) => "Some(())".to_owned(),
-        (false, true) => String::new(),
-        (true, false) => format!("Some({})", names.awi),
-        (true, true) => names.awi.to_owned(),
-    };
-    let wrap_must_use = !returning.is_empty();
-
-    // inner code consisting of the zero check, construction of returning or
-    // buffers, fielding, and return values
-    let mut inner0 = format!("{construction}{fielding}{returning}");
-
-    // very tricky
-    if !ast.guaranteed_nonzero_width {
-        if is_returning {
-            if infallible {
-                // do nothing
-            } else {
-                // avoid creating the return value and return `None` because it is a condition
-                // of construction macros
-                inner0 = format!("if {} != 0 {{\n{}\n}}else{{None}}", names.cw, inner0);
-            }
-        } else if need_buffer {
-            if infallible {
-                // overall infallible but we need to avoid creating the buffer
-                inner0 = format!("if {} != 0 {{\n{}\n}}", names.cw, inner0);
-            } else {
-                // overall fallible, but this is not a construction macro, but we need to avoid
-                // creating the buffer
-                inner0 = format!("if {} != 0 {{\n{}\n}}else{{Some(())}}", names.cw, inner0);
-            }
-        } // else do nothing because there is no buffer
-    }
-
-    // concat width checks
-    let inner1 = if common_checks.is_empty() {
-        inner0
-    } else {
-        format!("if {common_checks} {{\n{inner0}\n}}else{{None}}")
+        checks_infallible
     };
 
     // designate the common concatenation width
@@ -235,26 +174,156 @@ pub fn cc_macro_code_gen<
         format!("let {}={}([{}]);\n", names.cw, fn_names.max_fn, s)
     };
 
-    // width and common width calculations come after reversal checks and before
-    // concat width checks
-    let cws = l.lower_cws();
-    let widths = l.lower_widths();
-    let inner2 = format!("{widths}{cws}{common_cw}{inner1}");
-
-    // reversal checks
-    let inner3 = if lt_checks.is_empty() {
-        inner2
+    let construction = if need_buffer {
+        let mut s = vec![];
+        if let Some(init) = ast.txt_init {
+            ast.chars_assign_subtree(&mut s, init);
+        }
+        let s = chars_to_string(&s);
+        // buffer and reference to buffer
+        format!(
+            "let mut {}={};let {}=&mut {};\n",
+            names.awi,
+            (code_gen.construction_fn)(&s, ast.common_bw, Some(names.cw)),
+            names.awi_ref,
+            names.awi,
+        )
     } else {
-        format!("if {lt_checks} {{\n{inner2}\n}}else{{None}}")
+        String::new()
     };
 
+    let fielding = l.lower_fielding(&ast, source_has_filler, need_buffer);
+
+    let returning = match (is_returning, infallible) {
+        (false, false) => String::new(),
+        (false, true) => String::new(),
+        (true, false) => names.awi.to_owned(),
+        (true, true) => names.awi.to_owned(),
+    };
+    let wrap_must_use = !returning.is_empty();
+
+    // inner code consisting of construction of Awis, fielding, and returning
+    let mut inner = format!("{construction}{fielding}{returning}");
+
+    // very tricky, there are too many corner and optimization cases to do this in a
+    // more compact way
+    if ast.guaranteed_nonzero_width {
+        if infallible {
+            // do nothing
+        } else {
+            inner = format!(
+                "let {} = {}([{}],[{}],[{}],[{}],{},false,false);\nif {}.run_fielding() \
+                 {{{}.wrap({{\n{}\n}})}} else {{{}.wrap_none()}}",
+                names.res,
+                fn_names.cc_checks_fn,
+                lt_checks0,
+                lt_checks1,
+                common_checks0,
+                common_checks1,
+                names.cw,
+                names.res,
+                names.res,
+                inner,
+                names.res,
+            )
+        }
+    } else if is_returning {
+        if infallible {
+            // do nothing
+        } else {
+            // avoid creating the return value and return `None` because it is a condition
+            // of construction macros
+            inner = format!(
+                "let {} = {}([{}],[{}],[{}],[{}],{},true,false);\nif {}.run_fielding() \
+                 {{{}.wrap({{\n{}\n}})}} else {{{}.wrap_none()}}",
+                names.res,
+                fn_names.cc_checks_fn,
+                lt_checks0,
+                lt_checks1,
+                common_checks0,
+                common_checks1,
+                names.cw,
+                names.res,
+                names.res,
+                inner,
+                names.res,
+            )
+        }
+    } else if need_buffer {
+        if infallible {
+            // overall infallible but we need to avoid creating the buffer
+            inner = format!(
+                "let {} = {}([{}],[{}],[{}],[{}],{},true,false);\nif {}.run_fielding() {{\n{}\n}}",
+                names.res,
+                fn_names.cc_checks_fn,
+                lt_checks0,
+                lt_checks1,
+                common_checks0,
+                common_checks1,
+                names.cw,
+                names.res,
+                inner,
+            )
+        } else {
+            // overall fallible, but this is not a construction macro, but we need to avoid
+            // creating the buffer
+            /*inner = format!(
+                "if {} != 0 {{\n{}\n}}else{{core::option::Option::Some(())}}",
+                names.cw, inner
+            );*/
+            //nonfielding_case = format!(" else {{{}.wrap_if_success()}}", names.res);
+            inner = format!(
+                "let {} = {}([{}],[{}],[{}],[{}],{},true,true);\nif {}.run_fielding() \
+                 {{{}.wrap({{\n{}\n}})}} else {{{}.wrap_if_success()}}",
+                names.res,
+                fn_names.cc_checks_fn,
+                lt_checks0,
+                lt_checks1,
+                common_checks0,
+                common_checks1,
+                names.cw,
+                names.res,
+                names.res,
+                inner,
+                names.res,
+            )
+        }
+    } else {
+        // no buffer
+        if infallible {
+            // nothing
+        } else {
+            inner = format!(
+                "let {} = {}([{}],[{}],[{}],[{}],{},false,false);\nif {}.run_fielding() \
+                 {{{}.wrap({{\n{}\n}})}} else {{{}.wrap_none()}}",
+                names.res,
+                fn_names.cc_checks_fn,
+                lt_checks0,
+                lt_checks1,
+                common_checks0,
+                common_checks1,
+                names.cw,
+                names.res,
+                names.res,
+                inner,
+                names.res,
+            )
+        }
+    }
+
+    // width and common width calculations used to come after reversal checks and
+    // before concat width checks, but because of `awint_dag` and because the
+    // successful path is usually chosen, all calculations are done before the
+    // checks
+    let cws = l.lower_cws();
+    let widths = l.lower_widths();
     let values = l.lower_values();
     let bindings = l.lower_bindings(code_gen.lit_construction_fn);
 
-    let inner4 = format!("{{\n{bindings}{values}{inner3}}}");
+    let inner = format!("{{\n{bindings}{values}{widths}{cws}{common_cw}{inner}}}");
     if wrap_must_use {
-        (code_gen.must_use)(&inner4)
+        (code_gen.must_use)(&inner)
     } else {
-        inner4
+        inner
     }
 }

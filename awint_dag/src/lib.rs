@@ -89,7 +89,7 @@
 //!
 //!     for node in graph.a.vals() {
 //!         use awint::awint_dag::Op::*;
-//!         assert!(matches!(
+//!         core::assert!(matches!(
 //!             node.op,
 //!             Opaque(_)
 //!                 | Literal(_)
@@ -188,11 +188,11 @@ pub mod state {
 
 pub use crate::mimick::{Bits, ExtAwi, InlAwi};
 
-/// All mimicking structs
+/// All mimicking structs and assertions
 pub mod dag {
     pub use crate::{
         mimick::{
-            Bits, ExtAwi, InlAwi, Option,
+            assert, assert_eq, assert_ne, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
         },
         primitive::*,

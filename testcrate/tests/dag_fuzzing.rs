@@ -4,9 +4,9 @@ use awint::{
     awi,
     awint_dag::{lowering::OpDag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
     awint_internals::BITS,
+    awint_macro_internals::triple_arena::{ptr_struct, Arena},
     dag, dag_prelude,
 };
-use awint_macro_internals::triple_arena::{ptr_struct, Arena};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,

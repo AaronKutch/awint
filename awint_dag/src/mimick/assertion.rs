@@ -2,13 +2,15 @@
 
 use crate::{common::register_assertion_bit, dag};
 
+#[doc(hidden)]
 pub fn internal_assert(assert_true: impl Into<dag::bool>) {
     register_assertion_bit(assert_true.into())
 }
 
+#[doc(hidden)]
 #[track_caller]
-pub fn internal_assert_eq(lhs: impl AsRef<dag::Bits>, rhs: impl AsRef<dag::Bits>) {
-    let eq = if let Some(eq) = lhs.as_ref().const_eq(rhs.as_ref()) {
+pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(lhs: AsRefBitsType, rhs: AsRefBitsType) {
+    let eq = if let dag::Some(eq) = lhs.as_ref().const_eq(rhs.as_ref()) {
         eq
     } else {
         panic!("`assert_eq` failed for `lhs` and `rhs` because they have different bitwidths")
@@ -16,9 +18,10 @@ pub fn internal_assert_eq(lhs: impl AsRef<dag::Bits>, rhs: impl AsRef<dag::Bits>
     register_assertion_bit(eq)
 }
 
+#[doc(hidden)]
 #[track_caller]
-pub fn internal_assert_ne(lhs: impl AsRef<dag::Bits>, rhs: impl AsRef<dag::Bits>) {
-    let ne = if let Some(ne) = lhs.as_ref().const_ne(rhs.as_ref()) {
+pub fn internal_assert_ne<AsRefBitsType: AsRef<dag::Bits>>(lhs: AsRefBitsType, rhs: AsRefBitsType) {
+    let ne = if let dag::Some(ne) = lhs.as_ref().const_ne(rhs.as_ref()) {
         ne
     } else {
         panic!("`assert_ne` failed for `lhs` and `rhs` because they have different bitwidths")
@@ -26,6 +29,7 @@ pub fn internal_assert_ne(lhs: impl AsRef<dag::Bits>, rhs: impl AsRef<dag::Bits>
     register_assertion_bit(ne)
 }
 
+/// Mimicking `assert` that takes `awi::bool` or `dag::bool`
 #[macro_export]
 macro_rules! assert {
     ($assert_true:expr) => {
@@ -33,6 +37,7 @@ macro_rules! assert {
     };
 }
 
+/// Mimicking `assert_eq` that takes inputs of `AsRef<dag::Bits>`
 #[macro_export]
 macro_rules! assert_eq {
     ($lhs:expr, $rhs:expr) => {
@@ -40,6 +45,7 @@ macro_rules! assert_eq {
     };
 }
 
+/// Mimicking `assert_ne` that takes inputs of `AsRef<dag::Bits>`
 #[macro_export]
 macro_rules! assert_ne {
     ($lhs:expr, $rhs:expr) => {

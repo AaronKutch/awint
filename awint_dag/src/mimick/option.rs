@@ -5,6 +5,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use awint_ext::awi;
 use StdOption::{None as StdNone, Some as StdSome};
 
 use crate::{common::register_assertion_bit, dag, mimick::*};
@@ -13,8 +14,8 @@ use crate::{common::register_assertion_bit, dag, mimick::*};
 #[derive(Debug, Clone, Copy)]
 #[doc(hidden)]
 pub struct OpaqueInternal<T> {
-    is_some: dag::bool,
-    t: StdOption<T>,
+    pub(in crate::mimick) is_some: dag::bool,
+    pub(in crate::mimick) t: StdOption<T>,
 }
 
 impl<T> OpaqueInternal<T> {
@@ -32,7 +33,7 @@ impl<T> OpaqueInternal<T> {
         }
     }
 
-    pub fn copied(self) -> OpaqueInternal<T>
+    fn copied(self) -> OpaqueInternal<T>
     where
         T: Clone,
     {
@@ -42,7 +43,7 @@ impl<T> OpaqueInternal<T> {
         }
     }
 
-    pub fn cloned(self) -> OpaqueInternal<T>
+    fn cloned(self) -> OpaqueInternal<T>
     where
         T: Clone,
     {
@@ -62,6 +63,15 @@ pub enum Option<T> {
 
 use crate::mimick::Option::Opaque;
 pub use crate::mimick::Option::{None, Some};
+
+impl<T> From<awi::Option<T>> for dag::Option<T> {
+    fn from(value: awi::Option<T>) -> Self {
+        match value {
+            awi::None => None,
+            awi::Some(t) => Some(t),
+        }
+    }
+}
 
 impl<T> Option<T> {
     pub fn as_ref(&self) -> Option<&T> {
@@ -138,6 +148,14 @@ impl<T> Option<T> {
         }
     }
 
+    pub fn is_none_at_runtime(&self) -> bool {
+        match self {
+            None => true,
+            Some(_) => false,
+            Opaque(_) => false,
+        }
+    }
+
     pub fn is_none(&self) -> dag::bool {
         match self {
             None => true.into(),
@@ -146,11 +164,27 @@ impl<T> Option<T> {
         }
     }
 
+    pub fn is_some_at_runtime(&self) -> bool {
+        match self {
+            None => false,
+            Some(_) => true,
+            Opaque(_) => false,
+        }
+    }
+
     pub fn is_some(&self) -> dag::bool {
         match self {
             None => false.into(),
             Some(_) => true.into(),
             Opaque(z) => z.is_some,
+        }
+    }
+
+    pub fn is_opaque_at_runtime(&self) -> bool {
+        match self {
+            None => false,
+            Some(_) => false,
+            Opaque(_) => true,
         }
     }
 
@@ -201,7 +235,10 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>> Option<T> {
             Some(t) => t,
             Opaque(z) => {
                 if let StdSome(mut t) = z.t {
-                    if t.borrow_mut().mux_(default.borrow(), z.is_some).is_none() {
+                    if t.borrow_mut()
+                        .mux_(default.borrow(), z.is_some)
+                        .is_none_at_runtime()
+                    {
                         panic!("called `Option::unwrap_or()` with unequal bitwidth types")
                     }
                     t
