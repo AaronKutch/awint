@@ -28,6 +28,7 @@ system depending on these feature flags:
 - "std" turns on parts that require std
 - "rand_support" turns on a dependency to `rand_core` without its default features
 - "serde_support" turns on a dependency to `serde` without its default features
+- "zeroize_support" turns on a dependency to `zeroize` without its default features
 
 Note: By default, "const_support" and "std" are turned on, use `default-features = false` and
 select specific features to avoid requiring nightly.

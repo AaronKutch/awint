@@ -788,3 +788,10 @@ impl Hash for Bits {
         self.as_slice().hash(state);
     }
 }
+
+#[cfg(feature = "zeroize_support")]
+impl zeroize::Zeroize for Bits {
+    fn zeroize(&mut self) {
+        self.as_mut_slice().zeroize()
+    }
+}

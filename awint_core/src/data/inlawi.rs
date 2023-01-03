@@ -230,6 +230,13 @@ impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl<const BW: usize, const LEN: usize> Eq for InlAwi<BW, LEN> {}
 
+#[cfg(feature = "zeroize_support")]
+impl<const BW: usize, const LEN: usize> zeroize::Zeroize for InlAwi<BW, LEN> {
+    fn zeroize(&mut self) {
+        self.as_mut().zeroize()
+    }
+}
+
 macro_rules! impl_fmt {
     ($($ty:ident)*) => {
         $(

@@ -1,6 +1,9 @@
 # Changelog
 
 ## [0.8.0] - TODO
+### Additions
+- Added `zeroize` support
+
 ### Changes
 - Renamed all `*_assign` functions to `*_` functions
 - Renamed `funnel` to `funnel_`

@@ -287,6 +287,13 @@ impl PartialEq for ExtAwi {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl Eq for ExtAwi {}
 
+#[cfg(feature = "zeroize_support")]
+impl zeroize::Zeroize for ExtAwi {
+    fn zeroize(&mut self) {
+        self.as_mut().zeroize()
+    }
+}
+
 macro_rules! impl_fmt {
     ($($ty:ident)*) => {
         $(
