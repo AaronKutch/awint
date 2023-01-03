@@ -2,7 +2,7 @@
 #![no_implicit_prelude]
 
 extern crate awint;
-use awint::dag_prelude::{assert, *};
+use awint::dag::{assert, *};
 extern crate core;
 use core::clone::Clone;
 

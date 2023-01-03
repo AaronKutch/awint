@@ -1,7 +1,7 @@
 //! This crate compiles all the interfaces of `awint_core`, `awint_macros`, and
 //! `awint_ext` (when the default "alloc" feature is enabled). Enabling the
-//! "dag" feature flag also enables the `dag_prelude` and `dag` modules and a
-//! reexport of `awint_dag`. There are also hidden developer reexports.
+//! "dag" feature flag also enables the `dag` module and a reexport of
+//! `awint_dag`. There are also hidden developer reexports.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
@@ -18,46 +18,34 @@ pub use awint_ext::{ExtAwi, FPType, FP};
 pub use awint_macro_internals;
 pub use awint_macros::*;
 
-/// Reexports every user-intended macro, structure, and function except for
-/// `SerdeError`.
-pub mod prelude {
-    pub use awint_core::{bw, Bits, InlAwi};
-    #[cfg(feature = "alloc")]
-    pub use awint_ext::{ExtAwi, FPType, FP};
-    pub use awint_macros::*;
-}
-
-/// The same as `prelude` with some of the exact same functions and macros, but
-/// the `awi` structs are swapped with their `dag` equivalents
-#[cfg(feature = "dag")]
-pub mod dag_prelude {
-    pub use awint_core::bw;
-    pub use awint_dag::{
-        dag::*,
-        mimick::Option::{None, Some},
-    };
-    pub use awint_macros::*;
-}
-
-/// Contains all the regular arbitrary width integer structs, common enums, and
-/// most of `core::primitive::*`. This is useful when using the regular structs
-/// in a context with structs imported from `awint_dag`.
+/// Reexports all the regular arbitrary width integer structs, macros, common
+/// enums, and most of `core::primitive::*`. This is useful for glob importing
+/// everything or for when using the regular items in a context with structs
+/// imported from `awint_dag`.
 pub mod awi {
     #[cfg(not(feature = "alloc"))]
     pub use awint_core::awi::*;
     #[cfg(feature = "alloc")]
     pub use awint_ext::awi::*;
+    pub use awint_macros::*;
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
 }
 
-/// Contains all the mimicking arbitrary width integer structs, mimicking enums,
-/// and the mimicking versions of `core::primitive::*`, in case of using the DAG
-/// constructing structs in a regular arbitrary width integer context
+/// Reexports all the mimicking versions of `awi` items
 #[cfg(feature = "dag")]
 pub mod dag {
     pub use awint_dag::{
         dag::*,
         mimick::Option::{None, Some},
     };
+    pub use awint_macros::*;
+}
+
+/// Reexports items defined within the `awint` crate system
+pub mod prelude {
+    pub use awint_core::{bw, Bits, InlAwi};
+    #[cfg(feature = "alloc")]
+    pub use awint_ext::{ExtAwi, FPType, FP};
+    pub use awint_macros::*;
 }

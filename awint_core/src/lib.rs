@@ -37,10 +37,6 @@ pub use data::{Bits, InlAwi};
 
 mod logic;
 
-pub mod prelude {
-    pub use crate::{bw, Bits, InlAwi};
-}
-
 /// Subset of `awint::awi`
 pub mod awi {
     pub use awint_internals::awi::*;

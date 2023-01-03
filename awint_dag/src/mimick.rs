@@ -1,11 +1,11 @@
 pub(crate) mod assertion;
-mod awi;
+mod awi_types;
 mod bits;
 mod ops;
 mod option;
 pub mod primitive;
 
-pub use awi::*;
+pub use awi_types::*;
 pub use bits::*;
 pub use option::*;
 

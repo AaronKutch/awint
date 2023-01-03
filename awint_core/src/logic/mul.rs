@@ -112,7 +112,7 @@ impl Bits {
     /// Arbitrarily-unsigned-multiplies `lhs` by `rhs` and add-assigns the
     /// product to `self`. This function is equivalent to:
     /// ```
-    /// use awint::prelude::*;
+    /// use awint::awi::*;
     ///
     /// fn arb_umul_(add: &mut Bits, lhs: &Bits, rhs: &Bits) {
     ///     let mut resized_lhs = ExtAwi::zero(add.nzbw());

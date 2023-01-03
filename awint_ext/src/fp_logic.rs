@@ -180,7 +180,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// fraction part, inserting trailing '0's.
     ///
     /// ```
-    /// use awint::prelude::*;
+    /// use awint::awi::*;
     /// // note: a user may want to define their own helper functions to do
     /// // this in one step and combine the output into one string using
     /// // the notation they prefer.

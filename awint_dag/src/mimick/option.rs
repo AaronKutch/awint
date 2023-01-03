@@ -54,6 +54,8 @@ impl<T> OpaqueInternal<T> {
     }
 }
 
+/// Mimicking `core::option::Option`, note this has a third `Opaque` variant
+/// that enables dagtime variance
 #[derive(Debug, Clone, Copy)]
 pub enum Option<T> {
     None,

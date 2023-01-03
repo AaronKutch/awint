@@ -3,8 +3,11 @@
 ## [0.8.0] - TODO
 ### Additions
 - Added `zeroize` support
+- Added mimicking `Option` type and `try_support` to support using it with 
+- Added mimicking assertions
 
 ### Changes
+- Refactored the `awi`, `dag`, and `prelude` modules
 - Renamed all `*_assign` functions to `*_` functions
 - Renamed `funnel` to `funnel_`
 - Renamed `rand_assign_using` to `rand_`

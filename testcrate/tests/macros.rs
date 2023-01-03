@@ -1,4 +1,4 @@
-use awint::prelude::*;
+use awint::awi::*;
 
 macro_rules! construction {
     ($($w:expr)*) => {

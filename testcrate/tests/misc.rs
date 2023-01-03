@@ -1,4 +1,4 @@
-use awint::{awint_internals::BITS, prelude::*};
+use awint::{awi::*, awint_internals::BITS};
 use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 
 /// [Bits::lut_] needs its own test because of its special requirements

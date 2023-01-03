@@ -5,6 +5,7 @@ use crate::{
     common::Op,
     dag,
     triple_arena::{ptr_struct, Arena, Ptr},
+    Lineage,
 };
 
 #[cfg(debug_assertions)]
@@ -46,6 +47,10 @@ pub struct Assertions {
 impl Assertions {
     pub fn new() -> Self {
         Self { bits: vec![] }
+    }
+
+    pub fn states(&self) -> impl Iterator<Item = PState> + '_ {
+        self.bits.iter().map(|bit| bit.state())
     }
 }
 

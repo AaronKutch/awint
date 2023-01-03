@@ -34,18 +34,11 @@ pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 pub use extawi::ExtAwi;
 pub use fp::{FPType, FP};
 
-pub mod prelude {
-    pub use crate::{
-        fp::{FPType, FP},
-        ExtAwi,
-    };
-}
-
 /// Subset of `awint::awi`
 pub mod awi {
     pub use awint_core::awi::*;
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
 
-    pub use crate::ExtAwi;
+    pub use crate::{ExtAwi, FPType, FP};
 }

@@ -3,7 +3,7 @@
 #![feature(const_trait_impl)]
 #![allow(clippy::reversed_empty_ranges)]
 
-use awint::prelude::{bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
+use awint::{bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
 
 const fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {

@@ -33,7 +33,7 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 ///
 /// ```
 /// #![feature(const_mut_refs)]
-/// use awint::prelude::*;
+/// use awint::awi::*;
 ///
 /// const fn const_example(x0: &mut Bits, x1: &Bits) {
 ///     // when dealing with `Bits` with different bitwidths, use the

@@ -10,23 +10,22 @@
 //! system of `awint` crates to create a new kind of RTL description library
 //! that is not a DSL but is rather plain Rust code that can be run normally.
 //! This `awint_dag` crate supplies a "mimicking" structs with the same names as
-//! their counterparts in `awint::prelude::*`, the difference being that they
+//! their counterparts in `awint::awi::*`, the difference being that they
 //! have purely lazy execution, creating a DAG recording the order in which
 //! different `Bits` operations are applied.
 //!
 //! ```
 //! // In the future we may have a macro that can duplicate the code into a
-//! // module that has `awint::prelude` imported, and another module that has
-//! // `awint::dag_prelude` imported, so that you can have a normal running
-//! // version of the code and the DAG recording version at the same time.
-//! // But for research for now, we add a flag to our crate that switches
-//! // between the types, so that we can rapidly switch between for
-//! // development.
+//! // module that has `awint::awi` imported, and another module that has
+//! // `awint::dag` imported, so that you can have a normal running version
+//! // of the code and the DAG recording version at the same time. But for
+//! // research for now, we add a flag to our crate that switches between
+//! // the types, so that we can rapidly switch between for development.
 //!
 //! //#[cfg(feature = "dag")]
-//! use awint::dag_prelude::*;
+//! use awint::dag::*;
 //! //#![cfg(not(feature = "dag"))]
-//! //use awint::prelude::*;
+//! //use awint::awi::*;
 //!
 //! // This is just some arbitrary example I coded up, note that you can use
 //! // almost all of Rust's features that you can use on the normal types
@@ -110,8 +109,8 @@
 //!   `if` statements.
 //!
 //!   ```
-//!   //use awint::prelude::*;
-//!   use awint::dag_prelude::*;
+//!   //use awint::awi::*;
+//!   use awint::dag::*;
 //!
 //!   let mut lhs = inlawi!(zero: ..8);
 //!   let rhs = inlawi!(umax: ..8);
@@ -188,8 +187,10 @@ pub mod state {
 
 pub use crate::mimick::{Bits, ExtAwi, InlAwi};
 
-/// All mimicking structs and assertions
+/// All mimicking items
 pub mod dag {
+    pub use awint_ext::bw;
+
     pub use crate::{
         mimick::{
             assert, assert_eq, assert_ne, Bits, ExtAwi, InlAwi, Option,

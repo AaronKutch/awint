@@ -1,4 +1,4 @@
-use awint::prelude::*;
+use awint::awi::*;
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,

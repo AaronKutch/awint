@@ -3,7 +3,7 @@
 
 extern crate panic_halt;
 
-use awint::prelude::*;
+use awint::awi::*;
 use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
 use riscv_minimal_rt::entry;
 

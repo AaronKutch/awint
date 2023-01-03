@@ -61,7 +61,7 @@
 //! `cc!` macro, a single concatenation with a single component.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let x = ExtAwi::zero(bw(10));
 //! let r0 = 2;
@@ -192,7 +192,7 @@
 //! see where different groups of 4 bits are being copied.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // Here, we pass a single concatenation of 3 literals to the `inlawi!`
 //! // construction macro. This constructs an `InlAwi` out of a 4 bit signed
@@ -228,7 +228,7 @@
 //! defined arbitrary width integer types can thus be used as variables.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let source = inlawi!(0xc4di64);
 //! // a bunch of zeroed 64 bit arbitrary width integers from different
@@ -265,7 +265,7 @@
 //! concatenation of 3 components each with 4 hexadecimal digits.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let y3 = inlawi!(0xba9u12);
 //! let y2 = inlawi!(0x876u12);
@@ -300,7 +300,7 @@
 //! borrowing errors:
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let mut a = inlawi!(0x9876543210u40);
 //!
@@ -322,7 +322,7 @@
 //! if what it is binding to is already a mutable reference and not a storage
 //! type, and so always tries to take a `&mut Bits` reference of variables.
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // error: cannot borrow x and z as mutable ...
 //! //fn test(x: &mut Bits) {
@@ -360,7 +360,7 @@
 //! corresponding source bits have no effect.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // filler bits in source concatenations have no effects and sink bits are
 //! // preserved
@@ -399,7 +399,7 @@
 //! degree of determinable width, and we want a cheap way to specify it:
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let x = extawi!(-99i44);
 //!
@@ -436,7 +436,7 @@
 //! construction macro however, all the bits of the source need to have some
 //! kind of set value.
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // error: a construction macro with unspecified initialization cannot have
 //! // a filler in the source concatenation
@@ -471,7 +471,7 @@
 //! understand how unbounded fillers interact, consider these three cases:
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // This first case has no fillers in the first concatenation, so the filler
 //! // in the second concatenation will expand to be of bitwidth `12 - y.bw()`.

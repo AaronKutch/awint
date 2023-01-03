@@ -316,7 +316,7 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::prelude::*;
+    /// use awint::awi::*;
     /// let mut input = inlawi!(0x4321u16);
     /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit
@@ -529,7 +529,7 @@ impl Bits {
     /// bitwidth of `s`.
     ///
     /// ```
-    /// use awint::prelude::*;
+    /// use awint::awi::*;
     /// let mut lhs = inlawi!(0xffff_ffffu32);
     /// let mut rhs = inlawi!(0xfedc_ba98_7654_3210u64);
     /// // `lhs.bw()` must be a power of two, `s.bw()` here is
