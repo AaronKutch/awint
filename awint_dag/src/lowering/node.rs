@@ -2,12 +2,12 @@ use std::num::NonZeroUsize;
 
 #[cfg(feature = "debug")]
 use crate::triple_arena_render::{DebugNode, DebugNodeTrait};
-use crate::{triple_arena::Ptr, EvalError, Op};
+use crate::{common::DummyDefault, triple_arena::Ptr, EvalError, Op};
 
 /// An Operational Node for an `OpDag` that includes the operation and other
 /// data used in algorithms
 #[derive(Debug, Clone)]
-pub struct OpNode<P: Ptr> {
+pub struct OpNode<P: Ptr + DummyDefault> {
     /// Bitwidth
     pub nzbw: NonZeroUsize,
     /// Operation
@@ -19,26 +19,8 @@ pub struct OpNode<P: Ptr> {
     pub visit: u64,
 }
 
-/*
-impl Hash for OpNode {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.nzbw.hash(state);
-        self.op.hash(state);
-        self.ops.hash(state);
-    }
-}
-
-impl PartialEq for OpNode {
-    fn eq(&self, other: &Self) -> bool {
-        (self.nzbw == other.nzbw) && (self.op == other.op) && (self.ops == other.ops)
-    }
-}
-*/
-
-impl<P: Ptr> OpNode<P> {}
-
 #[cfg(feature = "debug")]
-impl<P: Ptr> DebugNodeTrait<P> for OpNode<P> {
+impl<P: Ptr + DummyDefault> DebugNodeTrait<P> for OpNode<P> {
     fn debug_node(p_this: P, this: &Self) -> DebugNode<P> {
         let names = this.op.operand_names();
         let mut res = DebugNode {

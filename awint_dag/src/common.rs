@@ -1,9 +1,10 @@
 mod error;
+mod eval;
 mod lineage;
 mod op;
 mod state;
 
 pub use error::EvalError;
 pub use lineage::Lineage;
-pub use op::Op;
+pub use op::*;
 pub use state::*;

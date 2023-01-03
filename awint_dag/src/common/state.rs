@@ -1,5 +1,6 @@
 use std::{cell::RefCell, num::NonZeroUsize};
 
+use super::DummyDefault;
 use crate::{
     common::Op,
     dag,
@@ -12,12 +13,18 @@ ptr_struct!(PState; PNode);
 #[cfg(not(debug_assertions))]
 ptr_struct!(PState(); PNode());
 
+impl DummyDefault for PNode {
+    fn default() -> Self {
+        Default::default()
+    }
+}
+
 /// Represents a single state that `mimick::Bits` is in at one point in time.
 /// The operands point to other `State`s. `Bits`, `InlAwi`, and `ExtAwi` use
 /// `Ptr`s to `States` in a thread local arena, so that they can change their
 /// state without borrowing issues or mutating `States` (which could be used as
 /// operands by other `States`).
-#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct State {
     /// Bitwidth
     pub nzbw: NonZeroUsize,

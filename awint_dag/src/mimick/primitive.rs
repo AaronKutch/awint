@@ -54,6 +54,16 @@ macro_rules! triop {
                     tmp
                 }
             }
+
+            impl $std_trait<dag::$name> for awi::$name {
+                type Output = dag::$name;
+
+                fn $std_fn(self, rhs: dag::$name) -> Self::Output {
+                    let mut tmp = rhs.clone();
+                    tmp.0.$op_(&$name::from(self).0).unwrap();
+                    tmp
+                }
+            }
         )*
     };
 }

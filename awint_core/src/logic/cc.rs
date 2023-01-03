@@ -51,6 +51,12 @@ impl Bits {
         t
     }
 
+    /// Exists to fix type problems for `awint_dag`
+    #[inline]
+    pub const fn usize_cast(x: usize) -> usize {
+        x
+    }
+
     /// This exists because of problems with "can't call method `wrapping_add`
     /// on ambiguous numeric type `{integer}`" and how we can't have mixed
     /// `awint_dag` types if we specify types at the let binding.

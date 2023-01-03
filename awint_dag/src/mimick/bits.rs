@@ -1,5 +1,7 @@
 use std::{fmt, marker::PhantomData, mem, num::NonZeroUsize, ptr, rc::Rc};
 
+use awint_ext::awi;
+
 use crate::{
     mimick::{ExtAwi, InlAwi},
     Lineage, Op, PState,
@@ -92,8 +94,42 @@ impl Bits {
         let _: PState = mem::replace(&mut self._bits_raw[0], state);
     }
 
-    pub(crate) fn update_state(&mut self, nzbw: NonZeroUsize, op: Op<PState>) {
-        self.set_state(PState::new(nzbw, op));
+    #[track_caller]
+    pub(crate) fn update_state(
+        &mut self,
+        nzbw: NonZeroUsize,
+        p_state_op: Op<PState>,
+    ) -> crate::mimick::Option<()> {
+        // eager evaluation, currently required because in the macros we had to pass
+        // `Into<dag::usize>` into panicking constructor functions, and we need to know
+        // the bitwidths at that time
+        let mut all_literals = true;
+        for p_state in p_state_op.operands() {
+            if !p_state.get_state().unwrap().op.is_literal() {
+                all_literals = false;
+                break
+            }
+        }
+        if all_literals {
+            let lit_op: Op<awi::ExtAwi> =
+                Op::translate(&p_state_op, |lhs: &mut [awi::ExtAwi], rhs: &[PState]| {
+                    for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                        if let Op::Literal(ref lit) = rhs.get_state().unwrap().op {
+                            *lhs = lit.clone();
+                        }
+                    }
+                });
+            let eval_res = lit_op.eval(nzbw).unwrap();
+            if let Some(lit) = eval_res {
+                self.set_state(PState::new(lit.nzbw(), Op::Literal(lit)));
+                return crate::mimick::Option::Some(())
+            } else {
+                self.set_state(PState::new(nzbw, p_state_op));
+                return crate::mimick::Option::None
+            }
+        }
+        self.set_state(PState::new(nzbw, p_state_op));
+        crate::mimick::Option::Some(())
     }
 
     #[must_use]
@@ -111,5 +147,11 @@ impl Bits {
 impl fmt::Debug for Bits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Bits({:?})", self._bits_raw[0])
+    }
+}
+
+impl AsRef<Bits> for &Bits {
+    fn as_ref(&self) -> &Bits {
+        self
     }
 }

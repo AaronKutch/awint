@@ -644,12 +644,14 @@ impl Bits {
         t
     }
 
-    #[inline]
+    pub fn usize_cast(x: impl Into<dag::usize>) -> dag::usize {
+        x.into()
+    }
+
     pub fn usize_add(lhs: impl Into<dag::usize>, rhs: impl Into<dag::usize>) -> dag::usize {
         lhs.into().wrapping_add(rhs.into())
     }
 
-    #[inline]
     pub fn usize_sub(lhs: impl Into<dag::usize>, rhs: impl Into<dag::usize>) -> dag::usize {
         lhs.into().wrapping_sub(rhs.into())
     }
@@ -658,11 +660,26 @@ impl Bits {
         awint_ext::awint_internals::raw_digits(w)
     }
 
-    pub fn unstable_max<const N: usize>(x: [awi::usize; N]) -> awi::usize {
-        let mut max = x[0];
-        for i in 1..N {
-            if x[i] > max {
-                max = x[i];
+    pub fn unstable_max<const N: usize>(x: [impl Into<dag::usize>; N]) -> awi::usize {
+        let x: Box<[_]> = Box::from(x);
+        let mut x: Vec<_> = Vec::from(x);
+        let last = x.pop().unwrap().into();
+        let mut max = if let Op::Literal(ref lit) = last.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            lit.to_usize()
+        } else {
+            panic!();
+        };
+        for _ in 1..N {
+            let last = x.pop().unwrap().into();
+            if let Op::Literal(ref lit) = last.state().get_state().unwrap().op {
+                assert_eq!(lit.bw(), BITS);
+                let val = lit.to_usize();
+                if val > max {
+                    max = val;
+                }
+            } else {
+                panic!();
             }
         }
         max
@@ -704,8 +721,19 @@ impl Bits {
                 .const_eq(&InlAwi::from_usize(eq.pop().unwrap().into()))
                 .unwrap();
         }
-        if check_nonzero_cw && (!ok_on_zero) {
-            b &= !cw.is_zero();
+        if check_nonzero_cw {
+            if let Op::Literal(ref lit) = cw.state().get_state().unwrap().op {
+                assert_eq!(lit.bw(), BITS);
+                if lit.to_usize() == 0 {
+                    return CCResult {
+                        run_fielding: false,
+                        success: ok_on_zero.into(),
+                        _phantom_data: PhantomData,
+                    }
+                }
+            } else if !ok_on_zero {
+                b &= !cw.is_zero();
+            }
         }
         CCResult {
             run_fielding: true,

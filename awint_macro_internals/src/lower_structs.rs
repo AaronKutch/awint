@@ -600,7 +600,7 @@ impl<'a> Lower<'a> {
                         );
                     }
                 }
-                write!(s, "let {}_{}={};", self.names.cw, p_cw.inx(), tmp).unwrap();
+                writeln!(s, "let {}_{}={};", self.names.cw, p_cw.inx(), tmp).unwrap();
             }
         }
         s
@@ -654,9 +654,10 @@ impl<'a> Lower<'a> {
                         self.binds.a_get_mut(b).0 = true;
                         writeln!(
                             s,
-                            "let {}_{}={}({}_{});",
+                            "let {}_{}={}({}({}_{}));",
                             self.names.value,
                             p_v.inx(),
+                            self.fn_names.usize_cast,
                             self.fn_names.get_bw,
                             self.names.bind,
                             b.inx()
@@ -664,7 +665,15 @@ impl<'a> Lower<'a> {
                         .unwrap();
                     }
                     Value::Usize(string) => {
-                        writeln!(s, "let {}_{}={};", self.names.value, p_v.inx(), string).unwrap();
+                        writeln!(
+                            s,
+                            "let {}_{}={}({});",
+                            self.names.value,
+                            p_v.inx(),
+                            self.fn_names.usize_cast,
+                            string
+                        )
+                        .unwrap();
                     }
                 }
             }

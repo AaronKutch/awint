@@ -1,16 +1,31 @@
-use std::{
-    cmp,
-    fmt::{self, Debug},
-    hash, mem,
-    num::NonZeroUsize,
-};
+use std::{fmt::Debug, mem, num::NonZeroUsize};
 
-use awint_ext::ExtAwi;
+use awint_ext::{bw, ExtAwi};
 use Op::*;
 
+use crate::PState;
+
+// Some types can't implement `Default`, we need some dummy `Default`-like trait
+#[doc(hidden)]
+pub trait DummyDefault {
+    fn default() -> Self;
+}
+
+impl DummyDefault for ExtAwi {
+    fn default() -> Self {
+        ExtAwi::zero(bw(1))
+    }
+}
+
+impl DummyDefault for PState {
+    fn default() -> Self {
+        Default::default()
+    }
+}
+
 /// A mimicking `Op`eration
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
-pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> {
+#[derive(Debug, Default, Clone)]
+pub enum Op<T: Debug + DummyDefault + Clone> {
     // A state used transiently by some algorithms, will cause errors if reached
     #[default]
     Invalid,
@@ -32,7 +47,7 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
 
     // note: we encourage common assembly code paths by putting the arrays first
 
-    // These functions are special because they need self width or downstream width to operate. In
+    // These functions are special because they need self width or upstream width to operate. In
     // earlier versions these all had fields for size, but only the overflow variants actually
     // need it because their self width is a single bit and they are effectively parameterized
     Resize([T; 2]),
@@ -116,21 +131,25 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
 
 macro_rules! map1 {
     ($map:ident, $v:ident) => {{
-        let mut res = [Default::default()];
+        let mut res = [DummyDefault::default()];
         $map(&mut res, $v);
         res
     }};
 }
 macro_rules! map2 {
     ($map:ident, $v:ident) => {{
-        let mut res = [Default::default(), Default::default()];
+        let mut res = [DummyDefault::default(), DummyDefault::default()];
         $map(&mut res, $v);
         res
     }};
 }
 macro_rules! map3 {
     ($map:ident, $v:ident) => {{
-        let mut res = [Default::default(), Default::default(), Default::default()];
+        let mut res = [
+            DummyDefault::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
+        ];
         $map(&mut res, $v);
         res
     }};
@@ -138,17 +157,17 @@ macro_rules! map3 {
 macro_rules! map4 {
     ($map:ident, $v:ident) => {{
         let mut res = [
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
         ];
         $map(&mut res, $v);
         res
     }};
 }
 
-impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
+impl<T: Debug + DummyDefault + Clone> Op<T> {
     /// This replaces `self` with `Invalid` and moves out literals without
     /// cloning them
     pub fn take(&mut self) -> Self {
@@ -503,9 +522,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
 
     /// If `this` has no operands (including `Opaque`s with empty `Vec`s) then
     /// this translation succeeds.
-    pub fn translate_root<U: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq>(
-        this: &Op<U>,
-    ) -> Option<Self> {
+    pub fn translate_root<U: Debug + DummyDefault + Clone>(this: &Op<U>) -> Option<Self> {
         match this {
             Invalid => Some(Invalid),
             Opaque(v) => {
@@ -522,10 +539,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
 
     // this is structured this way to avoid excessive allocations after the initial
     // mimick stage
-    pub fn translate<
-        U: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq,
-        F: FnMut(&mut [T], &[U]),
-    >(
+    pub fn translate<U: Debug + DummyDefault + Clone, F: FnMut(&mut [T], &[U])>(
         this: &Op<U>,
         map: F,
     ) -> Self {
@@ -533,7 +547,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         match this {
             Invalid => Invalid,
             Opaque(v) => {
-                let mut res = Opaque(vec![Default::default(); v.len()]);
+                let mut res = Opaque(vec![DummyDefault::default(); v.len()]);
                 m(res.operands_mut(), this.operands());
                 res
             }
@@ -599,11 +613,11 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             LutSet(v) => LutSet(map3!(m, v)),
             Field(_) => {
                 let mut res = Field([
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
                 ]);
                 m(res.operands_mut(), this.operands());
                 res

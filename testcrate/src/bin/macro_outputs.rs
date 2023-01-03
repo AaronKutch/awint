@@ -9,6 +9,7 @@ const TEST_FN_NAMES: FnNames = FnNames {
     get_bw: "bw",
     mut_bits_ref: "&mut B",
     bits_ref: "&B",
+    usize_cast: "cast",
     usize_add: "add",
     usize_sub: "sub",
     max_fn: "max",

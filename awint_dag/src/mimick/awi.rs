@@ -9,7 +9,7 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
+    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt, BITS},
 };
 
 use crate::{dag, Bits, Lineage, Op, PState};
@@ -356,33 +356,87 @@ impl ExtAwi {
     }
 
     #[doc(hidden)]
-    pub fn panicking_opaque(w: awi::usize) -> Self {
-        Self::opaque(NonZeroUsize::new(w).unwrap())
+    #[track_caller]
+    pub fn panicking_opaque(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            Self::opaque(
+                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
+            )
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_zero(w: awi::usize) -> Self {
-        Self::zero(NonZeroUsize::new(w).unwrap())
+    #[track_caller]
+    pub fn panicking_zero(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            Self::zero(
+                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
+            )
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_umax(w: awi::usize) -> Self {
-        Self::umax(NonZeroUsize::new(w).unwrap())
+    #[track_caller]
+    pub fn panicking_umax(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            Self::umax(
+                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
+            )
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_imax(w: awi::usize) -> Self {
-        Self::imax(NonZeroUsize::new(w).unwrap())
+    #[track_caller]
+    pub fn panicking_imax(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            Self::imax(
+                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
+            )
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_imin(w: awi::usize) -> Self {
-        Self::imin(NonZeroUsize::new(w).unwrap())
+    #[track_caller]
+    pub fn panicking_imin(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            Self::imin(
+                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
+            )
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_uone(w: awi::usize) -> Self {
-        Self::uone(NonZeroUsize::new(w).unwrap())
+    #[track_caller]
+    pub fn panicking_uone(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
+            assert_eq!(lit.bw(), BITS);
+            Self::uone(
+                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
+            )
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 }
 
