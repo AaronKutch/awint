@@ -545,6 +545,7 @@ impl<'a> Concat<'a> {
     }
 }
 
+#[rustfmt::skip]
 fn main() {
     // remove prior `generated.rs`
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
@@ -701,10 +702,8 @@ fn main() {
 
         write!(
             s,
-            "let _source = \
-             inlawi!({source:?});\n{prior_sets}{eq_fn}(&{macro_root}!({init}{concats}),\n{eq_rhs}\\
-             \
-             n);\n{assertions}\n"
+            "let _source = inlawi!({source:?});\n{prior_sets}{eq_fn}\
+            (&{macro_root}!({init}{concats}),\n{eq_rhs}\n);\n{assertions}\n"
         )
         .unwrap();
     }
