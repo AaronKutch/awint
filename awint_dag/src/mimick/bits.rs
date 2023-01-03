@@ -4,7 +4,7 @@ use awint_ext::awi;
 
 use crate::{
     mimick::{ExtAwi, InlAwi},
-    Lineage, Op, PState,
+    EvalError, Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
@@ -95,6 +95,7 @@ impl Bits {
     }
 
     #[track_caller]
+    #[must_use]
     pub(crate) fn update_state(
         &mut self,
         nzbw: NonZeroUsize,
@@ -119,17 +120,25 @@ impl Bits {
                         }
                     }
                 });
-            let eval_res = lit_op.eval(nzbw).unwrap();
-            if let Some(lit) = eval_res {
-                self.set_state(PState::new(lit.nzbw(), Op::Literal(lit)));
-                return crate::mimick::Option::Some(())
-            } else {
-                self.set_state(PState::new(nzbw, p_state_op));
-                return crate::mimick::Option::None
+            match lit_op.eval(nzbw) {
+                Ok(o) => {
+                    if let Some(lit) = o {
+                        self.set_state(PState::new(lit.nzbw(), Op::Literal(lit)));
+                        crate::mimick::Option::Some(())
+                    } else {
+                        self.set_state(PState::new(nzbw, p_state_op));
+                        crate::mimick::Option::None
+                    }
+                }
+                Err(e) => {
+                    assert_eq!(e, EvalError::Unevaluatable);
+                    crate::mimick::Option::Some(())
+                }
             }
+        } else {
+            self.set_state(PState::new(nzbw, p_state_op));
+            crate::mimick::Option::Some(())
         }
-        self.set_state(PState::new(nzbw, p_state_op));
-        crate::mimick::Option::Some(())
     }
 
     #[must_use]

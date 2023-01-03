@@ -211,6 +211,15 @@ impl<T> Option<T> {
     }
 
     #[track_caller]
+    pub fn unwrap_at_runtime(self) -> T {
+        match self {
+            None => panic!("called `Option::unwrap_at_runtime()` on a `None` value"),
+            Some(t) => t,
+            Opaque(_) => panic!("called `Option::unwrap_at_runtime()` on an `Opaque` value"),
+        }
+    }
+
+    #[track_caller]
     pub fn unwrap(self) -> T {
         match self {
             None => panic!("called `Option::unwrap()` on a `None` value"),

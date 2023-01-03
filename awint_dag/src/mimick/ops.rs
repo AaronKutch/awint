@@ -16,7 +16,7 @@ macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
         $(
             pub fn $fn_name(&mut self) {
-                self.update_state(self.state_nzbw(), $enum_var([self.state()]));
+                self.update_state(self.state_nzbw(), $enum_var([self.state()])).unwrap_at_runtime();
             }
         )*
     };
@@ -27,15 +27,10 @@ macro_rules! binary {
         $(
             #[must_use]
             pub fn $fn_name(&mut self, rhs: &Self) -> Option<()> {
-                if self.bw() == rhs.bw() {
-                    self.update_state(
-                        self.state_nzbw(),
-                        $enum_var([self.state(), rhs.state()])
-                    );
-                    Some(())
-                } else {
-                    None
-                }
+                self.update_state(
+                    self.state_nzbw(),
+                    $enum_var([self.state(), rhs.state()])
+                )
             }
         )*
     };
@@ -52,7 +47,7 @@ macro_rules! zero_cast {
                     self.update_state(
                         self.state_nzbw(),
                         ZeroResize([x]),
-                    );
+                    ).unwrap_at_runtime();
                 }
             }
 
@@ -83,7 +78,7 @@ macro_rules! sign_cast {
                     self.update_state(
                         self.state_nzbw(),
                         SignResize([x]),
-                    );
+                    ).unwrap_at_runtime();
                 }
             }
 
@@ -152,8 +147,7 @@ macro_rules! shift {
                 self.update_state(
                     self.state_nzbw(),
                     $enum_var([self.state(), s.into().state()])
-                );
-                Some(())
+                )
             }
         )*
     };
@@ -251,7 +245,8 @@ impl Bits {
     );
 
     pub fn opaque_(&mut self) {
-        self.update_state(self.state_nzbw(), Opaque(vec![self.state()]));
+        self.update_state(self.state_nzbw(), Opaque(vec![self.state()]))
+            .unwrap_at_runtime();
     }
 
     pub fn opaque_with_(&mut self, with: &[&Bits]) {
@@ -259,83 +254,68 @@ impl Bits {
         for x in with {
             v.push(x.state());
         }
-        self.update_state(self.state_nzbw(), Opaque(v));
+        self.update_state(self.state_nzbw(), Opaque(v))
+            .unwrap_at_runtime();
     }
 
     pub fn zero_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::zero(self.nzbw())),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn umax_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::umax(self.nzbw())),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn imax_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::imax(self.nzbw())),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn imin_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::imin(self.nzbw())),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn uone_(&mut self) {
         self.update_state(
             self.state_nzbw(),
             Op::Literal(awi::ExtAwi::uone(self.nzbw())),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn mux_(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
-        if self.bw() == rhs.bw() {
-            self.update_state(
-                self.state_nzbw(),
-                Mux([self.state(), rhs.state(), b.into().state()]),
-            );
-            Some(())
-        } else {
-            None
-        }
+        self.update_state(
+            self.state_nzbw(),
+            Mux([self.state(), rhs.state(), b.into().state()]),
+        )
     }
 
     #[must_use]
     pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
-        if inx.bw() < BITS {
-            if let awi::Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
-                if lut_len == lut.bw() {
-                    self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]));
-                    return Some(())
-                }
-            }
-        }
-        None
+        self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
     }
 
     #[must_use]
     pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
-        if inx.bw() < BITS {
-            if let awi::Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
-                if lut_len == self.bw() {
-                    self.update_state(
-                        self.state_nzbw(),
-                        LutSet([self.state(), entry.state(), inx.state()]),
-                    );
-                    return Some(())
-                }
-            }
-        }
-        None
+        self.update_state(
+            self.state_nzbw(),
+            LutSet([self.state(), entry.state(), inx.state()]),
+        )
     }
 
     #[must_use]
@@ -373,14 +353,15 @@ impl Bits {
             self.update_state(
                 self.state_nzbw(),
                 StaticSet([self.state(), bit.into().state()], inx),
-            );
+            )
+            .unwrap_at_runtime();
+            Some(())
         } else {
             self.update_state(
                 self.state_nzbw(),
                 Set([self.state(), inx, bit.into().state()]),
-            );
+            )
         }
-        Some(())
     }
 
     #[must_use]
@@ -400,8 +381,7 @@ impl Bits {
                 from.into().state(),
                 width.into().state(),
             ]),
-        );
-        Some(())
+        )
     }
 
     #[must_use]
@@ -419,8 +399,7 @@ impl Bits {
                 rhs.state(),
                 width.into().state(),
             ]),
-        );
-        Some(())
+        )
     }
 
     #[must_use]
@@ -438,8 +417,7 @@ impl Bits {
                 from.into().state(),
                 width.into().state(),
             ]),
-        );
-        Some(())
+        )
     }
 
     #[must_use]
@@ -447,8 +425,7 @@ impl Bits {
         self.update_state(
             self.state_nzbw(),
             FieldWidth([self.state(), rhs.state(), width.into().state()]),
-        );
-        Some(())
+        )
     }
 
     #[must_use]
@@ -466,48 +443,42 @@ impl Bits {
                 rhs.state(),
                 from.into().state(),
             ]),
-        );
-        Some(())
+        )
     }
 
     pub fn resize_(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
         self.update_state(
             self.state_nzbw(),
             Resize([rhs.state(), extension.into().state()]),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn zero_resize_(&mut self, rhs: &Self) -> dag::bool {
         let b = dag::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
-        self.update_state(self.state_nzbw(), ZeroResize([rhs.state()]));
+        self.update_state(self.state_nzbw(), ZeroResize([rhs.state()]))
+            .unwrap_at_runtime();
         b
     }
 
     pub fn sign_resize_(&mut self, rhs: &Self) -> dag::bool {
         let b = dag::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
-        self.update_state(self.state_nzbw(), SignResize([rhs.state()]));
+        self.update_state(self.state_nzbw(), SignResize([rhs.state()]))
+            .unwrap_at_runtime();
         b
     }
 
     #[must_use]
     pub fn funnel_(&mut self, rhs: &Self, s: &Self) -> Option<()> {
-        if (s.bw() >= (BITS - 1))
-            || ((1usize << s.bw()) != self.bw())
-            || ((self.bw() << 1) != rhs.bw())
-        {
-            None
-        } else {
-            self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()]));
-            Some(())
-        }
+        self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()]))
     }
 
     #[must_use]
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
-            quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]));
-            rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
-            Some(())
+            let _ = rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
+            // the optional will be handled by this
+            quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]))
         } else {
             None
         }
@@ -516,9 +487,8 @@ impl Bits {
     #[must_use]
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &mut Self, div: &mut Self) -> Option<()> {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
-            quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]));
-            rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
-            Some(())
+            let _ = rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
+            quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]))
         } else {
             None
         }
@@ -526,22 +496,18 @@ impl Bits {
 
     #[must_use]
     pub fn mul_add_(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        if (self.bw() == lhs.bw()) && (lhs.bw() == rhs.bw()) {
-            self.update_state(
-                self.state_nzbw(),
-                MulAdd([self.state(), lhs.state(), rhs.state()]),
-            );
-            Some(())
-        } else {
-            None
-        }
+        self.update_state(
+            self.state_nzbw(),
+            MulAdd([self.state(), lhs.state(), rhs.state()]),
+        )
     }
 
     pub fn arb_umul_add_(&mut self, lhs: &Bits, rhs: &Bits) {
         self.update_state(
             self.state_nzbw(),
             MulAdd([self.state(), lhs.state(), rhs.state()]),
-        );
+        )
+        .unwrap_at_runtime();
     }
 
     pub fn arb_imul_add_(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
@@ -556,7 +522,8 @@ impl Bits {
         self.update_state(
             self.state_nzbw(),
             MulAdd([self.state(), lhs.state(), rhs.state()]),
-        );
+        )
+        .unwrap_at_runtime();
         self.neg_(lhs_msb);
         self.neg_(rhs_msb);
     }
@@ -564,20 +531,23 @@ impl Bits {
     pub fn inc_(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
         let out = dag::bool::new(IncCout([self.state(), b.state()]));
-        self.update_state(self.state_nzbw(), Inc([self.state(), b.state()]));
+        self.update_state(self.state_nzbw(), Inc([self.state(), b.state()]))
+            .unwrap_at_runtime();
         out
     }
 
     pub fn dec_(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
         let out = dag::bool::new(DecCout([self.state(), b.state()]));
-        self.update_state(self.state_nzbw(), Dec([self.state(), b.state()]));
+        self.update_state(self.state_nzbw(), Dec([self.state(), b.state()]))
+            .unwrap_at_runtime();
         out
     }
 
     pub fn neg_(&mut self, neg: impl Into<dag::bool>) {
         let b = neg.into();
-        self.update_state(self.state_nzbw(), Neg([self.state(), b.state()]));
+        self.update_state(self.state_nzbw(), Neg([self.state(), b.state()]))
+            .unwrap_at_runtime();
     }
 
     #[must_use]
@@ -596,7 +566,8 @@ impl Bits {
             self.update_state(
                 self.state_nzbw(),
                 CinSum([b.state(), lhs.state(), rhs.state()]),
-            );
+            )
+            .unwrap_at_runtime();
             out
         } else {
             None

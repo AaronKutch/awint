@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvalError {
     // An operand points nowhere, so the DAG is broken
     InvalidPtr,
