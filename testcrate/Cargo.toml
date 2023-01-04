@@ -6,11 +6,14 @@ publish = false
 
 [dependencies]
 # the "debug" feature enabled here is a test for the flag and the generation counters it enables
-awint = { path = "../awint", features = ["rand_support", "serde_support", "dag", "debug"] }
+awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std"] }
 
 [dev-dependencies]
+# enable all other features here so that building on stable works
+awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std", "const_support", "try_support"] }
 rand_xoshiro = "0.6"
 ron = "0.7"
+zeroize = { version = "1.5", default-features = false }
 
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }

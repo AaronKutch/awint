@@ -28,4 +28,4 @@ default = ["const_support"]
 const_support = ["awint_core/const_support"]
 # Turns on `serde` support
 serde_support = ["serde"]
-zeroize_support = ["zeroize", "awint_core/zeroize"]
+zeroize_support = ["zeroize", "awint_core/zeroize_support"]
