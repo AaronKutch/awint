@@ -115,10 +115,12 @@ impl OpDag {
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
             FieldWidth([lhs, rhs, width]) => {
+                let lhs_bw = self.get_bw(lhs);
+                let rhs_bw = self.get_bw(rhs);
                 if self[width].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let out = static_field(&lhs, 0, &rhs, 0, self.usize(width).unwrap());
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
+                    let out = static_field(&lhs, 0, &rhs, 0, self.usize(width).unwrap()).0;
                     self.graft(ptr, v, &[
                         out.state(),
                         lhs.state(),
@@ -126,10 +128,14 @@ impl OpDag {
                         ExtAwi::opaque(self.get_bw(width)).state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
                     let width = ExtAwi::opaque(self.get_bw(width));
-                    let out = field_width(&lhs, &rhs, &width);
+                    let fail = width.ugt(&InlAwi::from_usize(lhs_bw.get())).unwrap()
+                        | width.ugt(&InlAwi::from_usize(rhs_bw.get())).unwrap();
+                    let mut tmp_width = width.clone();
+                    tmp_width.mux_(&InlAwi::from_usize(0), fail).unwrap();
+                    let out = field_width(&lhs, &rhs, &tmp_width);
                     self.graft(ptr, v, &[
                         out.state(),
                         lhs.state(),
@@ -145,17 +151,23 @@ impl OpDag {
                 self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
             }
             FieldFrom([lhs, rhs, from, width]) => {
+                let lhs_bw = self.get_bw(lhs);
+                let rhs_bw = self.get_bw(rhs);
                 if self[from].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
                     let width = ExtAwi::opaque(self.get_bw(width));
                     let from_u = self.usize(from)?;
                     let out = if let Some(w) = NonZeroUsize::new(rhs.bw() - from_u) {
                         let tmp0 = ExtAwi::zero(w);
-                        let tmp1 = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
+                        let (tmp1, o) = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
                         let mut out = lhs.clone();
-                        out.field_width(&tmp1, width.to_usize()).unwrap();
-                        out
+                        if o {
+                            out
+                        } else {
+                            out.field_width(&tmp1, width.to_usize()).unwrap();
+                            out
+                        }
                     } else {
                         lhs.clone()
                     };
@@ -167,12 +179,18 @@ impl OpDag {
                         width.state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
                     let from = ExtAwi::opaque(self.get_bw(from));
                     let width = ExtAwi::opaque(self.get_bw(width));
+                    let mut tmp = InlAwi::from_usize(rhs_bw.get());
+                    tmp.sub_(&width).unwrap();
+                    // the other two fail conditions are in `field_width`
+                    let fail = from.ugt(&tmp).unwrap();
+                    let mut tmp_width = width.clone();
+                    tmp_width.mux_(&InlAwi::from_usize(0), fail).unwrap();
                     // the optimizations on `width` are done later on an inner `field_width` call
-                    let out = field_from(&lhs, &rhs, &from, &width);
+                    let out = field_from(&lhs, &rhs, &from, &tmp_width);
                     self.graft(ptr, v, &[
                         out.state(),
                         lhs.state(),
@@ -187,7 +205,7 @@ impl OpDag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
                     let tmp = ExtAwi::zero(x.nzbw());
-                    let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u);
+                    let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u).0;
                     self.graft(ptr, v, &[
                         out.state(),
                         x.state(),
@@ -205,7 +223,7 @@ impl OpDag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
                     let tmp = ExtAwi::zero(x.nzbw());
-                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
+                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
                     self.graft(ptr, v, &[
                         out.state(),
                         x.state(),
@@ -226,7 +244,7 @@ impl OpDag {
                     for i in 0..x.bw() {
                         tmp.set(i, x.msb()).unwrap();
                     }
-                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
+                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
                     self.graft(ptr, v, &[
                         out.state(),
                         x.state(),
@@ -246,8 +264,8 @@ impl OpDag {
                     let out = if s_u == 0 {
                         x.clone()
                     } else {
-                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u);
-                        static_field(&tmp, 0, &x, x.bw() - s_u, s_u)
+                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u).0;
+                        static_field(&tmp, 0, &x, x.bw() - s_u, s_u).0
                     };
                     self.graft(ptr, v, &[
                         out.state(),
@@ -268,8 +286,8 @@ impl OpDag {
                     let out = if s_u == 0 {
                         x.clone()
                     } else {
-                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u);
-                        static_field(&tmp, x.bw() - s_u, &x, 0, s_u)
+                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u).0;
+                        static_field(&tmp, x.bw() - s_u, &x, 0, s_u).0
                     };
                     self.graft(ptr, v, &[
                         out.state(),
@@ -410,9 +428,14 @@ impl OpDag {
                     let width = ExtAwi::opaque(self.get_bw(width));
 
                     let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
-                        let mut lhs_hi = static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
+                        let (mut lhs_hi, o) =
+                            static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
                         lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
-                        static_field(&lhs, to_u, &lhs_hi, 0, w.get())
+                        if o {
+                            lhs.clone()
+                        } else {
+                            static_field(&lhs, to_u, &lhs_hi, 0, w.get()).0
+                        }
                     } else {
                         lhs.clone()
                     };

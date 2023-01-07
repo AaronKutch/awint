@@ -311,28 +311,37 @@ pub fn resize_cond(x: &Bits, w: NonZeroUsize, signed: &Bits) -> ExtAwi {
     out
 }
 
-pub fn static_field(lhs: &Bits, to: usize, rhs: &Bits, from: usize, width: usize) -> ExtAwi {
-    //(lhs.bw(), to, rhs.bw(), from, width);
-    assert!(
-        width <= lhs.bw()
-            && width <= rhs.bw()
-            && to <= (lhs.bw() - width)
-            && from <= (rhs.bw() - width)
-    );
+/// Returns (`lhs`, true) if there are invalid values
+pub fn static_field(
+    lhs: &Bits,
+    to: usize,
+    rhs: &Bits,
+    from: usize,
+    width: usize,
+) -> (ExtAwi, bool) {
     let mut out = ExtAwi::from_bits(lhs);
-    for i in 0..width {
-        out.set(i + to, rhs.get(i + from).unwrap()).unwrap();
+    if (width > lhs.bw())
+        || (width > rhs.bw())
+        || (to > (lhs.bw() - width))
+        || (from > (rhs.bw() - width))
+    {
+        (out, true)
+    } else {
+        for i in 0..width {
+            out.set(i + to, rhs.get(i + from).unwrap()).unwrap();
+        }
+        (out, false)
     }
-    out
 }
 
+/// This does not handle invalid arguments; set `width` to zero to cause no-ops
 pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     let mut out = ExtAwi::from_bits(lhs);
     let min_w = min(lhs.bw(), rhs.bw());
     let signals = tsmear_inx(width, min_w);
     let lut = inlawi!(1100_1010);
     for (i, signal) in signals.into_iter().enumerate() {
-        // mux_ betwee `lhs` or `rhs` based on the signal
+        // mux_ between `lhs` or `rhs` based on the signal
         let mut tmp0 = inlawi!(000);
         tmp0.set(0, lhs.get(i).unwrap()).unwrap();
         tmp0.set(1, rhs.get(i).unwrap()).unwrap();
@@ -387,6 +396,8 @@ pub fn funnel_(x: &Bits, s: &Bits) -> ExtAwi {
     out
 }
 
+/// Setting `width` to 0 guarantees that nothing happens even with other
+/// arguments being invalid
 pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
     assert_eq!(from.bw(), BITS);
     assert_eq!(width.bw(), BITS);
@@ -612,6 +623,8 @@ pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
     out
 }
 
+/// Setting `width` to 0 guarantees that nothing happens even with other
+/// arguments being invalid
 pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     assert_eq!(to.bw(), BITS);
     assert_eq!(width.bw(), BITS);
@@ -665,6 +678,8 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
     }
 }
 
+/// Setting `width` to 0 guarantees that nothing happens even with other
+/// arguments being invalid
 pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
     assert_eq!(to.bw(), BITS);
     assert_eq!(from.bw(), BITS);

@@ -116,7 +116,7 @@ impl OpDag {
                         } else {
                             break
                         }
-                    } else if current_i >= state.op.num_operands() {
+                    } else if current_i >= state.op.operands_len() {
                         // all operands should be ready
                         self[current_p_node].op =
                             Op::translate(&state.op, |lhs: &mut [PNode], rhs: &[PState]| {
@@ -193,6 +193,7 @@ impl OpDag {
     }
 
     /// Assumes `ptr` is a literal
+    #[track_caller]
     pub fn lit(&self, ptr: PNode) -> &Bits {
         if let Literal(ref lit) = self[ptr].op {
             lit
@@ -203,6 +204,7 @@ impl OpDag {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth 1.
+    #[track_caller]
     pub fn bool(&self, ptr: PNode) -> Result<bool, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == 1 {
@@ -217,6 +219,7 @@ impl OpDag {
 
     /// Assumes `ptr` is a literal. Returns `None` if the literal does not have
     /// bitwidth `usize::BITS`.
+    #[track_caller]
     pub fn usize(&self, ptr: PNode) -> Result<usize, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
             if lit.bw() == BITS {
@@ -260,7 +263,7 @@ impl OpDag {
                     }
                 }
                 if delete {
-                    for i in 0..self[p].op.num_operands() {
+                    for i in 0..self[p].op.operands_len() {
                         let op = self[p].op.operands()[i];
                         self[op].rc = if let Some(x) = self[op].rc.checked_sub(1) {
                             x
@@ -288,7 +291,7 @@ impl OpDag {
     ) -> Result<(), EvalError> {
         #[cfg(debug_assertions)]
         {
-            if (self[ptr].op.num_operands() + 1) != output_and_operands.len() {
+            if (self[ptr].op.operands_len() + 1) != output_and_operands.len() {
                 return Err(EvalError::WrongNumberOfOperands)
             }
             for (i, op) in self[ptr].op.operands().iter().enumerate() {

@@ -516,7 +516,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         }
     }
 
-    pub fn num_operands(&self) -> usize {
+    pub fn operands_len(&self) -> usize {
         self.operands().len()
     }
 

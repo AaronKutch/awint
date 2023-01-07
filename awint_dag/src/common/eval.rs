@@ -25,38 +25,81 @@ fn cusize(x: &Bits) -> Result<usize, EvalError> {
     }
 }
 
+macro_rules! cbool {
+    ($expr:expr) => {
+        match cbool(&$expr) {
+            Ok(x) => x,
+            Err(e) => return EvalResult::Error(e),
+        }
+    };
+}
+
+macro_rules! cusize {
+    ($expr:expr) => {
+        match cusize(&$expr) {
+            Ok(x) => x,
+            Err(e) => return EvalResult::Error(e),
+        }
+    };
+}
+
+/// In cases like `UQuo` where both invalid bitwidths and values at the same
+/// time are possible, `Noop` takes precedence
+#[derive(Debug, Clone)]
+pub enum EvalResult {
+    /// A Valid result
+    Valid(ExtAwi),
+    /// Pass-through, usually because of an Awi operation that can fail from
+    /// out-of-bounds values
+    Pass(ExtAwi),
+    /// No-operation, usually because of Awi operations with invalid bitwidths
+    Noop,
+    /// Some evaluation error because of something that is not an Awi operation.
+    /// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
+    /// static variants with bad inputs, and bad bitwidths on operations
+    /// involving compile-time bitwidths (such as booleans and `usize`s in
+    /// arguements)
+    Error(EvalError),
+}
+
+use EvalResult::*;
+
 impl Op<ExtAwi> {
-    pub fn eval(self, self_w: NonZeroUsize) -> Result<Option<ExtAwi>, EvalError> {
+    pub fn eval(self, self_w: NonZeroUsize) -> EvalResult {
         let mut r = ExtAwi::zero(self_w);
         let option = match self {
-            Invalid => return Err(EvalError::Unevaluatable),
-            Opaque(_) => return Err(EvalError::Unevaluatable),
+            Invalid => return Error(EvalError::Unevaluatable),
+            Opaque(_) => return Error(EvalError::Unevaluatable),
             Literal(a) => {
-                if a.nzbw() == self_w {
-                    r = a;
+                if r.copy_(&a).is_none() {
+                    return Error(EvalError::OtherStr("`Literal` with mismatching bitwidths"))
+                }
+                Some(())
+            }
+            StaticLut([a], lit) => {
+                if r.lut_(&lit, &a).is_some() {
                     Some(())
                 } else {
-                    None
+                    return Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
                 }
             }
-            StaticLut([a], lit) => r.lut_(&lit, &a),
             StaticGet([a], inx) => {
                 if let Some(b) = a.get(inx) {
                     r.bool_(b);
                     Some(())
                 } else {
-                    None
+                    return Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
                 }
             }
             StaticSet([a, b], inx) => {
                 if r.copy_(&a).is_some() {
-                    r.set(inx, cbool(&b)?)
+                    r.set(inx, cbool!(b))
                 } else {
-                    None
+                    return Error(EvalError::OtherStr("`StaticSet` with `inx` out of bounds"))
                 }
             }
             Resize([a, b]) => {
-                r.resize_(&a, cbool(&b)?);
+                r.resize_(&a, cbool!(b));
                 Some(())
             }
             ZeroResize([a]) => {
@@ -71,7 +114,7 @@ impl Op<ExtAwi> {
             Lut([a, b]) => r.lut_(&a, &b),
             Funnel([a, b]) => r.funnel_(&a, &b),
             CinSum([a, b, c]) => {
-                if r.cin_sum_(cbool(&a)?, &b, &c).is_some() {
+                if r.cin_sum_(cbool!(a), &b, &c).is_some() {
                     Some(())
                 } else {
                     None
@@ -159,35 +202,55 @@ impl Op<ExtAwi> {
             }
             Shl([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.shl_(cusize(&b)?)
+                    if r.shl_(cusize!(b)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             Lshr([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.lshr_(cusize(&b)?)
+                    if r.lshr_(cusize!(b)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             Ashr([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.ashr_(cusize(&b)?)
+                    if r.ashr_(cusize!(b)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             Rotl([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.rotl_(cusize(&b)?)
+                    if r.rotl_(cusize!(b)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             Rotr([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.rotr_(cusize(&b)?)
+                    if r.rotr_(cusize!(b)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
@@ -263,7 +326,7 @@ impl Op<ExtAwi> {
             }
             Inc([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.inc_(cbool(&b)?);
+                    r.inc_(cbool!(b));
                     Some(())
                 } else {
                     None
@@ -271,7 +334,7 @@ impl Op<ExtAwi> {
             }
             Dec([a, b]) => {
                 if r.copy_(&a).is_some() {
-                    r.dec_(cbool(&b)?);
+                    r.dec_(cbool!(b));
                     Some(())
                 } else {
                     None
@@ -279,7 +342,7 @@ impl Op<ExtAwi> {
             }
             Neg([a, b]) => {
                 let e = r.copy_(&a);
-                r.neg_(cbool(&b)?);
+                r.neg_(cbool!(b));
                 e
             }
             ZeroResizeOverflow([a], w) => {
@@ -293,23 +356,27 @@ impl Op<ExtAwi> {
                 Some(())
             }
             Get([a, b]) => {
-                if let Some(b) = a.get(cusize(&b)?) {
+                if let Some(b) = a.get(cusize!(b)) {
                     r.bool_(b);
                     Some(())
                 } else {
-                    None
+                    return Pass(a)
                 }
             }
             Set([a, b, c]) => {
                 if r.copy_(&a).is_some() {
-                    r.set(cusize(&b)?, cbool(&c)?)
+                    if r.set(cusize!(b), cbool!(c)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             Mux([a, b, c]) => {
                 if r.copy_(&a).is_some() {
-                    r.mux_(&b, cbool(&c)?)
+                    r.mux_(&b, cbool!(c))
                 } else {
                     None
                 }
@@ -323,35 +390,57 @@ impl Op<ExtAwi> {
             }
             Field(v) => {
                 if r.copy_(&v[0]).is_some() {
-                    r.field(cusize(&v[1])?, &v[2], cusize(&v[3])?, cusize(&v[4])?)
+                    if r.field(cusize!(v[1]), &v[2], cusize!(v[3]), cusize!(v[4]))
+                        .is_some()
+                    {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             FieldTo([a, b, c, d]) => {
                 if r.copy_(&a).is_some() {
-                    r.field_to(cusize(&b)?, &c, cusize(&d)?)
+                    if r.field_to(cusize!(b), &c, cusize!(d)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             FieldFrom([a, b, c, d]) => {
                 if r.copy_(&a).is_some() {
-                    r.field_from(&b, cusize(&c)?, cusize(&d)?)
+                    if r.field_from(&b, cusize!(c), cusize!(d)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             FieldWidth([a, b, c]) => {
                 if r.copy_(&a).is_some() {
-                    r.field_width(&b, cusize(&c)?)
+                    if r.field_width(&b, cusize!(c)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
             }
             FieldBit([a, b, c, d]) => {
                 if r.copy_(&a).is_some() {
-                    r.field_bit(cusize(&b)?, &c, cusize(&d)?)
+                    if r.field_bit(cusize!(b), &c, cusize!(d)).is_some() {
+                        Some(())
+                    } else {
+                        return Pass(r)
+                    }
                 } else {
                     None
                 }
@@ -365,17 +454,32 @@ impl Op<ExtAwi> {
                 }
             }
             UQuo([a, b]) => {
-                let mut t = ExtAwi::zero(self_w);
-                Bits::udivide(&mut r, &mut t, &a, &b)
+                // Noop needs to take precedence
+                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                    None
+                } else if b.is_zero() {
+                    return Pass(a)
+                } else {
+                    let mut t = ExtAwi::zero(self_w);
+                    Bits::udivide(&mut r, &mut t, &a, &b).unwrap();
+                    Some(())
+                }
             }
             URem([a, b]) => {
-                let mut t = ExtAwi::zero(self_w);
-                Bits::udivide(&mut t, &mut r, &a, &b)
+                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                    None
+                } else if b.is_zero() {
+                    return Pass(a)
+                } else {
+                    let mut t = ExtAwi::zero(self_w);
+                    Bits::udivide(&mut t, &mut r, &a, &b).unwrap();
+                    Some(())
+                }
             }
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
                 let mut t = ExtAwi::zero(b.nzbw());
-                if let Some((o, _)) = t.cin_sum_(cbool(&a)?, &b, &c) {
+                if let Some((o, _)) = t.cin_sum_(cbool!(a), &b, &c) {
                     r.bool_(o);
                     Some(())
                 } else {
@@ -384,7 +488,7 @@ impl Op<ExtAwi> {
             }
             SignedOverflow([a, b, c]) => {
                 let mut t = ExtAwi::zero(b.nzbw());
-                if let Some((_, o)) = t.cin_sum_(cbool(&a)?, &b, &c) {
+                if let Some((_, o)) = t.cin_sum_(cbool!(a), &b, &c) {
                     r.bool_(o);
                     Some(())
                 } else {
@@ -394,7 +498,7 @@ impl Op<ExtAwi> {
             IncCout([a, b]) => {
                 let mut t = ExtAwi::zero(a.nzbw());
                 if t.copy_(&a).is_some() {
-                    r.bool_(t.inc_(cbool(&b)?));
+                    r.bool_(t.inc_(cbool!(b)));
                     Some(())
                 } else {
                     None
@@ -403,39 +507,39 @@ impl Op<ExtAwi> {
             DecCout([a, b]) => {
                 let mut t = ExtAwi::zero(a.nzbw());
                 if t.copy_(&a).is_some() {
-                    r.bool_(t.dec_(cbool(&b)?));
+                    r.bool_(t.dec_(cbool!(b)));
                     Some(())
                 } else {
                     None
                 }
             }
-            op @ (IQuo(_) | IRem(_)) => {
-                let mut t = ExtAwi::zero(self_w);
-                let mut t0 = ExtAwi::zero(self_w);
-                let mut t1 = ExtAwi::zero(self_w);
-                match op {
-                    IQuo([a, b]) => {
-                        if let (Some(()), Some(())) = (t0.copy_(&a), t1.copy_(&b)) {
-                            Bits::idivide(&mut r, &mut t, &mut t0, &mut t1)
-                        } else {
-                            None
-                        }
-                    }
-                    IRem([a, b]) => {
-                        if let (Some(()), Some(())) = (t0.copy_(&a), t1.copy_(&b)) {
-                            Bits::idivide(&mut t, &mut r, &mut t0, &mut t1)
-                        } else {
-                            None
-                        }
-                    }
-                    _ => unreachable!(),
+            IQuo([mut a, mut b]) => {
+                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                    None
+                } else if b.is_zero() {
+                    return Pass(a)
+                } else {
+                    let mut t = ExtAwi::zero(self_w);
+                    Bits::idivide(&mut r, &mut t, &mut a, &mut b).unwrap();
+                    Some(())
+                }
+            }
+            IRem([mut a, mut b]) => {
+                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                    None
+                } else if b.is_zero() {
+                    return Pass(a)
+                } else {
+                    let mut t = ExtAwi::zero(self_w);
+                    Bits::idivide(&mut t, &mut r, &mut a, &mut b).unwrap();
+                    Some(())
                 }
             }
         };
-        if option.is_none() {
-            Ok(None)
+        if option.is_some() {
+            Valid(r)
         } else {
-            Ok(Some(r))
+            Noop
         }
     }
 }

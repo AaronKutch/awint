@@ -170,7 +170,7 @@ pub mod mimick;
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{EvalError, Lineage, Op, PNode, PState, State, StateEpoch};
+pub use common::{EvalError, EvalResult, Lineage, Op, PNode, PState, State, StateEpoch};
 pub use lowering::{OpDag, OpNode};
 pub use mimick::{
     assertion::{internal_assert, internal_assert_eq, internal_assert_ne},

@@ -76,6 +76,13 @@ impl<T> From<awi::Option<T>> for dag::Option<T> {
 }
 
 impl<T> Option<T> {
+    pub fn at_dagtime(t: T, is_some: dag::bool) -> Self {
+        Opaque(OpaqueInternal {
+            is_some,
+            t: awi::Some(t),
+        })
+    }
+
     pub fn as_ref(&self) -> Option<&T> {
         match *self {
             None => None,

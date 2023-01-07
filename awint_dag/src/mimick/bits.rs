@@ -4,7 +4,7 @@ use awint_ext::awi;
 
 use crate::{
     mimick::{ExtAwi, InlAwi},
-    EvalError, Lineage, Op, PState,
+    EvalError, EvalResult, Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
@@ -94,6 +94,8 @@ impl Bits {
         let _: PState = mem::replace(&mut self._bits_raw[0], state);
     }
 
+    /// This function is guaranteed to not return `Option::Opaque`, and may
+    /// return `Option::Some` in cases that need external checking
     #[track_caller]
     #[must_use]
     pub(crate) fn update_state(
@@ -117,22 +119,31 @@ impl Bits {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
                         if let Op::Literal(ref lit) = rhs.get_state().unwrap().op {
                             *lhs = lit.clone();
+                        } else {
+                            unreachable!()
                         }
                     }
                 });
             match lit_op.eval(nzbw) {
-                Ok(o) => {
-                    if let Some(lit) = o {
-                        self.set_state(PState::new(lit.nzbw(), Op::Literal(lit)));
+                EvalResult::Valid(x) => {
+                    self.set_state(PState::new(x.nzbw(), Op::Literal(x)));
+                    crate::mimick::Option::Some(())
+                }
+                EvalResult::Pass(x) => {
+                    self.set_state(PState::new(x.nzbw(), Op::Literal(x)));
+                    crate::mimick::Option::None
+                }
+                EvalResult::Noop => {
+                    // do not update state
+                    crate::mimick::Option::None
+                }
+                EvalResult::Error(e) => {
+                    if matches!(e, EvalError::Unevaluatable) {
+                        self.set_state(PState::new(nzbw, p_state_op));
                         crate::mimick::Option::Some(())
                     } else {
-                        self.set_state(PState::new(nzbw, p_state_op));
-                        crate::mimick::Option::None
+                        panic!("{e:?}");
                     }
-                }
-                Err(e) => {
-                    assert_eq!(e, EvalError::Unevaluatable);
-                    crate::mimick::Option::Some(())
                 }
             }
         } else {

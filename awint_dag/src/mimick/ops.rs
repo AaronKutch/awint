@@ -8,9 +8,20 @@ use Op::*;
 
 use crate::{
     dag,
-    mimick::{Bits, None, Option, Some},
+    mimick::{Bits, InlAwi, None, Option, Some},
     Lineage, Op,
 };
+
+// TODO there's no telling how long Try will be unstable
+macro_rules! try_option {
+    ($expr:expr) => {
+        match $expr {
+            $crate::mimick::Option::None => return None,
+            $crate::mimick::Option::Some(val) => val,
+            $crate::mimick::Option::Opaque(_) => unreachable!(),
+        }
+    };
+}
 
 macro_rules! unary {
     ($($fn_name:ident $enum_var:ident),*,) => {
@@ -298,6 +309,7 @@ impl Bits {
         .unwrap_at_runtime();
     }
 
+    #[must_use]
     pub fn mux_(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
         self.update_state(
             self.state_nzbw(),
@@ -307,7 +319,15 @@ impl Bits {
 
     #[must_use]
     pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
-        self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
+        try_option!(self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()])));
+        if inx.bw() < BITS {
+            if let awi::Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
+                if lut_len == lut.bw() {
+                    return Some(())
+                }
+            }
+        }
+        None
     }
 
     #[must_use]
@@ -325,13 +345,10 @@ impl Bits {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
-                panic!(
-                    "mimicking Bits::get({}) is out of bounds with bitwidth {}",
-                    inx,
-                    self.bw()
-                );
+                None
+            } else {
+                Some(dag::bool::new(StaticGet([self.state()], inx)))
             }
-            Some(dag::bool::new(StaticGet([self.state()], inx)))
         } else {
             Some(dag::bool::new(Get([self.state(), inx])))
         }
@@ -344,18 +361,15 @@ impl Bits {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
-                panic!(
-                    "mimicking Bits::set({}) is out of bounds with bitwidth {}",
-                    inx,
-                    self.bw()
-                );
+                None
+            } else {
+                self.update_state(
+                    self.state_nzbw(),
+                    StaticSet([self.state(), bit.into().state()], inx),
+                )
+                .unwrap_at_runtime();
+                Some(())
             }
-            self.update_state(
-                self.state_nzbw(),
-                StaticSet([self.state(), bit.into().state()], inx),
-            )
-            .unwrap_at_runtime();
-            Some(())
         } else {
             self.update_state(
                 self.state_nzbw(),
@@ -372,16 +386,31 @@ impl Bits {
         from: impl Into<dag::usize>,
         width: impl Into<dag::usize>,
     ) -> Option<()> {
-        self.update_state(
+        let to = to.into();
+        let from = from.into();
+        let width = width.into();
+        try_option!(self.update_state(
             self.state_nzbw(),
             Field([
                 self.state(),
-                to.into().state(),
+                to.state(),
                 rhs.state(),
-                from.into().state(),
-                width.into().state(),
+                from.state(),
+                width.state(),
             ]),
-        )
+        ));
+        let to = InlAwi::from_usize(to);
+        let from = InlAwi::from_usize(from);
+        let width = InlAwi::from_usize(width);
+        let mut tmp0 = InlAwi::from_usize(self.bw());
+        tmp0.sub_(&width).unwrap();
+        let mut tmp1 = InlAwi::from_usize(rhs.bw());
+        tmp1.sub_(&width).unwrap();
+        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
+            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
+            & to.ule(&tmp0).unwrap()
+            & from.ule(&tmp1).unwrap();
+        Option::at_dagtime((), ok)
     }
 
     #[must_use]
@@ -391,15 +420,20 @@ impl Bits {
         rhs: &Self,
         width: impl Into<dag::usize>,
     ) -> Option<()> {
-        self.update_state(
+        let to = to.into();
+        let width = width.into();
+        try_option!(self.update_state(
             self.state_nzbw(),
-            FieldTo([
-                self.state(),
-                to.into().state(),
-                rhs.state(),
-                width.into().state(),
-            ]),
-        )
+            FieldTo([self.state(), to.state(), rhs.state(), width.state()]),
+        ));
+        let to = InlAwi::from_usize(to);
+        let width = InlAwi::from_usize(width);
+        let mut tmp = InlAwi::from_usize(self.bw());
+        tmp.sub_(&width).unwrap();
+        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
+            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
+            & to.ule(&tmp).unwrap();
+        Option::at_dagtime((), ok)
     }
 
     #[must_use]
@@ -409,23 +443,33 @@ impl Bits {
         from: impl Into<dag::usize>,
         width: impl Into<dag::usize>,
     ) -> Option<()> {
-        self.update_state(
+        let from = from.into();
+        let width = width.into();
+        try_option!(self.update_state(
             self.state_nzbw(),
-            FieldFrom([
-                self.state(),
-                rhs.state(),
-                from.into().state(),
-                width.into().state(),
-            ]),
-        )
+            FieldFrom([self.state(), rhs.state(), from.state(), width.state()]),
+        ));
+        let from = InlAwi::from_usize(from);
+        let width = InlAwi::from_usize(width);
+        let mut tmp = InlAwi::from_usize(rhs.bw());
+        tmp.sub_(&width).unwrap();
+        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
+            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
+            & from.ule(&tmp).unwrap();
+        Option::at_dagtime((), ok)
     }
 
     #[must_use]
     pub fn field_width(&mut self, rhs: &Self, width: impl Into<dag::usize>) -> Option<()> {
-        self.update_state(
+        let width = width.into();
+        try_option!(self.update_state(
             self.state_nzbw(),
-            FieldWidth([self.state(), rhs.state(), width.into().state()]),
-        )
+            FieldWidth([self.state(), rhs.state(), width.state()]),
+        ));
+        let width = InlAwi::from_usize(width);
+        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
+            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap();
+        Option::at_dagtime((), ok)
     }
 
     #[must_use]
@@ -435,15 +479,17 @@ impl Bits {
         rhs: &Self,
         from: impl Into<dag::usize>,
     ) -> Option<()> {
-        self.update_state(
+        let to = to.into();
+        let from = from.into();
+        try_option!(self.update_state(
             self.state_nzbw(),
-            FieldBit([
-                self.state(),
-                to.into().state(),
-                rhs.state(),
-                from.into().state(),
-            ]),
-        )
+            FieldBit([self.state(), to.state(), rhs.state(), from.state()]),
+        ));
+        let to = InlAwi::from_usize(to);
+        let from = InlAwi::from_usize(from);
+        let ok = to.ult(&InlAwi::from_usize(self.bw())).unwrap()
+            & from.ult(&InlAwi::from_usize(rhs.bw())).unwrap();
+        Option::at_dagtime((), ok)
     }
 
     pub fn resize_(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
@@ -470,7 +516,15 @@ impl Bits {
 
     #[must_use]
     pub fn funnel_(&mut self, rhs: &Self, s: &Self) -> Option<()> {
-        self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()]))
+        try_option!(self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()])));
+        if (s.bw() >= (BITS - 1))
+            || ((1usize << s.bw()) != self.bw())
+            || ((self.bw() << 1) != rhs.bw())
+        {
+            None
+        } else {
+            Some(())
+        }
     }
 
     #[must_use]
@@ -496,10 +550,14 @@ impl Bits {
 
     #[must_use]
     pub fn mul_add_(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
-        self.update_state(
-            self.state_nzbw(),
-            MulAdd([self.state(), lhs.state(), rhs.state()]),
-        )
+        if (self.bw() != lhs.bw()) || (self.bw() != rhs.bw()) {
+            None
+        } else {
+            self.update_state(
+                self.state_nzbw(),
+                MulAdd([self.state(), lhs.state(), rhs.state()]),
+            )
+        }
     }
 
     pub fn arb_umul_add_(&mut self, lhs: &Bits, rhs: &Bits) {
@@ -557,7 +615,7 @@ impl Bits {
         lhs: &Self,
         rhs: &Self,
     ) -> Option<(dag::bool, dag::bool)> {
-        if (self.bw() == lhs.bw()) && (lhs.bw() == rhs.bw()) {
+        if (self.bw() == lhs.bw()) && (self.bw() == rhs.bw()) {
             let b = cin.into();
             let out = Some((
                 dag::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
@@ -674,7 +732,6 @@ impl Bits {
         let mut ge: Vec<_> = Vec::from(ge);
         let eq: Box<[_]> = Box::from(eq);
         let mut eq: Vec<_> = Vec::from(eq);
-        use dag::InlAwi;
         let cw = InlAwi::from_usize(cw.into());
         let mut b = true.into();
         for _ in 0..LE {
