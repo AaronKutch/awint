@@ -5,6 +5,39 @@ use Op::*;
 
 use crate::{EvalError, Op};
 
+/// A Valid result
+///
+/// `Valid(ExtAwi),`
+///
+/// Pass-through, usually because of an Awi operation that can fail from
+/// out-of-bounds values
+///
+/// `Pass(ExtAwi),`
+///
+/// No-operation, usually because of Awi operations with invalid bitwidths
+///
+/// `Noop,`
+///
+/// Some evaluation error because of something that is not an Awi operation.
+/// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
+/// static variants with bad inputs, and bad bitwidths on operations
+/// involving compile-time bitwidths (such as booleans and `usize`s in
+/// arguements)
+///
+/// `Error(EvalError),`
+///
+/// In cases like `UQuo` where both invalid bitwidths and values at the same
+/// time are possible, `Noop` takes precedence
+#[derive(Debug, Clone)]
+pub enum EvalResult {
+    Valid(ExtAwi),
+    Pass(ExtAwi),
+    Noop,
+    Error(EvalError),
+}
+
+use EvalResult::*;
+
 fn cbool(x: &Bits) -> Result<bool, EvalError> {
     if x.bw() == 1 {
         Ok(x.to_bool())
@@ -42,27 +75,6 @@ macro_rules! cusize {
         }
     };
 }
-
-/// In cases like `UQuo` where both invalid bitwidths and values at the same
-/// time are possible, `Noop` takes precedence
-#[derive(Debug, Clone)]
-pub enum EvalResult {
-    /// A Valid result
-    Valid(ExtAwi),
-    /// Pass-through, usually because of an Awi operation that can fail from
-    /// out-of-bounds values
-    Pass(ExtAwi),
-    /// No-operation, usually because of Awi operations with invalid bitwidths
-    Noop,
-    /// Some evaluation error because of something that is not an Awi operation.
-    /// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
-    /// static variants with bad inputs, and bad bitwidths on operations
-    /// involving compile-time bitwidths (such as booleans and `usize`s in
-    /// arguements)
-    Error(EvalError),
-}
-
-use EvalResult::*;
 
 impl Op<ExtAwi> {
     pub fn eval(self, self_w: NonZeroUsize) -> EvalResult {
@@ -388,11 +400,9 @@ impl Op<ExtAwi> {
                     None
                 }
             }
-            Field(v) => {
-                if r.copy_(&v[0]).is_some() {
-                    if r.field(cusize!(v[1]), &v[2], cusize!(v[3]), cusize!(v[4]))
-                        .is_some()
-                    {
+            Field([a, b, c, d, e]) => {
+                if r.copy_(&a).is_some() {
+                    if r.field(cusize!(b), &c, cusize!(d), cusize!(e)).is_some() {
                         Some(())
                     } else {
                         return Pass(r)
@@ -453,29 +463,6 @@ impl Op<ExtAwi> {
                     None
                 }
             }
-            UQuo([a, b]) => {
-                // Noop needs to take precedence
-                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
-                    None
-                } else if b.is_zero() {
-                    return Pass(a)
-                } else {
-                    let mut t = ExtAwi::zero(self_w);
-                    Bits::udivide(&mut r, &mut t, &a, &b).unwrap();
-                    Some(())
-                }
-            }
-            URem([a, b]) => {
-                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
-                    None
-                } else if b.is_zero() {
-                    return Pass(a)
-                } else {
-                    let mut t = ExtAwi::zero(self_w);
-                    Bits::udivide(&mut t, &mut r, &a, &b).unwrap();
-                    Some(())
-                }
-            }
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
                 let mut t = ExtAwi::zero(b.nzbw());
@@ -513,8 +500,31 @@ impl Op<ExtAwi> {
                     None
                 }
             }
+            UQuo([a, b]) => {
+                // Noop needs to take precedence
+                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                    None
+                } else if b.is_zero() {
+                    return Pass(a)
+                } else {
+                    let mut t = ExtAwi::zero(self_w);
+                    Bits::udivide(&mut r, &mut t, &a, &b).unwrap();
+                    Some(())
+                }
+            }
+            URem([a, b]) => {
+                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                    None
+                } else if b.is_zero() {
+                    return Pass(a)
+                } else {
+                    let mut t = ExtAwi::zero(self_w);
+                    Bits::udivide(&mut t, &mut r, &a, &b).unwrap();
+                    Some(())
+                }
+            }
             IQuo([mut a, mut b]) => {
-                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
                     None
                 } else if b.is_zero() {
                     return Pass(a)
@@ -525,7 +535,7 @@ impl Op<ExtAwi> {
                 }
             }
             IRem([mut a, mut b]) => {
-                if (r.bw() != self_w.get()) || (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
                     None
                 } else if b.is_zero() {
                     return Pass(a)

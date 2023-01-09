@@ -3,6 +3,7 @@ use std::{fmt, marker::PhantomData, mem, num::NonZeroUsize, ptr, rc::Rc};
 use awint_ext::awi;
 
 use crate::{
+    common::NoopResult,
     mimick::{ExtAwi, InlAwi},
     EvalError, EvalResult, Lineage, Op, PState,
 };
@@ -147,8 +148,21 @@ impl Bits {
                 }
             }
         } else {
-            self.set_state(PState::new(nzbw, p_state_op));
-            crate::mimick::Option::Some(())
+            // we can't evaluate but we can check for some things
+            let bw_op: Op<NonZeroUsize> =
+                Op::translate(&p_state_op, |lhs: &mut [NonZeroUsize], rhs: &[PState]| {
+                    for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                        *lhs = rhs.get_state().unwrap().nzbw;
+                    }
+                });
+            match bw_op.noop_check(nzbw) {
+                NoopResult::Operational => {
+                    self.set_state(PState::new(nzbw, p_state_op));
+                    crate::mimick::Option::Some(())
+                }
+                NoopResult::Noop => crate::mimick::Option::None,
+                NoopResult::Error(e) => panic!("{e:?}"),
+            }
         }
     }
 

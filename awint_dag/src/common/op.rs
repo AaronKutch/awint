@@ -11,6 +11,12 @@ pub trait DummyDefault {
     fn default() -> Self;
 }
 
+impl DummyDefault for NonZeroUsize {
+    fn default() -> Self {
+        bw(1)
+    }
+}
+
 impl DummyDefault for ExtAwi {
     fn default() -> Self {
         ExtAwi::zero(bw(1))
