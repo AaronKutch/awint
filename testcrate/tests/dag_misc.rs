@@ -158,6 +158,7 @@ fn dag_bits_functions_internal(x: [&mut dag::Bits; 5], _epoch0: &StateEpoch) {
     assert!(x0.field_bit(127, x1, 192).is_none());
 
     assert!(x0.lut_(x1, x3).is_none());
+    assert!(x0.lut_set(x1, x3).is_none());
     assert!(x0.funnel_(x1, x3).is_none());
 
     // x0.short_cin_mul(0, 0);
@@ -322,7 +323,7 @@ fn dag_bits_functions() {
     let y9 = &mut x9.clone();
     dag_bits_functions_internal([y5, y6, y7, y8, y9], &epoch0);
 
-    let eq = epoch0.assertions().bits.len() == 168;
+    let eq = epoch0.assertions().bits.len() == 170;
     if !eq {
         println!(
             "number of assertions ({}) is not as expected",

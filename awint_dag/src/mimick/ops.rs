@@ -319,15 +319,7 @@ impl Bits {
 
     #[must_use]
     pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
-        try_option!(self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()])));
-        if inx.bw() < BITS {
-            if let awi::Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
-                if lut_len == lut.bw() {
-                    return Some(())
-                }
-            }
-        }
-        None
+        self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
     }
 
     #[must_use]
@@ -516,15 +508,7 @@ impl Bits {
 
     #[must_use]
     pub fn funnel_(&mut self, rhs: &Self, s: &Self) -> Option<()> {
-        try_option!(self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()])));
-        if (s.bw() >= (BITS - 1))
-            || ((1usize << s.bw()) != self.bw())
-            || ((self.bw() << 1) != rhs.bw())
-        {
-            None
-        } else {
-            Some(())
-        }
+        self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()]))
     }
 
     #[must_use]
@@ -555,7 +539,7 @@ impl Bits {
         } else {
             self.update_state(
                 self.state_nzbw(),
-                MulAdd([self.state(), lhs.state(), rhs.state()]),
+                ArbMulAdd([self.state(), lhs.state(), rhs.state()]),
             )
         }
     }
@@ -563,7 +547,7 @@ impl Bits {
     pub fn arb_umul_add_(&mut self, lhs: &Bits, rhs: &Bits) {
         self.update_state(
             self.state_nzbw(),
-            MulAdd([self.state(), lhs.state(), rhs.state()]),
+            ArbMulAdd([self.state(), lhs.state(), rhs.state()]),
         )
         .unwrap_at_runtime();
     }
@@ -579,7 +563,7 @@ impl Bits {
         self.neg_(rhs_msb);
         self.update_state(
             self.state_nzbw(),
-            MulAdd([self.state(), lhs.state(), rhs.state()]),
+            ArbMulAdd([self.state(), lhs.state(), rhs.state()]),
         )
         .unwrap_at_runtime();
         self.neg_(lhs_msb);

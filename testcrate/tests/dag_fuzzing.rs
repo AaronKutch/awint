@@ -698,7 +698,7 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
                 _ => unreachable!(),
             }
         }
-        // MulAdd
+        // ArbMulAdd
         26 => {
             let (w, lhs) = m.next1_5();
             match rng.next_u32() % 3 {

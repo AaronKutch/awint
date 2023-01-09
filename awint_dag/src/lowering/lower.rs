@@ -658,7 +658,7 @@ impl OpDag {
                 }
                 self.graft(ptr, v, &[out.state(), x.state()])?;
             }
-            MulAdd([add, lhs, rhs]) => {
+            ArbMulAdd([add, lhs, rhs]) => {
                 let w = self.get_bw(add);
                 let add = ExtAwi::opaque(w);
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));

@@ -455,7 +455,7 @@ impl Op<ExtAwi> {
                     None
                 }
             }
-            MulAdd([a, b, c]) => {
+            ArbMulAdd([a, b, c]) => {
                 if r.copy_(&a).is_some() {
                     r.arb_umul_add_(&b, &c);
                     Some(())

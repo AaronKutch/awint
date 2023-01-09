@@ -72,7 +72,7 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     URem([T; 2]),
     IQuo([T; 2]),
     IRem([T; 2]),
-    MulAdd([T; 3]),
+    ArbMulAdd([T; 3]),
     CinSum([T; 3]),
     UnsignedOverflow([T; 3]),
     SignedOverflow([T; 3]),
@@ -216,7 +216,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             URem(_) => "urem",
             IQuo(_) => "iquo",
             IRem(_) => "irem",
-            MulAdd(_) => "mul_add",
+            ArbMulAdd(_) => "mul_add",
             CinSum(_) => "cin_sum",
             UnsignedOverflow(_) => "unsigned_overflow",
             SignedOverflow(_) => "signed_overflow",
@@ -304,7 +304,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
                 v.push("duo");
                 v.push("div");
             }
-            MulAdd(_) => {
+            ArbMulAdd(_) => {
                 v.push("add");
                 v.push("lhs");
                 v.push("rhs");
@@ -398,7 +398,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             URem(v) => v,
             IQuo(v) => v,
             IRem(v) => v,
-            MulAdd(v) => v,
+            ArbMulAdd(v) => v,
             CinSum(v) => v,
             UnsignedOverflow(v) => v,
             SignedOverflow(v) => v,
@@ -470,7 +470,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             URem(v) => v,
             IQuo(v) => v,
             IRem(v) => v,
-            MulAdd(v) => v,
+            ArbMulAdd(v) => v,
             CinSum(v) => v,
             UnsignedOverflow(v) => v,
             SignedOverflow(v) => v,
@@ -573,7 +573,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             URem(v) => URem(map2!(m, v)),
             IQuo(v) => IQuo(map2!(m, v)),
             IRem(v) => IRem(map2!(m, v)),
-            MulAdd(v) => MulAdd(map3!(m, v)),
+            ArbMulAdd(v) => ArbMulAdd(map3!(m, v)),
             CinSum(v) => CinSum(map3!(m, v)),
             UnsignedOverflow(v) => UnsignedOverflow(map3!(m, v)),
             SignedOverflow(v) => SignedOverflow(map3!(m, v)),

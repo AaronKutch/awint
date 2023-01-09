@@ -343,7 +343,7 @@ impl Op<NonZeroUsize> {
                 cusize!(d);
                 true
             }
-            MulAdd([a, _, _]) => {
+            ArbMulAdd([a, _, _]) => {
                 ceq!(w, a);
                 true
             }
