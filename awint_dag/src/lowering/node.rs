@@ -1,5 +1,7 @@
 use std::num::NonZeroUsize;
 
+use awint_ext::awint_internals::Location;
+
 #[cfg(feature = "debug")]
 use crate::triple_arena_render::{DebugNode, DebugNodeTrait};
 use crate::{common::DummyDefault, triple_arena::Ptr, EvalError, Op};
@@ -15,6 +17,7 @@ pub struct OpNode<P: Ptr + DummyDefault> {
     /// Number of dependents
     pub rc: u64,
     pub err: Option<EvalError>,
+    pub location: Option<Location>,
     /// Used in algorithms to check for visitation
     pub visit: u64,
 }
@@ -54,6 +57,9 @@ impl<P: Ptr + DummyDefault> DebugNodeTrait<P> for OpNode<P> {
             res.center.push(format!("ERROR: {err:?}"));
         }
         res.center.push(format!("{} - {}", this.nzbw, this.rc));
+        if let Some(location) = this.location {
+            res.center.push(format!("{location:?}"));
+        }
         res.center.push(format!("{p_this:?}"));
         res
     }

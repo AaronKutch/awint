@@ -1,3 +1,7 @@
+#![cfg_attr(not(debug_assertions), allow(unused_variables))]
+#![cfg_attr(not(debug_assertions), allow(dead_code))]
+#![allow(clippy::manual_map)]
+
 use std::num::NonZeroUsize;
 
 use awint_ext::{awint_internals::BITS, Bits, ExtAwi};
@@ -58,417 +62,381 @@ fn cusize(x: &Bits) -> Result<usize, EvalError> {
     }
 }
 
+fn ceq(x: NonZeroUsize, y: NonZeroUsize) -> Result<(), EvalError> {
+    if x == y {
+        Ok(())
+    } else {
+        Err(EvalError::OtherStr(
+            "`self_w` in an `Op<NonZeroUsize>` was not as expected",
+        ))
+    }
+}
+
 macro_rules! cbool {
-    ($expr:expr) => {
-        match cbool(&$expr) {
-            Ok(x) => x,
-            Err(e) => return EvalResult::Error(e),
+    ($expr:expr) => {{
+        #[cfg(debug_assertions)]
+        {
+            match cbool(&$expr) {
+                Ok(x) => x,
+                Err(e) => return EvalResult::Error(e),
+            }
         }
-    };
+        #[cfg(not(debug_assertions))]
+        {
+            $expr.to_bool()
+        }
+    }};
 }
 
 macro_rules! cusize {
-    ($expr:expr) => {
-        match cusize(&$expr) {
-            Ok(x) => x,
-            Err(e) => return EvalResult::Error(e),
+    ($expr:expr) => {{
+        #[cfg(debug_assertions)]
+        {
+            match cusize(&$expr) {
+                Ok(x) => x,
+                Err(e) => return EvalResult::Error(e),
+            }
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            $expr.to_usize()
+        }
+    }};
+}
+
+// This is if there is redundancy that should be enforced to be equal on the
+// crate side
+macro_rules! ceq {
+    ($x:expr, $y:expr) => {
+        #[cfg(debug_assertions)]
+        {
+            match ceq($x, $y) {
+                Ok(()) => (),
+                Err(e) => return EvalResult::Error(e),
+            }
         }
     };
 }
 
 impl Op<ExtAwi> {
     pub fn eval(self, self_w: NonZeroUsize) -> EvalResult {
-        let mut r = ExtAwi::zero(self_w);
-        let option = match self {
+        let w = self_w;
+        let res: Option<ExtAwi> = match self {
             Invalid => return Error(EvalError::Unevaluatable),
             Opaque(_) => return Error(EvalError::Unevaluatable),
             Literal(a) => {
-                if r.copy_(&a).is_none() {
+                if w != a.nzbw() {
                     return Error(EvalError::OtherStr("`Literal` with mismatching bitwidths"))
                 }
-                Some(())
+                Some(a)
             }
             StaticLut([a], lit) => {
+                let mut r = ExtAwi::zero(w);
                 if r.lut_(&lit, &a).is_some() {
-                    Some(())
+                    Some(r)
                 } else {
                     return Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
                 }
             }
             StaticGet([a], inx) => {
                 if let Some(b) = a.get(inx) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     return Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
                 }
             }
-            StaticSet([a, b], inx) => {
-                if r.copy_(&a).is_some() {
-                    r.set(inx, cbool!(b))
+            StaticSet([mut a, b], inx) => {
+                if a.set(inx, cbool!(b)).is_some() {
+                    Some(a)
                 } else {
                     return Error(EvalError::OtherStr("`StaticSet` with `inx` out of bounds"))
                 }
             }
             Resize([a, b]) => {
+                let mut r = ExtAwi::zero(w);
                 r.resize_(&a, cbool!(b));
-                Some(())
+                Some(r)
             }
             ZeroResize([a]) => {
+                let mut r = ExtAwi::zero(w);
                 r.zero_resize_(&a);
-                Some(())
+                Some(r)
             }
             SignResize([a]) => {
+                let mut r = ExtAwi::zero(w);
                 r.sign_resize_(&a);
-                Some(())
+                Some(r)
             }
-            Copy([a]) => r.copy_(&a),
-            Lut([a, b]) => r.lut_(&a, &b),
-            Funnel([a, b]) => r.funnel_(&a, &b),
+            Copy([a]) => Some(a),
+            Lut([a, b]) => {
+                let mut r = ExtAwi::zero(w);
+                if r.lut_(&a, &b).is_some() {
+                    Some(r)
+                } else {
+                    None
+                }
+            }
+            Funnel([a, b]) => {
+                let mut r = ExtAwi::zero(w);
+                if r.funnel_(&a, &b).is_some() {
+                    Some(r)
+                } else {
+                    None
+                }
+            }
             CinSum([a, b, c]) => {
+                let mut r = ExtAwi::zero(w);
                 if r.cin_sum_(cbool!(a), &b, &c).is_some() {
-                    Some(())
+                    Some(r)
                 } else {
                     None
                 }
             }
-            Not([a]) => {
-                let e = r.copy_(&a);
-                r.not_();
-                e
+            Not([mut a]) => {
+                a.not_();
+                Some(a)
             }
-            Rev([a]) => {
-                let e = r.copy_(&a);
-                r.rev_();
-                e
+            Rev([mut a]) => {
+                a.rev_();
+                Some(a)
             }
-            Abs([a]) => {
-                let e = r.copy_(&a);
-                r.abs_();
-                e
+            Abs([mut a]) => {
+                a.abs_();
+                Some(a)
             }
-            IsZero([a]) => {
-                r.bool_(a.is_zero());
-                Some(())
-            }
-            IsUmax([a]) => {
-                r.bool_(a.is_umax());
-                Some(())
-            }
-            IsImax([a]) => {
-                r.bool_(a.is_imax());
-                Some(())
-            }
-            IsImin([a]) => {
-                r.bool_(a.is_imin());
-                Some(())
-            }
-            IsUone([a]) => {
-                r.bool_(a.is_uone());
-                Some(())
-            }
-            Lsb([a]) => {
-                r.bool_(a.lsb());
-                Some(())
-            }
-            Msb([a]) => {
-                r.bool_(a.msb());
-                Some(())
-            }
-            Lz([a]) => {
-                r.usize_(a.lz());
-                Some(())
-            }
-            Tz([a]) => {
-                r.usize_(a.tz());
-                Some(())
-            }
-            Sig([a]) => {
-                r.usize_(a.sig());
-                Some(())
-            }
-            CountOnes([a]) => {
-                r.usize_(a.count_ones());
-                Some(())
-            }
-            Or([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.or_(&b)
+            IsZero([a]) => Some(ExtAwi::from_bool(a.is_zero())),
+            IsUmax([a]) => Some(ExtAwi::from_bool(a.is_umax())),
+            IsImax([a]) => Some(ExtAwi::from_bool(a.is_imax())),
+            IsImin([a]) => Some(ExtAwi::from_bool(a.is_imin())),
+            IsUone([a]) => Some(ExtAwi::from_bool(a.is_uone())),
+            Lsb([a]) => Some(ExtAwi::from_bool(a.lsb())),
+            Msb([a]) => Some(ExtAwi::from_bool(a.msb())),
+            Lz([a]) => Some(ExtAwi::from_usize(a.lz())),
+            Tz([a]) => Some(ExtAwi::from_usize(a.tz())),
+            Sig([a]) => Some(ExtAwi::from_usize(a.sig())),
+            CountOnes([a]) => Some(ExtAwi::from_usize(a.count_ones())),
+            Or([mut a, b]) => {
+                if a.or_(&b).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            And([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.and_(&b)
+            And([mut a, b]) => {
+                if a.and_(&b).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            Xor([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.xor_(&b)
+            Xor([mut a, b]) => {
+                if a.xor_(&b).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            Shl([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    if r.shl_(cusize!(b)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            Shl([mut a, b]) => {
+                if a.shl_(cusize!(b)).is_some() {
+                    Some(a)
+                } else {
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
+                }
+            }
+            Lshr([mut a, b]) => {
+                if a.lshr_(cusize!(b)).is_some() {
+                    Some(a)
+                } else {
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
+                }
+            }
+            Ashr([mut a, b]) => {
+                if a.ashr_(cusize!(b)).is_some() {
+                    Some(a)
+                } else {
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
+                }
+            }
+            Rotl([mut a, b]) => {
+                if a.rotl_(cusize!(b)).is_some() {
+                    Some(a)
+                } else {
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
+                }
+            }
+            Rotr([mut a, b]) => {
+                if a.rotr_(cusize!(b)).is_some() {
+                    Some(a)
+                } else {
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
+                }
+            }
+            Add([mut a, b]) => {
+                if a.add_(&b).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            Lshr([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    if r.lshr_(cusize!(b)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            Sub([mut a, b]) => {
+                if a.sub_(&b).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            Ashr([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    if r.ashr_(cusize!(b)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
-                } else {
-                    None
-                }
-            }
-            Rotl([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    if r.rotl_(cusize!(b)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
-                } else {
-                    None
-                }
-            }
-            Rotr([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    if r.rotr_(cusize!(b)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
-                } else {
-                    None
-                }
-            }
-            Add([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.add_(&b)
-                } else {
-                    None
-                }
-            }
-            Sub([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.sub_(&b)
-                } else {
-                    None
-                }
-            }
-            Rsb([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.rsb_(&b)
+            Rsb([mut a, b]) => {
+                if a.rsb_(&b).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
             Eq([a, b]) => {
                 if let Some(b) = a.const_eq(&b) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ne([a, b]) => {
                 if let Some(b) = a.const_ne(&b) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ult([a, b]) => {
                 if let Some(b) = a.ult(&b) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ule([a, b]) => {
                 if let Some(b) = a.ule(&b) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ilt([a, b]) => {
                 if let Some(b) = a.ilt(&b) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ile([a, b]) => {
                 if let Some(b) = a.ile(&b) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     None
                 }
             }
-            Inc([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.inc_(cbool!(b));
-                    Some(())
-                } else {
-                    None
-                }
+            Inc([mut a, b]) => {
+                a.inc_(cbool!(b));
+                Some(a)
             }
-            Dec([a, b]) => {
-                if r.copy_(&a).is_some() {
-                    r.dec_(cbool!(b));
-                    Some(())
-                } else {
-                    None
-                }
+            Dec([mut a, b]) => {
+                a.dec_(cbool!(b));
+                Some(a)
             }
-            Neg([a, b]) => {
-                let e = r.copy_(&a);
-                r.neg_(cbool!(b));
-                e
+            Neg([mut a, b]) => {
+                a.neg_(cbool!(b));
+                Some(a)
             }
             ZeroResizeOverflow([a], w) => {
                 let mut tmp_awi = ExtAwi::zero(w);
-                r.bool_(tmp_awi.zero_resize_(&a));
-                Some(())
+                Some(ExtAwi::from_bool(tmp_awi.zero_resize_(&a)))
             }
             SignResizeOverflow([a], w) => {
                 let mut tmp_awi = ExtAwi::zero(w);
-                r.bool_(tmp_awi.sign_resize_(&a));
-                Some(())
+                Some(ExtAwi::from_bool(tmp_awi.sign_resize_(&a)))
             }
             Get([a, b]) => {
                 if let Some(b) = a.get(cusize!(b)) {
-                    r.bool_(b);
-                    Some(())
+                    Some(ExtAwi::from_bool(b))
                 } else {
                     return Pass(a)
                 }
             }
-            Set([a, b, c]) => {
-                if r.copy_(&a).is_some() {
-                    if r.set(cusize!(b), cbool!(c)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            Set([mut a, b, c]) => {
+                if a.set(cusize!(b), cbool!(c)).is_some() {
+                    Some(a)
+                } else {
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
+                }
+            }
+            Mux([mut a, b, c]) => {
+                if a.mux_(&b, cbool!(c)).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            Mux([a, b, c]) => {
-                if r.copy_(&a).is_some() {
-                    r.mux_(&b, cbool!(c))
+            LutSet([mut a, b, c]) => {
+                if a.lut_set(&b, &c).is_some() {
+                    Some(a)
                 } else {
                     None
                 }
             }
-            LutSet([a, b, c]) => {
-                if r.copy_(&a).is_some() {
-                    r.lut_set(&b, &c)
+            Field([mut a, b, c, d, e]) => {
+                if a.field(cusize!(b), &c, cusize!(d), cusize!(e)).is_some() {
+                    Some(a)
                 } else {
-                    None
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
                 }
             }
-            Field([a, b, c, d, e]) => {
-                if r.copy_(&a).is_some() {
-                    if r.field(cusize!(b), &c, cusize!(d), cusize!(e)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            FieldTo([mut a, b, c, d]) => {
+                if a.field_to(cusize!(b), &c, cusize!(d)).is_some() {
+                    Some(a)
                 } else {
-                    None
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
                 }
             }
-            FieldTo([a, b, c, d]) => {
-                if r.copy_(&a).is_some() {
-                    if r.field_to(cusize!(b), &c, cusize!(d)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            FieldFrom([mut a, b, c, d]) => {
+                if a.field_from(&b, cusize!(c), cusize!(d)).is_some() {
+                    Some(a)
                 } else {
-                    None
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
                 }
             }
-            FieldFrom([a, b, c, d]) => {
-                if r.copy_(&a).is_some() {
-                    if r.field_from(&b, cusize!(c), cusize!(d)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            FieldWidth([mut a, b, c]) => {
+                if a.field_width(&b, cusize!(c)).is_some() {
+                    Some(a)
                 } else {
-                    None
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
                 }
             }
-            FieldWidth([a, b, c]) => {
-                if r.copy_(&a).is_some() {
-                    if r.field_width(&b, cusize!(c)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
+            FieldBit([mut a, b, c, d]) => {
+                if a.field_bit(cusize!(b), &c, cusize!(d)).is_some() {
+                    Some(a)
                 } else {
-                    None
+                    ceq!(w, a.nzbw());
+                    return Pass(a)
                 }
             }
-            FieldBit([a, b, c, d]) => {
-                if r.copy_(&a).is_some() {
-                    if r.field_bit(cusize!(b), &c, cusize!(d)).is_some() {
-                        Some(())
-                    } else {
-                        return Pass(r)
-                    }
-                } else {
-                    None
-                }
-            }
-            ArbMulAdd([a, b, c]) => {
-                if r.copy_(&a).is_some() {
-                    r.arb_umul_add_(&b, &c);
-                    Some(())
-                } else {
-                    None
-                }
+            ArbMulAdd([mut a, b, c]) => {
+                a.arb_umul_add_(&b, &c);
+                Some(a)
             }
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
                 let mut t = ExtAwi::zero(b.nzbw());
                 if let Some((o, _)) = t.cin_sum_(cbool!(a), &b, &c) {
-                    r.bool_(o);
-                    Some(())
+                    Some(ExtAwi::from_bool(o))
                 } else {
                     None
                 }
@@ -476,77 +444,65 @@ impl Op<ExtAwi> {
             SignedOverflow([a, b, c]) => {
                 let mut t = ExtAwi::zero(b.nzbw());
                 if let Some((_, o)) = t.cin_sum_(cbool!(a), &b, &c) {
-                    r.bool_(o);
-                    Some(())
+                    Some(ExtAwi::from_bool(o))
                 } else {
                     None
                 }
             }
-            IncCout([a, b]) => {
-                let mut t = ExtAwi::zero(a.nzbw());
-                if t.copy_(&a).is_some() {
-                    r.bool_(t.inc_(cbool!(b)));
-                    Some(())
-                } else {
-                    None
-                }
-            }
-            DecCout([a, b]) => {
-                let mut t = ExtAwi::zero(a.nzbw());
-                if t.copy_(&a).is_some() {
-                    r.bool_(t.dec_(cbool!(b)));
-                    Some(())
-                } else {
-                    None
-                }
-            }
+            IncCout([mut a, b]) => Some(ExtAwi::from_bool(a.inc_(cbool!(b)))),
+            DecCout([mut a, b]) => Some(ExtAwi::from_bool(a.dec_(cbool!(b)))),
             UQuo([a, b]) => {
                 // Noop needs to take precedence
-                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                if (w.get() != a.bw()) || (w.get() != b.bw()) {
                     None
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut t = ExtAwi::zero(self_w);
+                    let mut r = ExtAwi::zero(w);
+                    let mut t = ExtAwi::zero(w);
                     Bits::udivide(&mut r, &mut t, &a, &b).unwrap();
-                    Some(())
+                    Some(r)
                 }
             }
             URem([a, b]) => {
-                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                if (w.get() != a.bw()) || (w.get() != b.bw()) {
                     None
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut t = ExtAwi::zero(self_w);
+                    let mut r = ExtAwi::zero(w);
+                    let mut t = ExtAwi::zero(w);
                     Bits::udivide(&mut t, &mut r, &a, &b).unwrap();
-                    Some(())
+                    Some(r)
                 }
             }
             IQuo([mut a, mut b]) => {
-                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                if (w.get() != a.bw()) || (w.get() != b.bw()) {
                     None
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut t = ExtAwi::zero(self_w);
+                    let mut r = ExtAwi::zero(w);
+                    let mut t = ExtAwi::zero(w);
                     Bits::idivide(&mut r, &mut t, &mut a, &mut b).unwrap();
-                    Some(())
+                    Some(r)
                 }
             }
             IRem([mut a, mut b]) => {
-                if (r.bw() != a.bw()) || (r.bw() != b.bw()) {
+                if (w.get() != a.bw()) || (w.get() != b.bw()) {
                     None
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut t = ExtAwi::zero(self_w);
+                    let mut r = ExtAwi::zero(w);
+                    let mut t = ExtAwi::zero(w);
                     Bits::idivide(&mut t, &mut r, &mut a, &mut b).unwrap();
-                    Some(())
+                    Some(r)
                 }
             }
         };
-        if option.is_some() {
+        if let Some(r) = res {
+            ceq!(w, r.nzbw());
             Valid(r)
         } else {
             Noop

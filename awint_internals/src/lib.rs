@@ -269,3 +269,11 @@ pub const fn dd_division(
         // TODO fix this for 128 bits
     )
 }
+
+/// Location for an item in the source code
+#[derive(Debug, Clone, Copy)]
+pub struct Location {
+    pub file: &'static str,
+    pub line: u32,
+    pub col: u32,
+}

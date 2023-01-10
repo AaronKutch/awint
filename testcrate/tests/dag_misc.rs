@@ -362,14 +362,15 @@ fn dag_bits_functions() {
         graph[x].op = Op::Literal(extawi!(uone: ..192));
     }
 
-    // graph
-    //     .render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
-    //     .unwrap();
     graph.eval_all_noted().unwrap();
     for i in assertions_start..noted.len() {
         use awi::*;
-        if graph.lit(graph.noted[i].unwrap()) != inlawi!(1).as_ref() {
-            panic!("assertion bits not all true, failed on bit {i}");
+        let p = graph.noted[i].unwrap();
+        if graph.lit(p) != inlawi!(1).as_ref() {
+            panic!(
+                "assertion bits not all true, failed on bit {i} ({p}), location: {:?}",
+                graph[p].location
+            );
         }
     }
     if !eq {

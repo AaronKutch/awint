@@ -41,7 +41,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub(crate) fn new(op: Op<PState>) -> Self {
-        Self::from_state(PState::new(NonZeroUsize::new(BW).unwrap(), op))
+        Self::from_state(PState::new(NonZeroUsize::new(BW).unwrap(), op, None))
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
@@ -316,7 +316,7 @@ impl ExtAwi {
     }
 
     pub(crate) fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
-        Self::from_state(PState::new(nzbw, op))
+        Self::from_state(PState::new(nzbw, op, None))
     }
 
     pub fn nzbw(&self) -> NonZeroUsize {

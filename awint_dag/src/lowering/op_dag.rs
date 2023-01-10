@@ -92,10 +92,11 @@ impl OpDag {
             if leaf_state.visit != state_visit {
                 let p_leaf = self.a.insert(OpNode {
                     nzbw: leaf_state.nzbw,
-                    visit,
                     op: Op::Invalid,
                     rc: 0,
                     err: None,
+                    location: leaf_state.location,
+                    visit,
                 });
                 leaf.set_state_aux(state_visit, p_leaf);
                 if let Some(ref mut v) = added {
@@ -149,6 +150,7 @@ impl OpDag {
                                 nzbw: state.nzbw,
                                 op: Op::Invalid,
                                 err: None,
+                                location: next_state.location,
                                 visit,
                             });
                             p_next.set_state_aux(state_visit, p);

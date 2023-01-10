@@ -155,10 +155,13 @@ macro_rules! shift {
         $(
             #[must_use]
             pub fn $fn_name(&mut self, s: impl Into<dag::usize>) -> Option<()> {
-                self.update_state(
+                let s = s.into();
+                try_option!(self.update_state(
                     self.state_nzbw(),
-                    $enum_var([self.state(), s.into().state()])
-                )
+                    $enum_var([self.state(), s.state()])
+                ));
+                let ok = InlAwi::from_usize(s).ult(&InlAwi::from_usize(self.bw())).unwrap();
+                Option::at_dagtime((), ok)
             }
         )*
     };
@@ -332,8 +335,8 @@ impl Bits {
 
     #[must_use]
     pub fn get(&self, inx: impl Into<dag::usize>) -> Option<dag::bool> {
-        let inx = inx.into().state();
-        if let Literal(ref lit) = inx.get_state().unwrap().op {
+        let inx = inx.into();
+        if let Literal(ref lit) = inx.state().get_state().unwrap().op {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
@@ -342,14 +345,18 @@ impl Bits {
                 Some(dag::bool::new(StaticGet([self.state()], inx)))
             }
         } else {
-            Some(dag::bool::new(Get([self.state(), inx])))
+            // if the index is not a literal, no need to try `update_state`
+            let ok = InlAwi::from_usize(inx)
+                .ult(&InlAwi::from_usize(self.bw()))
+                .unwrap();
+            Option::at_dagtime(dag::bool::new(Get([self.state(), inx.state()])), ok)
         }
     }
 
     #[must_use]
     pub fn set(&mut self, inx: impl Into<dag::usize>, bit: impl Into<dag::bool>) -> Option<()> {
-        let inx = inx.into().state();
-        if let Literal(ref lit) = inx.get_state().unwrap().op {
+        let inx = inx.into();
+        if let Literal(ref lit) = inx.state().get_state().unwrap().op {
             // optimization for the meta lowering
             let inx = lit.to_usize();
             if inx >= self.bw() {
@@ -363,10 +370,16 @@ impl Bits {
                 Some(())
             }
         } else {
+            // if the index is not a literal, no need to try `update_state`
             self.update_state(
                 self.state_nzbw(),
-                Set([self.state(), inx, bit.into().state()]),
+                Set([self.state(), inx.state(), bit.into().state()]),
             )
+            .unwrap_at_runtime();
+            let ok = InlAwi::from_usize(inx)
+                .ult(&InlAwi::from_usize(self.bw()))
+                .unwrap();
+            Option::at_dagtime((), ok)
         }
     }
 
@@ -514,9 +527,9 @@ impl Bits {
     #[must_use]
     pub fn udivide(quo: &mut Self, rem: &mut Self, duo: &Self, div: &Self) -> Option<()> {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
-            let _ = rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()]));
-            // the optional will be handled by this
-            quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()]))
+            try_option!(quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()])));
+            try_option!(rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()])));
+            Option::at_dagtime((), !div.is_zero())
         } else {
             None
         }
@@ -525,8 +538,9 @@ impl Bits {
     #[must_use]
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &mut Self, div: &mut Self) -> Option<()> {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
-            let _ = rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()]));
-            quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()]))
+            try_option!(quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()])));
+            try_option!(rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()])));
+            Option::at_dagtime((), !div.is_zero())
         } else {
             None
         }

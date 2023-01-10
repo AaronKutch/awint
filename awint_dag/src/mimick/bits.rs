@@ -127,11 +127,11 @@ impl Bits {
                 });
             match lit_op.eval(nzbw) {
                 EvalResult::Valid(x) => {
-                    self.set_state(PState::new(x.nzbw(), Op::Literal(x)));
+                    self.set_state(PState::new(x.nzbw(), Op::Literal(x), None));
                     crate::mimick::Option::Some(())
                 }
                 EvalResult::Pass(x) => {
-                    self.set_state(PState::new(x.nzbw(), Op::Literal(x)));
+                    self.set_state(PState::new(x.nzbw(), Op::Literal(x), None));
                     crate::mimick::Option::None
                 }
                 EvalResult::Noop => {
@@ -140,7 +140,7 @@ impl Bits {
                 }
                 EvalResult::Error(e) => {
                     if matches!(e, EvalError::Unevaluatable) {
-                        self.set_state(PState::new(nzbw, p_state_op));
+                        self.set_state(PState::new(nzbw, p_state_op, None));
                         crate::mimick::Option::Some(())
                     } else {
                         panic!("{e:?}");
@@ -157,7 +157,7 @@ impl Bits {
                 });
             match bw_op.noop_check(nzbw) {
                 NoopResult::Operational => {
-                    self.set_state(PState::new(nzbw, p_state_op));
+                    self.set_state(PState::new(nzbw, p_state_op, None));
                     crate::mimick::Option::Some(())
                 }
                 NoopResult::Noop => crate::mimick::Option::None,

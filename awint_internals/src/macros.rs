@@ -232,3 +232,14 @@ macro_rules! forward_debug_fmt {
         }
     };
 }
+
+#[macro_export]
+macro_rules! location {
+    () => {
+        $crate::Location {
+            file: file!(),
+            line: line!(),
+            col: column!(),
+        }
+    };
+}

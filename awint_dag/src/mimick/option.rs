@@ -5,7 +5,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use awint_ext::awi;
+use awint_ext::{awi, awint_internals::Location};
 use StdOption::{None as StdNone, Some as StdSome};
 
 use crate::{common::register_assertion_bit, dag, mimick::*};
@@ -234,7 +234,13 @@ impl<T> Option<T> {
             None => panic!("called `Option::unwrap()` on a `None` value"),
             Some(t) => t,
             Opaque(z) => {
-                register_assertion_bit(z.is_some);
+                let tmp = std::panic::Location::caller();
+                let location = Location {
+                    file: tmp.file(),
+                    line: tmp.line(),
+                    col: tmp.column(),
+                };
+                register_assertion_bit(z.is_some, location);
                 if let StdSome(t) = z.t {
                     t
                 } else {

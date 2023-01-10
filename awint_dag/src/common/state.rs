@@ -1,5 +1,7 @@
 use std::{cell::RefCell, num::NonZeroUsize};
 
+use awint_ext::{awint_internals::Location, bw};
+
 use super::DummyDefault;
 use crate::{
     common::Op,
@@ -31,6 +33,8 @@ pub struct State {
     pub nzbw: NonZeroUsize,
     /// Operation
     pub op: Op<PState>,
+    /// Location where this state is derived from
+    pub location: Option<Location>,
     /// Used to avoid needing hashmaps
     pub node_map: PNode,
     /// Used in algorithms for DFS tracking and to allow multiple DAG
@@ -92,9 +96,13 @@ pub fn next_state_visit_gen() -> u64 {
 }
 
 /// Registers `bit` to the assertions of the current epoch
-pub fn register_assertion_bit(bit: dag::bool) {
+#[track_caller]
+pub fn register_assertion_bit(bit: dag::bool, location: Location) {
+    // need a new bit to attach location data to
+    let new_bit =
+        dag::bool::from_state(PState::new(bw(1), Op::Copy([bit.state()]), Some(location)));
     EPOCH_STACK.with(|f| {
-        f.borrow_mut().last_mut().unwrap().2.bits.push(bit);
+        f.borrow_mut().last_mut().unwrap().2.bits.push(new_bit);
     });
 }
 
@@ -209,11 +217,12 @@ impl PState {
     /// arena and registers it for the current `StateEpoch`. Returns a `PState`
     /// `Ptr` to it that will only be invalidated when the current `StateEpoch`
     /// is dropped.
-    pub fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
+    pub fn new(nzbw: NonZeroUsize, op: Op<PState>, location: Option<Location>) -> Self {
         STATE_ARENA.with(|f| {
             f.borrow_mut().insert_with(|p_this| State {
                 nzbw,
                 op,
+                location,
                 node_map: Ptr::invalid(),
                 visit: STATE_VISIT_GEN.with(|f| *f.borrow()),
                 prev_in_epoch: EPOCH_STACK.with(|f| {

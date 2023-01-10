@@ -1,3 +1,6 @@
+#![cfg_attr(not(debug_assertions), allow(unused_variables))]
+#![cfg_attr(not(debug_assertions), allow(dead_code))]
+
 use std::num::NonZeroUsize;
 
 use awint_ext::{awi, awint_internals::BITS};
