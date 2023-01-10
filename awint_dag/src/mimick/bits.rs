@@ -161,7 +161,14 @@ impl Bits {
                     crate::mimick::Option::Some(())
                 }
                 NoopResult::Noop => crate::mimick::Option::None,
-                NoopResult::Error(e) => panic!("{e:?}"),
+                NoopResult::Error(e) => {
+                    if matches!(e, EvalError::Unevaluatable) {
+                        self.set_state(PState::new(nzbw, p_state_op, None));
+                        crate::mimick::Option::Some(())
+                    } else {
+                        panic!("{e:?}")
+                    }
+                }
             }
         }
     }

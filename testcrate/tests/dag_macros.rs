@@ -1,10 +1,6 @@
 #![allow(clippy::let_unit_value)]
-#![no_implicit_prelude]
 
-extern crate awint;
-use awint::dag::{assert, *};
-extern crate core;
-use core::clone::Clone;
+use awint::dag::{assert, assert_eq, *};
 
 // just copied from `macros.rs` and all asserts stripped (since the DAG
 // currently assumes all operations succeed)
