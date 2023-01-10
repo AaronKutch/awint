@@ -394,3 +394,48 @@ fn dag_bits_functions() {
         panic!();
     }
 }
+
+mod stuff {
+    use super::dag::*;
+
+    pub fn test_option_try(s: usize) -> Option<()> {
+        let mut x = inlawi!(0x88u8);
+        x.shl_(s)?;
+        Some(())
+    }
+}
+
+#[test]
+#[should_panic]
+fn dag_option_try_fail() {
+    stuff::test_option_try(8.into()).unwrap();
+}
+
+#[test]
+fn dag_try() {
+    use dag::*;
+    stuff::test_option_try(7.into()).unwrap();
+
+    let epoch0 = StateEpoch::new();
+    let s = inlawi!(opaque: ..64).to_usize();
+
+    stuff::test_option_try(s).unwrap();
+
+    let mut noted = vec![s.state()];
+    let assertions_start = noted.len();
+    noted.extend(epoch0.assertions().states());
+    let (mut graph, res) = OpDag::new(&noted, &noted);
+    res.unwrap();
+    {
+        use awi::*;
+        // fix the opaques
+        let x = graph.noted[0].unwrap();
+        graph[x].op = Op::Literal(extawi!(8u64));
+    }
+    graph.eval_all_noted().unwrap();
+    for i in assertions_start..noted.len() {
+        use awi::*;
+        let p = graph.noted[i].unwrap();
+        std::assert!(graph.lit(p) == inlawi!(0).as_ref());
+    }
+}

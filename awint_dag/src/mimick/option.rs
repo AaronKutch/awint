@@ -298,12 +298,20 @@ impl<T> std::ops::Try for Option<T> {
         Some(output)
     }
 
+    #[track_caller]
     fn branch(self) -> std::ops::ControlFlow<Self::Residual, Self::Output> {
         use std::ops::ControlFlow;
         match self {
             None => ControlFlow::Break(None),
             Some(t) => ControlFlow::Continue(t),
             Opaque(z) => {
+                let tmp = std::panic::Location::caller();
+                let location = Location {
+                    file: tmp.file(),
+                    line: tmp.line(),
+                    col: tmp.column(),
+                };
+                register_assertion_bit(z.is_some, location);
                 if let StdSome(t) = z.t {
                     ControlFlow::Continue(t)
                 } else {
