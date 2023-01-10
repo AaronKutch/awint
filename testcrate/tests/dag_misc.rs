@@ -70,21 +70,17 @@ fn dag_assertions() {
 
 macro_rules! test_nonequal_bw {
     (
-        $x0:ident, $x1:ident;
+        $x0:ident, $x1:ident, $s0:ident, $s1:ident;
         $($fn_unary:ident)*;
         $($fn_unary_shift:ident)*;
-        $($fn_unary_literal:ident)*;
         $($fn_binary:ident)*
     ) => {
         $(
             let _ = $x0.$fn_unary(); // Just checking that the function exists and is constant
         )*
         $(
-            assert!($x0.$fn_unary_shift($x0.bw() - 1).is_some());
-            assert!($x0.$fn_unary_shift($x0.bw()).is_none());
-        )*
-        $(
-            $x0.$fn_unary_literal(1);
+            assert!($x0.$fn_unary_shift($s0).is_some());
+            assert!($x0.$fn_unary_shift($s1).is_none());
         )*
         $(
             assert!($x0.$fn_binary($x1).is_none());
@@ -92,7 +88,23 @@ macro_rules! test_nonequal_bw {
     }
 }
 
-fn dag_bits_functions_internal(x: [&mut dag::Bits; 5], _epoch0: &StateEpoch) {
+macro_rules! test_unary_literal {
+    (
+        $x0:ident;
+        $($fn_unary_literal:ident)*
+    ) => {
+        $(
+            $x0.$fn_unary_literal(1);
+        )*
+    }
+}
+
+fn dag_bits_functions_internal(
+    x: [&mut dag::Bits; 5],
+    s0: dag::usize,
+    s1: dag::usize,
+    _epoch0: &StateEpoch,
+) {
     use awint::dag::*;
     use dag::assert;
 
@@ -173,42 +185,8 @@ fn dag_bits_functions_internal(x: [&mut dag::Bits; 5], _epoch0: &StateEpoch) {
     x0.arb_umul_add_(x1, x2);
     x0.arb_imul_add_(x1, x2);
 
-    x0.bool_(true);
-
-    x0.inc_(false);
-    x0.dec_(true);
-    x0.neg_(false);
-    // assert!(x0.neg_add_(false, x1).is_none());
-    assert!(x0.cin_sum_(false, x1, x2).is_none());
-
-    // x0.usize_or_(123, 60);
-
-    // division by zero and differing size
-    x1.umax_();
-    x2.umax_();
-    x3.umax_();
-    x4.zero_();
-    assert!(Bits::udivide(x1, x2, x3, x4).is_none());
-    x0.umax_();
-    x1.umax_();
-    x2.umax_();
-    x3.umax_();
-    assert!(Bits::udivide(x0, x1, x2, x3).is_none());
-    x1.umax_();
-    x2.umax_();
-    x3.umax_();
-    x4.zero_();
-    assert!(Bits::idivide(x1, x2, x3, x4).is_none());
-    x0.umax_();
-    x1.umax_();
-    x2.umax_();
-    x3.umax_();
-    assert!(Bits::idivide(x0, x1, x2, x3).is_none());
-    // x1.umax_();
-    // assert!(x4.short_udivide_(x1, 0).is_none());
-    // x0.umax_();
-    // assert!(x4.short_udivide_(x0, 1).is_none());
-    // assert!(x4.short_udivide_inplace_(0).is_none());
+    // tests that assign constants to the vars are moved to the bottom so that
+    // `Pass` evaluations are tested correctly
 
     assert!(x0.get(128).is_none());
     assert!(x0.set(128, false).is_none());
@@ -217,7 +195,7 @@ fn dag_bits_functions_internal(x: [&mut dag::Bits; 5], _epoch0: &StateEpoch) {
     assert!(x0.mux_(x1, true).is_none());
 
     test_nonequal_bw!(
-        x0, x1
+        x0, x1, s0, s1
         ;// functions with signature `fn({ , &, &mut} self) -> ...`
         nzbw
         bw
@@ -257,19 +235,6 @@ fn dag_bits_functions_internal(x: [&mut dag::Bits; 5], _epoch0: &StateEpoch) {
         ashr_
         rotl_
         rotr_
-        ;// functions with signature `fn({ , &, &mut} self, rhs: integer) -> ...`
-        usize_
-        isize_
-        u8_
-        i8_
-        u16_
-        i16_
-        u32_
-        i32_
-        u64_
-        i64_
-        u128_
-        i128_
         ;// functions with signature `fn({ , &, &mut} self, rhs: { , &, &mut} Self) -> Option<...>`
         copy_
         or_
@@ -288,6 +253,48 @@ fn dag_bits_functions_internal(x: [&mut dag::Bits; 5], _epoch0: &StateEpoch) {
         add_
         sub_
         rsb_
+    );
+
+    // assert!(x0.neg_add_(false, x1).is_none());
+    assert!(x0.cin_sum_(false, x1, x2).is_none());
+
+    x0.inc_(false);
+    x0.dec_(true);
+    x0.neg_(false);
+
+    // x0.usize_or_(123, 60);
+
+    // division by zero and differing size
+    x4.zero_();
+    assert!(Bits::udivide(x1, x2, x3, x4).is_none());
+    x3.umax_();
+    assert!(Bits::udivide(x0, x1, x2, x3).is_none());
+    x4.zero_();
+    assert!(Bits::idivide(x1, x2, x3, x4).is_none());
+    x3.umax_();
+    assert!(Bits::idivide(x0, x1, x2, x3).is_none());
+    // x1.umax_();
+    // assert!(x4.short_udivide_(x1, 0).is_none());
+    // x0.umax_();
+    // assert!(x4.short_udivide_(x0, 1).is_none());
+    // assert!(x4.short_udivide_inplace_(0).is_none());
+
+    x0.bool_(true);
+    test_unary_literal!(
+        x0;
+        // functions with signature `fn({ , &, &mut} self, rhs: integer) -> ...`
+        usize_
+        isize_
+        u8_
+        i8_
+        u16_
+        i16_
+        u32_
+        i32_
+        u64_
+        i64_
+        u128_
+        i128_
     );
 }
 
@@ -308,7 +315,9 @@ fn dag_bits_functions() {
     let y2 = &mut x2;
     let y3 = &mut x3;
     let y4 = &mut x4;
-    dag_bits_functions_internal([y0, y1, y2, y3, y4], &epoch0);
+    let s0 = inlawi!(127u64).to_usize();
+    let s1 = inlawi!(128u64).to_usize();
+    dag_bits_functions_internal([y0, y1, y2, y3, y4], s0, s1, &epoch0);
 
     let x5 = inlawi!(opaque: ..128);
     let x6 = inlawi!(opaque: ..192);
@@ -321,7 +330,9 @@ fn dag_bits_functions() {
     let y7 = &mut x7.clone();
     let y8 = &mut x8.clone();
     let y9 = &mut x9.clone();
-    dag_bits_functions_internal([y5, y6, y7, y8, y9], &epoch0);
+    let s2 = inlawi!(opaque: ..64).to_usize();
+    let s3 = inlawi!(opaque: ..64).to_usize();
+    dag_bits_functions_internal([y5, y6, y7, y8, y9], s2, s3, &epoch0);
 
     let eq = epoch0.assertions().bits.len() == 170;
     if !eq {
@@ -341,6 +352,8 @@ fn dag_bits_functions() {
         x7.state(),
         x8.state(),
         x9.state(),
+        s2.state(),
+        s3.state(),
     ];
     let assertions_start = noted.len();
     noted.extend(epoch0.assertions().states());
@@ -360,6 +373,10 @@ fn dag_bits_functions() {
         graph[x].op = Op::Literal(extawi!(imin: ..192));
         let x = graph.noted[9].unwrap();
         graph[x].op = Op::Literal(extawi!(uone: ..192));
+        let x = graph.noted[10].unwrap();
+        graph[x].op = Op::Literal(ExtAwi::from_usize(extawi!(127u64).to_usize()));
+        let x = graph.noted[11].unwrap();
+        graph[x].op = Op::Literal(ExtAwi::from_usize(extawi!(128u64).to_usize()));
     }
 
     graph.eval_all_noted().unwrap();

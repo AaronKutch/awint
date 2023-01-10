@@ -233,6 +233,7 @@ macro_rules! forward_debug_fmt {
     };
 }
 
+/// Returns the `Location` at the first layer of macros this is in
 #[macro_export]
 macro_rules! location {
     () => {
