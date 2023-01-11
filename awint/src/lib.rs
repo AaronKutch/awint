@@ -37,7 +37,10 @@ pub mod awi {
 pub mod dag {
     pub use awint_dag::{
         dag::*,
-        mimick::Option::{None, Some},
+        mimick::{
+            Option::{None, Some},
+            Result::{Err, Ok},
+        },
     };
     pub use awint_macros::*;
 }

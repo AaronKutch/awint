@@ -76,7 +76,16 @@ impl<T> From<awi::Option<T>> for dag::Option<T> {
 }
 
 impl<T> Option<T> {
-    pub fn at_dagtime(t: T, is_some: dag::bool) -> Self {
+    #[must_use]
+    pub fn none_at_dagtime(is_none: dag::bool) -> Self {
+        Opaque(OpaqueInternal {
+            is_some: !is_none,
+            t: awi::None,
+        })
+    }
+
+    #[must_use]
+    pub fn some_at_dagtime(t: T, is_some: dag::bool) -> Self {
         Opaque(OpaqueInternal {
             is_some,
             t: awi::Some(t),
@@ -157,6 +166,7 @@ impl<T> Option<T> {
         }
     }
 
+    #[must_use]
     pub fn is_none_at_runtime(&self) -> bool {
         match self {
             None => true,
@@ -165,6 +175,7 @@ impl<T> Option<T> {
         }
     }
 
+    #[must_use]
     pub fn is_none(&self) -> dag::bool {
         match self {
             None => true.into(),
@@ -173,6 +184,7 @@ impl<T> Option<T> {
         }
     }
 
+    #[must_use]
     pub fn is_some_at_runtime(&self) -> bool {
         match self {
             None => false,
@@ -181,6 +193,7 @@ impl<T> Option<T> {
         }
     }
 
+    #[must_use]
     pub fn is_some(&self) -> dag::bool {
         match self {
             None => false.into(),
@@ -189,6 +202,7 @@ impl<T> Option<T> {
         }
     }
 
+    #[must_use]
     pub fn is_opaque_at_runtime(&self) -> bool {
         match self {
             None => false,
@@ -204,6 +218,17 @@ impl<T> Option<T> {
             Opaque(z) => Opaque(OpaqueInternal {
                 is_some: z.is_some,
                 t: z.t.map(f),
+            }),
+        }
+    }
+
+    pub fn ok_or<E>(self, err: E) -> dag::Result<T, E> {
+        match self {
+            None => dag::Err(err),
+            Some(t) => dag::Ok(t),
+            Opaque(z) => dag::Result::Opaque(crate::mimick::result::OpaqueInternal {
+                is_ok: z.is_some,
+                res: z.t.ok_or(err),
             }),
         }
     }

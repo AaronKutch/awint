@@ -196,6 +196,8 @@ pub mod dag {
         mimick::{
             assert, assert_eq, assert_ne, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
+            Result,
+            Result::{Err, Ok},
         },
         primitive::*,
     };

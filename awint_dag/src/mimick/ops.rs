@@ -161,7 +161,7 @@ macro_rules! shift {
                     $enum_var([self.state(), s.state()])
                 ));
                 let ok = InlAwi::from_usize(s).ult(&InlAwi::from_usize(self.bw())).unwrap();
-                Option::at_dagtime((), ok)
+                Option::some_at_dagtime((), ok)
             }
         )*
     };
@@ -349,7 +349,7 @@ impl Bits {
             let ok = InlAwi::from_usize(inx)
                 .ult(&InlAwi::from_usize(self.bw()))
                 .unwrap();
-            Option::at_dagtime(dag::bool::new(Get([self.state(), inx.state()])), ok)
+            Option::some_at_dagtime(dag::bool::new(Get([self.state(), inx.state()])), ok)
         }
     }
 
@@ -379,7 +379,7 @@ impl Bits {
             let ok = InlAwi::from_usize(inx)
                 .ult(&InlAwi::from_usize(self.bw()))
                 .unwrap();
-            Option::at_dagtime((), ok)
+            Option::some_at_dagtime((), ok)
         }
     }
 
@@ -415,7 +415,7 @@ impl Bits {
             & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
             & to.ule(&tmp0).unwrap()
             & from.ule(&tmp1).unwrap();
-        Option::at_dagtime((), ok)
+        Option::some_at_dagtime((), ok)
     }
 
     #[must_use]
@@ -438,7 +438,7 @@ impl Bits {
         let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
             & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
             & to.ule(&tmp).unwrap();
-        Option::at_dagtime((), ok)
+        Option::some_at_dagtime((), ok)
     }
 
     #[must_use]
@@ -461,7 +461,7 @@ impl Bits {
         let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
             & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
             & from.ule(&tmp).unwrap();
-        Option::at_dagtime((), ok)
+        Option::some_at_dagtime((), ok)
     }
 
     #[must_use]
@@ -474,7 +474,7 @@ impl Bits {
         let width = InlAwi::from_usize(width);
         let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
             & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap();
-        Option::at_dagtime((), ok)
+        Option::some_at_dagtime((), ok)
     }
 
     #[must_use]
@@ -494,7 +494,7 @@ impl Bits {
         let from = InlAwi::from_usize(from);
         let ok = to.ult(&InlAwi::from_usize(self.bw())).unwrap()
             & from.ult(&InlAwi::from_usize(rhs.bw())).unwrap();
-        Option::at_dagtime((), ok)
+        Option::some_at_dagtime((), ok)
     }
 
     pub fn resize_(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
@@ -529,7 +529,7 @@ impl Bits {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
             try_option!(quo.update_state(quo.state_nzbw(), UQuo([duo.state(), div.state()])));
             try_option!(rem.update_state(rem.state_nzbw(), URem([duo.state(), div.state()])));
-            Option::at_dagtime((), !div.is_zero())
+            Option::some_at_dagtime((), !div.is_zero())
         } else {
             None
         }
@@ -540,7 +540,7 @@ impl Bits {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
             try_option!(quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()])));
             try_option!(rem.update_state(rem.state_nzbw(), IRem([duo.state(), div.state()])));
-            Option::at_dagtime((), !div.is_zero())
+            Option::some_at_dagtime((), !div.is_zero())
         } else {
             None
         }
@@ -644,7 +644,7 @@ impl<T> CCResult<T> {
     }
 
     pub const fn wrap(self, t: T) -> dag::Option<T> {
-        Option::Opaque(crate::mimick::OpaqueInternal {
+        Option::Opaque(crate::mimick::option::OpaqueInternal {
             is_some: self.success,
             t: awi::Some(t),
         })
@@ -657,7 +657,7 @@ impl<T> CCResult<T> {
 
 impl CCResult<()> {
     pub const fn wrap_if_success(self) -> Option<()> {
-        Option::Opaque(crate::mimick::OpaqueInternal {
+        Option::Opaque(crate::mimick::option::OpaqueInternal {
             is_some: self.success,
             t: awi::Some(()),
         })

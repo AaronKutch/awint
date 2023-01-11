@@ -403,6 +403,12 @@ mod stuff {
         x.shl_(s)?;
         Some(())
     }
+
+    pub fn test_result_try(s: usize) -> Result<(), &'static str> {
+        let mut x = inlawi!(0x88u8);
+        x.shl_(s).ok_or("err")?;
+        Ok(())
+    }
 }
 
 #[test]
@@ -412,14 +418,31 @@ fn dag_option_try_fail() {
 }
 
 #[test]
+#[should_panic]
+fn dag_result_try_fail() {
+    stuff::test_result_try(8.into()).unwrap();
+}
+
+#[test]
 fn dag_try() {
     use dag::*;
     stuff::test_option_try(7.into()).unwrap();
+    stuff::test_result_try(7.into()).unwrap();
 
     let epoch0 = StateEpoch::new();
     let s = inlawi!(opaque: ..64).to_usize();
 
-    stuff::test_option_try(s).unwrap();
+    let _ = stuff::test_option_try(s);
+    let _ = stuff::test_result_try(s);
+    // make sure it is happening at the `Try` point
+    std::assert_eq!(epoch0.assertions().bits.len(), 2);
+    Option::some_at_dagtime((), false.into()).unwrap();
+    Option::<()>::none_at_dagtime(false.into())
+        .ok_or(())
+        .unwrap_err();
+    Result::<(), &str>::ok_at_dagtime((), false.into()).unwrap();
+    Result::<&str, ()>::err_at_dagtime((), false.into()).unwrap_err();
+    std::assert_eq!(epoch0.assertions().bits.len(), 6);
 
     let mut noted = vec![s.state()];
     let assertions_start = noted.len();
