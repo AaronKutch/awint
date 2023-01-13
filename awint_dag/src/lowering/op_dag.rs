@@ -2,6 +2,7 @@
 
 use std::{
     borrow::Borrow,
+    collections::{hash_map::Entry, HashMap},
     num::NonZeroUsize,
     ops::{Index, IndexMut},
     vec,
@@ -14,7 +15,7 @@ use crate::{
     lowering::{OpNode, PNode},
     state::next_state_visit_gen,
     triple_arena::Arena,
-    EvalError, Op, PState,
+    EvalError, Op, PNote, PState, StateEpoch,
 };
 
 /// An Operational Directed Acyclic Graph. Contains DAGs of mimicking struct
@@ -22,72 +23,126 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct OpDag {
     pub a: Arena<PNode, OpNode<PNode>>,
-    /// for keeping nodes alive and having an ordered list for identification
-    pub noted: Vec<Option<PNode>>,
+    /// for keeping nodes alive and identified
+    pub note_arena: Arena<PNote, PNode>,
+    /// Assertions stored in the arena
+    pub assertions: Vec<PNote>,
     /// A kind of generation counter tracking the highest `visit_num` number
     pub visit_gen: u64,
     /// for capacity reuse in `add_group`
     pub tmp_stack: Vec<(usize, PNode, PState)>,
     /// for capacity reuse in `dec_rc`
     pub tmp_pnode_stack: Vec<PNode>,
+    pub tmp_pnodes_added: Vec<PNode>,
 }
 
 impl<B: Borrow<PNode>> Index<B> for OpDag {
     type Output = OpNode<PNode>;
 
     fn index(&self, index: B) -> &OpNode<PNode> {
-        self.a.get(*index.borrow()).unwrap()
+        self.a.get(*index.borrow()).expect("PNode not found")
     }
 }
 
 impl<B: Borrow<PNode>> IndexMut<B> for OpDag {
     fn index_mut(&mut self, index: B) -> &mut OpNode<PNode> {
-        self.a.get_mut(*index.borrow()).unwrap()
+        self.a.get_mut(*index.borrow()).expect("PNode not found")
     }
 }
 
 impl OpDag {
-    /// Constructs a directed acyclic graph from the source trees of `PState`s
-    /// from mimicking structs. The optional `note`s should be `Opaque` if
-    /// they should remain unmutated through optimizations. The `noted` are
-    /// pushed in order to the `OpDag.noted`. If a `noted` is not found in the
-    /// source trees of the `leaves` or is optimized away, its entry in
-    /// `OpDag.noted` is replaced with a `None`.
+    pub fn new() -> Self {
+        Self {
+            a: Arena::new(),
+            note_arena: Arena::new(),
+            assertions: vec![],
+            visit_gen: 0,
+            tmp_stack: vec![],
+            tmp_pnode_stack: vec![],
+            tmp_pnodes_added: vec![],
+        }
+    }
+
+    /// Constructs a directed acyclic graph from the `PState`s of mimicking
+    /// structs associated with `epoch`. Assertions associated with the `epoch`
+    /// are automatically noted.
     ///
     /// If an error occurs, the DAG (which may be in an unfinished or completely
     /// broken state) is still returned along with the error enum, so that debug
     /// tools like `render_to_svg_file` can be used.
-    pub fn new(leaves: &[PState], noted: &[PState]) -> (Self, Result<(), EvalError>) {
-        let mut res = Self {
-            a: Arena::new(),
-            noted: vec![],
-            visit_gen: 0,
-            tmp_stack: vec![],
-            tmp_pnode_stack: vec![],
-        };
-        let err = res.add_group(leaves, noted, true, 0, None);
+    pub fn from_epoch(epoch: &StateEpoch) -> (Self, Result<(), EvalError>) {
+        let mut res = Self::new();
+        let state_visit = next_state_visit_gen();
+        let err = res.add_chain(epoch.latest_state(), state_visit, 0, false);
+        for assertion in epoch.assertions().states() {
+            let p_note = res.note_pstate(assertion).unwrap();
+            res.assertions.push(p_note);
+        }
         (res, err)
     }
 
-    /// Adds the `leaves` and their source trees to `self`. For each `noted`
-    /// node in order, the translated node is pushed to `self.noted` or `None`
-    /// is pushed if it is not found in the source trees. If `inc_noted_rc` and
-    /// a `noted` node is found, the rc is incremented. The visit numbers of
-    /// all the added nodes are set to `self.visit_gen`. Note: the leaves
-    /// and all their preceding nodes should not share with previously
-    /// existing nodes in this DAG or else there will be duplication.
-    pub fn add_group(
+    /// Get a `PNode` that is the translation of `p_state`. Some transformations
+    /// may invalidate this unlike with `note_pstate`.
+    #[must_use]
+    pub fn pstate_to_pnode(&mut self, p_state: PState) -> Option<PNode> {
+        let p = p_state.get_state()?.node_map;
+        if self.a.contains(p) {
+            Some(p)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn pnote_get_node(&mut self, p_note: PNote) -> Option<&OpNode<PNode>> {
+        let p = self.note_arena.get(p_note)?;
+        if let Some(node) = self.a.get(*p) {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn pnote_get_mut_node(&mut self, p_note: PNote) -> Option<&mut OpNode<PNode>> {
+        let p = self.note_arena.get(p_note)?;
+        if let Some(node) = self.a.get_mut(*p) {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    /// Get a `PNote` that will act as a stable reference to the `PNode` version
+    /// of `p_state`. Returns `None` if the mapping cannot be found.
+    #[must_use]
+    pub fn note_pstate(&mut self, p_state: PState) -> Option<PNote> {
+        let state = p_state.get_state()?;
+        // TODO need to verify this is for the right arena
+        self.note_pnode(state.node_map)
+    }
+
+    /// Marks existing node as noted
+    #[must_use]
+    pub fn note_pnode(&mut self, p: PNode) -> Option<PNote> {
+        let node = self.a.get_mut(p)?;
+        node.rc = node.rc.checked_add(1).unwrap();
+        Some(self.note_arena.insert(p))
+    }
+
+    /// Developer function that adds all states in the thread local state list
+    /// starting with `latest_state` to `self`. If `record_added` then all added
+    /// nodes are pushed to `self.tmp_pnodes_added`
+    pub fn add_chain(
         &mut self,
-        leaves: &[PState],
-        noted: &[PState],
-        inc_noted_rc: bool,
-        visit: u64,
-        mut added: Option<&mut Vec<PNode>>,
+        latest_state: Option<PState>,
+        state_visit: u64,
+        node_visit: u64,
+        record_added: bool,
     ) -> Result<(), EvalError> {
-        // this is for the state side visits not the `visit` for `OpNode`s
-        let state_visit = next_state_visit_gen();
         self.tmp_stack.clear();
-        for leaf in leaves {
+        let mut leaf_pstate = latest_state;
+        while let Some(leaf) = leaf_pstate {
             let leaf_state = leaf.get_state().unwrap();
             if leaf_state.visit != state_visit {
                 let p_leaf = self.a.insert(OpNode {
@@ -96,13 +151,13 @@ impl OpDag {
                     rc: 0,
                     err: None,
                     location: leaf_state.location,
-                    visit,
+                    visit: node_visit,
                 });
                 leaf.set_state_aux(state_visit, p_leaf);
-                if let Some(ref mut v) = added {
-                    v.push(p_leaf);
+                if record_added {
+                    self.tmp_pnodes_added.push(p_leaf);
                 }
-                self.tmp_stack.push((0, p_leaf, *leaf));
+                self.tmp_stack.push((0, p_leaf, leaf));
                 loop {
                     let (current_i, current_p_node, current_p_state) =
                         *self.tmp_stack.last().unwrap();
@@ -151,30 +206,18 @@ impl OpDag {
                                 op: Op::Invalid,
                                 err: None,
                                 location: next_state.location,
-                                visit,
+                                visit: node_visit,
                             });
                             p_next.set_state_aux(state_visit, p);
-                            if let Some(ref mut v) = added {
-                                v.push(p);
+                            if record_added {
+                                self.tmp_pnodes_added.push(p_leaf);
                             }
                             self.tmp_stack.push((0, p, state.op.operands()[current_i]));
                         }
                     }
                 }
             }
-        }
-        // handle the noted
-        for p_noted in noted {
-            let state = p_noted.get_state().unwrap();
-            if state.visit == state_visit {
-                let p_node = state.node_map;
-                if inc_noted_rc {
-                    self[p_node].rc += 1;
-                }
-                self.noted.push(Some(p_node));
-            } else {
-                self.noted.push(None);
-            }
+            leaf_pstate = leaf_state.prev_in_epoch;
         }
         Ok(())
     }
@@ -185,12 +228,97 @@ impl OpDag {
                 return Err(err.clone())
             }
         }
-        for p in self.noted.iter().flatten() {
-            if self.a.get(*p).is_none() {
-                return Err(EvalError::InvalidPtr)
+        for assertion in &self.assertions {
+            if !self.note_arena.contains(*assertion) {
+                return Err(EvalError::OtherString(format!(
+                    "assertion {assertion} not contained in note arena"
+                )))
             }
         }
-        // TODO there should be more checks
+        for note in self.note_arena.vals() {
+            if !self.a.contains(*note) {
+                return Err(EvalError::OtherString(format!(
+                    "note {note} not contained in node arena"
+                )))
+            }
+        }
+        for node in self.a.vals() {
+            for operand in node.op.operands() {
+                if !self.a.contains(*operand) {
+                    return Err(EvalError::OtherString(format!(
+                        "operand {operand} of node {node:?} not contained in node arena"
+                    )))
+                }
+            }
+        }
+        // assert minimum rc counts
+        let mut rc_counts = HashMap::<PNode, u64>::new();
+        for node in self.a.vals() {
+            for op in node.op.operands() {
+                match rc_counts.entry(*op) {
+                    Entry::Occupied(mut o) => {
+                        *o.get_mut() = o.get().checked_add(1).unwrap();
+                    }
+                    Entry::Vacant(v) => {
+                        v.insert(1);
+                    }
+                }
+            }
+        }
+        for p_note in &self.assertions {
+            match rc_counts.entry(self.note_arena[p_note]) {
+                Entry::Occupied(mut o) => {
+                    *o.get_mut() = o.get().checked_add(1).unwrap();
+                }
+                Entry::Vacant(v) => {
+                    v.insert(1);
+                }
+            }
+        }
+        for (p_node, node) in &self.a {
+            let expected = if let Some(x) = rc_counts.get(&p_node) {
+                *x
+            } else {
+                continue
+            };
+            let rc = node.rc;
+            if rc < expected {
+                // TODO check that nothing else references the node
+                return Err(EvalError::OtherString(format!(
+                    "node {p_node} ({node:?}) has a {rc} reference count that is lower than the \
+                     expected minimum of {expected}"
+                )))
+            }
+        }
+        Ok(())
+    }
+
+    pub fn assert_assertions(&mut self) -> Result<(), EvalError> {
+        for (i, p_note) in self.assertions.iter().enumerate() {
+            let p_node = self.note_arena[p_note];
+            let node = &self[p_node];
+            if node.nzbw.get() != 1 {
+                return Err(EvalError::OtherString(format!(
+                    "assertion bit {i} ({p_note}) is not a single bit, assertion location: {:?}",
+                    node.location
+                )))
+            }
+            if let Op::Literal(ref lit) = node.op {
+                if lit.is_zero() {
+                    return Err(EvalError::OtherString(format!(
+                        "assertion bits not all true, failed on bit {i} ({p_note}), assertion \
+                         location: {:?}",
+                        self[p_node].location
+                    )))
+                }
+            } else {
+                return Err(EvalError::OtherString(format!(
+                    "assertion bit {i} ({p_note}) is not a literal (it is {:?}), assertion \
+                     location: {:?}",
+                    node.op, node.location
+                )))
+            }
+        }
         Ok(())
     }
 
@@ -238,16 +366,37 @@ impl OpDag {
         self[ptr].nzbw
     }
 
-    /// Marks existing node as noted
-    pub fn mark_noted(&mut self, p: PNode) -> Option<()> {
-        let node = self.a.get_mut(p)?;
-        node.rc = node.rc.checked_add(1).unwrap();
-        self.noted.push(Some(p));
-        Some(())
+    /// Trims the tree starting at leaf `p`, assuming `p` has a zero reference
+    /// count
+    pub fn trim_zero_rc_tree(&mut self, p: PNode) -> Result<(), EvalError> {
+        self.tmp_pnode_stack.clear();
+        self.tmp_pnode_stack.push(p);
+        while let Some(p) = self.tmp_pnode_stack.pop() {
+            let mut delete = false;
+            if let Some(node) = self.a.get(p) {
+                if node.rc == 0 {
+                    delete = true;
+                }
+            }
+            if delete {
+                for i in 0..self[p].op.operands_len() {
+                    let op = self[p].op.operands()[i];
+                    self[op].rc = if let Some(x) = self[op].rc.checked_sub(1) {
+                        x
+                    } else {
+                        return Err(EvalError::OtherStr("tried to subtract a 0 reference count"))
+                    };
+                    self.tmp_pnode_stack.push(op);
+                }
+                self.a.remove(p).unwrap();
+            }
+        }
+        Ok(())
     }
 
     /// Decrements the reference count on `p`, and propogating removals if it
-    /// goes to zero.
+    /// goes to zero. Returns an error if the reference count was already zero
+    /// (which means invariant breakage occured earlier).
     pub fn dec_rc(&mut self, p: PNode) -> Result<(), EvalError> {
         self[p].rc = if let Some(x) = self[p].rc.checked_sub(1) {
             x
@@ -284,11 +433,13 @@ impl OpDag {
     /// Forbidden meta pseudo-DSL techniques in which the node at `ptr` is
     /// replaced by a set of lowered `PState` nodes with interfaces `output`
     /// and `operands` corresponding to the original interfaces. Newly added
-    /// nodes not including `ptr` are colored with `visit`.
+    /// nodes not including `ptr` are colored with `visit`. For performance, an
+    /// epoch should be created per graft.
     pub fn graft(
         &mut self,
+        epoch: StateEpoch,
         ptr: PNode,
-        visit: u64,
+        node_visit: u64,
         output_and_operands: &[PState],
     ) -> Result<(), EvalError> {
         #[cfg(debug_assertions)]
@@ -313,47 +464,51 @@ impl OpDag {
                 return Err(EvalError::WrongBitwidth)
             }
         }
-        // note we do not increment the rc because we immediately remove the node's
-        // special status
-        let err = self.add_group(
-            &[output_and_operands[0]],
-            output_and_operands,
-            false,
-            visit,
-            None,
+        self.tmp_pnodes_added.clear();
+        let err = self.add_chain(
+            epoch.latest_state(),
+            next_state_visit_gen(),
+            node_visit,
+            true,
         );
-        //self.render_to_svg_file(std::path::PathBuf::from("debug.svg"))
+        // note: the reference count invariant is suspended until after the remove
+        // unused trees part
+
+        // self.render_to_svg_file(std::path::PathBuf::from("debug_graft.svg"))
         //    .unwrap();
-        err?;
-        //self.verify_integrity()?;
-        let start = self.noted.len() - output_and_operands.len();
+        err.unwrap();
 
         // graft inputs
-        for i in 0..(output_and_operands.len() - 1) {
-            let grafted = self.noted[start + i + 1];
-            let graftee = self[ptr].op.operands()[i];
+        for i in 1..output_and_operands.len() {
+            let grafted = self.pstate_to_pnode(output_and_operands[i]);
+            let graftee = self[ptr].op.operands()[i - 1];
             if let Some(grafted) = grafted {
-                // change the grafted `Opaque` to a `Copy` that routes to the graftee instead of
-                // needing to change all the operands of potentially many internal nodes.
+                // change the grafted `Opaque` into a `Copy` that routes to the graftee instead
+                // of needing to change all the operands of potentially many
+                // internal nodes.
                 self[grafted].op = Copy([graftee]);
+                // do not increment rc, because it was referenced before
             } else {
-                // else the operand is not used because it was optimized away
+                // else the operand is not used because it was optimized away, keep this because
+                // this is removing a tree outside of the grafted part
                 self.dec_rc(graftee).unwrap();
             }
         }
 
         // graft output
-        // remove the temporary noted nodes
-        let p = self.noted[start].unwrap();
-        // this will replace the graftee's location to avoid changing downstream nodes
-        let grafted = self.a.remove(p).unwrap();
-        let graftee = self.a.replace_and_keep_gen(ptr, grafted).unwrap();
-
-        // preserve original reference count
-        self[ptr].rc = graftee.rc;
-
-        // reset the `noted` to its original state
-        self.noted.drain(start..);
+        let grafted = self.pstate_to_pnode(output_and_operands[0]).unwrap();
+        self[ptr].op = Copy([grafted]);
+        self[grafted].rc = self[grafted].rc.checked_add(1).unwrap();
+        drop(epoch);
+        while let Some(p_node) = self.tmp_pnodes_added.pop() {
+            // remove unused trees
+            if let Some(node) = self.a.get(p_node) {
+                if node.rc == 0 {
+                    self.trim_zero_rc_tree(p_node).unwrap();
+                }
+            }
+        }
+        //self.verify_integrity().unwrap();
         Ok(())
     }
 
@@ -363,5 +518,11 @@ impl OpDag {
         let res = self.verify_integrity();
         crate::triple_arena_render::render_to_svg_file(&self.a, false, out_file).unwrap();
         res
+    }
+}
+
+impl Default for OpDag {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -3,8 +3,8 @@
 ## [0.8.0] - TODO
 ### Additions
 - Added `zeroize` support
-- Added mimicking `Option` type and `try_support` to support using it with 
-- Added mimicking assertions
+- Added mimicking `Option` and `Result` types and `try_support` to support using them with `?`
+- Added mimicking assertions and made `awint_dag` actually respect invalid bitwidths and values
 
 ### Changes
 - Refactored the `awi`, `dag`, and `prelude` modules
@@ -13,6 +13,7 @@
 - Renamed `rand_assign_using` to `rand_`
 - Renamed `Node` and `Dag` to `OpNode` and `OpDag`
 - Updated `triple_arena` version, which changes some things in `awint_dag`
+- Many improvements to `awint_dag`
 
 ## [0.7.0] - 2022-08-22
 ### Additions

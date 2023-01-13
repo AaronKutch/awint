@@ -2,7 +2,7 @@
 
 extern crate test;
 use awint::{
-    awint_dag::{Lineage, OpDag},
+    awint_dag::{OpDag, StateEpoch},
     awint_macro_internals::triple_arena::ptr_struct,
     dag::*,
 };
@@ -13,16 +13,14 @@ ptr_struct!(P0; P1; P2);
 #[bench]
 fn lower_funnel(bencher: &mut Bencher) {
     bencher.iter(|| {
+        let epoch0 = StateEpoch::new();
         let mut out = inlawi!(0u32);
         let rhs = inlawi!(opaque: ..64);
         let s = inlawi!(opaque: ..5);
         out.funnel_(&rhs, &s).unwrap();
 
-        let (mut op_dag, res) = OpDag::new(&[out.state()], &[out.state()]);
+        let (mut op_dag, res) = OpDag::from_epoch(&epoch0);
         res.unwrap();
-        op_dag.visit_gen += 1;
-        op_dag
-            .lower_tree(op_dag.noted.last().unwrap().unwrap(), op_dag.visit_gen)
-            .unwrap();
+        op_dag.lower_all().unwrap();
     })
 }

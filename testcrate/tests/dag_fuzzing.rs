@@ -132,14 +132,18 @@ impl Mem {
     }
 
     /// Makes sure that plain evaluation works
-    pub fn eval_and_verify_equal(&mut self) -> Result<(), EvalError> {
+    pub fn eval_and_verify_equal(&mut self, epoch: &StateEpoch) -> Result<(), EvalError> {
+        let (mut op_dag, res) = OpDag::from_epoch(epoch);
+        res?;
         for pair in self.a.vals() {
-            let (mut op_dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
-            res?;
-            let leaf = op_dag.noted[0].unwrap();
-            op_dag.visit_gen += 1;
-            op_dag.eval_tree(leaf, op_dag.visit_gen)?;
-            if let Op::Literal(ref lit) = op_dag[leaf].op {
+            op_dag.note_pstate(pair.dag.state()).unwrap();
+        }
+        op_dag.verify_integrity().unwrap();
+        op_dag.eval_all()?;
+        op_dag.verify_integrity().unwrap();
+        for pair in self.a.vals() {
+            let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
+            if let Op::Literal(ref lit) = op_dag[p].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
@@ -149,55 +153,64 @@ impl Mem {
     }
 
     /// Makes sure that lowering works
-    pub fn lower_and_verify_equal(&mut self) -> Result<(), EvalError> {
+    pub fn lower_and_verify_equal(&mut self, epoch: &StateEpoch) -> Result<(), EvalError> {
+        let (mut op_dag, res) = OpDag::from_epoch(epoch);
+        res?;
         for pair in self.a.vals() {
-            let (mut op_dag, res) = OpDag::new(&[pair.dag.state()], &[pair.dag.state()]);
-            res?;
-            // if all constants are known, the lowering will simply become an evaluation. We
-            // convert half of the literals to opaques at random, lower the dag, and finally
-            // convert back and evaluate to check that the lowering did not break the DAG
-            // function.
-            let mut literals = vec![];
-            for (p, node) in &mut op_dag.a {
-                if node.op.is_literal() && ((self.rng.next_u32() & 1) == 0) {
-                    if let Op::Literal(lit) = node.op.take() {
-                        literals.push((p, lit));
-                        node.op = Op::Opaque(vec![]);
-                    } else {
-                        unreachable!()
-                    }
+            op_dag.note_pstate(pair.dag.state()).unwrap();
+        }
+        // if all constants are known, the lowering will simply become an evaluation. We
+        // convert half of the literals to opaques at random, lower the dag, and finally
+        // convert back and evaluate to check that the lowering did not break the DAG
+        // function.
+        let mut literals = vec![];
+        let (mut p, mut b) = op_dag.a.first_ptr();
+        loop {
+            if b {
+                break
+            }
+            if op_dag[p].op.is_literal() && ((self.rng.next_u32() & 1) == 0) {
+                op_dag.note_pnode(p).unwrap();
+                if let Op::Literal(lit) = op_dag[p].op.take() {
+                    literals.push((p, lit));
+                    op_dag[p].op = Op::Opaque(vec![]);
+                } else {
+                    unreachable!()
                 }
             }
-            let leaf = op_dag.noted[0].unwrap();
-            op_dag.visit_gen += 1;
-            let res = op_dag.lower_tree(leaf, op_dag.visit_gen);
-            res.unwrap();
-            //op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
-            //    .unwrap();
-            for node in op_dag.a.vals() {
-                if !matches!(
-                    node.op,
-                    Op::Opaque(_)
-                        | Op::Literal(_)
-                        | Op::Copy(_)
-                        | Op::StaticGet(_, _)
-                        | Op::StaticSet(_, _)
-                        | Op::StaticLut(_, _)
-                ) {
-                    panic!("did not lower all the way: {node:?}");
+            op_dag.a.next_ptr(&mut p, &mut b);
+        }
+        // op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
+        //    .unwrap();
+        op_dag.verify_integrity().unwrap();
+        let res = op_dag.lower_all();
+        res?;
+        op_dag.verify_integrity().unwrap();
+        for node in op_dag.a.vals() {
+            if !matches!(
+                node.op,
+                Op::Opaque(_)
+                    | Op::Literal(_)
+                    | Op::Copy(_)
+                    | Op::StaticGet(_, _)
+                    | Op::StaticSet(_, _)
+                    | Op::StaticLut(_, _)
+            ) {
+                panic!("did not lower all the way: {node:?}");
+            }
+        }
+        for (p, lit) in literals {
+            if let Some(op) = op_dag.a.get_mut(p) {
+                // we are not respecting gen counters in release mode so we need this check
+                if op.op.is_opaque() {
+                    op.op = Op::Literal(lit);
                 }
-            }
-            for (p, lit) in literals {
-                if let Some(op) = op_dag.a.get_mut(p) {
-                    // we are not respecting gen counters in release mode so we need this check
-                    if op.op.is_opaque() {
-                        op.op = Op::Literal(lit);
-                    }
-                } // else the literal was culled
-            }
-            op_dag.visit_gen += 1;
-            op_dag.eval_tree(leaf, op_dag.visit_gen)?;
-            if let Op::Literal(ref lit) = op_dag[leaf].op {
+            } // else the literal was culled
+        }
+        op_dag.eval_all().unwrap();
+        for pair in self.a.vals() {
+            let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
+            if let Op::Literal(ref lit) = op_dag[p].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
                 }
@@ -800,17 +813,10 @@ fn dag_fuzzing() {
         for _ in 0..N.0 {
             num_dag_duo(&mut rng, &mut m)
         }
-        m.eval_and_verify_equal().unwrap();
-        let res = m.lower_and_verify_equal();
+        m.eval_and_verify_equal(&epoch).unwrap();
+        let res = m.lower_and_verify_equal(&epoch);
         res.unwrap();
         drop(epoch);
         assert!(STATE_ARENA.with(|f| f.borrow().is_empty()));
     }
-    /*let mut leaves = vec![];
-    for val in m.a.vals() {
-        leaves.push(val.dag.state());
-    }
-    let (mut op_dag, _) = OpDag::new(&leaves, &leaves);
-    op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
-        .unwrap();*/
 }

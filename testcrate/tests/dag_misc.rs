@@ -56,16 +56,10 @@ fn dag_assertions() {
     assert_eq!(x, y);
     assert_ne!(x, z);
     core::assert_eq!(epoch0.assertions().bits.len(), 4);
-    let mut noted = vec![];
-    let assertions_start = noted.len();
-    noted.extend(epoch0.assertions().states());
-    let (mut graph, res) = OpDag::new(&noted, &noted);
+    let (mut graph, res) = OpDag::from_epoch(&epoch0);
     res.unwrap();
-    graph.eval_all_noted().unwrap();
-    for i in assertions_start..noted.len() {
-        use awi::{assert_eq, *};
-        assert_eq!(graph.lit(graph.noted[i].unwrap()), inlawi!(1).as_ref());
-    }
+    graph.eval_all().unwrap();
+    graph.assert_assertions().unwrap();
 }
 
 macro_rules! test_nonequal_bw {
@@ -334,64 +328,43 @@ fn dag_bits_functions() {
     let s3 = inlawi!(opaque: ..64).to_usize();
     dag_bits_functions_internal([y5, y6, y7, y8, y9], s2, s3, &epoch0);
 
-    let eq = epoch0.assertions().bits.len() == 170;
+    let num_assertions = 170;
+    let eq = epoch0.assertions().bits.len() == num_assertions;
     if !eq {
         println!(
             "number of assertions ({}) is not as expected",
             epoch0.assertions().bits.len()
         );
     }
-    let mut noted = vec![
-        x0.state(),
-        x1.state(),
-        x2.state(),
-        x3.state(),
-        x4.state(),
-        x5.state(),
-        x6.state(),
-        x7.state(),
-        x8.state(),
-        x9.state(),
-        s2.state(),
-        s3.state(),
-    ];
-    let assertions_start = noted.len();
-    noted.extend(epoch0.assertions().states());
-    let (mut graph, res) = OpDag::new(&noted, &noted);
+    let (mut graph, res) = OpDag::from_epoch(&epoch0);
     res.unwrap();
+    let x5 = graph.note_pstate(x5.state()).unwrap();
+    let x6 = graph.note_pstate(x6.state()).unwrap();
+    let x7 = graph.note_pstate(x7.state()).unwrap();
+    let x8 = graph.note_pstate(x8.state()).unwrap();
+    let x9 = graph.note_pstate(x9.state()).unwrap();
+    let s2 = graph.note_pstate(s2.state()).unwrap();
+    let s3 = graph.note_pstate(s3.state()).unwrap();
 
     {
-        use awi::*;
+        use awi::{assert_eq, *};
         // fix the opaques
-        let x = graph.noted[5].unwrap();
-        graph[x].op = Op::Literal(extawi!(zero: ..128));
-        let x = graph.noted[6].unwrap();
-        graph[x].op = Op::Literal(extawi!(umax: ..192));
-        let x = graph.noted[7].unwrap();
-        graph[x].op = Op::Literal(extawi!(imax: ..192));
-        let x = graph.noted[8].unwrap();
-        graph[x].op = Op::Literal(extawi!(imin: ..192));
-        let x = graph.noted[9].unwrap();
-        graph[x].op = Op::Literal(extawi!(uone: ..192));
-        let x = graph.noted[10].unwrap();
-        graph[x].op = Op::Literal(ExtAwi::from_usize(extawi!(127u64).to_usize()));
-        let x = graph.noted[11].unwrap();
-        graph[x].op = Op::Literal(ExtAwi::from_usize(extawi!(128u64).to_usize()));
-    }
+        graph.pnote_get_mut_node(x5).unwrap().op = Op::Literal(extawi!(zero: ..128));
+        graph.pnote_get_mut_node(x6).unwrap().op = Op::Literal(extawi!(umax: ..192));
+        graph.pnote_get_mut_node(x7).unwrap().op = Op::Literal(extawi!(imax: ..192));
+        graph.pnote_get_mut_node(x8).unwrap().op = Op::Literal(extawi!(imin: ..192));
+        graph.pnote_get_mut_node(x9).unwrap().op = Op::Literal(extawi!(uone: ..192));
+        graph.pnote_get_mut_node(s2).unwrap().op =
+            Op::Literal(ExtAwi::from_usize(extawi!(127u64).to_usize()));
+        graph.pnote_get_mut_node(s3).unwrap().op =
+            Op::Literal(ExtAwi::from_usize(extawi!(128u64).to_usize()));
 
-    graph.eval_all_noted().unwrap();
-    for i in assertions_start..noted.len() {
-        use awi::*;
-        let p = graph.noted[i].unwrap();
-        if graph.lit(p) != inlawi!(1).as_ref() {
-            panic!(
-                "assertion bits not all true, failed on bit {i} ({p}), location: {:?}",
-                graph[p].location
-            );
+        graph.eval_all().unwrap();
+        assert_eq!(graph.assertions.len(), num_assertions);
+        graph.assert_assertions().unwrap();
+        if !eq {
+            panic!();
         }
-    }
-    if !eq {
-        panic!();
     }
 }
 
@@ -444,21 +417,18 @@ fn dag_try() {
     Result::<&str, ()>::err_at_dagtime((), false.into()).unwrap_err();
     std::assert_eq!(epoch0.assertions().bits.len(), 6);
 
-    let mut noted = vec![s.state()];
-    let assertions_start = noted.len();
-    noted.extend(epoch0.assertions().states());
-    let (mut graph, res) = OpDag::new(&noted, &noted);
+    let (mut graph, res) = OpDag::from_epoch(&epoch0);
     res.unwrap();
+    let s = graph.note_pstate(s.state()).unwrap();
     {
         use awi::*;
         // fix the opaques
-        let x = graph.noted[0].unwrap();
-        graph[x].op = Op::Literal(extawi!(8u64));
+        graph.pnote_get_mut_node(s).unwrap().op = Op::Literal(extawi!(8u64));
     }
-    graph.eval_all_noted().unwrap();
-    for i in assertions_start..noted.len() {
+    graph.eval_all().unwrap();
+    for p_note in &graph.assertions {
         use awi::*;
-        let p = graph.noted[i].unwrap();
+        let p = graph.note_arena[p_note];
         std::assert!(graph.lit(p) == inlawi!(0).as_ref());
     }
 }

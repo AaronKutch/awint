@@ -58,6 +58,9 @@
 //!     }
 //! }
 //!
+//! //#[cfg(feature = "dag")]
+//! let epoch0 = awint::awint_dag::StateEpoch::new();
+//!
 //! let mut m = StateMachine::new();
 //! let _ = m.update(InlAwi::opaque()).unwrap();
 //! let out = m.update(inlawi!(0110)).unwrap();
@@ -65,13 +68,7 @@
 //! //#[cfg(feature = "dag")]
 //! //{
 //!     use awint::awint_dag::{OpDag, Lineage};
-//!     let noted = [out.state()];
-//!     let (mut graph, res) = OpDag::new(&noted, &noted);
-//!
-//!     // will do basic evaluations on DAGs
-//!     graph.eval_all_noted().unwrap();
-//!
-//!     dbg!(&graph);
+//!     let (mut graph, res) = OpDag::from_epoch(&epoch0);
 //!
 //!     // The graphs unfortunately get ugly really fast, but you mainly want
 //!     // to use these for developing general algorithms on simple examples.
@@ -79,12 +76,18 @@
 //!     //graph
 //!     //    .render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
 //!     //    .unwrap();
+//!
 //!     res.unwrap();
+//!
+//!     // will do basic evaluations on DAGs
+//!     graph.eval_all().unwrap();
+//!
+//!     dbg!(&graph);
 //!
 //!     // lower into purely static copies, gets, sets, and lookup tables.
 //!     // You will want to design algorithms on the resulting `OpDag` or
 //!     // further translate into another form.
-//!     graph.lower_all_noted().unwrap();
+//!     graph.lower_all().unwrap();
 //!
 //!     for node in graph.a.vals() {
 //!         use awint::awint_dag::Op::*;
@@ -171,7 +174,7 @@ pub use awint_ext::awint_internals::location;
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{EvalError, EvalResult, Lineage, Op, PNode, PState, State, StateEpoch};
+pub use common::{EvalError, EvalResult, Lineage, Op, PNode, PNote, PState, State, StateEpoch};
 pub use lowering::{OpDag, OpNode};
 pub use mimick::{
     assertion::{internal_assert, internal_assert_eq, internal_assert_ne},

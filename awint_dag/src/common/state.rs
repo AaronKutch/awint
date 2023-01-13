@@ -130,10 +130,9 @@ pub fn clear_thread_local_state() {
 /// if used after the lifetime.
 ///
 /// Additionally, assertion bits from [crate::mimick::assert],
-/// [crate::mimick::assert_eq], corresponding macros, and
-/// [crate::mimick::Option::unwrap] are associated with the newest level
-/// `StateEpoch` alive at the time they are created. Use
-/// [StateEpoch::assertions] to acquire these.
+/// [crate::mimick::assert_eq], [crate::mimick::Option::unwrap], etc are
+/// associated with the newest level `StateEpoch` alive at the time they are
+/// created. Use [StateEpoch::assertions] to acquire these.
 ///
 /// In most use cases, you should create a `StateEpoch` for the lifetime of a
 /// group of mimicking types that are never used after being converted to
@@ -165,6 +164,56 @@ impl StateEpoch {
         Self { this_epoch_gen }
     }
 
+    /// Returns the generation of `self`, which is different for every
+    /// `StateEpoch`
+    pub fn gen(&self) -> u64 {
+        self.this_epoch_gen
+    }
+
+    /// Returns the latest state, if any, associated with this Epoch
+    pub fn latest_state(&self) -> Option<PState> {
+        let mut res = None;
+        EPOCH_STACK.with(|f| {
+            for (i, layer) in f.borrow().iter().enumerate().rev() {
+                if layer.0 == self.gen() {
+                    res = layer.1;
+                    break
+                }
+                if i == 0 {
+                    // shouldn't be reachable even with leaks
+                    unreachable!();
+                }
+            }
+        });
+        res
+    }
+
+    /// Gets the states associated with this Epoch (not including states from
+    /// when sub-epochs are alive or from before this Epoch was created)
+    pub fn states(&self) -> Vec<PState> {
+        let mut res = vec![];
+        EPOCH_STACK.with(|f| {
+            for (i, layer) in f.borrow().iter().enumerate().rev() {
+                if layer.0 == self.gen() {
+                    let mut current_state = layer.1;
+                    STATE_ARENA.with(|f| {
+                        let a = f.borrow();
+                        while let Some(p) = current_state {
+                            res.push(p);
+                            current_state = a[p].prev_in_epoch;
+                        }
+                    });
+                    break
+                }
+                if i == 0 {
+                    // shouldn't be reachable even with leaks
+                    unreachable!();
+                }
+            }
+        });
+        res
+    }
+
     /// Gets the assertions associated with this Epoch (not including assertions
     /// from when sub-epochs are alive or from before the this Epoch was
     /// created)
@@ -172,7 +221,7 @@ impl StateEpoch {
         let mut res = Assertions::new();
         EPOCH_STACK.with(|f| {
             for (i, layer) in f.borrow().iter().enumerate().rev() {
-                if layer.0 == self.this_epoch_gen {
+                if layer.0 == self.gen() {
                     res = layer.2.clone();
                     break
                 }
@@ -191,7 +240,7 @@ impl Drop for StateEpoch {
         EPOCH_STACK.with(|f| {
             let mut epoch_stack = f.borrow_mut();
             let top_gen = epoch_stack.last().unwrap().0;
-            if top_gen == self.this_epoch_gen {
+            if top_gen == self.gen() {
                 // remove all the states associated with this epoch
                 let mut last_state = epoch_stack.pop().unwrap().1;
                 STATE_ARENA.with(|f| {
@@ -205,7 +254,8 @@ impl Drop for StateEpoch {
                 panic!(
                     "when trying to drop the `StateEpoch` with generation {}, found that the \
                      `StateEpoch` with generation {} has not been dropped yet",
-                    self.this_epoch_gen, top_gen
+                    self.gen(),
+                    top_gen
                 );
             }
         });

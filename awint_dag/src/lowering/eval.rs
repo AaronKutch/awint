@@ -11,7 +11,7 @@ use crate::{
 impl OpDag {
     /// Assumes the node itself is evaluatable and all sources for `node` are
     /// literals. Note: decrements dependents but does not remove dead nodes.
-    pub fn eval_node(&mut self, node: PNode, visit: u64) -> Result<(), EvalError> {
+    pub fn eval_node(&mut self, node: PNode) -> Result<(), EvalError> {
         let self_w = self[node].nzbw;
         let lit_op: Op<ExtAwi> =
             Op::translate(&self[node].op, |lhs: &mut [ExtAwi], rhs: &[PNode]| {
@@ -31,7 +31,6 @@ impl OpDag {
                     self.dec_rc(source).unwrap();
                 }
                 self[node].op = Literal(x);
-                self[node].visit = visit;
                 Ok(())
             }
             EvalResult::Noop => {
@@ -64,19 +63,17 @@ impl OpDag {
     }
 
     /// Evaluates the source tree of `leaf` as much as possible. Only evaluates
-    /// nodes not equal to `visit`, evaluated nodes have their visit number set
+    /// nodes less than `visit`, evaluated nodes have their visit number set
     /// to `visit`.
     pub fn eval_tree(&mut self, leaf: PNode, visit: u64) -> Result<(), EvalError> {
+        if self.a[leaf].visit >= visit {
+            return Ok(())
+        }
         // DFS from leaf to roots
         // the bool is set to false when an unevaluatabe node is in the sources
         let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
-            let (i, p, b) = path[path.len() - 1];
-            /*if !self.a.contains(p) {
-                self.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
-                    .unwrap();
-                panic!();
-            }*/
+            let (i, p, all_literals) = path[path.len() - 1];
             let ops = self[p].op.operands();
             if ops.is_empty() {
                 // reached a root
@@ -85,15 +82,12 @@ impl OpDag {
                     break
                 }
                 path.last_mut().unwrap().0 += 1;
-                if !self[p].op.is_literal() {
-                    // is an `Invalid` or `Opaque`
-                    path.last_mut().unwrap().2 = false;
-                }
+                path.last_mut().unwrap().2 &= self[p].op.is_literal();
             } else if i >= ops.len() {
                 // checked all sources
                 path.pop().unwrap();
-                if b {
-                    match self.eval_node(p, visit) {
+                if all_literals {
+                    match self.eval_node(p) {
                         Ok(()) => {}
                         Err(EvalError::Unevaluatable) => {}
                         Err(e) => {
@@ -105,12 +99,10 @@ impl OpDag {
                 if path.is_empty() {
                     break
                 }
-                if !b {
-                    path.last_mut().unwrap().2 = false;
-                }
+                path.last_mut().unwrap().2 &= all_literals;
             } else {
                 let p_next = ops[i];
-                if self[p_next].visit == visit {
+                if self[p_next].visit >= visit {
                     // peek at node for evaluatableness but do not visit node, this prevents
                     // exponential growth
                     path.last_mut().unwrap().0 += 1;
@@ -124,13 +116,16 @@ impl OpDag {
         Ok(())
     }
 
-    /// Evaluates all trees of the nodes in `self.noted`
-    pub fn eval_all_noted(&mut self) -> Result<(), EvalError> {
+    /// Evaluates all nodes
+    pub fn eval_all(&mut self) -> Result<(), EvalError> {
         self.visit_gen += 1;
-        for i in 0..self.noted.len() {
-            if let Some(note) = self.noted[i] {
-                self.eval_tree(note, self.visit_gen)?;
+        let (mut p, mut b) = self.a.first_ptr();
+        loop {
+            if b {
+                break
             }
+            self.eval_tree(p, self.visit_gen)?;
+            self.a.next_ptr(&mut p, &mut b);
         }
         Ok(())
     }
