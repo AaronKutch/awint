@@ -336,16 +336,14 @@ impl Bits {
     #[must_use]
     pub fn get(&self, inx: impl Into<dag::usize>) -> Option<dag::bool> {
         let inx = inx.into();
-        if let Literal(ref lit) = inx.state().get_state().unwrap().op {
+        if let awi::Some(inx) = inx.state().try_get_as_usize() {
             // optimization for the meta lowering
-            let inx = lit.to_usize();
             if inx >= self.bw() {
                 None
             } else {
                 Some(dag::bool::new(StaticGet([self.state()], inx)))
             }
         } else {
-            // if the index is not a literal, no need to try `update_state`
             let ok = InlAwi::from_usize(inx)
                 .ult(&InlAwi::from_usize(self.bw()))
                 .unwrap();
@@ -356,24 +354,23 @@ impl Bits {
     #[must_use]
     pub fn set(&mut self, inx: impl Into<dag::usize>, bit: impl Into<dag::bool>) -> Option<()> {
         let inx = inx.into();
-        if let Literal(ref lit) = inx.state().get_state().unwrap().op {
+        let bit = bit.into();
+        if let awi::Some(inx) = inx.state().try_get_as_usize() {
             // optimization for the meta lowering
-            let inx = lit.to_usize();
             if inx >= self.bw() {
                 None
             } else {
                 self.update_state(
                     self.state_nzbw(),
-                    StaticSet([self.state(), bit.into().state()], inx),
+                    StaticSet([self.state(), bit.state()], inx),
                 )
                 .unwrap_at_runtime();
                 Some(())
             }
         } else {
-            // if the index is not a literal, no need to try `update_state`
             self.update_state(
                 self.state_nzbw(),
-                Set([self.state(), inx.state(), bit.into().state()]),
+                Set([self.state(), inx.state(), bit.state()]),
             )
             .unwrap_at_runtime();
             let ok = InlAwi::from_usize(inx)
@@ -691,7 +688,7 @@ impl Bits {
         let x: Box<[_]> = Box::from(x);
         let mut x: Vec<_> = Vec::from(x);
         let last = x.pop().unwrap().into();
-        let mut max = if let Op::Literal(ref lit) = last.state().get_state().unwrap().op {
+        let mut max = if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
             assert_eq!(lit.bw(), BITS);
             lit.to_usize()
         } else {
@@ -699,7 +696,7 @@ impl Bits {
         };
         for _ in 1..N {
             let last = x.pop().unwrap().into();
-            if let Op::Literal(ref lit) = last.state().get_state().unwrap().op {
+            if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
                 assert_eq!(lit.bw(), BITS);
                 let val = lit.to_usize();
                 if val > max {
@@ -748,7 +745,7 @@ impl Bits {
                 .unwrap();
         }
         if check_nonzero_cw {
-            if let Op::Literal(ref lit) = cw.state().get_state().unwrap().op {
+            if let Op::Literal(ref lit) = cw.state().cloned_state().unwrap().op {
                 assert_eq!(lit.bw(), BITS);
                 if lit.to_usize() == 0 {
                     return CCResult {

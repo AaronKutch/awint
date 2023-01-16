@@ -12,6 +12,7 @@ use awint_ext::{awint_internals::BITS, Bits};
 use Op::*;
 
 use crate::{
+    common::STATE_ARENA,
     lowering::{OpNode, PNode},
     state::next_state_visit_gen,
     triple_arena::Arena,
@@ -85,9 +86,9 @@ impl OpDag {
     /// may invalidate this unlike with `note_pstate`.
     #[must_use]
     pub fn pstate_to_pnode(&mut self, p_state: PState) -> Option<PNode> {
-        let p = p_state.get_state()?.node_map;
-        if self.a.contains(p) {
-            Some(p)
+        let node_map = p_state.get_node_map()?;
+        if self.a.contains(node_map) {
+            Some(node_map)
         } else {
             None
         }
@@ -117,9 +118,7 @@ impl OpDag {
     /// of `p_state`. Returns `None` if the mapping cannot be found.
     #[must_use]
     pub fn note_pstate(&mut self, p_state: PState) -> Option<PNote> {
-        let state = p_state.get_state()?;
-        // TODO need to verify this is for the right arena
-        self.note_pnode(state.node_map)
+        self.note_pnode(p_state.get_node_map()?)
     }
 
     /// Marks existing node as noted
@@ -140,84 +139,110 @@ impl OpDag {
         node_visit: u64,
         record_added: bool,
     ) -> Result<(), EvalError> {
+        // this is done in a peculiar way to avoid cloning from the states as much as
+        // possible
         self.tmp_stack.clear();
-        let mut leaf_pstate = latest_state;
-        while let Some(leaf) = leaf_pstate {
-            let leaf_state = leaf.get_state().unwrap();
-            if leaf_state.visit != state_visit {
-                let p_leaf = self.a.insert(OpNode {
-                    nzbw: leaf_state.nzbw,
-                    op: Op::Invalid,
-                    rc: 0,
-                    err: None,
-                    location: leaf_state.location,
-                    visit: node_visit,
-                });
-                leaf.set_state_aux(state_visit, p_leaf);
-                if record_added {
-                    self.tmp_pnodes_added.push(p_leaf);
+        let mut loop_pstate = latest_state;
+        while let Some(leaf_pstate) = loop_pstate {
+            let continue_loop = leaf_pstate.get_mut_state(|leaf| {
+                let leaf = leaf.expect("did not find state");
+                if leaf.visit == state_visit {
+                    loop_pstate = leaf.prev_in_epoch;
+                    true
+                } else {
+                    let p_leaf = self.a.insert(OpNode {
+                        nzbw: leaf.nzbw,
+                        op: Op::Invalid,
+                        rc: 0,
+                        err: None,
+                        location: leaf.location,
+                        visit: node_visit,
+                    });
+                    leaf.visit = state_visit;
+                    leaf.node_map = p_leaf;
+                    if record_added {
+                        self.tmp_pnodes_added.push(p_leaf);
+                    }
+                    self.tmp_stack.push((0, p_leaf, leaf_pstate));
+                    loop_pstate = leaf.prev_in_epoch;
+                    false
                 }
-                self.tmp_stack.push((0, p_leaf, leaf));
-                loop {
-                    let (current_i, current_p_node, current_p_state) =
-                        *self.tmp_stack.last().unwrap();
-                    let state = current_p_state.get_state().unwrap();
-                    if let Some(t) = Op::translate_root(&state.op) {
+            });
+            if continue_loop {
+                continue
+            }
+            // begin DFS proper
+            loop {
+                let (current_i, current_p_node, current_p_state) = *self.tmp_stack.last().unwrap();
+                let break_dfs = STATE_ARENA.with(|arena| {
+                    let mut arena = arena.borrow_mut();
+                    if let Some(t) = Op::translate_root(&arena[current_p_state].op) {
                         // reached a root
                         self[current_p_node].op = t;
-                        self[current_p_node].nzbw = state.nzbw;
                         self.tmp_stack.pop().unwrap();
                         if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
+                            false
                         } else {
-                            break
+                            true
                         }
-                    } else if current_i >= state.op.operands_len() {
+                    } else if current_i >= arena[current_p_state].op.operands_len() {
                         // all operands should be ready
-                        self[current_p_node].op =
-                            Op::translate(&state.op, |lhs: &mut [PNode], rhs: &[PState]| {
+                        self[current_p_node].op = Op::translate(
+                            &arena[current_p_state].op,
+                            |lhs: &mut [PNode], rhs: &[PState]| {
                                 for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                    *lhs = rhs.get_state().unwrap().node_map;
+                                    *lhs = arena[rhs].node_map;
                                 }
-                            });
-                        self[current_p_node].nzbw = state.nzbw;
+                            },
+                        );
                         self.tmp_stack.pop().unwrap();
                         if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
+                            false
                         } else {
-                            break
+                            true
                         }
                     } else {
                         // check next operand
-                        let p_next = state.op.operands()[current_i];
-                        let next_state = p_next.get_state().unwrap();
-                        if next_state.visit == state_visit {
+                        let p_next = arena[current_p_state].op.operands()[current_i];
+                        let next = &mut arena[p_next];
+                        if next.visit == state_visit {
                             // already explored
-                            self[next_state.node_map].rc += 1;
+                            self[next.node_map].rc += 1;
                             if let Some((i, ..)) = self.tmp_stack.last_mut() {
                                 *i += 1;
+                                false
                             } else {
-                                break
+                                true
                             }
                         } else {
                             let p = self.a.insert(OpNode {
                                 rc: 1,
-                                nzbw: state.nzbw,
+                                nzbw: next.nzbw,
                                 op: Op::Invalid,
                                 err: None,
-                                location: next_state.location,
+                                location: next.location,
                                 visit: node_visit,
                             });
-                            p_next.set_state_aux(state_visit, p);
+                            next.node_map = p;
+                            next.visit = state_visit;
                             if record_added {
-                                self.tmp_pnodes_added.push(p_leaf);
+                                self.tmp_pnodes_added.push(p);
                             }
-                            self.tmp_stack.push((0, p, state.op.operands()[current_i]));
+                            self.tmp_stack.push((
+                                0,
+                                p,
+                                arena[current_p_state].op.operands()[current_i],
+                            ));
+                            false
                         }
                     }
+                });
+                if break_dfs {
+                    break
                 }
             }
-            leaf_pstate = leaf_state.prev_in_epoch;
         }
         Ok(())
     }
@@ -448,19 +473,21 @@ impl OpDag {
                 return Err(EvalError::WrongNumberOfOperands)
             }
             for (i, op) in self[ptr].op.operands().iter().enumerate() {
-                let current_state = output_and_operands[i + 1].get_state().unwrap();
-                if self[op].nzbw != current_state.nzbw {
+                let (current_nzbw, current_is_opaque) = output_and_operands[i + 1]
+                    .get_state(|state| state.map(|x| (x.nzbw, x.op.is_opaque())))
+                    .unwrap();
+                if self[op].nzbw != current_nzbw {
                     return Err(EvalError::OtherString(format!(
                         "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of \
                          {:?}",
-                        i, current_state.nzbw, self[op].nzbw
+                        i, current_nzbw, self[op].nzbw
                     )))
                 }
-                if !current_state.op.is_opaque() {
+                if !current_is_opaque {
                     return Err(EvalError::ExpectedOpaque)
                 }
             }
-            if self[ptr].nzbw != output_and_operands[0].get_nzbw() {
+            if self[ptr].nzbw != output_and_operands[0].get_nzbw().unwrap() {
                 return Err(EvalError::WrongBitwidth)
             }
         }

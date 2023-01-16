@@ -104,12 +104,17 @@ impl Bits {
         nzbw: NonZeroUsize,
         p_state_op: Op<PState>,
     ) -> crate::mimick::Option<()> {
-        // eager evaluation, currently required because in the macros we had to pass
+        // Eager evaluation, currently required because in the macros we had to pass
         // `Into<dag::usize>` into panicking constructor functions, and we need to know
-        // the bitwidths at that time
+        // the bitwidths at that time. Also, it turns out we may want eager evaluation
+        // also because of early `Noop` and `Pass` evaluation results that can be caught
+        // early.
         let mut all_literals = true;
         for p_state in p_state_op.operands() {
-            if !p_state.get_state().unwrap().op.is_literal() {
+            if !p_state
+                .get_state(|state| state.map(|x| x.op.is_literal()))
+                .expect("failed to get state")
+            {
                 all_literals = false;
                 break
             }
@@ -118,11 +123,15 @@ impl Bits {
             let lit_op: Op<awi::ExtAwi> =
                 Op::translate(&p_state_op, |lhs: &mut [awi::ExtAwi], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        if let Op::Literal(ref lit) = rhs.get_state().unwrap().op {
-                            *lhs = lit.clone();
-                        } else {
-                            unreachable!()
-                        }
+                        rhs.get_state(|state| {
+                            if let Op::Literal(ref lit) = state?.op {
+                                *lhs = lit.clone();
+                                Some(())
+                            } else {
+                                None
+                            }
+                        })
+                        .expect("failed to get state, or it was not a literal")
                     }
                 });
             match lit_op.eval(nzbw) {
@@ -152,7 +161,7 @@ impl Bits {
             let bw_op: Op<NonZeroUsize> =
                 Op::translate(&p_state_op, |lhs: &mut [NonZeroUsize], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        *lhs = rhs.get_state().unwrap().nzbw;
+                        *lhs = rhs.get_nzbw().expect("failed to get state");
                     }
                 });
             match bw_op.noop_check(nzbw) {

@@ -26,10 +26,10 @@ fn state_epochs() {
         }
         assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
         let state = y.state();
-        assert!(state.get_state().is_some());
+        assert!(state.cloned_state().is_some());
         state
     };
-    assert!(state.get_state().is_none());
+    assert!(state.cloned_state().is_none());
     assert!(STATE_ARENA.with(|f| f.borrow().is_empty()))
 }
 

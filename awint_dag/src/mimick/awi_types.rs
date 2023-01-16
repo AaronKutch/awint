@@ -9,7 +9,7 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt, BITS},
+    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
 };
 
 use crate::{dag, Bits, Lineage, Op, PState};
@@ -359,11 +359,8 @@ impl ExtAwi {
     #[track_caller]
     pub fn panicking_opaque(w: impl Into<dag::usize>) -> Self {
         let w = w.into();
-        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
-            Self::opaque(
-                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
-            )
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::opaque(NonZeroUsize::new(w).expect("called `panicking_opaque` with zero width"))
         } else {
             panic!("Input was not evaluatable to a literal `usize`");
         }
@@ -373,11 +370,8 @@ impl ExtAwi {
     #[track_caller]
     pub fn panicking_zero(w: impl Into<dag::usize>) -> Self {
         let w = w.into();
-        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
-            Self::zero(
-                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
-            )
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::zero(NonZeroUsize::new(w).expect("called `panicking_zero` with zero width"))
         } else {
             panic!("Input was not evaluatable to a literal `usize`");
         }
@@ -387,11 +381,8 @@ impl ExtAwi {
     #[track_caller]
     pub fn panicking_umax(w: impl Into<dag::usize>) -> Self {
         let w = w.into();
-        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
-            Self::umax(
-                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
-            )
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::umax(NonZeroUsize::new(w).expect("called `panicking_umax` with zero width"))
         } else {
             panic!("Input was not evaluatable to a literal `usize`");
         }
@@ -401,11 +392,8 @@ impl ExtAwi {
     #[track_caller]
     pub fn panicking_imax(w: impl Into<dag::usize>) -> Self {
         let w = w.into();
-        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
-            Self::imax(
-                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
-            )
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::imax(NonZeroUsize::new(w).expect("called `panicking_imax` with zero width"))
         } else {
             panic!("Input was not evaluatable to a literal `usize`");
         }
@@ -415,11 +403,8 @@ impl ExtAwi {
     #[track_caller]
     pub fn panicking_imin(w: impl Into<dag::usize>) -> Self {
         let w = w.into();
-        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
-            Self::imin(
-                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
-            )
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::imin(NonZeroUsize::new(w).expect("called `panicking_imin` with zero width"))
         } else {
             panic!("Input was not evaluatable to a literal `usize`");
         }
@@ -429,11 +414,8 @@ impl ExtAwi {
     #[track_caller]
     pub fn panicking_uone(w: impl Into<dag::usize>) -> Self {
         let w = w.into();
-        if let Op::Literal(ref lit) = w.state().get_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
-            Self::uone(
-                NonZeroUsize::new(lit.to_usize()).expect("called `panicking_` with zero width"),
-            )
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::uone(NonZeroUsize::new(w).expect("called `panicking_uone` with zero width"))
         } else {
             panic!("Input was not evaluatable to a literal `usize`");
         }

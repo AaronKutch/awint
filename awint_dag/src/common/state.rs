@@ -1,6 +1,9 @@
 use std::{cell::RefCell, num::NonZeroUsize};
 
-use awint_ext::{awint_internals::Location, bw};
+use awint_ext::{
+    awint_internals::{Location, BITS},
+    bw,
+};
 
 use super::DummyDefault;
 use crate::{
@@ -287,26 +290,44 @@ impl PState {
         })
     }
 
-    /// Gets the `State` pointed to by `self` from the thread local arena
-    pub fn get_state(&self) -> Option<State> {
-        STATE_ARENA.with(|f| f.borrow().get(*self).cloned())
+    /// Gets the `State` pointed to by `self` from the thread local arena, and
+    /// passes it by reference to the closure
+    pub fn get_state<O, F: FnMut(Option<&State>) -> O>(&self, mut f: F) -> O {
+        STATE_ARENA.with(|g| f(g.borrow().get(*self)))
     }
 
-    pub fn get_nzbw(&self) -> NonZeroUsize {
-        STATE_ARENA.with(|f| f.borrow().get(*self).unwrap().nzbw)
+    /// Mutably gets the `State` pointed to by `self` from the thread local
+    /// arena, and passes it by reference to the closure
+    ///
+    /// # Note
+    ///
+    /// This should only be used to update all the auxiliary variables and not `nzbw` or `op`
+    pub fn get_mut_state<O, F: FnMut(Option<&mut State>) -> O>(&self, mut f: F) -> O {
+        STATE_ARENA.with(|g| f(g.borrow_mut().get_mut(*self)))
     }
 
-    /// Set the auxiliary `visit` and `node_map` fields on the `State` pointed
-    /// to by `self.
-    pub fn set_state_aux(&self, visit: u64, node_map: PNode) -> Option<()> {
-        STATE_ARENA.with(|f| {
-            if let Some(state) = f.borrow_mut().get_mut(*self) {
-                state.node_map = node_map;
-                state.visit = visit;
-                Some(())
-            } else {
-                None
+    /// Gets a clone of the `State` pointed to by `self` from the thread local
+    /// arena
+    pub fn cloned_state(&self) -> Option<State> {
+        self.get_state(|state| state.cloned())
+    }
+
+    pub fn get_nzbw(&self) -> Option<NonZeroUsize> {
+        self.get_state(|state| state.map(|state| state.nzbw))
+    }
+
+    pub fn get_node_map(&self) -> Option<PNode> {
+        self.get_state(|state| state.map(|s| s.node_map))
+    }
+
+    pub fn try_get_as_usize(&self) -> Option<usize> {
+        self.get_state(|state| {
+            if let Op::Literal(ref lit) = state?.op {
+                if lit.bw() == BITS {
+                    return Some(lit.to_usize())
+                }
             }
+            None
         })
     }
 }
