@@ -141,6 +141,7 @@ impl Mem {
         op_dag.verify_integrity().unwrap();
         op_dag.eval_all()?;
         op_dag.verify_integrity().unwrap();
+        op_dag.assert_assertions().unwrap();
         for pair in self.a.vals() {
             let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
             if let Op::Literal(ref lit) = op_dag[p].op {
@@ -186,6 +187,7 @@ impl Mem {
         let res = op_dag.lower_all();
         res?;
         op_dag.verify_integrity().unwrap();
+        op_dag.assert_assertions_weak().unwrap();
         for node in op_dag.a.vals() {
             if !matches!(
                 node.op,
@@ -208,6 +210,7 @@ impl Mem {
             } // else the literal was culled
         }
         op_dag.eval_all().unwrap();
+        op_dag.assert_assertions().unwrap();
         for pair in self.a.vals() {
             let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
             if let Op::Literal(ref lit) = op_dag[p].op {

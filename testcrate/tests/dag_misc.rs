@@ -1,6 +1,6 @@
 use awint::{
     awi,
-    awint_dag::{state::STATE_ARENA, Lineage, Op, OpDag, StateEpoch},
+    awint_dag::{state::STATE_ARENA, EvalError, Lineage, Op, OpDag, StateEpoch},
     dag,
 };
 
@@ -359,8 +359,9 @@ fn dag_bits_functions() {
         graph.pnote_get_mut_node(s3).unwrap().op =
             Op::Literal(ExtAwi::from_usize(extawi!(128u64).to_usize()));
 
-        graph.eval_all().unwrap();
         assert_eq!(graph.assertions.len(), num_assertions);
+        graph.eval_all().unwrap();
+        assert_eq!(graph.assertions.len(), 0);
         graph.assert_assertions().unwrap();
         if !eq {
             panic!();
@@ -421,14 +422,17 @@ fn dag_try() {
     res.unwrap();
     let s = graph.note_pstate(s.state()).unwrap();
     {
-        use awi::*;
+        use awi::{assert, *};
         // fix the opaques
         graph.pnote_get_mut_node(s).unwrap().op = Op::Literal(extawi!(8u64));
-    }
-    graph.eval_all().unwrap();
-    for p_note in &graph.assertions {
-        use awi::*;
-        let p = graph.note_arena[p_note];
-        std::assert!(graph.lit(p) == inlawi!(0).as_ref());
+
+        let res = graph.eval_all();
+        assert!(matches!(res, Err(EvalError::AssertionFailure(_))));
+        for p_note in &graph.assertions {
+            use awi::*;
+            let p = graph.note_arena[p_note];
+            std::assert!(graph.lit(p) == inlawi!(0).as_ref());
+        }
+        graph.assert_assertions().unwrap_err();
     }
 }

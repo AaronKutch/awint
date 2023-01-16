@@ -1,11 +1,15 @@
 #![allow(clippy::let_unit_value)]
 
-use awint::dag::{assert, assert_eq, *};
+use awint::{
+    awint_dag::{OpDag, StateEpoch},
+    dag::{assert, assert_eq, *},
+};
 
 // just copied from `macros.rs` and all asserts stripped (since the DAG
 // currently assumes all operations succeed)
 #[test]
 fn dag_macros() {
+    let epoch0 = StateEpoch::new();
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);
     // basic concatenation
@@ -135,4 +139,8 @@ fn dag_macros() {
     let _: () = cc!(imin: y);
     assert_eq!(y, inlawi!(0u8));
     let _: () = cc!(imin: ..r);
+    let (mut op_dag, res) = OpDag::from_epoch(&epoch0);
+    res.unwrap();
+    op_dag.eval_all().unwrap();
+    op_dag.assert_assertions().unwrap();
 }

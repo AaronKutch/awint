@@ -301,7 +301,8 @@ impl PState {
     ///
     /// # Note
     ///
-    /// This should only be used to update all the auxiliary variables and not `nzbw` or `op`
+    /// This should only be used to update all the auxiliary variables and not
+    /// `nzbw` or `op`
     pub fn get_mut_state<O, F: FnMut(Option<&mut State>) -> O>(&self, mut f: F) -> O {
         STATE_ARENA.with(|g| f(g.borrow_mut().get_mut(*self)))
     }

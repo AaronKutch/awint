@@ -23,4 +23,5 @@ pub enum EvalError {
     // Some other kind of brokenness, such as dependency edges not agreeing with operand edges
     OtherStr(&'static str),
     OtherString(String),
+    AssertionFailure(String),
 }

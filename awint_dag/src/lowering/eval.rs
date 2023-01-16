@@ -101,12 +101,18 @@ impl OpDag {
                 }
                 path.last_mut().unwrap().2 &= all_literals;
             } else {
-                let p_next = ops[i];
+                let mut p_next = ops[i];
                 if self[p_next].visit >= visit {
                     // peek at node for evaluatableness but do not visit node, this prevents
                     // exponential growth
                     path.last_mut().unwrap().0 += 1;
                     path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
+                    while let Op::Copy([a]) = self[p_next].op {
+                        // special optimization case: forward Copies
+                        self[p].op.operands_mut()[i] = a;
+                        self.dec_rc(p_next).unwrap();
+                        p_next = a;
+                    }
                 } else {
                     self[p_next].visit = visit;
                     path.push((0, p_next, true));
@@ -116,7 +122,8 @@ impl OpDag {
         Ok(())
     }
 
-    /// Evaluates all nodes
+    /// Evaluates all nodes. This also checks assertions, but not as strictly as
+    /// `assert_assertions` which makes sure no assertions are unevaluated.
     pub fn eval_all(&mut self) -> Result<(), EvalError> {
         self.visit_gen += 1;
         let (mut p, mut b) = self.a.first_ptr();
@@ -127,6 +134,46 @@ impl OpDag {
             self.eval_tree(p, self.visit_gen)?;
             self.a.next_ptr(&mut p, &mut b);
         }
+        self.assert_assertions_weak()?;
+        self.unnote_true_assertions();
         Ok(())
+    }
+
+    /// Unnotes assertions that have been evaluated to be true, done by
+    /// `eval_all` and `lower_all`
+    pub fn unnote_true_assertions(&mut self) {
+        let mut i = 0;
+        loop {
+            if i >= self.assertions.len() {
+                break
+            }
+            let p_note = self.assertions[i];
+            let p_node = self.note_arena[p_note];
+            let mut removed = false;
+            if let Op::Literal(ref lit) = self[p_node].op {
+                if !lit.is_zero() {
+                    self.unnote_pnote(p_note);
+                    self.assertions.swap_remove(i);
+                    removed = true;
+                }
+            }
+            if !removed {
+                i += 1;
+            }
+        }
+    }
+
+    /// Deletes all nodes unused by any noted node.
+    pub fn delete_unused_nodes(&mut self) {
+        let (mut p, mut b) = self.a.first_ptr();
+        loop {
+            if b {
+                break
+            }
+            if self[p].rc == 0 {
+                self.trim_zero_rc_tree(p).unwrap();
+            }
+            self.a.next_ptr(&mut p, &mut b);
+        }
     }
 }

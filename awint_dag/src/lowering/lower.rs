@@ -9,7 +9,7 @@ use crate::{
     lowering::{meta::*, OpDag, PNode},
     mimick::{Bits, ExtAwi, InlAwi},
     EvalError, Lineage,
-    Op::*,
+    Op::{self, *},
     StateEpoch,
 };
 
@@ -815,9 +815,16 @@ impl OpDag {
                     }
                 }
             } else {
-                let p_next = ops[i];
+                let mut p_next = ops[i];
                 let next_visit = self[p_next].visit;
                 if next_visit >= tree_visit {
+                    while let Op::Copy([a]) = self[p_next].op {
+                        // special optimization case: forward Copies
+                        self[p].op.operands_mut()[i] = a;
+                        self[a].rc = self[a].rc.checked_add(1).unwrap();
+                        self.dec_rc(p_next).unwrap();
+                        p_next = a;
+                    }
                     // peek at node for evaluatableness but do not visit node
                     path.last_mut().unwrap().0 += 1;
                     path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
@@ -836,6 +843,9 @@ impl OpDag {
         }
     }
 
+    /// Calls `lower_node` on everything, also evaluates everything. This also
+    /// checks assertions, but not as strictly as `assert_assertions` which
+    /// makes sure no assertions are unevaluated.
     pub fn lower_all(&mut self) -> Result<(), EvalError> {
         self.visit_gen += 1;
         let lowered_visit = self.visit_gen;
@@ -849,6 +859,8 @@ impl OpDag {
             self.lower_tree(p, lowered_visit, tree_visit)?;
             self.a.next_ptr(&mut p, &mut b);
         }
+        self.assert_assertions_weak()?;
+        self.unnote_true_assertions();
         Ok(())
     }
 }

@@ -129,6 +129,13 @@ impl OpDag {
         Some(self.note_arena.insert(p))
     }
 
+    /// Unmarks noted node
+    pub fn unnote_pnote(&mut self, p: PNote) -> Option<PNode> {
+        let p_node = self.note_arena.remove(p)?;
+        self.dec_rc(p_node).unwrap();
+        Some(p_node)
+    }
+
     /// Developer function that adds all states in the thread local state list
     /// starting with `latest_state` to `self`. If `record_added` then all added
     /// nodes are pushed to `self.tmp_pnodes_added`
@@ -318,26 +325,51 @@ impl OpDag {
         Ok(())
     }
 
-    pub fn assert_assertions(&mut self) -> Result<(), EvalError> {
+    /// Same as `assert_assertions` except it ignores opaques
+    pub fn assert_assertions_weak(&mut self) -> Result<(), EvalError> {
         for (i, p_note) in self.assertions.iter().enumerate() {
             let p_node = self.note_arena[p_note];
             let node = &self[p_node];
             if node.nzbw.get() != 1 {
-                return Err(EvalError::OtherString(format!(
+                return Err(EvalError::AssertionFailure(format!(
                     "assertion bit {i} ({p_note}) is not a single bit, assertion location: {:?}",
                     node.location
                 )))
             }
             if let Op::Literal(ref lit) = node.op {
                 if lit.is_zero() {
-                    return Err(EvalError::OtherString(format!(
+                    return Err(EvalError::AssertionFailure(format!(
+                        "assertion bits not all true, failed on bit {i} ({p_note}), assertion \
+                         location: {:?}",
+                        self[p_node].location
+                    )))
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that all assertion bits are literal `0x1u1`s.
+    pub fn assert_assertions(&mut self) -> Result<(), EvalError> {
+        for (i, p_note) in self.assertions.iter().enumerate() {
+            let p_node = self.note_arena[p_note];
+            let node = &self[p_node];
+            if node.nzbw.get() != 1 {
+                return Err(EvalError::AssertionFailure(format!(
+                    "assertion bit {i} ({p_note}) is not a single bit, assertion location: {:?}",
+                    node.location
+                )))
+            }
+            if let Op::Literal(ref lit) = node.op {
+                if lit.is_zero() {
+                    return Err(EvalError::AssertionFailure(format!(
                         "assertion bits not all true, failed on bit {i} ({p_note}), assertion \
                          location: {:?}",
                         self[p_node].location
                     )))
                 }
             } else {
-                return Err(EvalError::OtherString(format!(
+                return Err(EvalError::AssertionFailure(format!(
                     "assertion bit {i} ({p_note}) is not a literal (it is {:?}), assertion \
                      location: {:?}",
                     node.op, node.location
