@@ -11,6 +11,7 @@ use awint_ext::{
     awi,
     awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
 };
+use smallvec::smallvec;
 
 use crate::{dag, Bits, Lineage, Op, PState};
 
@@ -77,7 +78,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn opaque() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Opaque(vec![]))
+        Self::new(Op::Opaque(smallvec![]))
     }
 
     pub fn zero() -> Self {
@@ -332,7 +333,7 @@ impl ExtAwi {
     }
 
     pub fn opaque(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Opaque(vec![]))
+        Self::new(w, Op::Opaque(smallvec![]))
     }
 
     pub fn zero(w: NonZeroUsize) -> Self {

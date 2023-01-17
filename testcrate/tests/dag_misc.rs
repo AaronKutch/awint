@@ -436,3 +436,20 @@ fn dag_try() {
         graph.assert_assertions().unwrap_err();
     }
 }
+
+#[cfg(target_pointer_width = "64")]
+#[test]
+fn dag_size() {
+    use std::mem;
+
+    use awint::awint_dag::PState;
+
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(mem::size_of::<Op<PState>>(), 88);
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        assert_eq!(mem::size_of::<Op<PState>>(), 48);
+    }
+}

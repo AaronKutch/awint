@@ -2,7 +2,9 @@ use std::{cmp::min, num::NonZeroUsize};
 
 use awint::{
     awi,
-    awint_dag::{lowering::OpDag, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch},
+    awint_dag::{
+        lowering::OpDag, smallvec::smallvec, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
+    },
     awint_internals::BITS,
     awint_macro_internals::triple_arena::{ptr_struct, Arena},
     dag,
@@ -174,7 +176,7 @@ impl Mem {
                 op_dag.note_pnode(p).unwrap();
                 if let Op::Literal(lit) = op_dag[p].op.take() {
                     literals.push((p, lit));
-                    op_dag[p].op = Op::Opaque(vec![]);
+                    op_dag[p].op = Op::Opaque(smallvec![]);
                 } else {
                     unreachable!()
                 }

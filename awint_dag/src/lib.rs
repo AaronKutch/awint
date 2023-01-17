@@ -180,6 +180,7 @@ pub use mimick::{
     assertion::{internal_assert, internal_assert_eq, internal_assert_ne},
     primitive,
 };
+pub use smallvec;
 
 /// Raw access to thread-local `State` related things
 pub mod state {

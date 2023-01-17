@@ -4,6 +4,7 @@
 use std::marker::PhantomData;
 
 use awint_ext::{awi, awint_internals::BITS};
+use smallvec::smallvec;
 use Op::*;
 
 use crate::{
@@ -259,12 +260,12 @@ impl Bits {
     );
 
     pub fn opaque_(&mut self) {
-        self.update_state(self.state_nzbw(), Opaque(vec![self.state()]))
+        self.update_state(self.state_nzbw(), Opaque(smallvec![self.state()]))
             .unwrap_at_runtime();
     }
 
     pub fn opaque_with_(&mut self, with: &[&Bits]) {
-        let mut v = vec![self.state()];
+        let mut v = smallvec![self.state()];
         for x in with {
             v.push(x.state());
         }

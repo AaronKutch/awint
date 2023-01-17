@@ -1,6 +1,7 @@
 use std::{fmt::Debug, mem, num::NonZeroUsize};
 
 use awint_ext::{bw, ExtAwi};
+use smallvec::{smallvec, SmallVec};
 use Op::*;
 
 use crate::PState;
@@ -38,7 +39,7 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
 
     // represents an unknown, arbitrary, or opaque-boxed source or sink (can have any number of
     // operands)
-    Opaque(Vec<T>),
+    Opaque(SmallVec<[T; 3]>),
 
     // literal assign
     Literal(ExtAwi),
@@ -533,7 +534,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Invalid => Some(Invalid),
             Opaque(v) => {
                 if v.is_empty() {
-                    Some(Opaque(vec![]))
+                    Some(Opaque(smallvec![]))
                 } else {
                     None
                 }
@@ -553,7 +554,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match this {
             Invalid => Invalid,
             Opaque(v) => {
-                let mut res = Opaque(vec![DummyDefault::default(); v.len()]);
+                let mut res = Opaque(smallvec![DummyDefault::default(); v.len()]);
                 m(res.operands_mut(), this.operands());
                 res
             }
