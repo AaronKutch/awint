@@ -1,6 +1,9 @@
 # Changelog
 
-## [0.8.0] - TODO
+## [0.8.0] - 2022-01-17
+### Crate
+- MSRV 1.66
+
 ### Additions
 - Added `zeroize` support
 - Added mimicking `Option` and `Result` types and `try_support` to support using them with `?`
