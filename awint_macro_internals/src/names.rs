@@ -25,29 +25,22 @@ pub struct Names<'a> {
     pub awi_ref: &'a str,
     /// Name used for the fielding `to` offset
     pub shl: &'a str,
+    /// Name used for CC checking result
+    pub res: &'a str,
 }
-
-const CONSTANT: &str = "__awint_constant";
-const BIND: &str = "__awint_bind";
-const VALUE: &str = "__awint_val";
-const WIDTH: &str = "__awint_width";
-const CW: &str = "__awint_cw";
-const BITS_REF: &str = "__awint_ref";
-const AWI: &str = "__awint_awi";
-const AWI_REF: &str = "__awint_awi_ref";
-const SHL: &str = "__awint_shl";
 
 /// Default names for `awint`
 pub const AWINT_NAMES: Names = Names {
-    constant: CONSTANT,
-    bind: BIND,
-    value: VALUE,
-    width: WIDTH,
-    cw: CW,
-    bits_ref: BITS_REF,
-    awi: AWI,
-    awi_ref: AWI_REF,
-    shl: SHL,
+    constant: "__awint_constant",
+    bind: "__awint_bind",
+    value: "__awint_val",
+    width: "__awint_width",
+    cw: "__awint_cw",
+    bits_ref: "__awint_ref",
+    awi: "__awint_awi",
+    awi_ref: "__awint_awi_ref",
+    shl: "__awint_shl",
+    res: "__awint_res",
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -55,37 +48,35 @@ pub struct FnNames<'a> {
     pub get_bw: &'a str,
     pub mut_bits_ref: &'a str,
     pub bits_ref: &'a str,
-    pub le_fn: &'a str,
-    pub common_fn: &'a str,
+    pub usize_cast: &'a str,
+    pub usize_add: &'a str,
+    pub usize_sub: &'a str,
     pub max_fn: &'a str,
-    pub copy_assign: &'a str,
+    pub cc_checks_fn: &'a str,
+    pub copy_: &'a str,
     pub field: &'a str,
     pub field_to: &'a str,
     pub field_from: &'a str,
     pub field_width: &'a str,
     pub field_bit: &'a str,
-    pub unwrap: &'a str,
     pub bw_call: &'a [char],
 }
-
-// TODO instead should probably go the single `unstable_` function route and
-// handle target debug assertion configuration for unwraps that way
-const UNWRAP: &str = ".unwrap()";
 
 pub const AWINT_FN_NAMES: FnNames = FnNames {
     get_bw: "Bits::bw",
     mut_bits_ref: "&mut Bits",
     bits_ref: "&Bits",
-    le_fn: "Bits::unstable_le_checks",
-    common_fn: "Bits::unstable_common_checks",
+    usize_cast: "Bits::usize_cast",
+    usize_add: "Bits::usize_add",
+    usize_sub: "Bits::usize_sub",
     max_fn: "Bits::unstable_max",
-    copy_assign: "Bits::copy_assign",
+    cc_checks_fn: "Bits::unstable_cc_checks",
+    copy_: "Bits::copy_",
     field: "Bits::field",
     field_to: "Bits::field_to",
     field_from: "Bits::field_from",
     field_width: "Bits::field_width",
     field_bit: "Bits::field_bit",
-    unwrap: UNWRAP,
     bw_call: &['.', 'b', 'w', '(', ')'],
 };
 

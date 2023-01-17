@@ -2,7 +2,7 @@
 name = "awint"
 # note: when bumping versions, update `rust-version` in `awint_internals/Cargo.toml` and in
 # `ci.yml`, and add date to changelog
-version = "0.7.0"
+version = "0.8.0" # no 1.0 at least until `const_support` is all stabilized
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -14,23 +14,29 @@ keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
 [dependencies]
-awint_core = { version = "0.7.0", path = "../awint_core", default-features = false }
-awint_dag = { version = "0.7.0", path = "../awint_dag", default-features = false, optional = true }
-awint_ext = { version = "0.7.0", path = "../awint_ext", default-features = false, optional = true }
-awint_macros = { version = "0.7.0", path = "../awint_macros" }
+awint_core = { version = "0.8.0", path = "../awint_core", default-features = false }
+awint_dag = { version = "0.8.0", path = "../awint_dag", default-features = false, optional = true }
+awint_ext = { version = "0.8.0", path = "../awint_ext", default-features = false, optional = true }
+awint_macro_internals = { version = "0.8.0", path = "../awint_macro_internals", default-features = false, optional = true }
+awint_macros = { version = "0.8.0", path = "../awint_macros" }
 
 # note: running the tests requires `--all-features`
 [features]
-default = ["const_support", "std"]
+default = ["try_support", "const_support", "std"]
 # Turns on nightly features required for some functions to be marked `const`
-const_support = ["awint_core/const_support", "awint_ext/const_support"]
+const_support = ["awint_core/const_support", "awint_ext?/const_support"]
+# Turns on nightly features required for `Try` to work with some mimick types
+try_support = ["awint_dag?/try_support"]
 # Turns on parts of the crate that require `alloc`
 alloc = ["awint_ext"]
 # Turns on parts of the crate that require `std`
-std = ["alloc"]
+std = ["alloc", "awint_macro_internals"]
 # Turns on `rand` support
 rand_support = ["awint_core/rand_support"]
 # Turns on `serde` support
-serde_support = ["awint_core/serde_support", "awint_ext/serde_support"]
+serde_support = ["awint_core/serde_support", "awint_ext?/serde_support"]
+# Turns on `zeroize` support
+zeroize_support = ["awint_ext/zeroize_support"]
 # Turns on `awint_dag` support. Note: this activates `std`.
 dag = ["awint_dag", "std"]
+debug = ["awint_dag/debug", "awint_macro_internals/debug"]

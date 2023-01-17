@@ -8,7 +8,7 @@ use crate::Bits;
 
 /// Runs all pre serialization checks except for equal width and `Overflow`
 /// checks
-const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError> {
+const fn verify_for_bytes_(src: &[u8], radix: u8) -> Result<(), SerdeError> {
     if radix < 2 || radix > 36 {
         return Err(InvalidRadix)
     }
@@ -41,11 +41,11 @@ const fn verify_for_bytes_assign(src: &[u8], radix: u8) -> Result<(), SerdeError
 /// `ExtAwi::bits_to_string_radix`, `ExtAwi::bits_to_vec_radix`, and
 /// `<ExtAwi as FromStr>::from_str`
 impl Bits {
-    /// A version of [Bits::bytes_radix_assign] optimized for power of two
+    /// A version of [Bits::bytes_radix_] optimized for power of two
     /// radixes
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn power_of_two_bytes_assign(
+    pub const fn power_of_two_bytes_(
         &mut self,
         sign: Option<bool>,
         src: &[u8],
@@ -59,11 +59,11 @@ impl Bits {
             return Err(InvalidRadix)
         }
         let log2 = radix.trailing_zeros() as usize;
-        if let Err(e) = verify_for_bytes_assign(src, radix) {
+        if let Err(e) = verify_for_bytes_(src, radix) {
             return Err(e)
         }
         // the accumulator
-        pad.zero_assign();
+        pad.zero_();
         let mut shl = 0;
         const_for!(i in {0..src.len()}.rev() {
             let b = src[i];
@@ -77,7 +77,7 @@ impl Bits {
             } else {
                 b.wrapping_sub(b'a').wrapping_add(10)
             } as usize;
-            pad.usize_or_assign(char_digit, shl);
+            pad.usize_or_(char_digit, shl);
             shl += log2;
             if shl >= self.bw() {
                 let tmp = if let Some(tmp) = BITS
@@ -111,13 +111,13 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // handles `imin` correctly
-                pad.neg_assign(true);
+                pad.neg_(true);
             } else if pad.lz() == 0 {
                 // These cannot be represented as positive
                 return Err(Overflow)
             }
         }
-        self.copy_assign(pad).unwrap();
+        self.copy_(pad).unwrap();
         Ok(())
     }
 
@@ -137,7 +137,7 @@ impl Bits {
     /// the string must be representable in the bitwidth of `self` with the
     /// specified sign, otherwise an overflow error is returned.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn bytes_radix_assign(
+    pub const fn bytes_radix_(
         &mut self,
         sign: Option<bool>,
         src: &[u8],
@@ -149,15 +149,15 @@ impl Bits {
             return Err(NonEqualWidths)
         }
         if radix.is_power_of_two() {
-            return self.power_of_two_bytes_assign(sign, src, radix, pad0)
+            return self.power_of_two_bytes_(sign, src, radix, pad0)
         }
-        if let Err(e) = verify_for_bytes_assign(src, radix) {
+        if let Err(e) = verify_for_bytes_(src, radix) {
             return Err(e)
         }
         // the accumulator
-        pad0.zero_assign();
+        pad0.zero_();
         // contains the radix exponential
-        pad1.uone_assign();
+        pad1.uone_();
         const_for!(i in {0..src.len()}.rev() {
             let b = src[i];
             if b == b'_' {
@@ -170,7 +170,7 @@ impl Bits {
             } else {
                 b.wrapping_sub(b'a').wrapping_add(10)
             } as usize;
-            let o0 = pad0.short_mul_add_assign(pad1, char_digit).unwrap();
+            let o0 = pad0.short_mul_add_(pad1, char_digit).unwrap();
             if o0 {
                 return Err(Overflow)
             }
@@ -193,13 +193,13 @@ impl Bits {
                     return Err(Overflow)
                 }
                 // handles `imin` correctly
-                pad0.neg_assign(true);
+                pad0.neg_(true);
             } else if pad0.lz() == 0 {
                 // These cannot be represented as positive
                 return Err(Overflow)
             }
         }
-        self.copy_assign(pad0).unwrap();
+        self.copy_(pad0).unwrap();
         Ok(())
     }
 
@@ -234,11 +234,11 @@ impl Bits {
         if radix < 2 || radix > 36 {
             return Err(InvalidRadix)
         }
-        pad.copy_assign(self).unwrap();
+        pad.copy_(self).unwrap();
         // happens to do the right thing to `imin`
-        pad.neg_assign(signed && pad.msb());
+        pad.neg_(signed && pad.msb());
         const_for!(i in {0..dst.len()}.rev() {
-            let rem = pad.short_udivide_inplace_assign(radix as usize).unwrap() as u8;
+            let rem = pad.short_udivide_inplace_(radix as usize).unwrap() as u8;
             if rem < 10 {
                 dst[i] = b'0'.wrapping_add(rem);
             } else if upper {
@@ -278,7 +278,7 @@ impl Bits {
                     }
                     // Safety: we strictly capped the range of possible values above with `& 0b1111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    f.write_fmt(format_args!("{}", c))?;
+                    f.write_fmt(format_args!("{c}"))?;
                     if ((j1 % 8) == 0) && (j1 != 0) {
                         f.write_fmt(format_args!("_"))?;
                     }
@@ -304,7 +304,7 @@ impl Bits {
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b111`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    if let Err(e) = f.write_fmt(format_args!("{}", c)) {
+                    if let Err(e) = f.write_fmt(format_args!("{c}")) {
                         return Err(e)
                     }
                     if ((j1 % 8) == 0) && (j1 != 0) {
@@ -333,7 +333,7 @@ impl Bits {
                     char_digit += b'0';
                     // Safety: we strictly capped the range of possible values above with `& 0b1`
                     let c = unsafe { char::from_u32_unchecked(char_digit as u32) };
-                    if let Err(e) = f.write_fmt(format_args!("{}", c)) {
+                    if let Err(e) = f.write_fmt(format_args!("{c}")) {
                         return Err(e)
                     }
                     if ((j1 % 8) == 0) && (j1 != 0) {

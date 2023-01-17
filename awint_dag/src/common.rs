@@ -1,12 +1,16 @@
 mod error;
+mod eval;
 mod lineage;
+mod noop;
 mod op;
 mod state;
 
+use awint_macro_internals::triple_arena::ptr_struct;
 pub use error::EvalError;
+pub use eval::*;
 pub use lineage::Lineage;
-pub use op::Op;
-pub use state::{
-    clear_thread_local_state, next_state_visit_gen, PNode, PState, State, StateEpoch, EPOCH_GEN,
-    EPOCH_STACK, STATE_ARENA, STATE_VISIT_GEN,
-};
+pub use noop::*;
+pub use op::*;
+pub use state::*;
+
+ptr_struct!(PNote);

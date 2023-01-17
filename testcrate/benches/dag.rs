@@ -1,25 +1,30 @@
 #![feature(test)]
 
 extern crate test;
-use awint::dag_prelude::*;
-use awint_dag::{lowering::Dag, Lineage};
+use awint::{
+    awi,
+    awint_dag::{Lineage, OpDag, StateEpoch},
+    awint_macro_internals::triple_arena::ptr_struct,
+    dag::*,
+};
 use test::Bencher;
-use triple_arena::ptr_struct;
 
 ptr_struct!(P0; P1; P2);
 
 #[bench]
 fn lower_funnel(bencher: &mut Bencher) {
     bencher.iter(|| {
+        let epoch0 = StateEpoch::new();
         let mut out = inlawi!(0u32);
         let rhs = inlawi!(opaque: ..64);
         let s = inlawi!(opaque: ..5);
-        out.funnel(&rhs, &s).unwrap();
+        out.funnel_(&rhs, &s).unwrap();
 
-        let (mut dag, res) = Dag::new(&[out.state()], &[out.state()]);
+        let (mut op_dag, res) = OpDag::from_epoch(&epoch0);
         res.unwrap();
-        dag.visit_gen += 1;
-        dag.lower_tree(dag.noted.last().unwrap().unwrap(), dag.visit_gen)
-            .unwrap();
+        op_dag.note_pstate(out.state()).unwrap();
+        op_dag.lower_all().unwrap();
+        op_dag.delete_unused_nodes();
+        awi::assert_eq!(op_dag.a.len(), 7044);
     })
 }

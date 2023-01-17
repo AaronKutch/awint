@@ -46,7 +46,7 @@ impl Component {
                 if let Some(ref end) = self.range.end {
                     if let Some(x) = end.static_val() {
                         let mut tmp = ExtAwi::zero(i128_to_nonzerousize(x)?);
-                        tmp.zero_resize_assign(lit);
+                        tmp.zero_resize_(lit);
                         *lit = tmp;
                     }
                 }
@@ -233,9 +233,8 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                             Err(e) => {
                                 return Err(CCMacroError::new(
                                     format!(
-                                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{}\")` \
-                                         which returned SerdeError::{:?}",
-                                        s, e
+                                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{s}\")` \
+                                         which returned SerdeError::{e:?}"
                                     ),
                                     mid_txt,
                                 ))

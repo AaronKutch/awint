@@ -7,8 +7,11 @@ use std::{
     rc::Rc,
 };
 
-use awint_ext::awi;
-use awint_internals::*;
+use awint_ext::{
+    awi,
+    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
+};
+use smallvec::smallvec;
 
 use crate::{dag, Bits, Lineage, Op, PState};
 
@@ -39,7 +42,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub(crate) fn new(op: Op<PState>) -> Self {
-        Self::from_state(PState::new(NonZeroUsize::new(BW).unwrap(), op))
+        Self::from_state(PState::new(NonZeroUsize::new(BW).unwrap(), op, None))
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
@@ -75,7 +78,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn opaque() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Opaque(vec![]))
+        Self::new(Op::Opaque(smallvec![], None))
     }
 
     pub fn zero() -> Self {
@@ -179,7 +182,7 @@ forward_inlawi_fmt!(Display LowerHex UpperHex Octal Binary);
 impl InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
     pub fn from_bool(x: impl Into<dag::bool>) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().bool_assign(x);
+        awi.const_as_mut().bool_(x);
         awi
     }
 }
@@ -197,19 +200,19 @@ impl From<awi::bool> for InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
 }
 
 macro_rules! inlawi_from {
-    ($($w:expr, $u:ident $from_u:ident $u_assign:ident
-        $i:ident $from_i:ident $i_assign:ident);*;) => {
+    ($($w:expr, $u:ident $from_u:ident $u_:ident
+        $i:ident $from_i:ident $i_:ident);*;) => {
         $(
             impl InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
                 pub fn $from_u(x: impl Into<dag::$u>) -> Self {
                     let mut awi = Self::zero();
-                    awi.const_as_mut().$u_assign(x);
+                    awi.const_as_mut().$u_(x);
                     awi
                 }
 
                 pub fn $from_i(x: impl Into<dag::$i>) -> Self {
                     let mut awi = Self::zero();
-                    awi.const_as_mut().$i_assign(x);
+                    awi.const_as_mut().$i_(x);
                     awi
                 }
             }
@@ -242,11 +245,11 @@ macro_rules! inlawi_from {
 }
 
 inlawi_from!(
-    8, u8 from_u8 u8_assign i8 from_i8 i8_assign;
-    16, u16 from_u16 u16_assign i16 from_i16 i16_assign;
-    32, u32 from_u32 u32_assign i32 from_i32 i32_assign;
-    64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
-    128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
+    8, u8 from_u8 u8_ i8 from_i8 i8_;
+    16, u16 from_u16 u16_ i16 from_i16 i16_;
+    32, u32 from_u32 u32_ i32 from_i32 i32_;
+    64, u64 from_u64 u64_ i64 from_i64 i64_;
+    128, u128 from_u128 u128_ i128 from_i128 i128_;
 );
 
 type UsizeInlAwi =
@@ -255,13 +258,13 @@ type UsizeInlAwi =
 impl UsizeInlAwi {
     pub fn from_usize(x: impl Into<dag::usize>) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().usize_assign(x);
+        awi.const_as_mut().usize_(x);
         awi
     }
 
     pub fn from_isize(x: impl Into<dag::isize>) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().isize_assign(x);
+        awi.const_as_mut().isize_(x);
         awi
     }
 }
@@ -314,7 +317,7 @@ impl ExtAwi {
     }
 
     pub(crate) fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
-        Self::from_state(PState::new(nzbw, op))
+        Self::from_state(PState::new(nzbw, op, None))
     }
 
     pub fn nzbw(&self) -> NonZeroUsize {
@@ -329,58 +332,94 @@ impl ExtAwi {
         Self::from_state(bits.state())
     }
 
-    pub fn opaque(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Opaque(vec![]))
+    pub fn opaque(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Opaque(smallvec![], None))
     }
 
-    pub fn zero(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::zero(bw)))
+    pub fn zero(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::zero(w)))
     }
 
-    pub fn umax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::umax(bw)))
+    pub fn umax(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::umax(w)))
     }
 
-    pub fn imax(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::imax(bw)))
+    pub fn imax(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::imax(w)))
     }
 
-    pub fn imin(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::imin(bw)))
+    pub fn imin(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::imin(w)))
     }
 
-    pub fn uone(bw: NonZeroUsize) -> Self {
-        Self::new(bw, Op::Literal(awi::ExtAwi::uone(bw)))
-    }
-
-    #[doc(hidden)]
-    pub fn panicking_opaque(bw: awi::usize) -> Self {
-        Self::opaque(NonZeroUsize::new(bw).unwrap())
+    pub fn uone(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::uone(w)))
     }
 
     #[doc(hidden)]
-    pub fn panicking_zero(bw: awi::usize) -> Self {
-        Self::zero(NonZeroUsize::new(bw).unwrap())
+    #[track_caller]
+    pub fn panicking_opaque(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::opaque(NonZeroUsize::new(w).expect("called `panicking_opaque` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_umax(bw: awi::usize) -> Self {
-        Self::umax(NonZeroUsize::new(bw).unwrap())
+    #[track_caller]
+    pub fn panicking_zero(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::zero(NonZeroUsize::new(w).expect("called `panicking_zero` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_imax(bw: awi::usize) -> Self {
-        Self::imax(NonZeroUsize::new(bw).unwrap())
+    #[track_caller]
+    pub fn panicking_umax(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::umax(NonZeroUsize::new(w).expect("called `panicking_umax` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_imin(bw: awi::usize) -> Self {
-        Self::imin(NonZeroUsize::new(bw).unwrap())
+    #[track_caller]
+    pub fn panicking_imax(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::imax(NonZeroUsize::new(w).expect("called `panicking_imax` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 
     #[doc(hidden)]
-    pub fn panicking_uone(bw: awi::usize) -> Self {
-        Self::uone(NonZeroUsize::new(bw).unwrap())
+    #[track_caller]
+    pub fn panicking_imin(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::imin(NonZeroUsize::new(w).expect("called `panicking_imin` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_uone(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::uone(NonZeroUsize::new(w).expect("called `panicking_uone` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
     }
 }
 

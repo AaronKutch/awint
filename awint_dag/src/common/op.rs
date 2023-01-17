@@ -1,23 +1,45 @@
-use std::{
-    cmp,
-    fmt::{self, Debug},
-    hash, mem,
-    num::NonZeroUsize,
-};
+use std::{fmt::Debug, mem, num::NonZeroUsize};
 
-use awint_ext::ExtAwi;
+use awint_ext::{bw, ExtAwi};
+use smallvec::{smallvec, SmallVec};
 use Op::*;
 
-/// Mimicking operation
-#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
-pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> {
+use crate::PState;
+
+// Some types can't implement `Default`, we need some dummy `Default`-like trait
+#[doc(hidden)]
+pub trait DummyDefault {
+    fn default() -> Self;
+}
+
+impl DummyDefault for NonZeroUsize {
+    fn default() -> Self {
+        bw(1)
+    }
+}
+
+impl DummyDefault for ExtAwi {
+    fn default() -> Self {
+        ExtAwi::zero(bw(1))
+    }
+}
+
+impl DummyDefault for PState {
+    fn default() -> Self {
+        Default::default()
+    }
+}
+
+/// A mimicking `Op`eration
+#[derive(Debug, Default, Clone)]
+pub enum Op<T: Debug + DummyDefault + Clone> {
     // A state used transiently by some algorithms, will cause errors if reached
     #[default]
     Invalid,
 
     // represents an unknown, arbitrary, or opaque-boxed source or sink (can have any number of
     // operands)
-    Opaque(Vec<T>),
+    Opaque(SmallVec<[T; 2]>, Option<&'static str>),
 
     // literal assign
     Literal(ExtAwi),
@@ -32,7 +54,7 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
 
     // note: we encourage common assembly code paths by putting the arrays first
 
-    // These functions are special because they need self width or downstream width to operate. In
+    // These functions are special because they need self width or upstream width to operate. In
     // earlier versions these all had fields for size, but only the overflow variants actually
     // need it because their self width is a single bit and they are effectively parameterized
     Resize([T; 2]),
@@ -51,7 +73,7 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
     URem([T; 2]),
     IQuo([T; 2]),
     IRem([T; 2]),
-    MulAdd([T; 3]),
+    ArbMulAdd([T; 3]),
     CinSum([T; 3]),
     UnsignedOverflow([T; 3]),
     SignedOverflow([T; 3]),
@@ -116,21 +138,25 @@ pub enum Op<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> 
 
 macro_rules! map1 {
     ($map:ident, $v:ident) => {{
-        let mut res = [Default::default()];
+        let mut res = [DummyDefault::default()];
         $map(&mut res, $v);
         res
     }};
 }
 macro_rules! map2 {
     ($map:ident, $v:ident) => {{
-        let mut res = [Default::default(), Default::default()];
+        let mut res = [DummyDefault::default(), DummyDefault::default()];
         $map(&mut res, $v);
         res
     }};
 }
 macro_rules! map3 {
     ($map:ident, $v:ident) => {{
-        let mut res = [Default::default(), Default::default(), Default::default()];
+        let mut res = [
+            DummyDefault::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
+        ];
         $map(&mut res, $v);
         res
     }};
@@ -138,17 +164,17 @@ macro_rules! map3 {
 macro_rules! map4 {
     ($map:ident, $v:ident) => {{
         let mut res = [
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
+            DummyDefault::default(),
         ];
         $map(&mut res, $v);
         res
     }};
 }
 
-impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
+impl<T: Debug + DummyDefault + Clone> Op<T> {
     /// This replaces `self` with `Invalid` and moves out literals without
     /// cloning them
     pub fn take(&mut self) -> Self {
@@ -162,7 +188,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
 
     /// Returns if `self` is an `Opaque`
     pub fn is_opaque(&self) -> bool {
-        matches!(self, Opaque(_))
+        matches!(self, Opaque(_, _))
     }
 
     /// Returns if `self` is an `Invalid`
@@ -174,7 +200,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
     pub fn operation_name(&self) -> &'static str {
         match *self {
             Invalid => "invalid",
-            Opaque(_) => "opaque",
+            Opaque(_, name) => name.unwrap_or("opaque"),
             Literal(_) => "literal",
             StaticLut(..) => "static_lut",
             StaticGet(..) => "static_get",
@@ -186,12 +212,12 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             SignResizeOverflow(..) => "sign_resize_overflow",
             Lut(..) => "lut",
             Copy(_) => "copy",
-            Funnel(_) => "funnel",
+            Funnel(_) => "funnel_",
             UQuo(_) => "uquo",
             URem(_) => "urem",
             IQuo(_) => "iquo",
             IRem(_) => "irem",
-            MulAdd(_) => "mul_add",
+            ArbMulAdd(_) => "mul_add",
             CinSum(_) => "cin_sum",
             UnsignedOverflow(_) => "unsigned_overflow",
             SignedOverflow(_) => "signed_overflow",
@@ -248,7 +274,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         let mut v = vec![];
         // add common "lhs"
         match *self {
-            Invalid | Opaque(_) | Literal(_) => (),
+            Invalid | Opaque(..) | Literal(_) => (),
             StaticLut(..) => v.push("inx"),
             StaticGet(..) => v.push("x"),
             StaticSet(..) => {
@@ -279,7 +305,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
                 v.push("duo");
                 v.push("div");
             }
-            MulAdd(_) => {
+            ArbMulAdd(_) => {
                 v.push("add");
                 v.push("lhs");
                 v.push("rhs");
@@ -356,7 +382,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
     pub fn operands(&self) -> &[T] {
         match self {
             Invalid => &[],
-            Opaque(v) => v,
+            Opaque(v, _) => v,
             Literal(_) => &[],
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
@@ -373,7 +399,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             URem(v) => v,
             IQuo(v) => v,
             IRem(v) => v,
-            MulAdd(v) => v,
+            ArbMulAdd(v) => v,
             CinSum(v) => v,
             UnsignedOverflow(v) => v,
             SignedOverflow(v) => v,
@@ -428,7 +454,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
     pub fn operands_mut(&mut self) -> &mut [T] {
         match self {
             Invalid => &mut [],
-            Opaque(v) => v,
+            Opaque(v, _) => v,
             Literal(_) => &mut [],
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
@@ -445,7 +471,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             URem(v) => v,
             IQuo(v) => v,
             IRem(v) => v,
-            MulAdd(v) => v,
+            ArbMulAdd(v) => v,
             CinSum(v) => v,
             UnsignedOverflow(v) => v,
             SignedOverflow(v) => v,
@@ -497,20 +523,18 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
         }
     }
 
-    pub fn num_operands(&self) -> usize {
+    pub fn operands_len(&self) -> usize {
         self.operands().len()
     }
 
     /// If `this` has no operands (including `Opaque`s with empty `Vec`s) then
     /// this translation succeeds.
-    pub fn translate_root<U: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq>(
-        this: &Op<U>,
-    ) -> Option<Self> {
+    pub fn translate_root<U: Debug + DummyDefault + Clone>(this: &Op<U>) -> Option<Self> {
         match this {
             Invalid => Some(Invalid),
-            Opaque(v) => {
+            Opaque(v, name) => {
                 if v.is_empty() {
-                    Some(Opaque(vec![]))
+                    Some(Opaque(smallvec![], *name))
                 } else {
                     None
                 }
@@ -522,18 +546,15 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
 
     // this is structured this way to avoid excessive allocations after the initial
     // mimick stage
-    pub fn translate<
-        U: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq,
-        F: FnMut(&mut [T], &[U]),
-    >(
+    pub fn translate<U: Debug + DummyDefault + Clone, F: FnMut(&mut [T], &[U])>(
         this: &Op<U>,
         map: F,
     ) -> Self {
         let mut m = map;
         match this {
             Invalid => Invalid,
-            Opaque(v) => {
-                let mut res = Opaque(vec![Default::default(); v.len()]);
+            Opaque(v, name) => {
+                let mut res = Opaque(smallvec![DummyDefault::default(); v.len()], *name);
                 m(res.operands_mut(), this.operands());
                 res
             }
@@ -553,7 +574,7 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             URem(v) => URem(map2!(m, v)),
             IQuo(v) => IQuo(map2!(m, v)),
             IRem(v) => IRem(map2!(m, v)),
-            MulAdd(v) => MulAdd(map3!(m, v)),
+            ArbMulAdd(v) => ArbMulAdd(map3!(m, v)),
             CinSum(v) => CinSum(map3!(m, v)),
             UnsignedOverflow(v) => UnsignedOverflow(map3!(m, v)),
             SignedOverflow(v) => SignedOverflow(map3!(m, v)),
@@ -599,11 +620,11 @@ impl<T: fmt::Debug + Default + Clone + hash::Hash + PartialEq + cmp::Eq> Op<T> {
             LutSet(v) => LutSet(map3!(m, v)),
             Field(_) => {
                 let mut res = Field([
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
+                    DummyDefault::default(),
                 ]);
                 m(res.operands_mut(), this.operands());
                 res

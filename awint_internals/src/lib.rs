@@ -1,14 +1,21 @@
-//! This crate contains common utilities for crates within the `awint` system.
-//! Some of these are highly unsafe macros that were only placed here because
+//! This crate contains common developer utilities for crates within the `awint`
+//! system, such as macros that needed a separate crate because
 //! `#[macro_export]` unconditionally causes macros to be publicly accessible.
-//! To prevent them from being accessible from intended user-facing crates, this
-//! `_internals` crate was made. The safety requirements of these macros may
-//! change over time, so this crate should never be used outside of this system.
+//! In rare circumstances, someone might want to use the items here for new
+//! storage types or highly optimized routines, but most users should never have
+//! to interact with this. Be aware that safety requirements can change over
+//! time, check `bits.rs` under `awint_core`.
+//!
+//! There is a hidden reexport of this crate for `awint_core`, `awint_ext`, and
+//! `awint`.
 
 #![no_std]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
 #![allow(clippy::needless_range_loop)]
+
+// TODO when const traits are stabilized, try introducing the `BitsInternals`
+// trait again
 
 mod macros;
 mod serde_common;
@@ -23,62 +30,76 @@ pub const BITS: usize = usize::BITS as usize;
 /// Maximum value of an inline `Awi`
 pub const MAX: usize = usize::MAX;
 
+/// Subset of `awint::awi`
+pub mod awi {
+    // everything except for `char`, `str`, `f32`, and `f64`
+    pub use core::{
+        assert, assert_eq, assert_ne,
+        primitive::{bool, i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize},
+    };
+
+    pub use Option::{self, None, Some};
+    pub use Result::{self, Err, Ok};
+
+    pub use crate::bw;
+}
+
 /// Utility free function for converting a `usize` to a `NonZeroUsize`. This is
 /// mainly intended for usage with literals, and shouldn't be used for fallible
 /// conversions.
 ///
 /// # Panics
 ///
-/// If `bw == 0`, this function will panic.
+/// If `w == 0`, this function will panic.
 #[inline]
 #[track_caller]
-pub const fn bw(bw: usize) -> NonZeroUsize {
-    match NonZeroUsize::new(bw) {
+pub const fn bw(w: usize) -> NonZeroUsize {
+    match NonZeroUsize::new(w) {
         None => {
             panic!("tried to construct an invalid bitwidth of 0 using the `awint::bw` function")
         }
-        Some(bw) => bw,
+        Some(w) => w,
     }
 }
 
-/// Returns the number of extra bits given `bw`
+/// Returns the number of extra bits given `w`
 #[inline]
-pub const fn extra_u(bw: usize) -> usize {
-    bw & (BITS - 1)
+pub const fn extra_u(w: usize) -> usize {
+    w & (BITS - 1)
 }
 
 /// Returns the number of _whole_ digits (not including a digit with unused
-/// bits) given `bw`
+/// bits) given `w`
 #[inline]
-pub const fn digits_u(bw: usize) -> usize {
-    bw.wrapping_shr(BITS.trailing_zeros())
+pub const fn digits_u(w: usize) -> usize {
+    w.wrapping_shr(BITS.trailing_zeros())
 }
 
-/// Returns the number of extra bits given `bw`
+/// Returns the number of extra bits given `w`
 #[inline]
-pub const fn extra(bw: NonZeroUsize) -> usize {
-    extra_u(bw.get())
+pub const fn extra(w: NonZeroUsize) -> usize {
+    extra_u(w.get())
 }
 
 /// Returns the number of _whole_ digits (not including a digit with unused
-/// bits) given `bw`
+/// bits) given `w`
 #[inline]
-pub const fn digits(bw: NonZeroUsize) -> usize {
-    digits_u(bw.get())
+pub const fn digits(w: NonZeroUsize) -> usize {
+    digits_u(w.get())
 }
 
-/// Returns the number of `usize` digits needed to represent `bw`, including any
+/// Returns the number of `usize` digits needed to represent `w`, including any
 /// digit with unused bits
 #[inline]
-pub const fn regular_digits(bw: NonZeroUsize) -> usize {
-    digits(bw).wrapping_add((extra(bw) != 0) as usize)
+pub const fn regular_digits(w: NonZeroUsize) -> usize {
+    digits(w).wrapping_add((extra(w) != 0) as usize)
 }
 
 /// Returns `regular_digits + 1` to account for the bitwidth digit
 #[inline]
-pub const fn raw_digits(bw: usize) -> usize {
-    digits_u(bw)
-        .wrapping_add((extra_u(bw) != 0) as usize)
+pub const fn raw_digits(w: usize) -> usize {
+    digits_u(w)
+        .wrapping_add((extra_u(w) != 0) as usize)
         .wrapping_add(1)
 }
 
@@ -117,8 +138,8 @@ pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(r
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
     }
-    let bw = raw[raw.len() - 1];
-    if bw != BW {
+    let w = raw[raw.len() - 1];
+    if w != BW {
         panic!("bitwidth digit does not equal BW")
     }
 }
@@ -172,7 +193,7 @@ pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u1
     // tmp1 and tmp2 straddle the boundary. We have to handle three carries
     let (sum0, carry0) = tmp0.overflowing_add(tmp1.wrapping_shl(64));
     let (sum0, carry1) = sum0.overflowing_add(tmp2.wrapping_shl(64));
-    let (sum0, carry2) = sum0.overflowing_add(add as u128);
+    let (sum0, carry2) = sum0.overflowing_add(add);
     let sum1 = tmp3
         .wrapping_add(tmp1.wrapping_shr(64))
         .wrapping_add(tmp2.wrapping_shr(64))
@@ -247,4 +268,12 @@ pub const fn dd_division(
         64, u128;
         // TODO fix this for 128 bits
     )
+}
+
+/// Location for an item in the source code
+#[derive(Debug, Clone, Copy)]
+pub struct Location {
+    pub file: &'static str,
+    pub line: u32,
+    pub col: u32,
 }

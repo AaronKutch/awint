@@ -3,22 +3,23 @@ use std::{
     fs::{File, OpenOptions},
 };
 
-use awint_macro_internals::{cc_macro, CodeGen, FnNames, AWINT_NAMES};
+use awint::awint_macro_internals::{cc_macro, CodeGen, FnNames, AWINT_NAMES};
 
 const TEST_FN_NAMES: FnNames = FnNames {
     get_bw: "bw",
     mut_bits_ref: "&mut B",
     bits_ref: "&B",
-    le_fn: "le",
-    common_fn: "c_fn",
+    usize_cast: "cast",
+    usize_add: "add",
+    usize_sub: "sub",
     max_fn: "max",
-    copy_assign: "copy",
+    cc_checks_fn: "check_fn",
+    copy_: "copy",
     field: "field",
     field_to: "field_to",
     field_from: "field_from",
     field_width: "field_width",
     field_bit: "field_bit",
-    unwrap: ".unwrap()",
     bw_call: &['.', 'b', 'w', '(', ')'],
 };
 
@@ -26,8 +27,8 @@ fn cc(mut f: impl Write, input: &str) {
     let code_gen = CodeGen {
         static_width: false,
         return_type: None,
-        must_use: |s| format!("mu({})", s),
-        lit_construction_fn: |awi| format!("lit({})", awi),
+        must_use: |s| format!("mu({s})"),
+        lit_construction_fn: |awi| format!("lit({awi})"),
         construction_fn: |s, w, d| {
             format!(
                 "awi({},{:?},{:?})",
@@ -40,10 +41,10 @@ fn cc(mut f: impl Write, input: &str) {
     };
     match cc_macro(input, code_gen, AWINT_NAMES) {
         Ok(s) => {
-            writeln!(f, "{}\nOk:\n{}\n\n", input, s).unwrap();
+            writeln!(f, "{input}\nOk:\n{s}\n\n").unwrap();
         }
         Err(e) => {
-            writeln!(f, "{}\nErr:\n{}\n\n", input, e).unwrap();
+            writeln!(f, "{input}\nErr:\n{e}\n\n").unwrap();
         }
     }
 }
@@ -52,8 +53,8 @@ fn static_cc(mut f: impl Write, input: &str) {
     let code_gen = CodeGen {
         static_width: true,
         return_type: Some("StaticAwi"),
-        must_use: |s| format!("mu({})", s),
-        lit_construction_fn: |awi| format!("lit({})", awi),
+        must_use: |s| format!("mu({s})"),
+        lit_construction_fn: |awi| format!("lit({awi})"),
         construction_fn: |s, w, d| {
             format!(
                 "awi({},{:?},{:?})",
@@ -66,10 +67,10 @@ fn static_cc(mut f: impl Write, input: &str) {
     };
     match cc_macro(input, code_gen, AWINT_NAMES) {
         Ok(s) => {
-            writeln!(f, "{}\nOk:\n{}\n\n", input, s).unwrap();
+            writeln!(f, "{input}\nOk:\n{s}\n\n").unwrap();
         }
         Err(e) => {
-            writeln!(f, "{}\nErr:\n{}\n\n", input, e).unwrap();
+            writeln!(f, "{input}\nErr:\n{e}\n\n").unwrap();
         }
     }
 }
@@ -78,8 +79,8 @@ fn dynamic_cc(mut f: impl Write, input: &str) {
     let code_gen = CodeGen {
         static_width: false,
         return_type: Some("DynamicAwi"),
-        must_use: |s| format!("mu({})", s),
-        lit_construction_fn: |awi| format!("lit({})", awi),
+        must_use: |s| format!("mu({s})"),
+        lit_construction_fn: |awi| format!("lit({awi})"),
         construction_fn: |s, w, d| {
             format!(
                 "awi({},{:?},{:?})",
@@ -92,10 +93,10 @@ fn dynamic_cc(mut f: impl Write, input: &str) {
     };
     match cc_macro(input, code_gen, AWINT_NAMES) {
         Ok(s) => {
-            writeln!(f, "{}\nOk:\n{}\n\n", input, s).unwrap();
+            writeln!(f, "{input}\nOk:\n{s}\n\n").unwrap();
         }
         Err(e) => {
-            writeln!(f, "{}\nErr:\n{}\n\n", input, e).unwrap();
+            writeln!(f, "{input}\nErr:\n{e}\n\n").unwrap();
         }
     }
 }

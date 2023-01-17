@@ -21,7 +21,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn is_zero(&self) -> bool {
-        for_each!(self, x, {
+        unsafe_for_each!(self, x, {
             if x != 0 {
                 return false
             }
@@ -33,7 +33,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn is_umax(&self) -> bool {
-        for_each!(self, x, {0..(self.len() - 1)} {
+        unsafe_for_each!(self, x, {0..(self.len() - 1)} {
             if x != MAX {
                 return false
             }
@@ -49,7 +49,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn is_imax(&self) -> bool {
-        for_each!(self, x, {0..(self.len() - 1)} {
+        unsafe_for_each!(self, x, {0..(self.len() - 1)} {
             if x != MAX {
                 return false
             }
@@ -65,7 +65,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn is_imin(&self) -> bool {
-        for_each!(self, x, {0..(self.len() - 1)} {
+        unsafe_for_each!(self, x, {0..(self.len() - 1)} {
             if x != 0 {
                 return false
             }
@@ -84,7 +84,7 @@ impl Bits {
         if self.first() != 1 {
             return false
         }
-        for_each!(self, x, {1..self.len()} {
+        unsafe_for_each!(self, x, {1..self.len()} {
             if x != 0 {
                 return false
             }
@@ -96,7 +96,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn const_eq(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
+        unsafe_binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x != y {
                 return Some(false)
             }
@@ -108,7 +108,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn const_ne(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
+        unsafe_binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x != y {
                 return Some(true)
             }
@@ -120,7 +120,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn ult(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
+        unsafe_binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
                 return Some(true)
             } else if x != y {
@@ -135,7 +135,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn ule(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
+        unsafe_binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
                 return Some(true)
             } else if x != y {
@@ -149,7 +149,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn ugt(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
+        unsafe_binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
                 return Some(false)
             } else if x != y {
@@ -163,7 +163,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn uge(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
+        unsafe_binop_for_each!(self, rhs, x, y, {0..self.len()}.rev() {
             if x < y {
                 return Some(false)
             } else if x != y {
@@ -177,7 +177,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn ilt(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {
+        unsafe_binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
                 return Some(self.msb())
             }
@@ -196,7 +196,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn ile(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {
+        unsafe_binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
                 return Some(self.msb())
             }
@@ -215,7 +215,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn igt(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {
+        unsafe_binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
                 return Some(rhs.msb())
             }
@@ -234,7 +234,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn ige(&self, rhs: &Self) -> Option<bool> {
-        binop_for_each!(self, rhs, x, y, {
+        unsafe_binop_for_each!(self, rhs, x, y, {
             if self.msb() != rhs.msb() {
                 return Some(rhs.msb())
             }

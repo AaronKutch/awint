@@ -2,25 +2,25 @@
 
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint_core::bw;
+use awint_ext::bw;
 use awint_macros::{extawi, inlawi};
 
 use crate::{
-    lowering::{meta::*, Dag, PNode},
+    lowering::{meta::*, OpDag, PNode},
     mimick::{Bits, ExtAwi, InlAwi},
     EvalError, Lineage,
-    Op::*,
+    Op::{self, *},
     StateEpoch,
 };
 
-impl Dag {
+impl OpDag {
     /// Lowers everything down to `Invalid`, `Opaque`, `Copy`, `StaticGet`,
-    /// `StaticSet`, and `StaticLut`. New nodes that may be unlowered are
+    /// `StaticSet`, and `StaticLut`. Nodes that get lowered are
     /// colored with `visit`. Returns `true` if the node is already lowered.
     pub fn lower_node(&mut self, ptr: PNode, visit: u64) -> Result<bool, EvalError> {
         // create a temporary epoch for the grafting in this function
         let epoch = StateEpoch::new();
-        if !self.dag.contains(ptr) {
+        if !self.a.contains(ptr) {
             return Err(EvalError::InvalidPtr)
         }
         let start_op = self[ptr].op.clone();
@@ -28,7 +28,7 @@ impl Dag {
         let v = visit;
         match start_op {
             Invalid => return Err(EvalError::OtherStr("encountered `Invalid` in lowering")),
-            Opaque(_) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
+            Opaque(..) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
                 return Ok(true)
             }
             Lut([lut, inx]) => {
@@ -40,7 +40,7 @@ impl Dag {
                     let lut = ExtAwi::opaque(self.get_bw(lut));
                     let inx = ExtAwi::opaque(self.get_bw(inx));
                     dynamic_to_static_lut(&mut out, &lut, &inx);
-                    self.graft(ptr, v, &[out.state(), lut.state(), inx.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), lut.state(), inx.state()])?;
                 }
             }
             Get([bits, inx]) => {
@@ -51,7 +51,7 @@ impl Dag {
                     let bits = ExtAwi::opaque(self.get_bw(bits));
                     let inx = ExtAwi::opaque(self.get_bw(inx));
                     let out = dynamic_to_static_get(&bits, &inx);
-                    self.graft(ptr, v, &[out.state(), bits.state(), inx.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), bits.state(), inx.state()])?;
                 }
             }
             Set([bits, inx, bit]) => {
@@ -63,7 +63,7 @@ impl Dag {
                     let inx = ExtAwi::opaque(self.get_bw(inx));
                     let bit = ExtAwi::opaque(self.get_bw(bit));
                     let out = dynamic_to_static_set(&bits, &inx, &bit);
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         bits.state(),
                         inx.state(),
@@ -80,7 +80,7 @@ impl Dag {
                 // keep `lhs` the same, `out` has the set bit
                 let mut out = lhs.clone();
                 out.set(to.to_usize(), bit).unwrap();
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     lhs.state(),
                     to.state(),
@@ -91,46 +91,52 @@ impl Dag {
             ZeroResize([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = resize(&x, out_w, false);
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             SignResize([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = resize(&x, out_w, true);
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Resize([x, b]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let b = ExtAwi::opaque(self.get_bw(b));
                 let out = resize_cond(&x, out_w, &b);
-                self.graft(ptr, v, &[out.state(), x.state(), b.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), b.state()])?;
             }
             Lsb([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = x.get(0).unwrap();
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Msb([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = x.get(x.bw() - 1).unwrap();
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             FieldWidth([lhs, rhs, width]) => {
+                let lhs_bw = self.get_bw(lhs);
+                let rhs_bw = self.get_bw(rhs);
                 if self[width].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let out = static_field(&lhs, 0, &rhs, 0, self.usize(width).unwrap());
-                    self.graft(ptr, v, &[
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
+                    let out = static_field(&lhs, 0, &rhs, 0, self.usize(width).unwrap()).0;
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         rhs.state(),
                         ExtAwi::opaque(self.get_bw(width)).state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
                     let width = ExtAwi::opaque(self.get_bw(width));
-                    let out = field_width(&lhs, &rhs, &width);
-                    self.graft(ptr, v, &[
+                    let fail = width.ugt(&InlAwi::from_usize(lhs_bw.get())).unwrap()
+                        | width.ugt(&InlAwi::from_usize(rhs_bw.get())).unwrap();
+                    let mut tmp_width = width.clone();
+                    tmp_width.mux_(&InlAwi::from_usize(0), fail).unwrap();
+                    let out = field_width(&lhs, &rhs, &tmp_width);
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         rhs.state(),
@@ -141,25 +147,31 @@ impl Dag {
             Funnel([x, s]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let s = ExtAwi::opaque(self.get_bw(s));
-                let out = funnel(&x, &s);
-                self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                let out = funnel_(&x, &s);
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
             }
             FieldFrom([lhs, rhs, from, width]) => {
+                let lhs_bw = self.get_bw(lhs);
+                let rhs_bw = self.get_bw(rhs);
                 if self[from].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
                     let width = ExtAwi::opaque(self.get_bw(width));
                     let from_u = self.usize(from)?;
                     let out = if let Some(w) = NonZeroUsize::new(rhs.bw() - from_u) {
                         let tmp0 = ExtAwi::zero(w);
-                        let tmp1 = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
+                        let (tmp1, o) = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
                         let mut out = lhs.clone();
-                        out.field_width(&tmp1, width.to_usize()).unwrap();
-                        out
+                        if o {
+                            out
+                        } else {
+                            out.field_width(&tmp1, width.to_usize()).unwrap();
+                            out
+                        }
                     } else {
                         lhs.clone()
                     };
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         rhs.state(),
@@ -167,13 +179,19 @@ impl Dag {
                         width.state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                    let lhs = ExtAwi::opaque(lhs_bw);
+                    let rhs = ExtAwi::opaque(rhs_bw);
                     let from = ExtAwi::opaque(self.get_bw(from));
                     let width = ExtAwi::opaque(self.get_bw(width));
+                    let mut tmp = InlAwi::from_usize(rhs_bw.get());
+                    tmp.sub_(&width).unwrap();
+                    // the other two fail conditions are in `field_width`
+                    let fail = from.ugt(&tmp).unwrap();
+                    let mut tmp_width = width.clone();
+                    tmp_width.mux_(&InlAwi::from_usize(0), fail).unwrap();
                     // the optimizations on `width` are done later on an inner `field_width` call
-                    let out = field_from(&lhs, &rhs, &from, &width);
-                    self.graft(ptr, v, &[
+                    let out = field_from(&lhs, &rhs, &from, &tmp_width);
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         rhs.state(),
@@ -187,8 +205,8 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
                     let tmp = ExtAwi::zero(x.nzbw());
-                    let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u);
-                    self.graft(ptr, v, &[
+                    let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u).0;
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
                         ExtAwi::opaque(self.get_bw(s)).state(),
@@ -197,7 +215,7 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = shl(&x, &s);
-                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Lshr([x, s]) => {
@@ -205,8 +223,8 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
                     let tmp = ExtAwi::zero(x.nzbw());
-                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
-                    self.graft(ptr, v, &[
+                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
                         ExtAwi::opaque(self.get_bw(s)).state(),
@@ -215,7 +233,7 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = lshr(&x, &s);
-                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Ashr([x, s]) => {
@@ -226,8 +244,8 @@ impl Dag {
                     for i in 0..x.bw() {
                         tmp.set(i, x.msb()).unwrap();
                     }
-                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u);
-                    self.graft(ptr, v, &[
+                    let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
                         ExtAwi::opaque(self.get_bw(s)).state(),
@@ -236,7 +254,7 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = ashr(&x, &s);
-                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Rotl([x, s]) => {
@@ -246,10 +264,10 @@ impl Dag {
                     let out = if s_u == 0 {
                         x.clone()
                     } else {
-                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u);
-                        static_field(&tmp, 0, &x, x.bw() - s_u, s_u)
+                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u).0;
+                        static_field(&tmp, 0, &x, x.bw() - s_u, s_u).0
                     };
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
                         ExtAwi::opaque(self.get_bw(s)).state(),
@@ -258,7 +276,7 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = rotl(&x, &s);
-                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Rotr([x, s]) => {
@@ -268,10 +286,10 @@ impl Dag {
                     let out = if s_u == 0 {
                         x.clone()
                     } else {
-                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u);
-                        static_field(&tmp, x.bw() - s_u, &x, 0, s_u)
+                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u).0;
+                        static_field(&tmp, x.bw() - s_u, &x, 0, s_u).0
                     };
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
                         ExtAwi::opaque(self.get_bw(s)).state(),
@@ -280,62 +298,62 @@ impl Dag {
                     let x = ExtAwi::opaque(self.get_bw(x));
                     let s = ExtAwi::opaque(self.get_bw(s));
                     let out = rotr(&x, &s);
-                    self.graft(ptr, v, &[out.state(), x.state(), s.state()])?;
+                    self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Not([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = bitwise_not(&x);
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Or([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(1110));
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             And([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(1000));
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Xor([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(0110));
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Inc([x, cin]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, false).0;
-                self.graft(ptr, v, &[out.state(), x.state(), cin.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             IncCout([x, cin]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, false).1;
-                self.graft(ptr, v, &[out.state(), x.state(), cin.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             Dec([x, cin]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, true).0;
-                self.graft(ptr, v, &[out.state(), x.state(), cin.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             DecCout([x, cin]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let cin = ExtAwi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, true).1;
-                self.graft(ptr, v, &[out.state(), x.state(), cin.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             CinSum([cin, lhs, rhs]) => {
                 let cin = ExtAwi::opaque(self.get_bw(cin));
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).0;
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     cin.state(),
                     lhs.state(),
@@ -347,7 +365,7 @@ impl Dag {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).1;
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     cin.state(),
                     lhs.state(),
@@ -359,7 +377,7 @@ impl Dag {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).2;
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     cin.state(),
                     lhs.state(),
@@ -371,36 +389,36 @@ impl Dag {
                 let neg = ExtAwi::opaque(self.get_bw(neg));
                 assert_eq!(neg.bw(), 1);
                 let out = negator(&x, &neg);
-                self.graft(ptr, v, &[out.state(), x.state(), neg.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state(), neg.state()])?;
             }
             Abs([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let mut out = x.clone();
-                out.neg_assign(x.msb());
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                out.neg_(x.msb());
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Add([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&inlawi!(0), &lhs, &rhs).0;
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Sub([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut rhs_tmp = rhs.clone();
-                rhs_tmp.neg_assign(true);
+                rhs_tmp.neg_(true);
                 let mut out = lhs.clone();
-                out.add_assign(&rhs_tmp).unwrap();
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                out.add_(&rhs_tmp).unwrap();
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Rsb([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut out = lhs.clone();
-                out.neg_assign(true);
-                out.add_assign(&rhs).unwrap();
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                out.neg_(true);
+                out.add_(&rhs).unwrap();
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             FieldTo([lhs, to, rhs, width]) => {
                 if self[to].op.is_literal() {
@@ -410,13 +428,18 @@ impl Dag {
                     let width = ExtAwi::opaque(self.get_bw(width));
 
                     let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
-                        let mut lhs_hi = static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
+                        let (mut lhs_hi, o) =
+                            static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
                         lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
-                        static_field(&lhs, to_u, &lhs_hi, 0, w.get())
+                        if o {
+                            lhs.clone()
+                        } else {
+                            static_field(&lhs, to_u, &lhs_hi, 0, w.get()).0
+                        }
                     } else {
                         lhs.clone()
                     };
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         ExtAwi::opaque(self.get_bw(to)).state(),
@@ -429,7 +452,7 @@ impl Dag {
                     let rhs = ExtAwi::opaque(self.get_bw(rhs));
                     let width = ExtAwi::opaque(self.get_bw(width));
                     let out = field_to(&lhs, &to, &rhs, &width);
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         to.state(),
@@ -453,7 +476,7 @@ impl Dag {
                     let mut out = lhs.clone();
                     out.field_to(to.to_usize(), &tmp, width.to_usize()).unwrap();
 
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         to.state(),
@@ -468,7 +491,7 @@ impl Dag {
                     let from = ExtAwi::opaque(self.get_bw(from));
                     let width = ExtAwi::opaque(self.get_bw(width));
                     let out = field(&lhs, &to, &rhs, &from, &width);
-                    self.graft(ptr, v, &[
+                    self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         to.state(),
@@ -484,42 +507,42 @@ impl Dag {
                 for i in 0..x.bw() {
                     out.set(i, x.get(x.bw() - 1 - i).unwrap()).unwrap()
                 }
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Eq([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = equal(&lhs, &rhs);
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ne([lhs, rhs]) => {
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut out = equal(&lhs, &rhs);
-                out.not_assign();
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                out.not_();
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ult([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
                 let lhs = ExtAwi::opaque(w);
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut not_lhs = lhs.clone();
-                not_lhs.not_assign();
+                not_lhs.not_();
                 let mut tmp = ExtAwi::zero(w);
                 // TODO should probably use some short termination circuit like what
                 // `tsmear_inx` uses
-                let (out, _) = tmp.cin_sum_assign(false, &not_lhs, &rhs).unwrap();
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                let (out, _) = tmp.cin_sum_(false, &not_lhs, &rhs).unwrap();
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ule([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
                 let lhs = ExtAwi::opaque(w);
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let mut not_lhs = lhs.clone();
-                not_lhs.not_assign();
+                not_lhs.not_();
                 let mut tmp = ExtAwi::zero(w);
-                let (out, _) = tmp.cin_sum_assign(true, &not_lhs, &rhs).unwrap();
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                let (out, _) = tmp.cin_sum_(true, &not_lhs, &rhs).unwrap();
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ilt([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
@@ -530,7 +553,7 @@ impl Dag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, lhs.msb()).unwrap();
                     tmp.set(1, rhs.msb()).unwrap();
-                    out.lut_assign(&inlawi!(0010), &tmp).unwrap();
+                    out.lut_(&inlawi!(0010), &tmp).unwrap();
                 } else {
                     let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
                     let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
@@ -541,9 +564,9 @@ impl Dag {
                     tmp.set(2, rhs.msb()).unwrap();
                     // if `lhs.msb() != rhs.msb()` then `lhs.msb()` determines signed-less-than,
                     // otherwise `lo_lt` determines
-                    out.lut_assign(&inlawi!(10001110), &tmp).unwrap();
+                    out.lut_(&inlawi!(10001110), &tmp).unwrap();
                 }
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ile([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
@@ -554,7 +577,7 @@ impl Dag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, lhs.msb()).unwrap();
                     tmp.set(1, rhs.msb()).unwrap();
-                    out.lut_assign(&inlawi!(1011), &tmp).unwrap();
+                    out.lut_(&inlawi!(1011), &tmp).unwrap();
                 } else {
                     let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
                     let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
@@ -563,9 +586,9 @@ impl Dag {
                     tmp.set(0, lo_lt).unwrap();
                     tmp.set(1, lhs.msb()).unwrap();
                     tmp.set(2, rhs.msb()).unwrap();
-                    out.lut_assign(&inlawi!(10001110), &tmp).unwrap();
+                    out.lut_(&inlawi!(10001110), &tmp).unwrap();
                 }
-                self.graft(ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             op @ (IsZero(_) | IsUmax(_) | IsImax(_) | IsImin(_) | IsUone(_)) => {
                 let x = ExtAwi::opaque(self.get_bw(op.operands()[0]));
@@ -578,34 +601,34 @@ impl Dag {
                     IsUone(_) => x.const_eq(&extawi!(uone: ..w).unwrap()).unwrap(),
                     _ => unreachable!(),
                 });
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             CountOnes([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = count_ones(&x).to_usize();
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Lz([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = leading_zeros(&x).to_usize();
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Tz([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = trailing_zeros(&x).to_usize();
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Sig([x]) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
                 let out = significant_bits(&x).to_usize();
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             LutSet([table, entry, inx]) => {
                 let table = ExtAwi::opaque(self.get_bw(table));
                 let entry = ExtAwi::opaque(self.get_bw(entry));
                 let inx = ExtAwi::opaque(self.get_bw(inx));
                 let out = lut_set(&table, &entry, &inx);
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     table.state(),
                     entry.state(),
@@ -617,9 +640,9 @@ impl Dag {
                 let mut out = ExtAwi::zero(bw(1));
                 let w = w.get();
                 if w < x.bw() {
-                    out.bool_assign(!extawi!(x[w..]).unwrap().is_zero());
+                    out.bool_(!extawi!(x[w..]).unwrap().is_zero());
                 }
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             SignResizeOverflow([x], w) => {
                 let x = ExtAwi::opaque(self.get_bw(x));
@@ -631,17 +654,17 @@ impl Dag {
                     let mut tmp = inlawi!(00);
                     tmp.set(0, critical.is_zero()).unwrap();
                     tmp.set(1, critical.is_umax()).unwrap();
-                    out.lut_assign(&inlawi!(1001), &tmp).unwrap();
+                    out.lut_(&inlawi!(1001), &tmp).unwrap();
                 }
-                self.graft(ptr, v, &[out.state(), x.state()])?;
+                self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
-            MulAdd([add, lhs, rhs]) => {
+            ArbMulAdd([add, lhs, rhs]) => {
                 let w = self.get_bw(add);
                 let add = ExtAwi::opaque(w);
                 let lhs = ExtAwi::opaque(self.get_bw(lhs));
                 let rhs = ExtAwi::opaque(self.get_bw(rhs));
                 let out = mul_add(w, Some(&add), &lhs, &rhs);
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     add.state(),
                     lhs.state(),
@@ -660,9 +683,9 @@ impl Dag {
                         x0.clone()
                     }
                 } else {
-                    mux_assign(&x0, &x1, &inx_tmp)
+                    mux_(&x0, &x1, &inx_tmp)
                 };
-                self.graft(ptr, v, &[
+                self.graft(epoch, ptr, v, &[
                     out.state(),
                     x0.state(),
                     x1.state(),
@@ -675,13 +698,13 @@ impl Dag {
                 let duo = ExtAwi::opaque(self.get_bw(duo));
                 let div = ExtAwi::opaque(self.get_bw(div));
                 let quo = division(&duo, &div).0;
-                self.graft(ptr, v, &[quo.state(), duo.state(), div.state()])?;
+                self.graft(epoch, ptr, v, &[quo.state(), duo.state(), div.state()])?;
             }
             URem([duo, div]) => {
                 let duo = ExtAwi::opaque(self.get_bw(duo));
                 let div = ExtAwi::opaque(self.get_bw(div));
                 let rem = division(&duo, &div).1;
-                self.graft(ptr, v, &[rem.state(), duo.state(), div.state()])?;
+                self.graft(epoch, ptr, v, &[rem.state(), duo.state(), div.state()])?;
             }
             IQuo([duo, div]) => {
                 let duo = ExtAwi::opaque(self.get_bw(duo));
@@ -691,14 +714,14 @@ impl Dag {
                 // keeping arguments opaque
                 let mut tmp_duo = duo.clone();
                 let mut tmp_div = div.clone();
-                tmp_duo.neg_assign(duo_msb);
-                tmp_div.neg_assign(div_msb);
+                tmp_duo.neg_(duo_msb);
+                tmp_div.neg_(div_msb);
                 let mut quo = division(&tmp_duo, &tmp_div).0;
                 let mut tmp0 = InlAwi::from(duo_msb);
                 let tmp1 = InlAwi::from(div_msb);
-                tmp0.xor_assign(&tmp1).unwrap();
-                quo.neg_assign(tmp0.to_bool());
-                self.graft(ptr, v, &[quo.state(), duo.state(), div.state()])?;
+                tmp0.xor_(&tmp1).unwrap();
+                quo.neg_(tmp0.to_bool());
+                self.graft(epoch, ptr, v, &[quo.state(), duo.state(), div.state()])?;
             }
             IRem([duo, div]) => {
                 let duo = ExtAwi::opaque(self.get_bw(duo));
@@ -708,20 +731,27 @@ impl Dag {
                 // keeping arguments opaque
                 let mut tmp_duo = duo.clone();
                 let mut tmp_div = div.clone();
-                tmp_duo.neg_assign(duo_msb);
-                tmp_div.neg_assign(div_msb);
+                tmp_duo.neg_(duo_msb);
+                tmp_div.neg_(div_msb);
                 let mut rem = division(&tmp_duo, &tmp_div).1;
-                rem.neg_assign(duo_msb);
-                self.graft(ptr, v, &[rem.state(), duo.state(), div.state()])?;
+                rem.neg_(duo_msb);
+                self.graft(epoch, ptr, v, &[rem.state(), duo.state(), div.state()])?;
             }
         }
-        drop(epoch);
         Ok(false)
     }
 
-    /// Lowers all nodes in the tree of `leaf` not set to `visit`.
-    pub fn lower_tree(&mut self, leaf: PNode, visit: u64) -> Result<(), EvalError> {
-        let base_visit = visit;
+    /// Lowers all nodes in the tree of `leaf` not set to at least `tree_visit`.
+    /// `tree_visit` should be one more than `lowered_visit`.
+    pub fn lower_tree(
+        &mut self,
+        leaf: PNode,
+        lowered_visit: u64,
+        tree_visit: u64,
+    ) -> Result<(), EvalError> {
+        if self.a[leaf].visit >= tree_visit {
+            return Ok(())
+        }
         // We must use a DFS, one reason being that if downstream nodes are lowered
         // before upstream ones, we can easily end up in situations where a lower would
         // have been much simpler because of constants being propogated down.
@@ -729,32 +759,30 @@ impl Dag {
         let mut unimplemented = false;
         let mut path: Vec<(usize, PNode, bool)> = vec![(0, leaf, true)];
         loop {
-            let (i, p, all_constants) = path[path.len() - 1];
+            let (i, p, all_literals) = path[path.len() - 1];
             let ops = self[p].op.operands();
             if ops.is_empty() {
                 path.pop().unwrap();
                 if path.is_empty() {
                     break
                 }
+                path.last_mut().unwrap().0 += 1;
                 path.last_mut().unwrap().2 &= self[p].op.is_literal();
             } else if i >= ops.len() {
                 // checked all sources
-                self.visit_gen += 1;
-                let this_visit = self.visit_gen;
-                if all_constants {
-                    match self.eval_node(p, this_visit) {
+                if all_literals {
+                    path.pop().unwrap();
+                    match self.eval_node(p) {
                         Ok(()) => {
-                            path.pop().unwrap();
                             if path.is_empty() {
                                 break
                             }
                         }
                         Err(EvalError::Unevaluatable) => {
-                            path.pop().unwrap();
                             if path.is_empty() {
                                 break
                             }
-                            path.last_mut().unwrap().2 &= self[p].op.is_literal();
+                            path.last_mut().unwrap().2 = false;
                         }
                         Err(e) => {
                             self[p].err = Some(e.clone());
@@ -762,8 +790,9 @@ impl Dag {
                         }
                     }
                 } else {
-                    // newly lowered nodes will be set to `this_visit` so that the DFS reexplores
-                    let lowered = match self.lower_node(p, this_visit) {
+                    // newly lowered nodes will be set to `lowered_visit` which is less than
+                    // `tree_visit` so that the DFS reexplores
+                    let lowered = match self.lower_node(p, lowered_visit) {
                         Ok(lowered) => lowered,
                         Err(EvalError::Unimplemented) => {
                             // we lower as much as possible
@@ -786,14 +815,22 @@ impl Dag {
                     }
                 }
             } else {
-                let p_next = ops[i];
+                let mut p_next = ops[i];
                 let next_visit = self[p_next].visit;
-                if next_visit == base_visit {
+                if next_visit >= tree_visit {
+                    while let Op::Copy([a]) = self[p_next].op {
+                        // special optimization case: forward Copies
+                        self[p].op.operands_mut()[i] = a;
+                        self[a].rc = self[a].rc.checked_add(1).unwrap();
+                        self.dec_rc(p_next).unwrap();
+                        p_next = a;
+                    }
                     // peek at node for evaluatableness but do not visit node
-                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                     path.last_mut().unwrap().0 += 1;
+                    path.last_mut().unwrap().2 &= self[p_next].op.is_literal();
                 } else {
-                    self[p_next].visit = base_visit;
+                    // prevent exponential growth
+                    self[p_next].visit = tree_visit;
                     path.push((0, p_next, true));
                 }
             }
@@ -806,14 +843,24 @@ impl Dag {
         }
     }
 
-    /// Lowers all trees of the nodes in `self.noted`
-    pub fn lower_all_noted(&mut self) -> Result<(), EvalError> {
+    /// Calls `lower_node` on everything, also evaluates everything. This also
+    /// checks assertions, but not as strictly as `assert_assertions` which
+    /// makes sure no assertions are unevaluated.
+    pub fn lower_all(&mut self) -> Result<(), EvalError> {
         self.visit_gen += 1;
-        for i in 0..self.noted.len() {
-            if let Some(note) = self.noted[i] {
-                self.lower_tree(note, self.visit_gen)?;
+        let lowered_visit = self.visit_gen;
+        self.visit_gen += 1;
+        let tree_visit = self.visit_gen;
+        let (mut p, mut b) = self.a.first_ptr();
+        loop {
+            if b {
+                break
             }
+            self.lower_tree(p, lowered_visit, tree_visit)?;
+            self.a.next_ptr(&mut p, &mut b);
         }
+        self.assert_assertions_weak()?;
+        self.unnote_true_assertions();
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ use crate::{chars_to_string, Ast, Delimiter, PText, Text};
 /// Wrap `s` in ANSI delimiters for terminal colors.
 /// {90..=97} => {grey, red, green, yellow, blue, purple, cyan, white}
 pub fn color_text(s: &str, c: u8) -> String {
-    format!("\x1b[{}m{}\x1b[0m", c, s)
+    format!("\x1b[{c}m{s}\x1b[0m")
 }
 
 #[derive(Debug, Default, Clone)]

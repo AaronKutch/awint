@@ -11,14 +11,13 @@ use crate::{
 /// Input parsing and code generation function for corresponding concatenations
 /// of components macros.
 pub fn cc_macro<
-    'a,
     F0: FnMut(&str) -> String,
     // we run into lifetime generalization issues when trying `&Bits`
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     input: &str,
-    code_gen: CodeGen<'a, F0, F1, F2>,
+    code_gen: CodeGen<'_, F0, F1, F2>,
     names: Names,
 ) -> Result<String, String> {
     // we process in stages to handle more fundamental errors first, reducing bugs
@@ -68,7 +67,7 @@ pub fn cc_macro<
             } else {
                 "".to_owned()
             };
-            return Err(error_and_help(&format!("input failed to tokenize: {}{}", e, note),
+            return Err(error_and_help(&format!("input failed to tokenize: {e}{note}"),
                 "for further information see the library documentation of `awint_macros` \
                 https://docs.rs/awint_macros/"))
         }

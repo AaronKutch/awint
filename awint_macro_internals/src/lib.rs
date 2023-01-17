@@ -5,6 +5,7 @@
 
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::comparison_chain)]
+#![cfg_attr(feature = "const_support", feature(const_trait_impl))]
 
 mod bimap;
 mod cc_macro;
@@ -31,6 +32,9 @@ pub use names::*;
 pub use ranges::*;
 pub use token_stream::*;
 pub use token_tree::*;
+pub use triple_arena;
+#[cfg(feature = "debug")]
+pub use triple_arena_render;
 
 pub fn awint_macro_cc(input: &str) -> Result<String, String> {
     let code_gen = CodeGen {

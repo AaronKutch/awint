@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvalError {
     // An operand points nowhere, so the DAG is broken
     InvalidPtr,
@@ -23,4 +23,5 @@ pub enum EvalError {
     // Some other kind of brokenness, such as dependency edges not agreeing with operand edges
     OtherStr(&'static str),
     OtherString(String),
+    AssertionFailure(String),
 }

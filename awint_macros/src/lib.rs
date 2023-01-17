@@ -61,7 +61,7 @@
 //! `cc!` macro, a single concatenation with a single component.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let x = ExtAwi::zero(bw(10));
 //! let r0 = 2;
@@ -192,7 +192,7 @@
 //! see where different groups of 4 bits are being copied.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // Here, we pass a single concatenation of 3 literals to the `inlawi!`
 //! // construction macro. This constructs an `InlAwi` out of a 4 bit signed
@@ -228,7 +228,7 @@
 //! defined arbitrary width integer types can thus be used as variables.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let source = inlawi!(0xc4di64);
 //! // a bunch of zeroed 64 bit arbitrary width integers from different
@@ -265,7 +265,7 @@
 //! concatenation of 3 components each with 4 hexadecimal digits.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let y3 = inlawi!(0xba9u12);
 //! let y2 = inlawi!(0x876u12);
@@ -300,7 +300,7 @@
 //! borrowing errors:
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let mut a = inlawi!(0x9876543210u40);
 //!
@@ -322,7 +322,7 @@
 //! if what it is binding to is already a mutable reference and not a storage
 //! type, and so always tries to take a `&mut Bits` reference of variables.
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // error: cannot borrow x and z as mutable ...
 //! //fn test(x: &mut Bits) {
@@ -360,7 +360,7 @@
 //! corresponding source bits have no effect.
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // filler bits in source concatenations have no effects and sink bits are
 //! // preserved
@@ -399,7 +399,7 @@
 //! degree of determinable width, and we want a cheap way to specify it:
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! let x = extawi!(-99i44);
 //!
@@ -436,7 +436,7 @@
 //! construction macro however, all the bits of the source need to have some
 //! kind of set value.
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // error: a construction macro with unspecified initialization cannot have
 //! // a filler in the source concatenation
@@ -452,7 +452,7 @@
 //! assert_eq!(x, ExtAwi::umax(bw(8)));
 //!
 //! let mut x = extawi!(0u64);
-//! // equivalent to `x.umax_assign()`
+//! // equivalent to `x.umax_()`
 //! cc!(umax: ..; x);
 //! assert_eq!(x, ExtAwi::umax(bw(64)));
 //!
@@ -471,7 +471,7 @@
 //! understand how unbounded fillers interact, consider these three cases:
 //!
 //! ```
-//! use awint::prelude::*;
+//! use awint::awi::*;
 //!
 //! // This first case has no fillers in the first concatenation, so the filler
 //! // in the second concatenation will expand to be of bitwidth `12 - y.bw()`.
@@ -641,7 +641,7 @@
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
 //!   with full range; var_1[..]; var_2[..]; var_3[..], ...`, the macros use
-//!   `Bits::copy_assign` to directly copy without an intermediate buffer. This
+//!   `Bits::copy_` to directly copy without an intermediate buffer. This
 //!   copy assigning mode cannot copy between `Bits` references that point to
 //!   the same underlying storage, because it results in aliasing. Thus, trying
 //!   to do something like `cc!(x; x)` results in the borrow checker complaining
@@ -668,15 +668,15 @@ use proc_macro::TokenStream;
 /// Specifies an `InlAwi` _type_ in terms of its bitwidth
 #[proc_macro]
 pub fn inlawi_ty(input: TokenStream) -> TokenStream {
-    let bw = input
+    let w = input
         .to_string()
         .parse::<u128>()
         .expect("Input should parse as an unsigned integer");
     assert!(
-        bw != 0,
+        w != 0,
         "Tried to make an `InlAwi` type with an invalid bitwidth of 0"
     );
-    unstable_native_inlawi_ty(bw).parse().unwrap()
+    unstable_native_inlawi_ty(w).parse().unwrap()
 }
 
 // TODO `0x1234.5678p4i32p16`
@@ -691,7 +691,7 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 /// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
 /// allocation in general, but will try to avoid allocation if the common
 /// bitwdith can be determined statically, or if concatenations are all of
-/// single components. See the crate documentation of `awint_macros` for more.
+/// single components. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn cc(input: TokenStream) -> TokenStream {
     match awint_macro_cc(&input.to_string()) {
@@ -701,8 +701,7 @@ pub fn cc(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an `InlAwi`. See the crate documentation of `awint_macros` for
-/// more.
+/// construct an `InlAwi`. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
     match awint_macro_inlawi(&input.to_string()) {
@@ -712,8 +711,7 @@ pub fn inlawi(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an `ExtAwi`. See the crate documentation of `awint_macros` for
-/// more.
+/// construct an `ExtAwi`. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
     match awint_macro_extawi(&input.to_string()) {

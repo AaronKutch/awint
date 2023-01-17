@@ -1,7 +1,6 @@
 use std::num::NonZeroUsize;
 
-use awint_core::Bits;
-use awint_ext::ExtAwi;
+use awint_ext::{Bits, ExtAwi};
 use triple_arena::ptr_struct;
 
 #[cfg(feature = "debug")]
@@ -56,13 +55,13 @@ pub fn unstable_native_inlawi(bits: &Bits) -> String {
 }
 
 /// Returns architecture-independent Rust code that returns an
-/// `InlAwi` type with bitwidth `bw`.
-pub fn unstable_native_inlawi_ty(bw: u128) -> String {
-    format!("InlAwi::<{},{{Bits::unstable_raw_digits({})}}>", bw, bw,)
+/// `InlAwi` type with bitwidth `w`.
+pub fn unstable_native_inlawi_ty(w: u128) -> String {
+    format!("InlAwi::<{w},{{Bits::unstable_raw_digits({w})}}>")
 }
 
 pub fn awint_must_use(s: &str) -> String {
-    format!("Bits::must_use({})", s)
+    format!("Bits::must_use({s})")
 }
 
 pub fn awint_lit_construction_fn(awi: ExtAwi) -> String {
@@ -74,14 +73,11 @@ pub fn awint_extawi_lit_construction_fn(awi: ExtAwi) -> String {
 }
 
 pub fn extawi_s(init: &str, s: &str) -> String {
-    format!("ExtAwi::panicking_{}({})", init, s)
+    format!("ExtAwi::panicking_{init}({s})")
 }
 
 pub fn inlawi_s(init: &str, w: NonZeroUsize) -> String {
-    format!(
-        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::{}()",
-        w, w, init
-    )
+    format!("InlAwi::<{w},{{Bits::unstable_raw_digits({w})}}>::{init}()",)
 }
 
 pub fn cc_construction_fn(

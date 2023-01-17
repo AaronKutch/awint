@@ -45,6 +45,21 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 ///
 /// # Note
 ///
+/// Function names of the form `*_` with a trailing underscore are shorthand for
+/// saying `*_assign`, which denotes an inplace assignment operation where the
+/// left hand side is used as an input before being reassigned the value of the
+/// output inplace. This is used instead of the typical 2-input 1-new-output
+/// kind of function, because:
+/// - `Bits` cannot allocate without choosing a storage type
+/// - In most cases during the course of computation, one value will not be
+///   needed after being used once as an input. It can take the left hand side
+///   `self` value of these inplace assignment operations.
+/// - For large bitwidth `Bits`, only two streams of addresses have to be
+///   considered by the CPU
+/// - In cases where we do need buffering, copying to some temporary is the
+///   fastest kind of operation (and in the future an optimizing macro for this
+///   is planned)
+///
 /// Unless otherwise specified, functions on `Bits` that return an `Option<()>`
 /// return `None` if the input bitwidths are not equal to each other. The `Bits`
 /// have been left unchanged if `None` is returned.
@@ -53,13 +68,13 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 ///
 /// This crate strives to maintain deterministic outputs across architectures
 /// with different `usize::BITS` and different endiannesses. The
-/// [Bits::u8_slice_assign] function, the [Bits::to_u8_slice] functions, the
+/// [Bits::u8_slice_] function, the [Bits::to_u8_slice] functions, the
 /// serialization impls enabled by `serde_support`, the strings produced by the
 /// `const` serialization functions, and functions like `bits_to_string_radix`
 /// in the `awint_ext` crate are all portable and should be used when sending
 /// representations of `Bits` between architectures.
 ///
-/// The `rand_assign_using` function enabled by `rand_support` uses a
+/// The `rand_` function enabled by `rand_support` uses a
 /// deterministic byte oriented implementation to avoid portability issues as
 /// long as the rng itself is portable.
 ///
@@ -90,7 +105,7 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 ///
 /// Visible functions that are not portable in general, but always start from
 /// the zeroeth bit or a given bit position like [Bits::short_cin_mul],
-/// [Bits::short_udivide_assign], or [Bits::usize_or_assign], are always
+/// [Bits::short_udivide_], or [Bits::usize_or_], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
 /// `0..=u16::MAX`, or special care is taken.
 #[repr(transparent)]
@@ -270,11 +285,11 @@ impl<'a> Bits {
         unsafe {
             // Safety: The bitwidth is stored in the last raw slice element. The bitwidth is
             // nonzero if invariants were maintained.
-            let bw = self.raw_get_unchecked(self.raw_len() - 1);
+            let w = self.raw_get_unchecked(self.raw_len() - 1);
             // If something with zeroing allocation or mutations accidentally breaks during
             // development, it will probably manifest itself here
-            debug_assert!(bw != 0);
-            NonZeroUsize::new_unchecked(bw)
+            debug_assert!(w != 0);
+            NonZeroUsize::new_unchecked(w)
         }
     }
 
@@ -472,7 +487,7 @@ impl<'a> Bits {
     /// # Portability
     ///
     /// This function is highly non-portable across architectures, see the
-    /// source code of [Bits::rand_assign_using] for how to handle this
+    /// source code of [Bits::rand_] for how to handle this
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
@@ -506,7 +521,7 @@ impl<'a> Bits {
     /// # Portability
     ///
     /// This function is highly non-portable across architectures, see the
-    /// source code of [Bits::rand_assign_using] for how to handle this
+    /// source code of [Bits::rand_] for how to handle this
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
@@ -522,7 +537,7 @@ impl<'a> Bits {
     /// zeroed. This function is portable across target architecture pointer
     /// sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn u8_slice_assign(&'a mut self, buf: &[u8]) {
+    pub const fn u8_slice_(&'a mut self, buf: &[u8]) {
         let self_byte_width = self.len() * BYTE_RATIO;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
@@ -624,7 +639,7 @@ impl<'a> Bits {
         //    range.end - range.start,
         //);
         let digit = if val { MAX } else { 0 };
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             { range.start..range.end }
@@ -706,8 +721,11 @@ impl fmt::LowerHex for Bits {
     /// Lowercase hexadecimal formatting.
     ///
     /// ```
-    /// use awint::{Bits, InlAwi, inlawi};
-    /// assert_eq!(format!("{:x}", inlawi!(0xfedcba9876543210u100)), "0xfedcba98_76543210_u100");
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(
+    ///     format!("{:x}", inlawi!(0xfedcba9876543210u100)),
+    ///     "0xfedcba98_76543210_u100"
+    /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_hexadecimal(f, false)
@@ -718,8 +736,11 @@ impl fmt::UpperHex for Bits {
     /// Uppercase hexadecimal formatting.
     ///
     /// ```
-    /// use awint::{Bits, InlAwi, inlawi};
-    /// assert_eq!(format!("{:X}", inlawi!(0xFEDCBA9876543210u100)), "0xFEDCBA98_76543210_u100");
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(
+    ///     format!("{:X}", inlawi!(0xFEDCBA9876543210u100)),
+    ///     "0xFEDCBA98_76543210_u100"
+    /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_hexadecimal(f, true)
@@ -730,8 +751,11 @@ impl fmt::Octal for Bits {
     /// Octal formatting.
     ///
     /// ```
-    /// use awint::{Bits, InlAwi, inlawi};
-    /// assert_eq!(format!("{:o}", inlawi!(0o776543210u100)), "0o7_76543210_u100");
+    /// use awint::{inlawi, Bits, InlAwi};
+    /// assert_eq!(
+    ///     format!("{:o}", inlawi!(0o776543210u100)),
+    ///     "0o7_76543210_u100"
+    /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.debug_format_octal(f)
@@ -762,5 +786,12 @@ impl Hash for Bits {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.bw().hash(state);
         self.as_slice().hash(state);
+    }
+}
+
+#[cfg(feature = "zeroize_support")]
+impl zeroize::Zeroize for Bits {
+    fn zeroize(&mut self) {
+        self.as_mut_slice().zeroize()
     }
 }

@@ -7,7 +7,8 @@ format_code_in_doc_comments = true # needed
 format_macro_bodies = true # changed
 format_macro_matchers = true # changed
 format_strings = true # better
-ignore = []
+# TODO remove this after rustfmt #5623 is fixed
+ignore = ["awint_macros/src/lib.rs"]
 imports_granularity = "Crate" # changed
 match_arm_blocks = true # needed
 newline_style = "Unix" # prevents `\r\n` being accidentally introduced

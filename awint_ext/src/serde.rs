@@ -1,5 +1,6 @@
 use core::fmt;
 
+use awint_core::bw;
 use serde::{
     de,
     de::{MapAccess, SeqAccess, Visitor},
@@ -20,7 +21,7 @@ impl Serialize for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{Bits, ExtAwi, inlawi, InlAwi};
+    /// use awint::{inlawi, Bits, ExtAwi, InlAwi};
     /// use ron::to_string;
     ///
     /// let awi = ExtAwi::from(inlawi!(0xfedcba9876543210u100));
@@ -103,15 +104,15 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
     where
         V: MapAccess<'de>,
     {
-        let mut bw: Option<usize> = None;
+        let mut w: Option<usize> = None;
         let mut bits: Option<&str> = None;
         while let Some(key) = map.next_key()? {
             match key {
                 Field::Bw => {
-                    if bw.is_some() {
+                    if w.is_some() {
                         return Err(de::Error::duplicate_field("bw"))
                     }
-                    bw = Some(map.next_value()?);
+                    w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
@@ -121,20 +122,17 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
                 }
             }
         }
-        let bw = bw.ok_or_else(|| de::Error::missing_field("bw"))?;
+        let w = w.ok_or_else(|| de::Error::missing_field("bw"))?;
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
-        if bw == 0 {
+        if w == 0 {
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
-        let bw = awint_internals::bw(bw);
-        let mut awi = ExtAwi::zero(bw);
-        let mut pad = ExtAwi::zero(bw);
-        let result = awi.const_as_mut().power_of_two_bytes_assign(
-            None,
-            bits.as_bytes(),
-            16,
-            pad.const_as_mut(),
-        );
+        let w = bw(w);
+        let mut awi = ExtAwi::zero(w);
+        let mut pad = ExtAwi::zero(w);
+        let result =
+            awi.const_as_mut()
+                .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
@@ -145,24 +143,21 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
     where
         V: SeqAccess<'de>,
     {
-        let bw: usize = seq
+        let w: usize = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(0, &self))?;
         let bits: &str = seq
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-        if bw == 0 {
+        if w == 0 {
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
-        let bw = awint_internals::bw(bw);
-        let mut awi = ExtAwi::zero(bw);
-        let mut pad = ExtAwi::zero(bw);
-        let result = awi.const_as_mut().power_of_two_bytes_assign(
-            None,
-            bits.as_bytes(),
-            16,
-            pad.const_as_mut(),
-        );
+        let w = bw(w);
+        let mut awi = ExtAwi::zero(w);
+        let mut pad = ExtAwi::zero(w);
+        let result =
+            awi.const_as_mut()
+                .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
@@ -177,15 +172,12 @@ impl<'de> Deserialize<'de> for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{Bits, ExtAwi, InlAwi, inlawi, inlawi_ty};
+    /// use awint::{inlawi, inlawi_ty, Bits, ExtAwi, InlAwi};
     /// use ron::from_str;
     ///
     /// let awi0 = ExtAwi::from(inlawi!(0xfedcba9876543210u100));
     /// let awi1: ExtAwi = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
-    /// assert_eq!(
-    ///     awi0,
-    ///     awi1
-    /// );
+    /// assert_eq!(awi0, awi1);
     /// ```
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

@@ -9,11 +9,11 @@ impl Bits {
     /// bit. If `cin == true` then one is added to `self`, otherwise nothing
     /// happens. `false` is always returned unless `self.is_umax()`.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn inc_assign(&mut self, cin: bool) -> bool {
+    pub const fn inc_(&mut self, cin: bool) -> bool {
         if !cin {
             return false
         }
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             {0..(self.len() - 1)}
@@ -47,11 +47,11 @@ impl Bits {
     /// bit. If `cin == false` then one is subtracted from `self`, otherwise
     /// nothing happens. `true` is always returned unless `self.is_zero()`.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn dec_assign(&mut self, cin: bool) -> bool {
+    pub const fn dec_(&mut self, cin: bool) -> bool {
         if cin {
             return true
         }
-        for_each_mut!(
+        unsafe_for_each_mut!(
             self,
             x,
             {0..(self.len() - 1)}
@@ -83,13 +83,13 @@ impl Bits {
     /// Negate-assigns `self` if `neg` is true. Note that signed minimum values
     /// will overflow.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn neg_assign(&mut self, neg: bool) {
+    pub const fn neg_(&mut self, neg: bool) {
         if neg {
-            self.not_assign();
+            self.not_();
             // note: do not return overflow from the increment because it only happens if
             // `self.is_zero()`, not `self.is_imin()` which will certainly lead
             // to accidents
-            self.inc_assign(true);
+            self.inc_(true);
         }
     }
 
@@ -97,16 +97,16 @@ impl Bits {
     /// overflow, unless `self` is interpreted as unsigned after a call to this
     /// function.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn abs_assign(&mut self) {
-        self.neg_assign(self.msb());
+    pub const fn abs_(&mut self) {
+        self.neg_(self.msb());
     }
 
     /// Add-assigns by `rhs`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn add_assign(&mut self, rhs: &Self) -> Option<()> {
+    pub const fn add_(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 0;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             rhs,
             x,
@@ -123,9 +123,9 @@ impl Bits {
     /// Subtract-assigns by `rhs`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn sub_assign(&mut self, rhs: &Self) -> Option<()> {
+    pub const fn sub_(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             rhs,
             x,
@@ -142,9 +142,9 @@ impl Bits {
     /// Reverse-subtract-assigns by `rhs`. Sets `self` to `(-self) + rhs`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn rsb_assign(&mut self, rhs: &Self) -> Option<()> {
+    pub const fn rsb_(&mut self, rhs: &Self) -> Option<()> {
         let mut carry = 1;
-        binop_for_each_mut!(
+        unsafe_binop_for_each_mut!(
             self,
             rhs,
             x,
@@ -161,11 +161,11 @@ impl Bits {
     /// Negate-add-assigns by `rhs`. Negates conditionally on `neg`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn neg_add_assign(&mut self, neg: bool, rhs: &Self) -> Option<()> {
+    pub const fn neg_add_(&mut self, neg: bool, rhs: &Self) -> Option<()> {
         if neg {
-            self.sub_assign(rhs)
+            self.sub_(rhs)
         } else {
-            self.add_assign(rhs)
+            self.add_(rhs)
         }
     }
 
@@ -176,12 +176,7 @@ impl Bits {
     /// one of the operands can be negated.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn cin_sum_assign(
-        &mut self,
-        cin: bool,
-        lhs: &Self,
-        rhs: &Self,
-    ) -> Option<(bool, bool)> {
+    pub const fn cin_sum_(&mut self, cin: bool, lhs: &Self, rhs: &Self) -> Option<(bool, bool)> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
             return None
         }

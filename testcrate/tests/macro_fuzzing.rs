@@ -8,7 +8,7 @@
 
 use std::any::Any;
 
-use awint::prelude::*;
+use awint::awi::*;
 
 // The macros have a highly nonlinear way of determining if something is
 // infallible, and it is impractical to use plain `assert_eq` and determine

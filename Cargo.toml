@@ -8,6 +8,7 @@ members = [
     "awint_internals",
     "awint_macro_internals",
     "awint_macros",
-    "binaries",
     "testcrate",
 ]
+
+[patch.crates-io]

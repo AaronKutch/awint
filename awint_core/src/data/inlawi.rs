@@ -39,10 +39,10 @@ use crate::Bits;
 /// #![feature(const_option)]
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
 ///
-/// const fn const_fn(mut lhs: &mut Bits, rhs: &Bits) {
+/// const fn const_example(mut lhs: &mut Bits, rhs: &Bits) {
 ///     // `InlAwi` stored on the stack does no allocation
 ///     let mut tmp = inlawi!(0i100);
-///     tmp.mul_add_assign(lhs, rhs).unwrap();
+///     tmp.mul_add_(lhs, rhs).unwrap();
 ///     cc!(tmp; lhs).unwrap();
 /// }
 ///
@@ -51,8 +51,8 @@ use crate::Bits;
 /// const AWI: inlawi_ty!(100) = {
 ///     let mut x = inlawi!(123i100);
 ///     let y = inlawi!(2i100);
-///     x.neg_assign(true);
-///     const_fn(&mut x, &y);
+///     x.neg_(true);
+///     const_example(&mut x, &y);
 ///     x
 /// };
 /// const X: &'static Bits = &AWI;
@@ -154,7 +154,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// This is not intended for direct use, use `awint_macros::inlawi`
     /// or some other constructor instead. The purpose of this function is to
     /// allow for a `usize::BITS` difference between a target architecture and
-    /// the build architecture. Uses `u8_slice_assign`.
+    /// the build architecture. Uses `u8_slice_`.
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn unstable_from_u8_slice(buf: &[u8]) -> Self {
@@ -165,7 +165,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         raw[raw.len() - 1] = BW;
         assert_inlawi_invariants_slice::<BW, LEN>(&raw);
         let mut awi = InlAwi { raw };
-        awi.const_as_mut().u8_slice_assign(buf);
+        awi.const_as_mut().u8_slice_(buf);
         awi
     }
 
@@ -230,6 +230,13 @@ impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl<const BW: usize, const LEN: usize> Eq for InlAwi<BW, LEN> {}
 
+#[cfg(feature = "zeroize_support")]
+impl<const BW: usize, const LEN: usize> zeroize::Zeroize for InlAwi<BW, LEN> {
+    fn zeroize(&mut self) {
+        self.as_mut().zeroize()
+    }
+}
+
 macro_rules! impl_fmt {
     ($($ty:ident)*) => {
         $(
@@ -256,21 +263,21 @@ impl InlAwi<1, { Bits::unstable_raw_digits(1) }> {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_bool(x: bool) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().bool_assign(x);
+        awi.const_as_mut().bool_(x);
         awi
     }
 }
 
 macro_rules! inlawi_from {
-    ($($w:expr, $u:ident $from_u:ident $u_assign:ident
-        $i:ident $from_i:ident $i_assign:ident);*;) => {
+    ($($w:expr, $u:ident $from_u:ident $u_:ident
+        $i:ident $from_i:ident $i_:ident);*;) => {
         $(
             impl InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 #[const_fn(cfg(feature = "const_support"))]
                 pub const fn $from_u(x: $u) -> Self {
                     let mut awi = Self::zero();
-                    awi.const_as_mut().$u_assign(x);
+                    awi.const_as_mut().$u_(x);
                     awi
                 }
 
@@ -278,7 +285,7 @@ macro_rules! inlawi_from {
                 #[const_fn(cfg(feature = "const_support"))]
                 pub const fn $from_i(x: $i) -> Self {
                     let mut awi = Self::zero();
-                    awi.const_as_mut().$i_assign(x);
+                    awi.const_as_mut().$i_(x);
                     awi
                 }
             }
@@ -287,11 +294,11 @@ macro_rules! inlawi_from {
 }
 
 inlawi_from!(
-    8, u8 from_u8 u8_assign i8 from_i8 i8_assign;
-    16, u16 from_u16 u16_assign i16 from_i16 i16_assign;
-    32, u32 from_u32 u32_assign i32 from_i32 i32_assign;
-    64, u64 from_u64 u64_assign i64 from_i64 i64_assign;
-    128, u128 from_u128 u128_assign i128 from_i128 i128_assign;
+    8, u8 from_u8 u8_ i8 from_i8 i8_;
+    16, u16 from_u16 u16_ i16 from_i16 i16_;
+    32, u32 from_u32 u32_ i32 from_i32 i32_;
+    64, u64 from_u64 u64_ i64 from_i64 i64_;
+    128, u128 from_u128 u128_ i128 from_i128 i128_;
 );
 
 pub(crate) type UsizeInlAwi =
@@ -302,7 +309,7 @@ impl UsizeInlAwi {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_usize(x: usize) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().usize_assign(x);
+        awi.const_as_mut().usize_(x);
         awi
     }
 
@@ -310,7 +317,7 @@ impl UsizeInlAwi {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_isize(x: isize) -> Self {
         let mut awi = Self::zero();
-        awi.const_as_mut().isize_assign(x);
+        awi.const_as_mut().isize_(x);
         awi
     }
 }

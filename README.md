@@ -19,15 +19,20 @@ maximum flexibility to `no-std` and `no-alloc` use cases. `ExtAwi` is not within
 a feature flag, because if a no-`alloc` project depended on both `awint_core` and `awint_macros`
 (which requires `ExtAwi`), the flag would be activated for the common compilation of `awint_core`.
 The `awint_macros` crate is a proc-macro crate with several construction utilities.
-The `awint_dag` crate supplies a way to use `awint` types as a psuedo-DSL.
+The `awint_dag` crate supplies a way to use `awint` types as a DSL (Domain Specific Language) for
+combinational logic.
 The `awint` crate compiles these interfaces together and enables or disables different parts of the
 system depending on these feature flags:
 
 - "const_support" turns on nightly features that are needed for many functions to be `const`
 - "alloc" turns on parts that require an allocator
 - "std" turns on parts that require std
+- "dag" turns on `awint_dag`
+- "try_support" turns on some features required for `dag::Option` to fully work
+- "debug" turns on some developer functions
 - "rand_support" turns on a dependency to `rand_core` without its default features
 - "serde_support" turns on a dependency to `serde` without its default features
+- "zeroize_support" turns on a dependency to `zeroize` without its default features
 
 Note: By default, "const_support" and "std" are turned on, use `default-features = false` and
 select specific features to avoid requiring nightly.
@@ -46,15 +51,13 @@ to _all_ of the crate roots where you use the macros in `const` contexts.
 These are currently unimplemented because of other developments and improvements that are being
 prioritized. Please open an issue or PR if you would like these implemented faster.
 
-- We need some kind of macro for handling fallible points, instead of `unwrap` everywhere or `?`
-  operators that make it difficult to determine panic positions, have a macro find locations of `?`
-  operators and do stuff from there.
-- We need a macro for simpler syntax. The base `_assign` functions can have virtual counterparts
-  (e.g. `x.add_assign(y)` would have the alternative `z = x.add(y)` or `z = x + y`) and the macro
-  optimizes storage creation and routing.
+- We need a macro for optimizing 2 input, 1 output functions to our inplace style functions. The
+  base inplace assignment functions can have virtual counterparts (e.g. `x.add_(y)` would have the
+  alternative `z = x.add(y)` or `z = x + y`) and the macro optimizes storage creation and routing.
 - Add some missing functions to the mimicking primitives in `awint_dag`
 - There are many things more to be done with `awint_dag`
 - Add more functions to `FP`
+- Some kind of matching macro
 - A hybrid stack/heap allocated type like what `smallvec` does
 - A higher level `Awi` wrapper around `ExtAwi` with more traditional big-integer library functions
    such as a dynamic sign and automatically resizing bitwidth. This higher level wrapper keeps track

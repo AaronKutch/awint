@@ -11,16 +11,17 @@ use core::{
 };
 
 use awint_core::{Bits, InlAwi};
-use awint_internals::*;
 use const_fn::const_fn;
 
+use crate::awint_internals::*;
+
 #[inline]
-pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
+pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
     unsafe {
         // Safety: this produces the exact number of bytes needed to satisfy the raw
         // invariants of `Bits`.
         Layout::from_size_align_unchecked(
-            (regular_digits(bw) + 1) * mem::size_of::<usize>(),
+            (regular_digits(w) + 1) * mem::size_of::<usize>(),
             mem::align_of::<usize>(),
         )
     }
@@ -32,13 +33,13 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 ///
 /// ```
 /// #![feature(const_mut_refs)]
-/// use awint::prelude::*;
+/// use awint::awi::*;
 ///
-/// const fn example(x0: &mut Bits, x1: &Bits) {
+/// const fn const_example(x0: &mut Bits, x1: &Bits) {
 ///     // when dealing with `Bits` with different bitwidths, use the
-///     // `_resize_assign` functions or the concatenations of components
+///     // `*_resize_` functions or the concatenations of components
 ///     // macros with unbounded fillers from `awint_macros`
-///     x0.sign_resize_assign(x1);
+///     x0.sign_resize_(x1);
 ///     // multiply in place by 2 for an example
 ///     x0.short_cin_mul(0, 2);
 /// }
@@ -48,10 +49,10 @@ pub(crate) const fn layout(bw: NonZeroUsize) -> Layout {
 /// assert!(x.is_zero());
 /// // constructing an `ExtAwi` from an `InlAwi`
 /// let y = ExtAwi::from(inlawi!(-123i16));
-/// example(&mut x, &y);
+/// const_example(&mut x, &y);
 /// assert_eq!(x.as_ref(), inlawi!(-246i100).as_ref());
 /// // you can freely mix references originating from both `ExtAwi` and `InlAwi`
-/// example(&mut x, &inlawi!(0x10u16));
+/// const_example(&mut x, &inlawi!(0x10u16));
 /// assert_eq!(x, extawi!(0x20u100));
 /// ```
 #[repr(transparent)]
@@ -175,85 +176,85 @@ impl<'a> ExtAwi {
     /// `ExtAwi`.
     pub fn from_bits(bits: &Bits) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bits.nzbw());
-        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp.const_as_mut().copy_(bits).unwrap();
         tmp
     }
 
     /// Zero-value construction with bitwidth `bw`
-    pub fn zero(bw: NonZeroUsize) -> Self {
+    pub fn zero(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
-            let ptr: *mut usize = alloc_zeroed(layout(bw)).cast();
+            let ptr: *mut usize = alloc_zeroed(layout(w)).cast();
             // set bitwidth
-            ptr.add(regular_digits(bw)).write(bw.get());
-            ExtAwi::from_raw_parts(ptr, regular_digits(bw) + 1)
+            ptr.add(regular_digits(w)).write(w.get());
+            ExtAwi::from_raw_parts(ptr, regular_digits(w) + 1)
         }
     }
 
     /// Unsigned-maximum-value construction with bitwidth `bw`
-    pub fn umax(bw: NonZeroUsize) -> Self {
+    pub fn umax(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
-            let ptr: *mut usize = alloc(layout(bw)).cast();
+            let ptr: *mut usize = alloc(layout(w)).cast();
             // initialize everything except for the bitwidth
-            ptr.write_bytes(u8::MAX, regular_digits(bw));
+            ptr.write_bytes(u8::MAX, regular_digits(w));
             // set bitwidth
-            ptr.add(regular_digits(bw)).write(bw.get());
-            ExtAwi::from_raw_parts(ptr, regular_digits(bw) + 1)
+            ptr.add(regular_digits(w)).write(w.get());
+            ExtAwi::from_raw_parts(ptr, regular_digits(w) + 1)
         };
         x.const_as_mut().clear_unused_bits();
         x
     }
 
     /// Signed-maximum-value construction with bitwidth `bw`
-    pub fn imax(bw: NonZeroUsize) -> Self {
-        let mut awi = Self::umax(bw);
+    pub fn imax(w: NonZeroUsize) -> Self {
+        let mut awi = Self::umax(w);
         *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
         awi
     }
 
     /// Signed-minimum-value construction with bitwidth `bw`
-    pub fn imin(bw: NonZeroUsize) -> Self {
-        let mut awi = Self::zero(bw);
+    pub fn imin(w: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(w);
         *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
         awi
     }
 
     /// Unsigned-one-value construction with bitwidth `bw`
-    pub fn uone(bw: NonZeroUsize) -> Self {
-        let mut awi = Self::zero(bw);
+    pub fn uone(w: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(w);
         *awi.const_as_mut().first_mut() = 1;
         awi
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_zero(bw: usize) -> Self {
-        Self::zero(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_zero(w: usize) -> Self {
+        Self::zero(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_umax(bw: usize) -> Self {
-        Self::umax(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_umax(w: usize) -> Self {
+        Self::umax(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_imax(bw: usize) -> Self {
-        Self::imax(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_imax(w: usize) -> Self {
+        Self::imax(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_imin(bw: usize) -> Self {
-        Self::imin(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_imin(w: usize) -> Self {
+        Self::imin(NonZeroUsize::new(w).unwrap())
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
-    pub fn panicking_uone(bw: usize) -> Self {
-        Self::uone(NonZeroUsize::new(bw).unwrap())
+    pub fn panicking_uone(w: usize) -> Self {
+        Self::uone(NonZeroUsize::new(w).unwrap())
     }
 }
 
@@ -285,6 +286,13 @@ impl PartialEq for ExtAwi {
 
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl Eq for ExtAwi {}
+
+#[cfg(feature = "zeroize_support")]
+impl zeroize::Zeroize for ExtAwi {
+    fn zeroize(&mut self) {
+        self.as_mut().zeroize()
+    }
+}
 
 macro_rules! impl_fmt {
     ($($ty:ident)*) => {
@@ -323,7 +331,6 @@ impl DerefMut for ExtAwi {
     }
 }
 
-/// A quick way of getting an `&Bits` reference
 impl Index<RangeFull> for ExtAwi {
     type Output = Bits;
 
@@ -347,7 +354,6 @@ impl AsRef<Bits> for ExtAwi {
     }
 }
 
-/// A quick way of getting an `&mut Bits` reference
 impl IndexMut<RangeFull> for ExtAwi {
     #[inline]
     fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
@@ -369,11 +375,14 @@ impl AsMut<Bits> for ExtAwi {
     }
 }
 
+// we unfortunately can't do something like `impl<B: Borrow<Bits>> From<B>`
+// because specialization is not stabilized
+
 /// Creates an `ExtAwi` from copying a `Bits` reference
 impl From<&Bits> for ExtAwi {
     fn from(bits: &Bits) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bits.nzbw());
-        tmp.const_as_mut().copy_assign(bits).unwrap();
+        tmp.const_as_mut().copy_(bits).unwrap();
         tmp
     }
 }
@@ -382,7 +391,7 @@ impl From<&Bits> for ExtAwi {
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
         let mut tmp = ExtAwi::zero(awi.nzbw());
-        tmp.const_as_mut().copy_assign(awi.const_as_ref()).unwrap();
+        tmp.const_as_mut().copy_(awi.const_as_ref()).unwrap();
         tmp
     }
 }
@@ -402,24 +411,24 @@ macro_rules! extawi_from_ty {
 
 impl ExtAwi {
     extawi_from_ty!(
-        u8 from_u8 u8_assign;
-        u16 from_u16 u16_assign;
-        u32 from_u32 u32_assign;
-        u64 from_u64 u64_assign;
-        u128 from_u128 u128_assign;
-        usize from_usize usize_assign;
-        i8 from_i8 i8_assign;
-        i16 from_i16 i16_assign;
-        i32 from_i32 i32_assign;
-        i64 from_i64 i64_assign;
-        i128 from_i128 i128_assign;
-        isize from_isize isize_assign;
+        u8 from_u8 u8_;
+        u16 from_u16 u16_;
+        u32 from_u32 u32_;
+        u64 from_u64 u64_;
+        u128 from_u128 u128_;
+        usize from_usize usize_;
+        i8 from_i8 i8_;
+        i16 from_i16 i16_;
+        i32 from_i32 i32_;
+        i64 from_i64 i64_;
+        i128 from_i128 i128_;
+        isize from_isize isize_;
     );
 
     /// Creates an `ExtAwi` with one bit set to this `bool`
     pub fn from_bool(x: bool) -> Self {
         let mut tmp = ExtAwi::zero(bw(1));
-        tmp.const_as_mut().bool_assign(x);
+        tmp.const_as_mut().bool_(x);
         tmp
     }
 }
@@ -427,7 +436,7 @@ impl ExtAwi {
 impl From<bool> for ExtAwi {
     fn from(x: bool) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bw(1));
-        tmp.const_as_mut().bool_assign(x);
+        tmp.const_as_mut().bool_(x);
         tmp
     }
 }
@@ -447,16 +456,16 @@ macro_rules! extawi_from {
 }
 
 extawi_from!(
-    u8, u8_assign;
-    u16, u16_assign;
-    u32, u32_assign;
-    u64, u64_assign;
-    u128, u128_assign;
-    usize, usize_assign;
-    i8, i8_assign;
-    i16, i16_assign;
-    i32, i32_assign;
-    i64, i64_assign;
-    i128, i128_assign;
-    isize, isize_assign;
+    u8, u8_;
+    u16, u16_;
+    u32, u32_;
+    u64, u64_;
+    u128, u128_;
+    usize, usize_;
+    i8, i8_;
+    i16, i16_;
+    i32, i32_;
+    i64, i64_;
+    i128, i128_;
+    isize, isize_;
 );

@@ -1,6 +1,6 @@
 [package]
 name = "awint_macro_internals"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -9,11 +9,10 @@ repository = "https://github.com/AaronKutch/awint"
 description = "Internal macro utilities for the `awint` system of crates"
 
 [dependencies]
-awint_core = { version = "0.7.0", path = "../awint_core", default-features = false }
-awint_ext = { version = "0.7.0", path = "../awint_ext", default-features = false }
+awint_ext = { version = "0.8.0", path = "../awint_ext", default-features = false }
 proc-macro2 = "1.0"
-triple_arena = "0.6"
-triple_arena_render = { version = "0.6", optional = true }
+triple_arena = "0.7"
+triple_arena_render = { version = "0.7", optional = true }
 
 # for examples
 [dev-dependencies]

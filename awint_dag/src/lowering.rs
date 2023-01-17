@@ -1,10 +1,10 @@
-mod dag;
 mod eval;
 mod lower;
 pub(crate) mod meta;
 mod node;
+mod op_dag;
 
-pub use dag::Dag;
-pub use node::Node;
+pub use node::OpNode;
+pub use op_dag::OpDag;
 
 pub use crate::common::PNode;

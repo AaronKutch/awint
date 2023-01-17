@@ -103,22 +103,22 @@ fn fmt_strings() {
     );
 
     let fpbits = FP::new(true, inlawi!(-0xabcd1234i36), 16).unwrap();
-    assert_eq!(format!("{:x}", fpbits), "-0xabcd.1234_i36f16");
-    assert_eq!(format!("{:X}", fpbits), "-0xABCD.1234_i36f16");
-    assert_eq!(format!("{:o}", fpbits), "-0o125715.04432_i36f16");
+    assert_eq!(format!("{fpbits:x}"), "-0xabcd.1234_i36f16");
+    assert_eq!(format!("{fpbits:X}"), "-0xABCD.1234_i36f16");
+    assert_eq!(format!("{fpbits:o}"), "-0o125715.04432_i36f16");
     assert_eq!(
-        format!("{:b}", fpbits),
+        format!("{fpbits:b}"),
         "-0b1010101111001101.00010010001101_i36f16"
     );
-    assert_eq!(format!("{:?}", fpbits), "-43981.07111_i36f16");
-    assert_eq!(format!("{}", fpbits), "-43981.07111_i36f16");
+    assert_eq!(format!("{fpbits:?}"), "-43981.07111_i36f16");
+    assert_eq!(format!("{fpbits}"), "-43981.07111_i36f16");
 
     let fpbits = FP::new(false, inlawi!(1u11), -16).unwrap();
-    assert_eq!(format!("{}", fpbits), "65536.0_u11f-16");
+    assert_eq!(format!("{fpbits}"), "65536.0_u11f-16");
     let fpbits = FP::new(false, inlawi!(1u11), 16).unwrap();
-    assert_eq!(format!("{}", fpbits), "0.00002_u11f16");
+    assert_eq!(format!("{fpbits}"), "0.00002_u11f16");
     let fpbits = FP::new(false, inlawi!(11111111111), 16).unwrap();
-    assert_eq!(format!("{}", fpbits), "0.03123_u11f16");
+    assert_eq!(format!("{fpbits}"), "0.03123_u11f16");
 }
 
 #[cfg(not(miri))]
@@ -135,33 +135,33 @@ fn all_hex_byte_combos() {
             s[s.len() - 1 - i] = b;
             match b {
                 b'0'..=b'9' => {
-                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
-                    tmp.u8_assign(b - b'0');
-                    tmp.shl_assign(i * 4).unwrap();
+                    tmp.u8_(b - b'0');
+                    tmp.shl_(i * 4).unwrap();
                     assert!(awi == tmp);
                 }
                 b'a'..=b'f' => {
-                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
-                    tmp.u8_assign(b - b'a' + 10);
-                    tmp.shl_assign(i * 4).unwrap();
+                    tmp.u8_(b - b'a' + 10);
+                    tmp.shl_(i * 4).unwrap();
                     assert!(awi == tmp);
                 }
                 b'A'..=b'F' => {
-                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
-                    tmp.u8_assign(b - b'A' + 10);
-                    tmp.shl_assign(i * 4).unwrap();
+                    tmp.u8_(b - b'A' + 10);
+                    tmp.shl_(i * 4).unwrap();
                     assert!(awi == tmp);
                 }
                 b'_' => {
-                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
                     assert!(awi.is_zero());
                 }
                 _ => {
-                    awi.bytes_radix_assign(None, &s, 16, &mut pad0, &mut pad1)
+                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap_err();
                 }
             }
@@ -182,13 +182,13 @@ fn all_single_byte_combos() {
     for r in 2..=36 {
         for b in 0..=u8::MAX {
             s[0] = b;
-            let res = awi.bytes_radix_assign(None, &s, r, &mut pad0, &mut pad1);
+            let res = awi.bytes_radix_(None, &s, r, &mut pad0, &mut pad1);
             match b {
                 b'0'..=b'9' => {
                     let v = b - b'0';
                     if v < r {
                         res.unwrap();
-                        tmp.u8_assign(v);
+                        tmp.u8_(v);
                         assert!(awi == tmp);
                     } else {
                         res.unwrap_err();
@@ -198,7 +198,7 @@ fn all_single_byte_combos() {
                     let v = b - b'a' + 10;
                     if v < r {
                         res.unwrap();
-                        tmp.u8_assign(v);
+                        tmp.u8_(v);
                         assert!(awi == tmp);
                     } else {
                         res.unwrap_err();
@@ -208,7 +208,7 @@ fn all_single_byte_combos() {
                     let v = b - b'A' + 10;
                     if v < r {
                         res.unwrap();
-                        tmp.u8_assign(v);
+                        tmp.u8_(v);
                         assert!(awi == tmp);
                     } else {
                         res.unwrap_err();

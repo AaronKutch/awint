@@ -120,7 +120,7 @@ impl Bits {
     /// Shift-left-assigns at the digit level
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
-    pub(crate) const fn digit_shl_assign(&mut self, s: NonZeroUsize) {
+    pub(crate) const fn digit_shl_(&mut self, s: NonZeroUsize) {
         // Should get optimized away when this function is inlined
         assert!(s.get() < self.bw());
         let s = digits(s);
@@ -151,7 +151,7 @@ impl Bits {
     /// Shift-left-assigns according to extra bits
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
-    pub(crate) const fn subdigit_shl_assign(&mut self, s: NonZeroUsize, clear_unused_bits: bool) {
+    pub(crate) const fn subdigit_shl_(&mut self, s: NonZeroUsize, clear_unused_bits: bool) {
         let s = extra(s);
         if s != 0 {
             // TODO benchmark this strategy vs dual unroll
@@ -171,7 +171,7 @@ impl Bits {
     /// Shift-right-assigns at the digit level
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
-    pub(crate) const fn digit_shr_assign(
+    pub(crate) const fn digit_shr_(
         &mut self,
         s: NonZeroUsize,
         extension: bool,
@@ -213,7 +213,7 @@ impl Bits {
     /// Shift-right-assigns according to extra bits
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
-    pub(crate) const fn subdigit_shr_assign(
+    pub(crate) const fn subdigit_shr_(
         &mut self,
         s: NonZeroUsize,
         extension: bool,
@@ -258,12 +258,12 @@ impl Bits {
     /// both the signed and unsigned interpretation of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn shl_assign(&mut self, s: usize) -> Option<()> {
+    pub const fn shl_(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
             Some(s) if s.get() < self.bw() => {
-                self.digit_shl_assign(s);
-                self.subdigit_shl_assign(s, true);
+                self.digit_shl_(s);
+                self.subdigit_shl_(s, true);
                 Some(())
             }
             _ => None,
@@ -278,12 +278,12 @@ impl Bits {
     /// interpretation of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn lshr_assign(&mut self, s: usize) -> Option<()> {
+    pub const fn lshr_(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
             Some(s) if s.get() < self.bw() => {
-                self.digit_shr_assign(s, false, false);
-                self.subdigit_shr_assign(s, false, true);
+                self.digit_shr_(s, false, false);
+                self.subdigit_shr_(s, false, true);
                 Some(())
             }
             _ => None,
@@ -298,13 +298,13 @@ impl Bits {
     /// of `Bits`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn ashr_assign(&mut self, s: usize) -> Option<()> {
+    pub const fn ashr_(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
             Some(s) if s.get() < self.bw() => {
                 let extension = self.msb();
-                self.digit_shr_assign(s, extension, false);
-                self.subdigit_shr_assign(s, extension, true);
+                self.digit_shr_(s, extension, false);
+                self.subdigit_shr_(s, extension, true);
                 Some(())
             }
             _ => None,
@@ -316,7 +316,7 @@ impl Bits {
     ///
     /// This function is equivalent to the following:
     /// ```
-    /// use awint::prelude::*;
+    /// use awint::awi::*;
     /// let mut input = inlawi!(0x4321u16);
     /// let mut output = inlawi!(0u16);
     /// // rotate left by 4 bits or one hexadecimal digit
@@ -330,14 +330,14 @@ impl Bits {
     ///         // the actual function would return `None`
     ///         panic!();
     ///     }
-    ///     output.shl_assign(shift).unwrap();
-    ///     tmp.lshr_assign(input.bw() - shift).unwrap();
-    ///     output.or_assign(&tmp);
+    ///     output.shl_(shift).unwrap();
+    ///     tmp.lshr_(input.bw() - shift).unwrap();
+    ///     output.or_(&tmp);
     /// };
     ///
     /// assert_eq!(output, inlawi!(0x3214u16));
     /// let mut using_rotate = ExtAwi::from(input);
-    /// using_rotate.rotl_assign(shift).unwrap();
+    /// using_rotate.rotl_(shift).unwrap();
     /// assert_eq!(using_rotate, extawi!(0x3214u16));
     ///
     /// // Note that slices are typed in a little-endian order opposite of
@@ -349,7 +349,7 @@ impl Bits {
     /// assert_eq!(array, [3, 2, 1, 4]);
     /// assert_eq!(0x4321u16.rotate_left(4), 0x3214);
     /// let mut x = inlawi!(0x4321u16);
-    /// x.rotl_assign(4).unwrap();
+    /// x.rotl_(4).unwrap();
     /// // `Bits` has the preferred endianness
     /// assert_eq!(x, inlawi!(0x3214u16));
     /// ```
@@ -359,7 +359,7 @@ impl Bits {
     /// shifts.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn rotl_assign(&mut self, s: usize) -> Option<()> {
+    pub const fn rotl_(&mut self, s: usize) -> Option<()> {
         match NonZeroUsize::new(s) {
             None => Some(()),
             Some(s) if s.get() < self.bw() => {
@@ -389,7 +389,7 @@ impl Bits {
                     let wrap = x.last() >> extra;
                     unsafe {
                         subdigits_mut!(x, 0..digits, y, {
-                            y.subdigit_shl_assign(NonZeroUsize::new_unchecked(BITS - extra), false)
+                            y.subdigit_shl_(NonZeroUsize::new_unchecked(BITS - extra), false)
                         });
                     }
                     *x.first_mut() |= wrap;
@@ -409,7 +409,7 @@ impl Bits {
                                 | (x.get_unchecked(x.len() - 2) >> (BITS - s0 + extra))
                         }
                     };
-                    x.subdigit_shl_assign(s, true);
+                    x.subdigit_shl_(s, true);
                     *x.first_mut() |= wrap;
                 }
 
@@ -422,24 +422,24 @@ impl Bits {
     /// Right-rotate-assigns by `s` bits. If `s >= self.bw()`, then
     /// `None` is returned and the `Bits` are left unchanged.
     ///
-    /// See `Bits::rotl_assign` for more details.
+    /// See `Bits::rotl_` for more details.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn rotr_assign(&mut self, s: usize) -> Option<()> {
-        let bw = self.bw();
+    pub const fn rotr_(&mut self, s: usize) -> Option<()> {
+        let w = self.bw();
         if s == 0 {
             return Some(())
-        } else if s >= bw {
+        } else if s >= w {
             return None
         }
-        self.rotl_assign(bw - s)
+        self.rotl_(w - s)
     }
 
     /// Reverse-bit-order-assigns `self`. The least significant bit becomes the
     /// most significant bit, the second least significant bit becomes the
     /// second most significant bit, etc.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn rev_assign(&mut self) {
+    pub const fn rev_(&mut self) {
         let len = self.len();
         if len == 1 {
             *self.last_mut() = self.last().reverse_bits() >> self.unused();
@@ -529,19 +529,19 @@ impl Bits {
     /// bitwidth of `s`.
     ///
     /// ```
-    /// use awint::prelude::*;
+    /// use awint::awi::*;
     /// let mut lhs = inlawi!(0xffff_ffffu32);
     /// let mut rhs = inlawi!(0xfedc_ba98_7654_3210u64);
     /// // `lhs.bw()` must be a power of two, `s.bw()` here is
     /// // `log_2(32) == 5`. The value of `s` is set to what bit
     /// // of `rhs` should be the starting bit for `lhs`.
     /// let mut s = inlawi!(12u5);
-    /// lhs.funnel(&rhs, &s).unwrap();
+    /// lhs.funnel_(&rhs, &s).unwrap();
     /// assert_eq!(lhs, inlawi!(0xa9876543_u32))
     /// ```
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn funnel(&mut self, rhs: &Self, s: &Self) -> Option<()> {
+    pub const fn funnel_(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         // because we later call `s.to_usize()` and assume it fits within `s.bw()`
         s.assert_cleared_unused_bits();
         // We avoid overflow by checking in this order and with `BITS - 1` instead of

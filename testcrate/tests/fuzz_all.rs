@@ -15,18 +15,18 @@ const N: u32 = if cfg!(miri) {
 };
 
 macro_rules! test_extawi {
-    ($($name:ident, $n:expr, $seed:expr, $bw:expr);*;) => {
+    ($($name:ident, $n:expr, $seed:expr, $w:expr);*;) => {
         $(
             #[test]
             fn $name() {
-                let bw = bw($bw);
+                let w = bw($w);
                 let array = [
-                    &mut ExtAwi::zero(bw)[..],
-                    &mut ExtAwi::zero(bw)[..],
-                    &mut ExtAwi::zero(bw)[..],
-                    &mut ExtAwi::zero(bw)[..],
-                    &mut ExtAwi::zero(bw)[..],
-                    &mut ExtAwi::zero(bw)[..],
+                    &mut ExtAwi::zero(w)[..],
+                    &mut ExtAwi::zero(w)[..],
+                    &mut ExtAwi::zero(w)[..],
+                    &mut ExtAwi::zero(w)[..],
+                    &mut ExtAwi::zero(w)[..],
+                    &mut ExtAwi::zero(w)[..],
                 ];
                 fuzz::identities($n, $seed, array).unwrap();
             }
@@ -106,12 +106,12 @@ fn one_run() {
     #[cfg(not(miri))]
     let n = 9000;
     for bw_i in 1..=n {
-        let bw = bw(bw_i);
+        let w = bw(bw_i);
         let array = [
-            &mut ExtAwi::zero(bw)[..],
-            &mut ExtAwi::zero(bw)[..],
-            &mut ExtAwi::zero(bw)[..],
-            &mut ExtAwi::zero(bw)[..],
+            &mut ExtAwi::zero(w)[..],
+            &mut ExtAwi::zero(w)[..],
+            &mut ExtAwi::zero(w)[..],
+            &mut ExtAwi::zero(w)[..],
         ];
         fuzz::one_run(array).unwrap();
     }
