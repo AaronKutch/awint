@@ -109,7 +109,7 @@ impl Op<NonZeroUsize> {
         let w = self_w;
         let res: bool = match self {
             Invalid => return Error(EvalError::Unevaluatable),
-            Opaque(_) => return Error(EvalError::Unevaluatable),
+            Opaque(..) => return Error(EvalError::Unevaluatable),
             Literal(a) => {
                 if w != a.nzbw() {
                     return Error(EvalError::OtherStr("`Literal` with mismatching bitwidths"))

@@ -78,7 +78,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn opaque() -> Self {
         assert_inlawi_invariants::<BW, LEN>();
-        Self::new(Op::Opaque(smallvec![]))
+        Self::new(Op::Opaque(smallvec![], None))
     }
 
     pub fn zero() -> Self {
@@ -333,7 +333,7 @@ impl ExtAwi {
     }
 
     pub fn opaque(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Opaque(smallvec![]))
+        Self::new(w, Op::Opaque(smallvec![], None))
     }
 
     pub fn zero(w: NonZeroUsize) -> Self {

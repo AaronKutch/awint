@@ -93,7 +93,7 @@
 //!         use awint::awint_dag::Op::*;
 //!         core::assert!(matches!(
 //!             node.op,
-//!             Opaque(_)
+//!             Opaque(..)
 //!                 | Literal(_)
 //!                 | Copy(_)
 //!                 | StaticGet(_, _)

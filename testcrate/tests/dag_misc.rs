@@ -444,12 +444,12 @@ fn dag_size() {
 
     use awint::awint_dag::PState;
 
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(mem::size_of::<Op<PState>>(), 88);
-    }
     #[cfg(not(debug_assertions))]
     {
         assert_eq!(mem::size_of::<Op<PState>>(), 48);
+    }
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(mem::size_of::<Op<PState>>(), 88);
     }
 }

@@ -28,7 +28,7 @@ impl OpDag {
         let v = visit;
         match start_op {
             Invalid => return Err(EvalError::OtherStr("encountered `Invalid` in lowering")),
-            Opaque(_) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
+            Opaque(..) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
                 return Ok(true)
             }
             Lut([lut, inx]) => {

@@ -176,7 +176,7 @@ impl Mem {
                 op_dag.note_pnode(p).unwrap();
                 if let Op::Literal(lit) = op_dag[p].op.take() {
                     literals.push((p, lit));
-                    op_dag[p].op = Op::Opaque(smallvec![]);
+                    op_dag[p].op = Op::Opaque(smallvec![], None);
                 } else {
                     unreachable!()
                 }
@@ -193,7 +193,7 @@ impl Mem {
         for node in op_dag.a.vals() {
             if !matches!(
                 node.op,
-                Op::Opaque(_)
+                Op::Opaque(_, _)
                     | Op::Literal(_)
                     | Op::Copy(_)
                     | Op::StaticGet(_, _)

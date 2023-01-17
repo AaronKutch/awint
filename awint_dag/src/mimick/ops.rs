@@ -260,16 +260,19 @@ impl Bits {
     );
 
     pub fn opaque_(&mut self) {
-        self.update_state(self.state_nzbw(), Opaque(smallvec![self.state()]))
-            .unwrap_at_runtime();
+        self.update_state(
+            self.state_nzbw(),
+            Opaque(smallvec![self.state()], awi::None),
+        )
+        .unwrap_at_runtime();
     }
 
-    pub fn opaque_with_(&mut self, with: &[&Bits]) {
+    pub fn opaque_with_(&mut self, with: &[&Bits], name: awi::Option<&'static str>) {
         let mut v = smallvec![self.state()];
         for x in with {
             v.push(x.state());
         }
-        self.update_state(self.state_nzbw(), Opaque(v))
+        self.update_state(self.state_nzbw(), Opaque(v, name))
             .unwrap_at_runtime();
     }
 

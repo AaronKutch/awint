@@ -44,7 +44,7 @@ impl<P: Ptr + DummyDefault> DebugNodeTrait<P> for OpNode<P> {
                 })
                 .collect(),
             center: match this.op {
-                Op::Opaque(_) => vec![format!("opaque {}", this.nzbw)],
+                Op::Opaque(..) => vec![format!("{} {}", this.op.operation_name(), this.nzbw)],
                 Op::Literal(ref awi) => vec![format!("{awi}")],
                 Op::StaticLut(_, ref awi) => vec![format!("lut {awi}")],
                 Op::StaticGet(_, inx) => vec![format!("get {inx}")],

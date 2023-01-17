@@ -39,7 +39,7 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
 
     // represents an unknown, arbitrary, or opaque-boxed source or sink (can have any number of
     // operands)
-    Opaque(SmallVec<[T; 3]>),
+    Opaque(SmallVec<[T; 2]>, Option<&'static str>),
 
     // literal assign
     Literal(ExtAwi),
@@ -188,7 +188,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
 
     /// Returns if `self` is an `Opaque`
     pub fn is_opaque(&self) -> bool {
-        matches!(self, Opaque(_))
+        matches!(self, Opaque(_, _))
     }
 
     /// Returns if `self` is an `Invalid`
@@ -200,7 +200,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
     pub fn operation_name(&self) -> &'static str {
         match *self {
             Invalid => "invalid",
-            Opaque(_) => "opaque",
+            Opaque(_, name) => name.unwrap_or("opaque"),
             Literal(_) => "literal",
             StaticLut(..) => "static_lut",
             StaticGet(..) => "static_get",
@@ -274,7 +274,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         let mut v = vec![];
         // add common "lhs"
         match *self {
-            Invalid | Opaque(_) | Literal(_) => (),
+            Invalid | Opaque(..) | Literal(_) => (),
             StaticLut(..) => v.push("inx"),
             StaticGet(..) => v.push("x"),
             StaticSet(..) => {
@@ -382,7 +382,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
     pub fn operands(&self) -> &[T] {
         match self {
             Invalid => &[],
-            Opaque(v) => v,
+            Opaque(v, _) => v,
             Literal(_) => &[],
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
@@ -454,7 +454,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
     pub fn operands_mut(&mut self) -> &mut [T] {
         match self {
             Invalid => &mut [],
-            Opaque(v) => v,
+            Opaque(v, _) => v,
             Literal(_) => &mut [],
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
@@ -532,9 +532,9 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
     pub fn translate_root<U: Debug + DummyDefault + Clone>(this: &Op<U>) -> Option<Self> {
         match this {
             Invalid => Some(Invalid),
-            Opaque(v) => {
+            Opaque(v, name) => {
                 if v.is_empty() {
-                    Some(Opaque(smallvec![]))
+                    Some(Opaque(smallvec![], *name))
                 } else {
                     None
                 }
@@ -553,8 +553,8 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         let mut m = map;
         match this {
             Invalid => Invalid,
-            Opaque(v) => {
-                let mut res = Opaque(smallvec![DummyDefault::default(); v.len()]);
+            Opaque(v, name) => {
+                let mut res = Opaque(smallvec![DummyDefault::default(); v.len()], *name);
                 m(res.operands_mut(), this.operands());
                 res
             }
