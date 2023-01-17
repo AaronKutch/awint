@@ -424,7 +424,8 @@ fn dag_try() {
     {
         use awi::{assert, *};
         // fix the opaques
-        graph.pnote_get_mut_node(s).unwrap().op = Op::Literal(extawi!(8u64));
+        graph.pnote_get_mut_node(s).unwrap().op =
+            Op::Literal(ExtAwi::from_usize(extawi!(8u64).to_usize()));
 
         let res = graph.eval_all();
         assert!(matches!(res, Err(EvalError::AssertionFailure(_))));

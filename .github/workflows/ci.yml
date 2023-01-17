@@ -69,17 +69,18 @@ jobs:
       - name: Install Rust components
         run: |
           rustup set profile minimal
-          rustup install 1.61.0
+          rustup install 1.66.1
       # In the past I have had problems with features not being orthogonal due to configuration
       # mistakes, so we test several combinations here
       - name: Run `cargo build`
         run: |
-          cargo build --no-default-features --features=std,rand_support,serde_support
+          cargo build --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
           cargo build --no-default-features --features=std
+          cargo build --no-default-features --features=alloc
           cargo build --no-default-features --features=rand_support
           cargo build --no-default-features --features=serde_support
+          cargo build --no-default-features --features=zeroize_support
           cargo build --no-default-features --features=dag
-          cargo build --no-default-features --features=dag,rand_support,serde_support
           cargo build --no-default-features --features=debug
           cargo build --no-default-features
 

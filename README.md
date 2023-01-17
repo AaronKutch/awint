@@ -28,6 +28,7 @@ system depending on these feature flags:
 - "alloc" turns on parts that require an allocator
 - "std" turns on parts that require std
 - "dag" turns on `awint_dag`
+- "try_support" turns on some features required for `dag::Option` to fully work
 - "debug" turns on some developer functions
 - "rand_support" turns on a dependency to `rand_core` without its default features
 - "serde_support" turns on a dependency to `serde` without its default features
