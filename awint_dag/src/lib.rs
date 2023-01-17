@@ -2,6 +2,10 @@
 //!
 //! **NOTE**: this crate is usable but design choices are still in flux.
 //!
+//! **NOTE**: there is one significant wart, being that the concatenation macros
+//! in `dag::*` mode may not be no-ops if a `None` is returned. Use `unwrap`s
+//! on the outputs of the concatenation macros and check assertions for now.
+//!
 //! This crate is intended to be used as a reexport from the `awint` crate with
 //! the "dag" feature flag enabled.
 //!
@@ -11,21 +15,20 @@
 //! that is not a DSL but is rather plain Rust code that can be run normally.
 //! This `awint_dag` crate supplies a "mimicking" structs with the same names as
 //! their counterparts in `awint::awi::*`, the difference being that they
-//! have purely lazy execution, creating a DAG recording the order in which
+//! have lazy execution, creating a DAG recording the order in which
 //! different `Bits` operations are applied.
 //!
 //! ```
+//! use awint::{awi, dag};
 //! // In the future we may have a macro that can duplicate the code into a
 //! // module that has `awint::awi` imported, and another module that has
 //! // `awint::dag` imported, so that you can have a normal running version
-//! // of the code and the DAG recording version at the same time. But for
-//! // research for now, we add a flag to our crate that switches between
-//! // the types, so that we can rapidly switch between for development.
+//! // of the code and the DAG recording version at the same time.
 //!
 //! //#[cfg(feature = "dag")]
-//! use awint::dag::*;
+//! use dag::*;
 //! //#![cfg(not(feature = "dag"))]
-//! //use awint::awi::*;
+//! //use awi::*;
 //!
 //! // This is just some arbitrary example I coded up, note that you can use
 //! // almost all of Rust's features that you can use on the normal types
@@ -34,12 +37,6 @@
 //!     pub fn new() -> Self {
 //!         Self(inlawi!(0u16))
 //!     }
-//!
-//!     //#[cfg(feature = "dag")]
-//!     //pub fn state(&self) -> PState {
-//!     //    use awint::awint_dag::Lineage;
-//!     //    self.0.state()
-//!     //}
 //!
 //!     pub fn update(&mut self, input: inlawi_ty!(4)) -> Option<inlawi_ty!(4)> {
 //!         let mut s0 = inlawi!(0u4);
@@ -58,16 +55,21 @@
 //!     }
 //! }
 //!
-//! //#[cfg(feature = "dag")]
+//! // first, create an epoch, this will live until this struct is dropped
 //! let epoch0 = awint::awint_dag::StateEpoch::new();
 //!
 //! let mut m = StateMachine::new();
-//! let _ = m.update(InlAwi::opaque()).unwrap();
-//! let out = m.update(inlawi!(0110)).unwrap();
+//! let input = inlawi!(opaque: ..4);
+//! dag::assert_eq!(input, inlawi!(1010));
+//! let _ = m.update(input).unwrap();
+//! let output = m.update(inlawi!(0110)).unwrap();
 //!
 //! //#[cfg(feature = "dag")]
-//! //{
-//!     use awint::awint_dag::{OpDag, Lineage};
+//! {
+//!     use awi::*;
+//!     use awint::awint_dag::{OpDag, Op::*, Lineage};
+//!     // this will capture everything from the beginning of the epoch until
+//!     // now, including dynamic assertions
 //!     let (mut graph, res) = OpDag::from_epoch(&epoch0);
 //!
 //!     // The graphs unfortunately get ugly really fast, but you mainly want
@@ -79,8 +81,19 @@
 //!
 //!     res.unwrap();
 //!
+//!     // After creating the `OpDag` but before dropping the epoch or calling
+//!     // a transformative function, "note" any states, because nothing but
+//!     // dynamic assertions are marked with a nonzero reference count, and
+//!     // thus can be freely invalidated. The `PNote`s can be used as stable
+//!     // references after epochs are dropped.
+//!     let input = graph.note_pstate(input.state()).unwrap();
+//!     let output = graph.note_pstate(output.state()).unwrap();
+//!
 //!     // will do basic evaluations on DAGs
 //!     graph.eval_all().unwrap();
+//!
+//!     // If everything should be transparent with no opaques
+//!     //graph.assert_assertions().unwrap();
 //!
 //!     dbg!(&graph);
 //!
@@ -90,7 +103,6 @@
 //!     graph.lower_all().unwrap();
 //!
 //!     for node in graph.a.vals() {
-//!         use awint::awint_dag::Op::*;
 //!         core::assert!(matches!(
 //!             node.op,
 //!             Opaque(..)
@@ -101,7 +113,20 @@
 //!                 | StaticLut(_, _)
 //!         ));
 //!     }
-//! //}
+//!
+//!     // manually drop to prevent hidden mistakes
+//!     drop(epoch0);
+//!
+//!     // replace that opaque with a literal
+//!     graph.pnote_get_mut_node(input).unwrap().op = Literal(extawi!(1010));
+//!     graph.eval_all().unwrap();
+//!     graph.assert_assertions().unwrap();
+//!     if let Literal(ref lit) = graph.pnote_get_node(output).unwrap().op {
+//!         awi::assert_eq!(lit.as_ref(), extawi!(0u4).as_ref());
+//!     } else {
+//!         panic!();
+//!     }
+//! }
 //! ```
 //!
 //! ## Important Notes
@@ -157,8 +182,8 @@
 //! - There are generation counters on the `PState`s that are enabled when debug
 //!   assertions are on
 //! - In long running programs that are generating a lot of separate DAGs, you
-//!   should use `StateEpoch`s to clear up the thread local data that records
-//!   DAGs.
+//!   should use `StateEpoch`s for each one, so that thread local data is
+//!   cleaned up
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::needless_range_loop)]
