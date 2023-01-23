@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.9.0] - TODO
+### Additions
+- Added `FP::floating_`
+- Added IEEE-754 related items for `FP`
+
 ## [0.8.0] - 2022-01-17
 ### Crate
 - MSRV 1.66

@@ -12,6 +12,9 @@ use crate::{
     ExtAwi, FP,
 };
 
+// TODO there are variations of algorithms that can eliminate all the cases
+// where we take `rhs`s by mutable reference
+
 fn itousize(i: isize) -> Option<usize> {
     usize::try_from(i).ok()
 }
@@ -167,6 +170,57 @@ impl<B: BorrowMut<Bits>> FP<B> {
         b &= this.signed();
         this.const_as_mut().neg_(b);
         (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
+    }
+
+    /// Floating-assigns `rhs` to `this`. This modifies the `fp` of `this` to
+    /// retain as much significant numerical precision as possible. If
+    /// `this.signed()`, the msnb (most significant numerical bit) is moved to
+    /// the second msb of `this`. Otherwise, the msnb is moved to the msb of
+    /// `this`. If `rhs.is_negative()` and `this` is not signed, the absolute
+    /// value of `rhs` is used. If `rhs.is_zero()`, `this` and its `fp` are
+    /// zeroed. Returns `None` if the fixed point invariant would be
+    /// violated.
+    pub fn floating_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> Option<()> {
+        let b = rhs.is_negative();
+        rhs.neg_(b);
+        let rhs_lz = rhs.lz();
+        if rhs_lz == rhs.bw() {
+            // efficient zero
+            this.zero_();
+            // do this since we will also do this in triop situations
+            this.set_fp(0).unwrap();
+        } else {
+            let msnb_add1 = rhs.bw().wrapping_sub(rhs_lz);
+            let this_sig_w = this.bw().wrapping_sub(this.signed() as usize);
+            let (to, from, width) = if msnb_add1 > this_sig_w {
+                (0, msnb_add1.wrapping_sub(this_sig_w), this_sig_w)
+            } else {
+                (this_sig_w.wrapping_sub(msnb_add1), 0, msnb_add1)
+            };
+            let rhs_exp = (msnb_add1.wrapping_sub(1) as isize).wrapping_sub(rhs.fp());
+            let neg_this = b && this.signed();
+            if neg_this && (this.bw() == 1) {
+                // corner case: negative powers of two can be represented with one signed bit
+                if this.set_fp(rhs_exp.wrapping_neg()).is_none() {
+                    rhs.neg_(b);
+                    return None
+                }
+                this.umax_();
+            } else {
+                if this
+                    .set_fp((this_sig_w as isize).wrapping_sub(1).wrapping_sub(rhs_exp))
+                    .is_none()
+                {
+                    rhs.neg_(b);
+                    return None
+                }
+                this.zero_();
+                this.field(to, rhs, from, width).unwrap();
+                this.neg_(neg_this);
+            }
+        }
+        rhs.neg_(b);
+        Some(())
     }
 
     /// Creates a tuple of `Vec<u8>`s representing the integer and fraction

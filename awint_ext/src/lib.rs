@@ -22,7 +22,8 @@
 extern crate alloc;
 
 mod extawi;
-mod fp;
+mod fp_core;
+mod fp_ieee;
 mod fp_logic;
 #[cfg(feature = "serde_support")]
 mod serde;
@@ -32,7 +33,7 @@ mod strings;
 pub use awint_core::awint_internals;
 pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 pub use extawi::ExtAwi;
-pub use fp::{FPType, FP};
+pub use fp_core::{FPType, FP};
 
 /// Subset of `awint::awi`
 pub mod awi {
@@ -41,4 +42,10 @@ pub mod awi {
     pub use Result::{Err, Ok};
 
     pub use crate::{ExtAwi, FPType, FP};
+}
+
+/// Fixed point related items
+pub mod fp {
+    pub use super::fp_ieee::{F32, F64};
+    pub use crate::{FPType, FP};
 }

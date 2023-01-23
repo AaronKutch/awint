@@ -169,6 +169,17 @@ impl<B: BorrowMut<Bits>> FP<B> {
             bw: self.nzbw(),
         }
     }
+
+    /// Sets the fixed point of `self`. Returns `None` if `fp.unsigned_abs()` is
+    /// greater than `usize::MAX >> 2`.
+    pub fn set_fp(&mut self, fp: isize) -> Option<()> {
+        if fp.unsigned_abs() > (usize::MAX >> 2) {
+            None
+        } else {
+            self.fp = fp;
+            Some(())
+        }
+    }
 }
 
 impl<B: BorrowMut<Bits>> Deref for FP<B> {

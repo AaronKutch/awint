@@ -52,3 +52,9 @@ pub mod prelude {
     pub use awint_ext::{ExtAwi, FPType, FP};
     pub use awint_macros::*;
 }
+
+/// Fixed point related items
+#[cfg(feature = "alloc")]
+pub mod fp {
+    pub use awint_ext::fp::*;
+}
