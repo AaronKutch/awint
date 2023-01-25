@@ -6,8 +6,9 @@ use crate::Bits;
 impl Bits {
     // this is tested by `awint_test/tests/rand.rs`
 
-    /// Randomly-assigns `self` using a `rand_core::RngCore` random number
-    /// generator. This works by calling `RngCore::try_fill_bytes` and uses
+    /// Randomly-assigns `self` using a [rand_core::RngCore] random number
+    /// generator. This works by calling
+    /// [RngCore::try_fill_bytes](rand_core::RngCore::try_fill_bytes) and uses
     /// platform independent methods such that if a pseudorandom generator is
     /// used, it should always produce the same results when tried on the same
     /// sequence of different bitwidth `Bits`.

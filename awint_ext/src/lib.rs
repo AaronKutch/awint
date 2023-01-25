@@ -30,6 +30,8 @@ mod serde;
 mod strings;
 
 #[doc(hidden)]
+pub use awint_core;
+#[doc(hidden)]
 pub use awint_core::awint_internals;
 pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 pub use extawi::ExtAwi;

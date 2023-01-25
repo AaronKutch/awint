@@ -95,8 +95,8 @@ fn string_conversion() {
     );
     let x = "-6.283185307_e-1i32f16".parse::<ExtAwi>().unwrap();
     assert_eq!(
-        FP::new(false, x, 16).unwrap().to_string(),
-        "65535.37169_u32f16".to_owned()
+        FP::new(true, x, 16).unwrap().to_string(),
+        "-0.62831_i32f16".to_owned()
     );
     assert!(matches!("".parse::<ExtAwi>(), Err(Empty)));
     assert!(matches!("_".parse::<ExtAwi>(), Err(InvalidChar)));

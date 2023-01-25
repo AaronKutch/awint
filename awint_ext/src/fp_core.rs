@@ -212,7 +212,7 @@ impl<B: Copy + BorrowMut<Bits>> Copy for FP<B> {}
 
 impl<B: PartialEq + BorrowMut<Bits>> PartialEq for FP<B> {
     /// The signedness, fixed point, and `PartialEq` implementation on
-    /// `FP::into_inner(self)` must all be `true` in order for this to return
+    /// [FP::into_b] must all be `true` in order for this to return
     /// `true`
     fn eq(&self, rhs: &Self) -> bool {
         (self.signed == rhs.signed) && (self.fp == rhs.fp) && (self.bits == rhs.bits)
@@ -224,7 +224,6 @@ impl<B: PartialEq + Eq + BorrowMut<Bits>> Eq for FP<B> {}
 macro_rules! impl_fmt {
     ($($ty:ident, $radix_str:expr, $radix:expr, $upper:expr);*;) => {
         $(
-            /// Forwards to the corresponding impl for `Bits`
             impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     let (integer, fraction) = FP::to_str_general(self, $radix, $upper, 1, 1)
