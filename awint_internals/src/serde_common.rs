@@ -1,6 +1,6 @@
 //! Common serialization utilities
 
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 
 // The reason this is here is because I need the free functions in `awint_core`
 // for speeding up certain serialization tasks, but the free functions also need
@@ -9,20 +9,33 @@ use core::{convert::TryFrom, fmt};
 /// A serialization or deserialization error
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SerdeError {
+    /// The input is empty
+    Empty,
+    /// The input is missing the integer part, even if it has a bitwidth or
+    /// other part.
+    EmptyInteger,
+    /// A fraction is given but it is empty
+    EmptyFraction,
+    /// An exponent suffix is given but it is empty
+    EmptyExponent,
+    /// A bitwidth suffix is given but it is empty
+    EmptyBitwidth,
+    /// A fixed point suffix is given but it is empty
+    EmptyFixedPoint,
+    /// There is an unrecognized character that is not `_`, `-`, `0..=9`,
+    /// `a..=z`, or `A..=Z` depending on the radix and other context
+    InvalidChar,
+    /// A radix is not in the range `2..=36`
+    InvalidRadix,
     /// If an input bitwidth is zero
     ZeroBitwidth,
     /// If some kind of width does not match in contexts that require equal
     /// widths
     NonEqualWidths,
-    /// A radix is not in the range `2..=36`
-    InvalidRadix,
-    /// An input is empty. This could be part of a string, e.x. calling
-    /// `<awint_ext::ExtAwi as FromStr>::from_str` with no integral "i64", or no
-    /// bitwidth "-100", instead of the full "-100i64".
-    Empty,
-    /// There is an unrecognized character that is not `_`, `-`, `0..=9`,
-    /// `a..=z`, or `A..=Z` depending on the radix and other context
-    InvalidChar,
+    /// An input was marked as both negative and unsigned
+    NegativeUnsigned,
+    /// If a fraction or negative exponent was used without fixed point mode
+    Fractional,
     /// The value represented by the string cannot fit in the specified unsigned
     /// or signed integer. This may also be thrown in case of internal
     /// algorithms failing from extreme string lengths approaching memory
@@ -37,6 +50,8 @@ impl fmt::Display for SerdeError {
 }
 
 use SerdeError::*;
+
+use crate::BITS;
 
 /// Binary logarithms of the integers 2..=36 rounded up and in u16p13 fixed
 /// point format
@@ -81,7 +96,7 @@ fn inv_lb_u16p15() {
 /// represented. This may give more bits than needed, but is guaranteed to never
 /// underestimate the number of bits needed.
 /// Returns `None` if we see memory exhaustion
-pub fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError> {
+pub const fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError> {
     if radix < 2 || radix > 36 {
         return Err(InvalidRadix)
     }
@@ -99,8 +114,9 @@ pub fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError> {
     if let Some(tmp) = (LB_I3F13[radix as usize] as u128).checked_mul((len as u128).wrapping_add(1))
     {
         // `len` should not be larger than `isize::MAX`.
-        if let Ok(estimate) = isize::try_from((tmp >> 13).wrapping_add(1) as usize) {
-            return Ok(estimate as usize)
+        let estimate = (tmp >> 13).wrapping_add(1) as usize;
+        if estimate & (1 << (BITS - 1)) == 0 {
+            return Ok(estimate)
         }
     }
     Err(Overflow)
@@ -108,7 +124,7 @@ pub fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError> {
 
 /// This takes an input of significant bits and gives an upper bound for the
 /// number of characters in the given `radix` needed to represent those bits.
-pub fn chars_upper_bound(significant_bits: usize, radix: u8) -> Result<usize, SerdeError> {
+pub const fn chars_upper_bound(significant_bits: usize, radix: u8) -> Result<usize, SerdeError> {
     if radix < 2 || radix > 36 {
         return Err(InvalidRadix)
     }
@@ -116,9 +132,31 @@ pub fn chars_upper_bound(significant_bits: usize, radix: u8) -> Result<usize, Se
     if let Some(tmp) = (INV_LB_I1F15[radix as usize] as u128)
         .checked_mul((significant_bits as u128).wrapping_add(1))
     {
-        if let Ok(estimate) = isize::try_from((tmp >> 15).wrapping_add(1) as usize) {
-            return Ok(estimate as usize)
+        let estimate = (tmp >> 15).wrapping_add(1) as usize;
+        // check that it would fit in an `isize`
+        if estimate & (1 << (BITS - 1)) == 0 {
+            return Ok(estimate)
         }
     }
     Err(Overflow)
+}
+
+/// The same as [bits_upper_bound](crate::bits_upper_bound) except it panics
+/// internally in case of overflow
+pub const fn panicking_bits_upper_bound(len: usize, radix: u8) -> usize {
+    match bits_upper_bound(len, radix) {
+        Ok(o) => o,
+        // TODO can't const panic with format strings yet
+        Err(_e) => panic!(),
+    }
+}
+
+/// The same as [chars_upper_bound](crate::chars_upper_bound) except it panics
+/// internally in case of overflow
+pub const fn panicking_chars_upper_bound(significant_bits: usize, radix: u8) -> usize {
+    match chars_upper_bound(significant_bits, radix) {
+        Ok(o) => o,
+        // TODO can't const panic with format strings yet
+        Err(_e) => panic!(),
+    }
 }

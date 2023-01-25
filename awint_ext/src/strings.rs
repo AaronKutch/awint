@@ -1,7 +1,7 @@
 use alloc::{string::String, vec::Vec};
 use core::{cmp, num::NonZeroUsize};
 
-use awint_core::Bits;
+use awint_core::{Bits, InlAwi};
 
 use crate::{
     awint_internals::{SerdeError::*, *},
@@ -189,8 +189,18 @@ impl ExtAwi {
         bw: NonZeroUsize,
         fp: isize,
     ) -> Result<ExtAwi, SerdeError> {
-        let i_len = integer.len();
-        let f_len = fraction.len();
+        let mut i_len = 0usize;
+        for c in integer {
+            if *c != b'_' {
+                i_len += 1;
+            }
+        }
+        let mut f_len = 0usize;
+        for c in fraction {
+            if *c != b'_' {
+                f_len += 1;
+            }
+        }
         let exp_sub_f_len = exp
             .checked_sub(isize::try_from(f_len).ok().ok_or(Overflow)?)
             .ok_or(Overflow)?;
@@ -317,116 +327,364 @@ impl ExtAwi {
 impl core::str::FromStr for ExtAwi {
     type Err = SerdeError;
 
-    // TODO extend this `-0x1234.5678p-3i32f-16`
-
     /// Creates an `ExtAwi` described by `s`. There are two modes of operation
     /// which use [ExtAwi::from_str_radix] differently.
     ///
-    /// In general mode, the bitwidth must be specified after a 'u' (unsigned)
-    /// or 'i' (signed) suffix. A prefix of "0b" specifies a binary radix, "0o"
-    /// specifies an octal radix, "0x" specifies hexadecimal, else decimal.
-    /// For some examples, "42u10" entered into this function creates an
-    /// `ExtAwi` with bitwidth 10 and unsigned value 42. "-42i10" results in
-    /// bitwidth 10 and signed value of -42. "0xffff_ffffu32" results in
-    /// bitwidth 32 and an unsigned value of 0xffffffff (also 4294967295 in
-    /// decimal and u32::MAX). "0x1_0000_0000u32" results in an error with
-    /// `SerdeError::Overflow`, because it exceeds the maximum unsigned
-    /// value for a 32 bit integer. "123" results in
-    /// `SerdeError::InvalidChar`, because no bitwidth suffix
-    /// has been supplied and this function has assumed binary mode, in which
-    /// '2' and '3' are invalid chars.
+    /// All valid inputs must begin with '0'-'9' or a '-' followed by '0'-'9'.
     ///
-    /// If no 'u' or 'i' chars are present, this function will use binary mode
-    /// and assume the input is a radix 2 string with only the chars '0' and
-    /// '1'. In this mode, the bitwidth will be equal to the number of
-    /// chars, including leading zeros. For some examples, 42 in binary is
-    /// 101010. If "101010" is entered into this function, it will return an
-    /// `ExtAwi` with bitwidth 6 and unsigned value 42. "0000101010" results
-    /// in bitwidth 10 and unsigned value 42. "1111_1111" results in bitwidth
-    /// 8 and signed value -128 or equivalently unsigned value 255.
+    /// If only '_', '0', and '1' chars are present, this function uses binary
+    /// mode. It will interpret the input as a binary string, the number of '0's
+    /// and '1's of which is the bitwidth (including leading '0's and excluding
+    /// '_'s). For example: 42 in binary is 101010. If "101010" is entered into
+    /// this function, it will return an `ExtAwi` with bitwidth 6 and
+    /// unsigned value 42. "0000101010" results in bitwidth 10 and unsigned
+    /// value 42. "1111_1111" results in bitwidth 8 and signed value -128 or
+    /// equivalently unsigned value 255.
     ///
-    /// A missing significand or suffix will result in `SerdeError::Empty`. Even
-    /// if the value is zero, there must be at least one '0' char in the
-    /// significand (e.x. `0x0u8` not `0xu8`), otherwise `SerdeError::Empty` is
-    /// returned.
+    /// In integer mode, a decimal bitwidth must be specified after a 'u'
+    /// (unsigned) or 'i' (signed) suffix. A prefix of "0b" specifies a binary
+    /// radix, "0o" specifies an octal radix, "0x" specifies hexadecimal,
+    /// otherwise a decimal radix is used. For example: "42u10" entered into
+    /// this function creates an `ExtAwi` with bitwidth 10 and unsigned
+    /// value 42. "-42i10" results in bitwidth 10 and signed value of -42.
+    /// "0xffff_ffffu32" results in bitwidth 32 and an unsigned value of
+    /// 0xffffffff (also 4294967295 in decimal and u32::MAX).
+    /// "0x1_0000_0000u32" results in an error with `SerdeError::Overflow`,
+    /// because it exceeds the maximum unsigned value for a 32 bit integer.
+    /// "123" results in `SerdeError::EmptyBitwidth`, because it is not in
+    /// binary mode and no bitwidth suffix has been supplied.
+    ///
+    /// In fixed point mode, there is an additional 'f' char suffix after the
+    /// bitwdith suffix, which is followed by
+    ///
+    /// If, after the bitwidth, an 'f' char is present, fixed point mode is
+    /// activated. A decimal fixed point position must be specified after the
+    /// 'f' that tells where the fixed point will be in the resulting bits (see
+    /// [crate::FP] for more). If the most significant numerical bit would be
+    /// cut off, `SerdeError::Overflow` is returned.
+    ///
+    /// Additionally, an exponent char 'e' (for non-hexadecimal radixes only) or
+    /// 'p' can be included after the integer or fraction parts but before the
+    /// bitwidth suffix. The exponent as typed uses the radix of the integer
+    /// part, and it is raised to the same radix when modifying the numerical
+    /// value. The exponent can only be negative for fixed point mode. For
+    /// example: "123e5u32" has numerical value 12300000. "123e-5u32" returns an
+    /// error since it is trying to use a negative exponent in integer mode.
+    /// "-0x1234.5678p-3i32f16" has a numerical value of -0x1234.5678 *
+    /// 0x10^-0x3 and uses [ExtAwi::from_bytes_general] to round-to-even to a 32
+    /// bit fixed point number with fixed point position 16.
+    ///
+    /// For all parts including the integer, fraction, exponent, bitwidth, and
+    /// fixed point parts, if their prefix char exists but there is not at least
+    /// one '0' for them, some kind of empty error is returned. For example:
+    /// "0xu8" should be "0x0u8". ".i8f0" should be "0.0i8f0". "1uf" should be
+    /// "1u1f0".
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if !s.is_ascii() {
-            return Err(InvalidChar)
-        }
+        let mut sign = None;
+        let mut integer = None;
+        let mut fraction = None;
+        let mut exp = None;
+        let mut exp_negative = false;
+        let mut radix = None;
+        let bitwidth;
+        let mut fp = None;
+        let mut fp_negative = false;
+
+        let is_integral = |c: u8, radix: Option<u8>| {
+            let is_underscore = c == b'_';
+            let is_binary = (b'0' <= c) && (c <= b'1');
+            let is_octal = (b'0' <= c) && (c <= b'7');
+            let is_decimal = (b'0' <= c) && (c <= b'9');
+            let is_lowerhex = (b'a' <= c) && (c <= b'f');
+            let is_upperhex = (b'A' <= c) && (c <= b'F');
+            match radix {
+                // assuming binary or decimal
+                None => is_underscore || is_decimal,
+                Some(2) => is_underscore || is_binary,
+                Some(8) => is_underscore || is_octal,
+                Some(16) => is_underscore || is_decimal || is_lowerhex || is_upperhex,
+                _ => unreachable!(),
+            }
+        };
+
+        let is_empty_or_all_underscores = |s: &[u8]| {
+            let mut all_underscores = true;
+            for c in s {
+                if *c != b'_' {
+                    all_underscores = false;
+                    break
+                }
+            }
+            all_underscores
+        };
+
         let s = s.as_bytes();
         if s.is_empty() {
             return Err(Empty)
         }
 
-        // there should only be one 'u' or 'i' or none in the case of a binary string
-        let iu = s.iter().position(|c| *c == b'u');
-        let ii = s.iter().position(|c| *c == b'i');
-        let (signed, i) = match (iu, ii) {
-            (Some(i), None) => (false, i),
-            (None, Some(i)) => (true, i),
-            (None, None) => {
-                // binary case
+        let mut i = 0;
+        if s[i] == b'-' {
+            if s.len() < 2 {
+                return Err(Empty)
+            }
+            sign = Some(true);
+            i += 1;
+        }
+        if (s[i] == b'u') || (s[i] == b'i') {
+            // case that we want a better error for
+            return Err(EmptyInteger)
+        }
+        // first char after a possible '-' should always be '0'-'9'
+        if !((b'0' <= s[i]) && (s[i] <= b'9')) {
+            return Err(InvalidChar)
+        }
 
-                // do not count `_` for the bitwidth
-                let mut w = 0;
-                for c in s {
-                    if *c != b'_' {
-                        w += 1;
+        if (s[i] == b'0') && ((i + 1) < s.len()) {
+            if s[i + 1] == b'b' {
+                radix = Some(2);
+                i += 2;
+            } else if s[i + 1] == b'o' {
+                i += 2;
+                radix = Some(8);
+            } else if s[i + 1] == b'x' {
+                radix = Some(16);
+                i += 2;
+            }
+            // else it might be binary mode or decimal radix
+        }
+
+        if sign.is_none() && radix.is_none() {
+            // check for binary mode, we have prefix checks above and reverse iteration here
+            // to reduce checking time
+            let mut binary_mode = true;
+            let mut w = 0;
+            for c in s.iter().rev() {
+                let c = *c;
+                if !((c == b'_') || (c == b'0') || (c == b'1')) {
+                    binary_mode = false;
+                    break
+                }
+                if c != b'_' {
+                    w += 1;
+                }
+            }
+            if binary_mode {
+                if let Some(w) = NonZeroUsize::new(w) {
+                    return ExtAwi::from_bytes_radix(None, s, 2, w)
+                } else {
+                    // there was '_' only
+                    return Err(EmptyInteger)
+                }
+            }
+        }
+
+        // integer part, can be followed by '.' for fraction, 'e' or 'p' for exponent,
+        // or 'u' or 'i' for bitwidth
+        let integer_start = i;
+        let mut fraction_start = None;
+        let mut exp_start = None;
+        loop {
+            if i >= s.len() {
+                break
+            }
+            if !is_integral(s[i], radix) {
+                if s[i] == b'.' {
+                    fraction_start = Some(i + 1);
+                } else if s[i] == b'u' {
+                    if sign.is_some() {
+                        return Err(NegativeUnsigned)
+                    }
+                    sign = None;
+                } else if s[i] == b'i' {
+                    if sign.is_none() {
+                        sign = Some(false);
+                    }
+                } else if (s[i] == b'e') || (s[i] == b'p') {
+                    exp_start = Some(i + 1);
+                } else {
+                    return Err(InvalidChar)
+                }
+                integer = Some(&s[integer_start..i]);
+                i += 1;
+                break
+            }
+            i += 1;
+        }
+
+        // fraction part, can be followed by ' or 'p' for exponent, or 'u' or 'i' for
+        // bitwidth
+        if let Some(fraction_start) = fraction_start {
+            loop {
+                if i >= s.len() {
+                    break
+                }
+                if !is_integral(s[i], radix) {
+                    if s[i] == b'u' {
+                        if sign.is_some() {
+                            return Err(NegativeUnsigned)
+                        }
+                        sign = None;
+                    } else if s[i] == b'i' {
+                        if sign.is_none() {
+                            sign = Some(false);
+                        }
+                    } else if (s[i] == b'e') || (s[i] == b'p') {
+                        exp_start = Some(i + 1);
+                    } else {
+                        return Err(InvalidChar)
+                    }
+                    fraction = Some(&s[fraction_start..i]);
+                    i += 1;
+                    break
+                }
+                i += 1;
+            }
+        }
+
+        // exponent part, can be followed by 'u' or 'i' for bitwidth
+        if let Some(mut exp_start) = exp_start {
+            loop {
+                if i >= s.len() {
+                    break
+                }
+                if !is_integral(s[i], radix) {
+                    if s[i] == b'-' {
+                        if exp_negative {
+                            return Err(InvalidChar)
+                        }
+                        exp_negative = true;
+                        exp_start += 1;
+                        i += 1;
+                        continue
+                    } else if s[i] == b'u' {
+                        if sign.is_some() {
+                            return Err(NegativeUnsigned)
+                        }
+                        sign = None;
+                    } else if s[i] == b'i' {
+                        if sign.is_none() {
+                            sign = Some(false);
+                        }
+                    } else {
+                        return Err(InvalidChar)
+                    }
+                    exp = Some(&s[exp_start..i]);
+                    i += 1;
+                    break
+                }
+                i += 1;
+            }
+        }
+
+        // bitwidth part, can be followed by 'f' for fixed point
+        let bitwidth_start = i;
+        let mut fp_start = None;
+        loop {
+            if i >= s.len() {
+                bitwidth = Some(&s[bitwidth_start..i]);
+                break
+            }
+            if !is_integral(s[i], None) {
+                if s[i] == b'f' {
+                    fp_start = Some(i + 1);
+                } else {
+                    return Err(InvalidChar)
+                }
+                bitwidth = Some(&s[bitwidth_start..i]);
+                i += 1;
+                break
+            }
+            i += 1;
+        }
+
+        // fixed point part
+        if let Some(mut fp_start) = fp_start {
+            loop {
+                if i >= s.len() {
+                    fp = Some(&s[fp_start..i]);
+                    break
+                }
+                if !is_integral(s[i], None) {
+                    if s[i] == b'-' {
+                        if fp_negative {
+                            return Err(InvalidChar)
+                        }
+                        fp_negative = true;
+                        fp_start += 1;
+                        i += 1;
+                        continue
+                    } else {
+                        return Err(InvalidChar)
                     }
                 }
-                if w == 0 {
-                    return Err(Empty)
-                }
-                return ExtAwi::from_bytes_radix(None, s, 2, bw(w))
+                i += 1;
             }
-            _ => return Err(Empty),
-        };
+        }
 
-        // find bitwidth
-        let w = if i.checked_add(1).ok_or(Overflow)? < s.len() {
-            match String::from_utf8(Vec::from(&s[i.checked_add(1).ok_or(Overflow)?..]))
-                .unwrap()
-                .parse::<usize>()
-            {
-                Ok(w) => w,
-                Err(_) => return Err(InvalidChar),
+        let radix = radix.unwrap_or(10);
+        if let Some(bitwidth) = bitwidth {
+            if is_empty_or_all_underscores(bitwidth) {
+                return Err(EmptyBitwidth)
             }
-        } else {
-            return Err(Empty)
-        };
-
-        // find sign
-        let (src, sign) = if signed {
-            if s[0] == b'-' {
-                (&s[1..i], Some(true))
+            let pad0 = &mut InlAwi::from_usize(0);
+            let pad1 = &mut InlAwi::from_usize(0);
+            let mut usize_awi = InlAwi::from_usize(0);
+            usize_awi.bytes_radix_(None, bitwidth, 10, pad0, pad1)?;
+            let w = if let Some(w) = NonZeroUsize::new(usize_awi.to_usize()) {
+                w
             } else {
-                (&s[..i], Some(false))
+                return Err(ZeroBitwidth)
+            };
+            if let Some(integer) = integer {
+                if is_empty_or_all_underscores(integer) {
+                    return Err(EmptyInteger)
+                }
+                let exp = if let Some(exp) = exp {
+                    if is_empty_or_all_underscores(exp) {
+                        return Err(EmptyExponent)
+                    }
+                    usize_awi.bytes_radix_(Some(exp_negative), exp, radix, pad0, pad1)?;
+                    usize_awi.to_isize()
+                } else {
+                    0
+                };
+                if let Some(fp) = fp {
+                    if is_empty_or_all_underscores(fp) {
+                        return Err(EmptyFixedPoint)
+                    }
+                    // fixed point mode
+
+                    usize_awi.bytes_radix_(Some(fp_negative), fp, 10, pad0, pad1)?;
+                    let fp = usize_awi.to_isize();
+                    let fraction = if let Some(fraction) = fraction {
+                        if is_empty_or_all_underscores(fraction) {
+                            return Err(EmptyFraction)
+                        }
+                        fraction
+                    } else {
+                        &[]
+                    };
+
+                    ExtAwi::from_bytes_general(sign, integer, fraction, exp, radix, w, fp)
+                } else {
+                    // integer mode
+
+                    if (exp < 0) || (fraction.is_some()) {
+                        return Err(Fractional)
+                    }
+                    if exp > 0 {
+                        // there are a lot of tricky edge cases, just use this
+                        ExtAwi::from_bytes_general(sign, integer, &[], exp, radix, w, 0)
+                    } else {
+                        ExtAwi::from_bytes_radix(sign, integer, radix, w)
+                    }
+                }
+            } else {
+                Err(EmptyInteger)
             }
         } else {
-            (&s[..i], None)
-        };
-        if src.is_empty() {
-            return Err(Empty)
-        }
-
-        // find radix
-        let (src, radix) = if src.len() >= 2 {
-            match (src[0], src[1]) {
-                (b'0', b'x') => (&src[2..], 16),
-                (b'0', b'o') => (&src[2..], 8),
-                (b'0', b'b') => (&src[2..], 2),
-                _ => (src, 10),
-            }
-        } else {
-            (src, 10)
-        };
-        if src.is_empty() {
-            return Err(Empty)
-        }
-
-        match NonZeroUsize::new(w) {
-            None => Err(ZeroBitwidth),
-            Some(bw) => ExtAwi::from_bytes_radix(sign, src, radix, bw),
+            Err(EmptyBitwidth)
         }
     }
 }

@@ -1,9 +1,14 @@
 # Changelog
 
 ## [0.9.0] - TODO
+### Fixes
+- Fixed that '_'s in the fraction of `ExtAwi::from_bytes_general` could cause incorrect results.
+- Fixed that `ExtAwi::from_str` could allow effectively empty integers like "_u8"
+
 ### Additions
 - Added `FP::floating_`
 - Added IEEE-754 related items for `FP`
+- Added fixed point support to `ExtAwi::from_str` to quickly leverage `ExtAwi::from_str_general` 
 
 ## [0.8.0] - 2022-01-17
 ### Crate

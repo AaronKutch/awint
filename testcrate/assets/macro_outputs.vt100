@@ -87,7 +87,7 @@ was parsed with `<ExtAwi as FromStr>::from_str("0u0")` which returned SerdeError
 
 -123
 Err:
-was parsed with `<ExtAwi as FromStr>::from_str("-123")` which returned SerdeError::InvalidChar
+was parsed with `<ExtAwi as FromStr>::from_str("-123")` which returned SerdeError::EmptyBitwidth
 -123[97m; [0m[91mconcatenation 0
 ^^^^ [0m
 
