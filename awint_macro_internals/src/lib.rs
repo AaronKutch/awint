@@ -20,6 +20,7 @@ mod ranges;
 mod token_stream;
 mod token_tree;
 
+pub use awint_ext::{self, awint_core};
 pub use bimap::*;
 pub use cc_macro::*;
 pub use component::*;
