@@ -22,7 +22,7 @@ zeroize = { version = "1.5", default-features = false, optional = true }
 [dev-dependencies]
 awint = { path = "../awint" }
 rand_xoshiro = "0.6"
-ron = "0.7"
+ron = "0.8"
 
 [features]
 default = ["const_support"]
