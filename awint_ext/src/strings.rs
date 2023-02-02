@@ -324,6 +324,12 @@ impl ExtAwi {
     }
 }
 
+// TODO 0e-3_n123.456_i32f16 0xp-3_n123.456_i32f16 allow leading 'n'
+
+// TODO leading 'r' for reversimals
+
+// TODO default 0. shift for fixing very large fp problem, and fix perf
+
 impl core::str::FromStr for ExtAwi {
     type Err = SerdeError;
 
