@@ -66,6 +66,9 @@ pub struct FP<B: BorrowMut<Bits>> {
     bits: B,
 }
 
+// TODO we will probably store the signed and reversimal bits in the 2 lsb bits
+// of `fp`
+
 impl<B: BorrowMut<Bits>> FP<B> {
     /// Creates a fixed-point generic `FP<B>` from a specified signedness
     /// `signed`, wrapped value `B`, and fixed point `fp`. This returns `None`

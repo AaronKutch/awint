@@ -53,6 +53,7 @@ pub mod awi {
 /// If `w == 0`, this function will panic.
 #[inline]
 #[track_caller]
+#[must_use]
 pub const fn bw(w: usize) -> NonZeroUsize {
     match NonZeroUsize::new(w) {
         None => {
