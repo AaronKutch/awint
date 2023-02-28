@@ -2,6 +2,8 @@
 
 ## [0.9.0] - TODO
 ### Fixes
+- Added a limiter to `FP::to_vec_general` and downstream string formatting to prevent easy resource
+  exhaustion problems. Note that `max_ufp` is set to 4096 for default formatters.
 - Fixed that '_'s in the fraction of `ExtAwi::from_bytes_general` could cause incorrect results.
 - Fixed that `ExtAwi::from_str` could allow effectively empty integers like "_u8"
 

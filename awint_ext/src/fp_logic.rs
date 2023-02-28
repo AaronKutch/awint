@@ -231,7 +231,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// information is taken from `this`. `min_integer_chars` specifies the
     /// minimum number of chars in the integer part, inserting leading '0's if
     /// there are not enough chars. `min_fraction_chars` works likewise for the
-    /// fraction part, inserting trailing '0's.
+    /// fraction part, inserting trailing '0's. For `max_ufp` see the errors
+    /// section.
     ///
     /// ```
     /// use awint::awi::*;
@@ -247,12 +248,20 @@ impl<B: BorrowMut<Bits>> FP<B> {
     ///     // both parts so that zero parts result in "0" strings and not "",
     ///     // so `min_..._chars` will be 1. See also
     ///     // `FPType::unique_min_fraction_digits`.
-    ///     FP::to_str_general(&fp_awi, 10, false, 1, 1),
+    ///     FP::to_str_general(&fp_awi, 10, false, 1, 1, 4096),
     ///     Ok(("42".to_owned(), "1234".to_owned()))
     /// );
     /// ```
     ///
     /// # Errors
+    ///
+    /// Because it would be trivial to cause resource exhaustion with extremely
+    /// large fixed points (the bitwidth is limited roughly by what it takes to
+    /// allocate `this.b()` in the first place, but the fixed point can easily
+    /// be set to huge positive or negative values to result in extremely
+    /// long `Vec<u8>`s and internal calculations), for practical reasons we
+    /// need a built in failsafe that triggers if
+    /// `this.fp().unsigned_abs() > max_ufp`. If so, `Overflow` is returned.
     ///
     /// This can only return an error if `radix` is not in the range 2..=36 or
     /// if resource exhaustion occurs.
@@ -262,9 +271,13 @@ impl<B: BorrowMut<Bits>> FP<B> {
         upper: bool,
         min_integer_chars: usize,
         min_fraction_chars: usize,
+        max_ufp: usize,
     ) -> Result<(Vec<u8>, Vec<u8>), SerdeError> {
         if radix < 2 || radix > 36 {
             return Err(InvalidRadix)
+        }
+        if this.fp().unsigned_abs() > max_ufp {
+            return Err(Overflow)
         }
         // I was originally going to include b'-', but it causes insertion performance
         // problems here, and users have to remove it anyway in the usage cases where a
@@ -369,8 +382,16 @@ impl<B: BorrowMut<Bits>> FP<B> {
         upper: bool,
         min_integer_chars: usize,
         min_fraction_chars: usize,
+        max_ufp: usize,
     ) -> Result<(String, String), SerdeError> {
-        let (i, f) = FP::to_vec_general(this, radix, upper, min_integer_chars, min_fraction_chars)?;
+        let (i, f) = FP::to_vec_general(
+            this,
+            radix,
+            upper,
+            min_integer_chars,
+            min_fraction_chars,
+            max_ufp,
+        )?;
         Ok((String::from_utf8(i).unwrap(), String::from_utf8(f).unwrap()))
     }
 }

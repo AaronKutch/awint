@@ -227,30 +227,38 @@ impl<B: PartialEq + Eq + BorrowMut<Bits>> Eq for FP<B> {}
 macro_rules! impl_fmt {
     ($($ty:ident, $radix_str:expr, $radix:expr, $upper:expr);*;) => {
         $(
+            /// Note: `max_ufp` for the internal [FP::to_str_general] call
+            /// is set to 4096, if it results in an overflow then the
+            /// formatting is a no-op rather than causing `format!` to panic.
             impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    let (integer, fraction) = FP::to_str_general(self, $radix, $upper, 1, 1)
-                        .ok().ok_or(fmt::Error)?;
-                    let sign = if self.is_negative() {
-                        "-"
+                    if let Ok((integer, fraction)) =
+                        FP::to_str_general(self, $radix, $upper, 1, 1, 4096) {
+                            let sign = if self.is_negative() {
+                                "-"
+                            } else {
+                                ""
+                            };
+                            let signed = if self.signed() {
+                                'i'
+                            } else {
+                                'u'
+                            };
+                            f.write_fmt(format_args!(
+                                "{}{}{}.{}_{}{}f{}",
+                                sign,
+                                $radix_str,
+                                integer,
+                                fraction,
+                                signed,
+                                self.bw(),
+                                self.fp()
+                            ))
                     } else {
-                        ""
-                    };
-                    let signed = if self.signed() {
-                        'i'
-                    } else {
-                        'u'
-                    };
-                    f.write_fmt(format_args!(
-                        "{}{}{}.{}_{}{}f{}",
-                        sign,
-                        $radix_str,
-                        integer,
-                        fraction,
-                        signed,
-                        self.bw(),
-                        self.fp()
-                    ))
+                        // else no-op, it would be really bad
+                        // if `format!` could panic on numerics
+                        Ok(())
+                    }
                 }
             }
         )*

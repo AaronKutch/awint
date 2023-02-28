@@ -1,5 +1,18 @@
 use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi, SerdeError::*, FP};
 
+#[test]
+fn string_max_fp() {
+    // tests the 4096 cap
+    assert_eq!(
+        &format!("{:?}", FP::new(false, inlawi!(0), 4097).unwrap()),
+        ""
+    );
+    assert_eq!(
+        &format!("{:?}", FP::new(false, inlawi!(0), -4097).unwrap()),
+        ""
+    );
+}
+
 // non-const serialization tests
 #[test]
 fn string_conversion() {
