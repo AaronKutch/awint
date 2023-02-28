@@ -2,6 +2,9 @@
 //! to be able to test errors returned from the code generation function while
 //! also being able to test the macros themselves. This might also be reused by
 //! people who have new storage types.
+//!
+//! This is also available as a hidden reexport from the main `awint` crate if
+//! the "std" feature is enabled
 
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::comparison_chain)]
@@ -20,6 +23,7 @@ mod ranges;
 mod token_stream;
 mod token_tree;
 
+pub use awint_ext::{self, awint_core};
 pub use bimap::*;
 pub use cc_macro::*;
 pub use component::*;

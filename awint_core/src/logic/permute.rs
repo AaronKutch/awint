@@ -422,7 +422,7 @@ impl Bits {
     /// Right-rotate-assigns by `s` bits. If `s >= self.bw()`, then
     /// `None` is returned and the `Bits` are left unchanged.
     ///
-    /// See `Bits::rotl_` for more details.
+    /// See [Bits::rotl_] for more details.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn rotr_(&mut self, s: usize) -> Option<()> {

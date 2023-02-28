@@ -47,6 +47,7 @@ fn fp_string_inner(rng: &mut Xoshiro128StarStar, x: &FP<ExtAwi>) -> Option<()> {
         (tmp_rng & 0b1000) != 0,
         min_integer_chars,
         min_fraction_chars,
+        4096,
     )
     .unwrap();
     assert!(min_integer_chars <= integer.len());

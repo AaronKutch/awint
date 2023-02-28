@@ -1,5 +1,18 @@
 use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi, SerdeError::*, FP};
 
+#[test]
+fn string_max_fp() {
+    // tests the 4096 cap
+    assert_eq!(
+        &format!("{:?}", FP::new(false, inlawi!(0), 4097).unwrap()),
+        ""
+    );
+    assert_eq!(
+        &format!("{:?}", FP::new(false, inlawi!(0), -4097).unwrap()),
+        ""
+    );
+}
+
 // non-const serialization tests
 #[test]
 fn string_conversion() {
@@ -42,24 +55,110 @@ fn string_conversion() {
     let x = "0b_0101_0011_1001_u12".parse::<ExtAwi>().unwrap();
     assert_eq!(x.bw(), 12);
     assert_eq!(x.to_u16(), 1337);
+    let x = "1e10u64".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 64);
+    assert_eq!(x.to_u64(), 10000000000);
+    let x = "-1e10i64".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 64);
+    assert_eq!(x.to_i64(), -10000000000);
+    let x = "0b1e1111111u128".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 128);
+    assert_eq!(x.to_u128(), 1u128 << 127);
+    let x = "0b1e1111110i128".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 128);
+    assert_eq!(x.to_i128(), 1i128 << 126);
+    let x = "0x1_pf_u128".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 128);
+    assert_eq!(x.to_u128(), 0x1000_0000_0000_0000);
+    let x = "1u32f16".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 0x10000);
+    let x = "1e-1u32f16".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 6554);
+    let x = "65536u32f-16".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 1);
+    let x = "0x0.00000001u32f48".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 0x10000);
+    let x = "6.283185307e0u32f16".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 0x6487f);
+    let x = "6_._283_185_307_e_0_u_32_f_16_".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 0x6487f);
+    assert_eq!(
+        FP::new(false, x, 16).unwrap().to_string(),
+        "6.28319_u32f16".to_owned()
+    );
+    let x = "6.283185307_e4u32f16".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 0xf56fda63_u32);
+    assert_eq!(
+        FP::new(false, x, 16).unwrap().to_string(),
+        "62831.85307_u32f16".to_owned()
+    );
+    let x = "6.283185307_e-2u32f16".parse::<ExtAwi>().unwrap();
+    assert_eq!(x.bw(), 32);
+    assert_eq!(x.to_u32(), 0x1016_u32);
+    assert_eq!(
+        FP::new(false, x, 16).unwrap().to_string(),
+        "0.06284_u32f16".to_owned()
+    );
+    let x = "-6.283185307_e-1i32f16".parse::<ExtAwi>().unwrap();
+    assert_eq!(
+        FP::new(true, x, 16).unwrap().to_string(),
+        "-0.62831_i32f16".to_owned()
+    );
     assert!(matches!("".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("u".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("123i".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("123".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("_".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("u".parse::<ExtAwi>(), Err(EmptyInteger)));
+    assert!(matches!("123i".parse::<ExtAwi>(), Err(EmptyBitwidth)));
+    assert!(matches!("123".parse::<ExtAwi>(), Err(EmptyBitwidth)));
     assert!(matches!("0u0".parse::<ExtAwi>(), Err(ZeroBitwidth)));
-    assert!(matches!("i64".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("-123i".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("-123".parse::<ExtAwi>(), Err(InvalidChar)));
-    assert!(matches!("-i64".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("-123u".parse::<ExtAwi>(), Err(Empty)));
-    assert!(matches!("-u64".parse::<ExtAwi>(), Err(InvalidChar)));
-    assert!(matches!("-123u8".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("0u-1".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("i64".parse::<ExtAwi>(), Err(EmptyInteger)));
+    // we want to disallow this, since it could be interpreted as a subtraction of
+    // some item starting with an underscore "- _...""
+    assert!(matches!("-_0u1".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("-123i".parse::<ExtAwi>(), Err(EmptyBitwidth)));
+    assert!(matches!("-123".parse::<ExtAwi>(), Err(EmptyBitwidth)));
+    assert!(matches!("-i64".parse::<ExtAwi>(), Err(EmptyInteger)));
+    assert!(matches!("-123u".parse::<ExtAwi>(), Err(NegativeUnsigned)));
+    assert!(matches!("-u64".parse::<ExtAwi>(), Err(EmptyInteger)));
+    assert!(matches!("-123u8".parse::<ExtAwi>(), Err(NegativeUnsigned)));
     assert!(matches!("-2i1".parse::<ExtAwi>(), Err(Overflow)));
     assert!(matches!("2u1".parse::<ExtAwi>(), Err(Overflow)));
     assert!(matches!("1i1".parse::<ExtAwi>(), Err(Overflow)));
     assert!(matches!("0xgu8".parse::<ExtAwi>(), Err(InvalidChar)));
-    assert!(matches!("0xu8".parse::<ExtAwi>(), Err(Empty)));
+    assert!(matches!("0xu8".parse::<ExtAwi>(), Err(EmptyInteger)));
     assert!(matches!("0x:u8".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("-0x_i8".parse::<ExtAwi>(), Err(EmptyInteger)));
+    assert!(matches!("0.u8".parse::<ExtAwi>(), Err(Fractional)));
+    assert!(matches!("0._u8f0".parse::<ExtAwi>(), Err(EmptyFraction)));
+    assert!(matches!("0.u8f0".parse::<ExtAwi>(), Err(EmptyFraction)));
+    assert!(matches!("0e-1u8".parse::<ExtAwi>(), Err(Fractional)));
+    assert!(matches!("0e_u8f0".parse::<ExtAwi>(), Err(EmptyExponent)));
+    assert!(matches!("0eu8f0".parse::<ExtAwi>(), Err(EmptyExponent)));
+    assert!(matches!("0x0p_u8".parse::<ExtAwi>(), Err(EmptyExponent)));
+    assert!(matches!("0x0pu8".parse::<ExtAwi>(), Err(EmptyExponent)));
+    assert!(matches!("0x0p0u_".parse::<ExtAwi>(), Err(EmptyBitwidth)));
+    assert!(matches!("0x0p0u".parse::<ExtAwi>(), Err(EmptyBitwidth)));
+    assert!(matches!(
+        "0x0p0i1f_".parse::<ExtAwi>(),
+        Err(EmptyFixedPoint)
+    ));
+    assert!(matches!("0x0p0i1f".parse::<ExtAwi>(), Err(EmptyFixedPoint)));
+    assert!(matches!("0b0e2u8f0".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("0o0e8u8f0".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("0x0pgu8f0".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!("0epu8f0".parse::<ExtAwi>(), Err(InvalidChar)));
+    assert!(matches!(
+        "0b1e10000000u128".parse::<ExtAwi>(),
+        Err(Overflow)
+    ));
+    assert!(matches!("0b1e1111111i128".parse::<ExtAwi>(), Err(Overflow)));
 }
 
 macro_rules! fmt_test_inner {

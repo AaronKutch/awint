@@ -66,6 +66,9 @@ pub struct FP<B: BorrowMut<Bits>> {
     bits: B,
 }
 
+// TODO we will probably store the signed and reversimal bits in the 2 lsb bits
+// of `fp`
+
 impl<B: BorrowMut<Bits>> FP<B> {
     /// Creates a fixed-point generic `FP<B>` from a specified signedness
     /// `signed`, wrapped value `B`, and fixed point `fp`. This returns `None`
@@ -169,6 +172,17 @@ impl<B: BorrowMut<Bits>> FP<B> {
             bw: self.nzbw(),
         }
     }
+
+    /// Sets the fixed point of `self`. Returns `None` if `fp.unsigned_abs()` is
+    /// greater than `usize::MAX >> 2`.
+    pub fn set_fp(&mut self, fp: isize) -> Option<()> {
+        if fp.unsigned_abs() > (usize::MAX >> 2) {
+            None
+        } else {
+            self.fp = fp;
+            Some(())
+        }
+    }
 }
 
 impl<B: BorrowMut<Bits>> Deref for FP<B> {
@@ -201,7 +215,7 @@ impl<B: Copy + BorrowMut<Bits>> Copy for FP<B> {}
 
 impl<B: PartialEq + BorrowMut<Bits>> PartialEq for FP<B> {
     /// The signedness, fixed point, and `PartialEq` implementation on
-    /// `FP::into_inner(self)` must all be `true` in order for this to return
+    /// [FP::into_b] must all be `true` in order for this to return
     /// `true`
     fn eq(&self, rhs: &Self) -> bool {
         (self.signed == rhs.signed) && (self.fp == rhs.fp) && (self.bits == rhs.bits)
@@ -213,31 +227,38 @@ impl<B: PartialEq + Eq + BorrowMut<Bits>> Eq for FP<B> {}
 macro_rules! impl_fmt {
     ($($ty:ident, $radix_str:expr, $radix:expr, $upper:expr);*;) => {
         $(
-            /// Forwards to the corresponding impl for `Bits`
+            /// Note: `max_ufp` for the internal [FP::to_str_general] call
+            /// is set to 4096, if it results in an overflow then the
+            /// formatting is a no-op rather than causing `format!` to panic.
             impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    let (integer, fraction) = FP::to_str_general(self, $radix, $upper, 1, 1)
-                        .ok().ok_or(fmt::Error)?;
-                    let sign = if self.is_negative() {
-                        "-"
+                    if let Ok((integer, fraction)) =
+                        FP::to_str_general(self, $radix, $upper, 1, 1, 4096) {
+                            let sign = if self.is_negative() {
+                                "-"
+                            } else {
+                                ""
+                            };
+                            let signed = if self.signed() {
+                                'i'
+                            } else {
+                                'u'
+                            };
+                            f.write_fmt(format_args!(
+                                "{}{}{}.{}_{}{}f{}",
+                                sign,
+                                $radix_str,
+                                integer,
+                                fraction,
+                                signed,
+                                self.bw(),
+                                self.fp()
+                            ))
                     } else {
-                        ""
-                    };
-                    let signed = if self.signed() {
-                        'i'
-                    } else {
-                        'u'
-                    };
-                    f.write_fmt(format_args!(
-                        "{}{}{}.{}_{}{}f{}",
-                        sign,
-                        $radix_str,
-                        integer,
-                        fraction,
-                        signed,
-                        self.bw(),
-                        self.fp()
-                    ))
+                        // else no-op, it would be really bad
+                        // if `format!` could panic on numerics
+                        Ok(())
+                    }
                 }
             }
         )*

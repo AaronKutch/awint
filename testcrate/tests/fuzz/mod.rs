@@ -5,6 +5,8 @@ use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
 #[cfg(not(miri))]
 mod fp;
 #[cfg(not(miri))]
+mod fp_ieee;
+#[cfg(not(miri))]
 mod fp_string;
 mod identities;
 mod multi_bw;

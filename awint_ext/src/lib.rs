@@ -3,7 +3,8 @@
 //! This crate contains another storage type called `ExtAwi` to go along with
 //! `InlAwi` in the `awint_core` crate. This crate is separate because it
 //! requires support for `alloc`. Also includes `FP` because it practically
-//! requires allocation to use.
+//! requires allocation to use. This crate is intended to be used through the
+//! main `awint` crate, available with the "alloc" feature.
 
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]
@@ -22,17 +23,20 @@
 extern crate alloc;
 
 mod extawi;
-mod fp;
+mod fp_core;
+mod fp_ieee;
 mod fp_logic;
 #[cfg(feature = "serde_support")]
 mod serde;
 mod strings;
 
 #[doc(hidden)]
+pub use awint_core;
+#[doc(hidden)]
 pub use awint_core::awint_internals;
 pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 pub use extawi::ExtAwi;
-pub use fp::{FPType, FP};
+pub use fp_core::{FPType, FP};
 
 /// Subset of `awint::awi`
 pub mod awi {
@@ -41,4 +45,10 @@ pub mod awi {
     pub use Result::{Err, Ok};
 
     pub use crate::{ExtAwi, FPType, FP};
+}
+
+/// Fixed point related items
+pub mod fp {
+    pub use super::fp_ieee::{F32, F64};
+    pub use crate::{FPType, FP};
 }

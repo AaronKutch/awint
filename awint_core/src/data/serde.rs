@@ -40,7 +40,10 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     {
         // this is all done without allocation on our side
         let bits = self.const_as_ref();
-        // TODO this buffer is ~5 times larger than needed
+        // TODO this buffer is ~5 times larger than needed. We have a
+        // `panicking_chars_upper_bound` that can be used in array lengths if the input
+        // is a constant, but annoyingly we currently can't use generic parameters for
+        // it.
         let mut buf = [0u8; BW];
         let mut pad = Self::zero();
         // do the minimum amount of work necessary

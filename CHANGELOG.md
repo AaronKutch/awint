@@ -1,6 +1,18 @@
 # Changelog
 
-## [0.8.0] - 2022-01-17
+## [0.9.0] - 2023-02-28
+### Fixes
+- Added a limiter to `FP::to_vec_general` and downstream string formatting to prevent easy resource
+  exhaustion problems. Note that `max_ufp` is set to 4096 for default formatters.
+- Fixed that '_'s in the fraction of `ExtAwi::from_bytes_general` could cause incorrect results.
+- Fixed that `ExtAwi::from_str` could allow effectively empty integers like "_u8"
+
+### Additions
+- Added `FP::floating_`
+- Added IEEE-754 related items for `FP`
+- Added fixed point support to `ExtAwi::from_str` to quickly leverage `ExtAwi::from_str_general` 
+
+## [0.8.0] - 2023-01-17
 ### Crate
 - MSRV 1.66
 

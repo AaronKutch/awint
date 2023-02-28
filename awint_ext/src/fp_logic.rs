@@ -12,6 +12,9 @@ use crate::{
     ExtAwi, FP,
 };
 
+// TODO there are variations of algorithms that can eliminate all the cases
+// where we take `rhs`s by mutable reference
+
 fn itousize(i: isize) -> Option<usize> {
     usize::try_from(i).ok()
 }
@@ -169,6 +172,57 @@ impl<B: BorrowMut<Bits>> FP<B> {
         (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
     }
 
+    /// Floating-assigns `rhs` to `this`. This modifies the `fp` of `this` to
+    /// retain as much significant numerical precision as possible. If
+    /// `this.signed()`, the msnb (most significant numerical bit) is moved to
+    /// the second msb of `this`. Otherwise, the msnb is moved to the msb of
+    /// `this`. If `rhs.is_negative()` and `this` is not signed, the absolute
+    /// value of `rhs` is used. If `rhs.is_zero()`, `this` and its `fp` are
+    /// zeroed. Returns `None` if the fixed point invariant would be
+    /// violated.
+    pub fn floating_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> Option<()> {
+        let b = rhs.is_negative();
+        rhs.neg_(b);
+        let rhs_lz = rhs.lz();
+        if rhs_lz == rhs.bw() {
+            // efficient zero
+            this.zero_();
+            // do this since we will also do this in triop situations
+            this.set_fp(0).unwrap();
+        } else {
+            let msnb_add1 = rhs.bw().wrapping_sub(rhs_lz);
+            let this_sig_w = this.bw().wrapping_sub(this.signed() as usize);
+            let (to, from, width) = if msnb_add1 > this_sig_w {
+                (0, msnb_add1.wrapping_sub(this_sig_w), this_sig_w)
+            } else {
+                (this_sig_w.wrapping_sub(msnb_add1), 0, msnb_add1)
+            };
+            let rhs_exp = (msnb_add1.wrapping_sub(1) as isize).wrapping_sub(rhs.fp());
+            let neg_this = b && this.signed();
+            if neg_this && (this.bw() == 1) {
+                // corner case: negative powers of two can be represented with one signed bit
+                if this.set_fp(rhs_exp.wrapping_neg()).is_none() {
+                    rhs.neg_(b);
+                    return None
+                }
+                this.umax_();
+            } else {
+                if this
+                    .set_fp((this_sig_w as isize).wrapping_sub(1).wrapping_sub(rhs_exp))
+                    .is_none()
+                {
+                    rhs.neg_(b);
+                    return None
+                }
+                this.zero_();
+                this.field(to, rhs, from, width).unwrap();
+                this.neg_(neg_this);
+            }
+        }
+        rhs.neg_(b);
+        Some(())
+    }
+
     /// Creates a tuple of `Vec<u8>`s representing the integer and fraction
     /// parts `this` (sign indicators, prefixes, points, and postfixes not
     /// included). This function performs allocation. This is the inverse of
@@ -177,7 +231,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// information is taken from `this`. `min_integer_chars` specifies the
     /// minimum number of chars in the integer part, inserting leading '0's if
     /// there are not enough chars. `min_fraction_chars` works likewise for the
-    /// fraction part, inserting trailing '0's.
+    /// fraction part, inserting trailing '0's. For `max_ufp` see the errors
+    /// section.
     ///
     /// ```
     /// use awint::awi::*;
@@ -185,9 +240,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// // this in one step and combine the output into one string using
     /// // the notation they prefer.
     ///
-    /// // This creates a fixed point value of -42.1234_i32f16
-    /// // (`ExtAwi::from_str` will be able to parse this format in the future
-    /// // after more changes to `awint` are made).
+    /// // This creates a fixed point value of -42.1234_i32f16 (see `ExtAwi::from_str`)
     /// let awi = ExtAwi::from_str_general(Some(true), "42", "1234", 0, 10, bw(32), 16).unwrap();
     /// let fp_awi = FP::new(true, awi, 16).unwrap();
     /// assert_eq!(
@@ -195,12 +248,20 @@ impl<B: BorrowMut<Bits>> FP<B> {
     ///     // both parts so that zero parts result in "0" strings and not "",
     ///     // so `min_..._chars` will be 1. See also
     ///     // `FPType::unique_min_fraction_digits`.
-    ///     FP::to_str_general(&fp_awi, 10, false, 1, 1),
+    ///     FP::to_str_general(&fp_awi, 10, false, 1, 1, 4096),
     ///     Ok(("42".to_owned(), "1234".to_owned()))
     /// );
     /// ```
     ///
     /// # Errors
+    ///
+    /// Because it would be trivial to cause resource exhaustion with extremely
+    /// large fixed points (the bitwidth is limited roughly by what it takes to
+    /// allocate `this.b()` in the first place, but the fixed point can easily
+    /// be set to huge positive or negative values to result in extremely
+    /// long `Vec<u8>`s and internal calculations), for practical reasons we
+    /// need a built in failsafe that triggers if
+    /// `this.fp().unsigned_abs() > max_ufp`. If so, `Overflow` is returned.
     ///
     /// This can only return an error if `radix` is not in the range 2..=36 or
     /// if resource exhaustion occurs.
@@ -210,9 +271,13 @@ impl<B: BorrowMut<Bits>> FP<B> {
         upper: bool,
         min_integer_chars: usize,
         min_fraction_chars: usize,
+        max_ufp: usize,
     ) -> Result<(Vec<u8>, Vec<u8>), SerdeError> {
         if radix < 2 || radix > 36 {
             return Err(InvalidRadix)
+        }
+        if this.fp().unsigned_abs() > max_ufp {
+            return Err(Overflow)
         }
         // I was originally going to include b'-', but it causes insertion performance
         // problems here, and users have to remove it anyway in the usage cases where a
@@ -309,7 +374,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     }
 
     /// Creates a tuple of `String`s representing the integer and fraction
-    /// parts of `this`. This does the same thing as `[FP::to_vec_general]`
+    /// parts of `this`. This does the same thing as [FP::to_vec_general]
     /// but with `String`s.
     pub fn to_str_general(
         this: &Self,
@@ -317,8 +382,16 @@ impl<B: BorrowMut<Bits>> FP<B> {
         upper: bool,
         min_integer_chars: usize,
         min_fraction_chars: usize,
+        max_ufp: usize,
     ) -> Result<(String, String), SerdeError> {
-        let (i, f) = FP::to_vec_general(this, radix, upper, min_integer_chars, min_fraction_chars)?;
+        let (i, f) = FP::to_vec_general(
+            this,
+            radix,
+            upper,
+            min_integer_chars,
+            min_fraction_chars,
+            max_ufp,
+        )?;
         Ok((String::from_utf8(i).unwrap(), String::from_utf8(f).unwrap()))
     }
 }

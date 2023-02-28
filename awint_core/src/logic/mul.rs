@@ -181,8 +181,9 @@ impl Bits {
     }
 
     /// Arbitrarily-signed-multiplies `lhs` by `rhs` and add-assigns the product
-    /// to `self`. `duo` and `div` are marked mutable but their values are
-    /// not changed by this function.
+    /// to `self`. Has the same behavior as [Bits::arb_umul_add_] except that is
+    /// interprets the arguments as signed. `lhs` and `rhs` are marked
+    /// mutable but their values are not changed by this function.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn arb_imul_add_(&mut self, lhs: &mut Self, rhs: &mut Self) {
         let lhs_msb = lhs.msb();
