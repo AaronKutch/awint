@@ -43,6 +43,9 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// works for both kinds or views the bits as a plain bit string with no
 /// integral properties.
 ///
+/// See the [`awint_core` crate level documentation](crate) for understanding
+/// two's complement.
+///
 /// # Note
 ///
 /// Function names of the form `*_` with a trailing underscore are shorthand for
