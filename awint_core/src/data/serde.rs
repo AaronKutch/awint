@@ -16,7 +16,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// it serializes into a struct named "InlAwi" with two fields "bw" and
     /// "bits". "bw" is the bitwidth in decimal, and "bits" are an unsigned
     /// hexadecimal string equivalent to what would be generated from
-    /// `ExtAwi::bits_to_string_radix(self.const_as_ref(), false, 16, false, 0)`
+    /// `ExtAwi::bits_to_string_radix(&self, false, 16, false, 0)`
     /// from the `awint_ext` crate.
     ///
     /// Note that there is clever use of buffers to avoid allocation on
@@ -38,8 +38,6 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     where
         S: Serializer,
     {
-        // this is all done without allocation on our side
-        let bits = self.const_as_ref();
         // TODO this buffer is ~5 times larger than needed. We have a
         // `panicking_chars_upper_bound` that can be used in array lengths if the input
         // is a constant, but annoyingly we currently can't use generic parameters for
@@ -47,8 +45,8 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
         let mut buf = [0u8; BW];
         let mut pad = Self::zero();
         // do the minimum amount of work necessary
-        let upper = chars_upper_bound(bits.sig(), 16).unwrap();
-        bits.to_bytes_radix(false, &mut buf[..upper], 16, false, pad.const_as_mut())
+        let upper = chars_upper_bound(self.sig(), 16).unwrap();
+        self.to_bytes_radix(false, &mut buf[..upper], 16, false, pad.const_as_mut())
             .unwrap();
         // find the lower bound of signficant digits
         let mut lower = 0;

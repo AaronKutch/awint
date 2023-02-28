@@ -247,12 +247,12 @@
 //! // a single variable component.
 //! cc!(source; a; b; c; d).unwrap();
 //!
-//! assert_eq!(a, inlawi!(0xc4di64).const_as_ref());
+//! assert_eq!(a, inlawi!(0xc4di64).as_ref());
 //! assert_eq!(b, extawi!(0xc4di64));
 //! assert_eq!(c, inlawi!(0xc4di64));
 //!
 //! let awi = inlawi!(0xau4);
-//! let a = awi.const_as_ref();
+//! let a = awi.as_ref();
 //! let b = extawi!(0xbu4);
 //! let c = inlawi!(0xcu4);
 //!

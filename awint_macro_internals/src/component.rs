@@ -41,7 +41,7 @@ impl Component {
             Literal(ref mut lit) => {
                 self.range.simplify()?;
                 // note: `lit` here is a reference to a clone
-                self.range.simplify_literal(lit.const_as_ref())?;
+                self.range.simplify_literal(lit)?;
                 // static ranges on literals have been verified, attempt to truncate
                 if let Some(ref end) = self.range.end {
                     if let Some(x) = end.static_val() {

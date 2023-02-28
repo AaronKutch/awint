@@ -35,7 +35,7 @@ impl Pair {
     pub fn new(lit: awi::ExtAwi) -> Self {
         Self {
             awi: lit.clone(),
-            dag: lit.const_as_ref().into(),
+            dag: lit.as_ref().into(),
         }
     }
 }

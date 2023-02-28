@@ -41,21 +41,21 @@ impl<'a> Bits {
 }
 
 impl<'a> ExtAwi {
-    pub fn const_as_ref(&'a self) -> &'a Bits {
+    pub(in crate::mimick) fn internal_as_ref(&'a self) -> &'a Bits {
         unsafe { Bits::from_raw_parts(self._extawi_raw.as_ptr()) }
     }
 
-    pub fn const_as_mut(&'a mut self) -> &'a mut Bits {
+    pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
         unsafe { Bits::from_raw_parts_mut(self._extawi_raw.as_mut_ptr()) }
     }
 }
 
 impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub fn const_as_ref(&'a self) -> &'a Bits {
+    pub(in crate::mimick) fn internal_as_ref(&'a self) -> &'a Bits {
         unsafe { Bits::from_raw_parts(self._inlawi_raw.as_ptr()) }
     }
 
-    pub fn const_as_mut(&'a mut self) -> &'a mut Bits {
+    pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
         unsafe { Bits::from_raw_parts_mut(self._inlawi_raw.as_mut_ptr()) }
     }
 }

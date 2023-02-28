@@ -21,8 +21,8 @@ fn lut_and_field() {
             awi_lut.rand_(&mut rng).unwrap();
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let out = awi_out.const_as_mut();
-            let lut = awi_lut.const_as_ref();
-            let inx = awi_inx.const_as_mut();
+            let lut = awi_lut.as_ref();
+            let inx = awi_inx.as_mut();
             for i in 0..mul {
                 inx.usize_(i);
                 out.lut_(lut, inx).unwrap();

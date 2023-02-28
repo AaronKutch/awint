@@ -193,7 +193,7 @@ fn fmt_strings() {
     let inl_awi = inlawi!(0xfedcba9876543210u100);
     let ext_awi = extawi!(0xfedcba9876543210u100);
     let bits_awi = inlawi!(0xfedcba9876543210u100);
-    let bits = bits_awi.const_as_ref();
+    let bits = bits_awi.as_ref();
     fmt_test!(inl_awi ext_awi bits);
     assert_eq!(format!("{}", inlawi!(0u100)), "0x0_u100");
     assert_eq!(

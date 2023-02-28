@@ -61,7 +61,7 @@ use crate::Bits;
 /// };
 /// const X: &'static Bits = &AWI;
 ///
-/// assert_eq!(X, inlawi!(-246i100).const_as_ref());
+/// assert_eq!(X, inlawi!(-246i100).as_ref());
 /// ```
 #[derive(Clone, Copy)] // following what arrays do
 pub struct InlAwi<const BW: usize, const LEN: usize> {
@@ -87,7 +87,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn const_as_ref(&'a self) -> &'a Bits {
+    pub(in crate::data) const fn internal_as_ref(&'a self) -> &'a Bits {
         // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
         // to insure the raw invariants. The explicit lifetimes make sure they do not
@@ -99,7 +99,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
+    pub(in crate::data) const fn internal_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
         // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
         // to insure the raw invariants. The explicit lifetimes make sure they do not
@@ -203,7 +203,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imax() -> Self {
         let mut awi = Self::umax();
-        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
+        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.unused();
         awi
     }
 
@@ -211,7 +211,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imin() -> Self {
         let mut awi = Self::zero();
-        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
+        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.unused();
         awi
     }
 
@@ -227,7 +227,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
     fn eq(&self, rhs: &Self) -> bool {
-        self.const_as_ref() == rhs.const_as_ref()
+        self.as_ref() == rhs.as_ref()
     }
 }
 
@@ -247,7 +247,7 @@ macro_rules! impl_fmt {
             impl<const BW: usize, const LEN: usize> fmt::$ty for InlAwi<BW, LEN> {
                 /// Forwards to the corresponding impl for `Bits`
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::$ty::fmt(self.const_as_ref(), f)
+                    fmt::$ty::fmt(self.as_ref(), f)
                 }
             }
         )*
@@ -258,7 +258,7 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.const_as_ref().hash(state);
+        self.as_ref().hash(state);
     }
 }
 

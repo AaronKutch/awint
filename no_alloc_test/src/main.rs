@@ -13,8 +13,8 @@ fn main() -> ! {
     // without the dependency leaking into runtime
     let mut awi0 = inlawi!(12345i20);
     let awi1 = inlawi!(54321i20);
-    let mut x0 = awi0.const_as_mut();
-    let x1 = awi1.const_as_ref();
+    let mut x0 = awi0.as_mut();
+    let x1 = awi1.as_ref();
     x0.add_(x1).unwrap();
     assert!(x0.is_zero());
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
@@ -37,8 +37,8 @@ fn main() -> ! {
     let mut c = inlawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
-    assert_eq!(a.const_as_ref(), b);
-    assert_eq!(a.const_as_ref(), c.const_as_ref());
+    assert_eq!(a.as_ref(), b);
+    assert_eq!(a.as_ref(), cas_ref());
     // dynamic ranges
     let x: usize = 8;
     let awi = inlawi!(0u12);

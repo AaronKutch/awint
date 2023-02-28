@@ -22,8 +22,8 @@ fn dag_macros() {
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
-    assert_eq!(a.const_as_ref(), b);
-    assert_eq!(a.const_as_ref(), c.const_as_ref());
+    assert_eq!(a.as_ref(), b);
+    assert_eq!(a.as_ref(), c.as_ref());
     // dynamic ranges
     let x = 8;
     let awi = ExtAwi::zero(bw(12));

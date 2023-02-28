@@ -40,12 +40,12 @@ const fn consts() {
     let mut b1337: inlawi_ty!(12) = inlawi!(010100111001);
     let c_100: inlawi_ty!(12) = inlawi!(100i12);
     let d1437: inlawi_ty!(12) = inlawi!(1437u12);
-    eq(a1337.const_as_ref(), b1337.const_as_ref());
+    eq(a1337.as_ref(), b1337.as_ref());
     let sum = b1337.const_as_mut();
-    sum.add_(c_100.const_as_ref()).unwrap();
-    eq(sum, d1437.const_as_ref());
+    sum.add_(c_100.as_ref()).unwrap();
+    eq(sum, d1437.as_ref());
     let e1337: inlawi_ty!(12) = inlawi!(0101, 0011, 1001);
-    eq(a1337.const_as_ref(), e1337.const_as_ref());
+    eq(a1337.as_ref(), e1337.as_ref());
 
     let y3 = inlawi!(0xba9u12);
     let y2 = inlawi!(0x876u12);
@@ -65,9 +65,9 @@ const fn consts() {
     )
     .unwrap();
 
-    eq(z2.const_as_ref(), inlawi!(0xba98u16).const_as_ref());
-    eq(z1.const_as_ref(), inlawi!(0x7654u16).const_as_ref());
-    eq(z0.const_as_ref(), inlawi!(0x3210u16).const_as_ref());
+    eq(z2.as_ref(), inlawi!(0xba98u16).as_ref());
+    eq(z1.as_ref(), inlawi!(0x7654u16).as_ref());
+    eq(z0.as_ref(), inlawi!(0x3210u16).as_ref());
 }
 
 #[test]

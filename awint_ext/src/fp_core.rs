@@ -1,5 +1,5 @@
 use core::{
-    borrow::BorrowMut,
+    borrow::{BorrowMut},
     fmt,
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -101,58 +101,46 @@ impl<B: BorrowMut<Bits>> FP<B> {
         &mut self.bits
     }
 
-    /// Returns a reference to `self` in the form of `&Bits`
-    #[inline]
-    pub fn const_as_ref(&self) -> &Bits {
-        self.bits.borrow()
-    }
-
-    /// Returns a reference to `self` in the form of `&mut Bits`
-    #[inline]
-    pub fn const_as_mut(&mut self) -> &mut Bits {
-        self.bits.borrow_mut()
-    }
-
     /// Returns the signedness of `self`
     #[inline]
     pub fn signed(&self) -> bool {
         self.signed
     }
 
-    /// Returns the sign of `self`, returning `Some(self.const_as_ref().msb())`
+    /// Returns the sign of `self`, returning `Some(self.msb())`
     /// if `self.signed()`, and `None` otherwise.
     #[inline]
     pub fn sign(&self) -> Option<bool> {
         if self.signed() {
-            Some(self.const_as_ref().msb())
+            Some(self.msb())
         } else {
             None
         }
     }
 
-    /// Returns if `self.signed() && self.const_as_ref().msb()`
+    /// Returns if `self.signed() && self.msb()`
     #[inline]
     pub fn is_negative(&self) -> bool {
-        self.signed() && self.const_as_ref().msb()
+        self.signed() && self.msb()
     }
 
     /// Returns the bitwidth of `self` as a `NonZeroUsize`
     #[inline]
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.const_as_ref().nzbw()
+        self.b().borrow().nzbw()
     }
 
     /// Returns the bitwidth of `self` as a `usize`
     #[inline]
     pub fn bw(&self) -> usize {
-        self.const_as_ref().bw()
+        self.b().borrow().bw()
     }
 
     /// Returns the bitwidth of `self` as an `isize`
     #[inline]
     pub fn ibw(&self) -> isize {
         // this is ok because of the guard in `FP::new`
-        self.const_as_ref().bw() as isize
+        self.bw() as isize
     }
 
     /// Returns the fixed point of `self`
@@ -190,14 +178,14 @@ impl<B: BorrowMut<Bits>> Deref for FP<B> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.const_as_ref()
+        self.b().borrow()
     }
 }
 
 impl<B: BorrowMut<Bits>> DerefMut for FP<B> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self.b_mut().borrow_mut()
     }
 }
 
@@ -276,7 +264,7 @@ impl_fmt!(
 
 impl<B: Hash + BorrowMut<Bits>> Hash for FP<B> {
     /// Uses the hash of `self.signed()`, `self.fp()`, and the `Hash`
-    /// implementation on `FP::into_inner(self)` (not `self.const_as_ref()`)
+    /// implementation on `self.b()` (not `self.as_ref()`)
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.signed.hash(state);
         self.fp.hash(state);

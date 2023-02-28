@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.10.0] - TODO
+### Changes
+- `const_as_ref` and `const_as_mut` removed from `InlAwi` and `ExtAwi` (although it still exists as
+  a hidden function on `Bits` for macro purposes)
+
 ## [0.9.0] - 2023-02-28
 ### Fixes
 - Added a limiter to `FP::to_vec_general` and downstream string formatting to prevent easy resource

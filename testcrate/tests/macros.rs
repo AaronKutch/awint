@@ -5,24 +5,24 @@ macro_rules! construction {
         $(
             let inlawi = inlawi!(zero: ..$w);
             let extawi = ExtAwi::zero(bw($w));
-            assert!(inlawi.const_as_ref().is_zero());
-            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            assert!(inlawi.as_ref().is_zero());
+            assert_eq!(inlawi.as_ref(), extawi.as_ref());
             let inlawi = inlawi!(umax: ..$w);
             let extawi = ExtAwi::umax(bw($w));
-            assert!(inlawi.const_as_ref().is_umax());
-            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            assert!(inlawi.as_ref().is_umax());
+            assert_eq!(inlawi.as_ref(), extawi.as_ref());
             let inlawi = inlawi!(imax: ..$w);
             let extawi = ExtAwi::imax(bw($w));
-            assert!(inlawi.const_as_ref().is_imax());
-            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            assert!(inlawi.as_ref().is_imax());
+            assert_eq!(inlawi.as_ref(), extawi.as_ref());
             let inlawi = inlawi!(imin: ..$w);
             let extawi = ExtAwi::imin(bw($w));
-            assert!(inlawi.const_as_ref().is_imin());
-            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            assert!(inlawi.as_ref().is_imin());
+            assert_eq!(inlawi.as_ref(), extawi.as_ref());
             let inlawi = inlawi!(uone: ..$w);
             let extawi = ExtAwi::uone(bw($w));
-            assert!(inlawi.const_as_ref().is_uone());
-            assert_eq!(inlawi.const_as_ref(), extawi.const_as_ref());
+            assert!(inlawi.as_ref().is_uone());
+            assert_eq!(inlawi.as_ref(), extawi.as_ref());
         )*
     };
 }
@@ -47,8 +47,8 @@ fn macro_successes() {
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
-    assert_eq!(a.const_as_ref(), b);
-    assert_eq!(a.const_as_ref(), c.const_as_ref());
+    assert_eq!(a.as_ref(), b);
+    assert_eq!(a.as_ref(), c.as_ref());
     // dynamic ranges
     let x: usize = 8;
     let awi = ExtAwi::zero(bw(12));
