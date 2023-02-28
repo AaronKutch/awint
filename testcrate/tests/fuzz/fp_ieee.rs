@@ -11,9 +11,7 @@ use rand_xoshiro::{
 
 use crate::fuzz::fp::num_eq;
 
-const N: u32 = if cfg!(miri) {
-    32
-} else if cfg!(debug_assertions) {
+const N: u32 = if cfg!(debug_assertions) {
     10_000
 } else {
     1_000_000

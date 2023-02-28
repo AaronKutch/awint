@@ -44,7 +44,7 @@ const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
 /// integral properties.
 ///
 /// See the [`awint_core` crate level documentation](crate) for understanding
-/// two's complement.
+/// two's complement and numerical limits.
 ///
 /// # Note
 ///
