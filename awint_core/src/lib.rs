@@ -3,7 +3,9 @@
 //! This is the core library of the `awint` system of crates. This crate is
 //! strictly `no-std` and `no-alloc`, not even requiring an allocator to be
 //! compiled. This crate supplies the `Bits` reference type and the `InlAwi`
-//! storage type.
+//! storage type. This crate is intended to be used through the main `awint`
+//! crate, and "no-alloc" mode can be achieved by disabling default features and
+//! _not_ enabling the "alloc" feature
 
 #![cfg_attr(feature = "const_support", feature(const_maybe_uninit_as_mut_ptr))]
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]

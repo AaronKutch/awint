@@ -31,6 +31,16 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// arithmetic is wrapping like Rust's integers. All reallocations are
 /// explicit.
 ///
+/// This struct implements `Deref<Target = Bits>`, see the main documentation of
+/// [Bits](awint_core::Bits) for more. There are also some functions that
+/// `InlAwi` and `Bits` do not implement, namely some higher level string
+/// serialization functions that require allocation. Also note that `ExtAwi`
+/// cannot take advance of the `const`ness of `Bits` operations, see
+/// [InlAwi](awint_core::InlAwi).
+///
+/// See the crate level documentation of `awint_macros` for more macros and
+/// information.
+///
 /// ```
 /// #![feature(const_mut_refs)]
 /// use awint::awi::*;

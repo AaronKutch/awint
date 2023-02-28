@@ -32,6 +32,10 @@ use crate::Bits;
 /// See the crate level documentation of `awint_macros` for more macros and
 /// information.
 ///
+/// This struct implements `Deref<Target = Bits>`, see the main documentation of
+/// [Bits](crate::Bits) for more. There are also some allocating functions that
+/// only `ExtAwi` implements.
+///
 /// ```
 /// // only needed if you are trying to use in `const` contexts
 /// #![feature(const_trait_impl)]

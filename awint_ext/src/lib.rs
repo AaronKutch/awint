@@ -3,7 +3,8 @@
 //! This crate contains another storage type called `ExtAwi` to go along with
 //! `InlAwi` in the `awint_core` crate. This crate is separate because it
 //! requires support for `alloc`. Also includes `FP` because it practically
-//! requires allocation to use.
+//! requires allocation to use. This crate is intended to be used through the
+//! main `awint` crate, available with the "alloc" feature.
 
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]

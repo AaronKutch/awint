@@ -2,6 +2,9 @@
 //! to be able to test errors returned from the code generation function while
 //! also being able to test the macros themselves. This might also be reused by
 //! people who have new storage types.
+//!
+//! This is also available as a hidden reexport from the main `awint` crate if
+//! the "std" feature is enabled
 
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::comparison_chain)]

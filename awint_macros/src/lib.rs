@@ -1,5 +1,8 @@
 //! # Accompanying procedural macros to `awint`
 //!
+//! The macros from this crate are reexported from the main `awint` crate,
+//! but the macro documentation is located here.
+//!
 //! ## Scope Dependencies
 //!
 //! All of the macros often require `Bits` and `InlAwi` to be in scope. This
