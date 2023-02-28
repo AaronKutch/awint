@@ -333,16 +333,23 @@ impl ExtAwi {
 impl core::str::FromStr for ExtAwi {
     type Err = SerdeError;
 
-    /// Creates an `ExtAwi` described by `s`. There are two modes of operation
-    /// which use [ExtAwi::from_str_radix] differently.
+    /// Creates an `ExtAwi` described by `s`. There are three modes of operation
+    /// which invoke [ExtAwi::from_str_radix] or [ExtAwi::from_str_general]
+    /// differently.
+    ///
+    /// Note: there is currently a
+    /// [bug](https://github.com/rust-lang/rust/issues/108385) in Rust that
+    /// causes certain fixed point literals to fail to parse when attempting
+    /// to use them in the concatenation macros. In case of getting
+    /// "literal is not supported" errors, use `ExtAwi::from_str` directly
     ///
     /// All valid inputs must begin with '0'-'9' or a '-' followed by '0'-'9'.
     ///
-    /// If only '_', '0', and '1' chars are present, this function uses binary
+    /// If only ' _ ', '0', and '1' chars are present, this function uses binary
     /// mode. It will interpret the input as a binary string, the number of '0's
     /// and '1's of which is the bitwidth (including leading '0's and excluding
-    /// '_'s). For example: 42 in binary is 101010. If "101010" is entered into
-    /// this function, it will return an `ExtAwi` with bitwidth 6 and
+    /// ' _ 's). For example: 42 in binary is 101010. If "101010" is entered
+    /// into this function, it will return an `ExtAwi` with bitwidth 6 and
     /// unsigned value 42. "0000101010" results in bitwidth 10 and unsigned
     /// value 42. "1111_1111" results in bitwidth 8 and signed value -128 or
     /// equivalently unsigned value 255.
@@ -360,9 +367,6 @@ impl core::str::FromStr for ExtAwi {
     /// "123" results in `SerdeError::EmptyBitwidth`, because it is not in
     /// binary mode and no bitwidth suffix has been supplied.
     ///
-    /// In fixed point mode, there is an additional 'f' char suffix after the
-    /// bitwdith suffix, which is followed by
-    ///
     /// If, after the bitwidth, an 'f' char is present, fixed point mode is
     /// activated. A decimal fixed point position must be specified after the
     /// 'f' that tells where the fixed point will be in the resulting bits (see
@@ -378,13 +382,15 @@ impl core::str::FromStr for ExtAwi {
     /// error since it is trying to use a negative exponent in integer mode.
     /// "-0x1234.5678p-3i32f16" has a numerical value of -0x1234.5678 *
     /// 0x10^-0x3 and uses [ExtAwi::from_bytes_general] to round-to-even to a 32
-    /// bit fixed point number with fixed point position 16.
+    /// bit fixed point number with fixed point position 16. You probably want
+    /// to use underscores to make it clearer where different parts are, e.x.
+    /// "-0x1234.5678_p-3_i32_f16".
     ///
     /// For all parts including the integer, fraction, exponent, bitwidth, and
     /// fixed point parts, if their prefix char exists but there is not at least
     /// one '0' for them, some kind of empty error is returned. For example:
-    /// "0xu8" should be "0x0u8". ".i8f0" should be "0.0i8f0". "1uf" should be
-    /// "1u1f0".
+    /// "0xu8" should be "0x0u8". ".i8f0" should be "0.0i8f0". "1u32f" should be
+    /// "1u32f0".
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut sign = None;
         let mut integer = None;
