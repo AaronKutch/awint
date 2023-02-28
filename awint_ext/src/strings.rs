@@ -341,7 +341,12 @@ impl core::str::FromStr for ExtAwi {
     /// [bug](https://github.com/rust-lang/rust/issues/108385) in Rust that
     /// causes certain fixed point literals to fail to parse when attempting
     /// to use them in the concatenation macros. In case of getting
-    /// "literal is not supported" errors, use `ExtAwi::from_str` directly
+    /// "literal is not supported" errors, use `ExtAwi::from_str` directly.
+    ///
+    /// Additionally, note that it is easy to cause resource exhaustion with
+    /// large bitwidths, exponents, or fixed points that can approach
+    /// `usize::MAX`. In a future version of `awint` we should have a guarded
+    /// function for helping with entering literals through things like UIs.
     ///
     /// All valid inputs must begin with '0'-'9' or a '-' followed by '0'-'9'.
     ///
