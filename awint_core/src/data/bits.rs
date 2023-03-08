@@ -29,8 +29,6 @@ use core::{
 use awint_internals::*;
 use const_fn::const_fn;
 
-const BYTE_RATIO: usize = (usize::BITS / u8::BITS) as usize;
-
 /// A reference to the bits in an `InlAwi`, `ExtAwi`, or other backing
 /// construct. If a function is written just in terms of `Bits`, it can work on
 /// mixed references to `InlAwi`s, `ExtAwi`s, and `FP<B>`s.
@@ -501,7 +499,7 @@ impl<'a> Bits {
         // bits were only in the last byte, which at first glance is portable. However,
         // I completely forgot about big-endian systems. Not taking a full width of the
         // byte slice can result in significant bytes being completely disregarded.
-        let size_in_u8 = self.len() * BYTE_RATIO;
+        let size_in_u8 = self.len() * DIGIT_BYTES;
         // Safety: Adding on to what is satisfied in `as_slice`, [usize] can always be
         // divided into [u8] and the correct length is calculated above. If the bitwidth
         // is not a multiple of eight, there must be at least enough unused bits to form
@@ -528,8 +526,9 @@ impl<'a> Bits {
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
+    #[inline(always)] // this is needed for `unstable_from_u8_slice`
     pub const fn as_mut_bytes_full_width_nonportable(&'a mut self) -> &'a mut [u8] {
-        let size_in_u8 = self.len() * BYTE_RATIO;
+        let size_in_u8 = self.len() * DIGIT_BYTES;
         // Safety: Same reasoning as `as_bytes_full_width_nonportable`
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
     }
@@ -541,14 +540,14 @@ impl<'a> Bits {
     /// sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn u8_slice_(&'a mut self, buf: &[u8]) {
-        let self_byte_width = self.len() * BYTE_RATIO;
+        let self_byte_width = self.len() * DIGIT_BYTES;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
         } else {
             buf.len()
         };
         // start of digits that will not be completely overwritten
-        let start = min_width / BYTE_RATIO;
+        let start = min_width / DIGIT_BYTES;
         unsafe {
             // zero out first.
             self.digit_set(false, start..self.len(), false);
@@ -581,7 +580,7 @@ impl<'a> Bits {
     /// pointer sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_u8_slice(&'a self, buf: &mut [u8]) {
-        let self_byte_width = self.len() * BYTE_RATIO;
+        let self_byte_width = self.len() * DIGIT_BYTES;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
         } else {
@@ -604,8 +603,12 @@ impl<'a> Bits {
         {
             const_for!(i in {0..self.len()} {
                 let x = self.as_slice()[i];
-                let start = i * BYTE_RATIO;
-                let end = if (start + BYTE_RATIO) > buf.len() {buf.len()} else {start + BYTE_RATIO};
+                let start = i * DIGIT_BYTES;
+                let end = if (start + DIGIT_BYTES) > buf.len() {
+                    buf.len()
+                } else {
+                    start + DIGIT_BYTES
+                };
                 let mut s = 0;
                 const_for!(j in {start..end} {
                     buf[j] = (x >> s) as u8;

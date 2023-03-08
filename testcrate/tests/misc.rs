@@ -1,5 +1,8 @@
 use awint::{awi::*, awint_internals::BITS};
-use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
+use rand_xoshiro::{
+    rand_core::{RngCore, SeedableRng},
+    Xoshiro128StarStar,
+};
 
 /// [Bits::lut_] needs its own test because of its special requirements
 #[test]
@@ -108,6 +111,15 @@ fn funnel_() {
     }
 }
 
+macro_rules! test_unstable_from_u8_slice {
+    ($buf:ident, $($ty:expr)*) => {
+        $(
+            let x: inlawi_ty!($ty) = InlAwi::unstable_from_u8_slice($buf);
+            InlAwi::assert_invariants(&x);
+        )*
+    };
+}
+
 #[test]
 fn awint_internals_test() {
     let mut rng = &mut Xoshiro128StarStar::seed_from_u64(0);
@@ -128,6 +140,17 @@ fn awint_internals_test() {
     let mut add = inlawi!(zero: ..,add;..256).unwrap();
     add.mul_add_(&lhs, &rhs).unwrap();
     assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
+
+    let mut buf = [0u8; 68];
+    for x in &mut buf {
+        *x = rng.next_u32() as u8;
+    }
+    for i in 0..buf.len() {
+        // test `unstable_from_u8_slice` directly because the macros won't test some
+        // cases
+        let buf = &buf[0..i];
+        test_unstable_from_u8_slice!(buf, 1 7 8 9 15 16 17 31 32 33 63 64 65 127 128 129 258);
+    }
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use core::{
-    borrow::{BorrowMut},
+    borrow::BorrowMut,
     fmt,
     fmt::Debug,
     hash::{Hash, Hasher},

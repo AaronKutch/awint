@@ -46,8 +46,16 @@ pub fn unstable_native_inlawi(bits: &Bits) -> String {
     // potentially be used on multiple architectures). `unstable_raw_digits` adjusts
     // `LEN` based on the native `usize` width, and `unstable_from_u8_slice` also
     // adjusts for big endian archiectures.
+
+    // note: it might be optimal in certain cases to make the `InlAwi` itself const,
+    // this would lead to being able to directly memcpy it. However, if we make the
+    // &[u8] level const then it allows for certain unsigned constants to be shared
+    // in .text even if in different sized integers and makes them smaller for
+    // things with lots of leading zeros. Also, we can't make the `InlAwi` level
+    // const anyway because of `awint_dag`.
     format!(
-        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::unstable_from_u8_slice(&{:?})",
+        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::unstable_from_u8_slice({{const B: \
+         &[core::primitive::u8] = &{:?}; B}})",
         bits.bw(),
         bits.bw(),
         buf,

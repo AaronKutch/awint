@@ -34,8 +34,7 @@ impl Serialize for ExtAwi {
     where
         S: Serializer,
     {
-        let str_buf: &str =
-            &ExtAwi::bits_to_string_radix(self, false, 16, false, 0).unwrap();
+        let str_buf: &str = &ExtAwi::bits_to_string_radix(self, false, 16, false, 0).unwrap();
         if serializer.is_human_readable() {
             let mut s = serializer.serialize_struct("ExtAwi", 2)?;
             s.serialize_field("bw", &self.bw())?;

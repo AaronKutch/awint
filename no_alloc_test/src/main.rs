@@ -38,7 +38,7 @@ fn main() -> ! {
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
     assert_eq!(a.as_ref(), b);
-    assert_eq!(a.as_ref(), cas_ref());
+    assert_eq!(a.as_ref(), c.as_ref());
     // dynamic ranges
     let x: usize = 8;
     let awi = inlawi!(0u12);

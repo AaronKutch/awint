@@ -2,6 +2,7 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
     num::NonZeroUsize,
+    ptr,
 };
 
 use awint_internals::*;
@@ -163,13 +164,69 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn unstable_from_u8_slice(buf: &[u8]) -> Self {
         if LEN < 2 {
+            // the invariants asserter checks for this, but we put a value
+            // in `raw` first
             panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
         }
+        // note: this needs to be set as all zeros for the inlining below
         let mut raw = [0; LEN];
         raw[raw.len() - 1] = BW;
         assert_inlawi_invariants_slice::<BW, LEN>(&raw);
         let mut awi = InlAwi { raw };
-        awi.const_as_mut().u8_slice_(buf);
+
+        // At this point, we would call `awi.u8_slice_(buf)` and could return that.
+        // However, we run into a problem where the compiler has difficulty. For
+        // example,
+        //
+        // ```
+        // pub fn internal(x: &mut Bits, neg: bool) {
+        //     let y = inlawi!(-3858683298722959599393.23239873423987_i1024f512);
+        //     x.neg_add_(neg, &y).unwrap();
+        // }
+        // ```
+        //
+        // should compile into a function that reserves 128 bytes (plus 32 or so more
+        // depending on architecture) on the stack pointer, a single
+        // memcpy, and then a call to `neg_add_`. However, if we don't inline
+        // most functions it will get confused, reserve a further 128 bytes, add
+        // a memcpy, and a memset. This is bad in general but very bad for architectures
+        // like AVR, where we don't want to double stack reservations.
+
+        // inline `u8_slice_`, but we can also eliminate the `digit_set`
+        let self_byte_width = awi.len() * DIGIT_BYTES;
+        let min_width = if self_byte_width < buf.len() {
+            self_byte_width
+        } else {
+            buf.len()
+        };
+        // start of digits that will not be completely overwritten
+        let start = min_width / DIGIT_BYTES;
+        unsafe {
+            // zero out first.
+            // (skip because we initialized `raw` to all zeros)
+            //awi.digit_set(false, start..self.len(), false);
+            // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
+            // for writes at least up to `min_width`, they are aligned, and are
+            // nonoverlapping because `self` is a mutable reference.
+            ptr::copy_nonoverlapping(
+                buf.as_ptr(),
+                // note that we marked this as `#[inline]`
+                awi.as_mut_bytes_full_width_nonportable().as_mut_ptr(),
+                min_width,
+            );
+            // `start` can be `self.len()`, so cap it
+            let cap = if start >= awi.len() {
+                awi.len()
+            } else {
+                start + 1
+            };
+            const_for!(i in {0..cap} {
+                // correct for big endian, otherwise no-op
+                *awi.get_unchecked_mut(i) = usize::from_le(awi.get_unchecked(i));
+            });
+        }
+        awi.clear_unused_bits();
+
         awi
     }
 
@@ -221,6 +278,21 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         let mut awi = Self::zero();
         *awi.const_as_mut().first_mut() = 1;
         awi
+    }
+
+    /// Used for tests, Can't put in `awint_internals`
+    #[doc(hidden)]
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn assert_invariants(this: &Self) {
+        assert_inlawi_invariants::<BW, LEN>();
+        if this.bw() != BW {
+            panic!("bitwidth digit does not equal BW")
+        }
+        if this.raw_len() != LEN {
+            panic!("`length of raw slice does not equal LEN")
+        }
+        // not a strict invariant but we want to test it
+        this.assert_cleared_unused_bits();
     }
 }
 

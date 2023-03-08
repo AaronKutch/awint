@@ -4,7 +4,7 @@
 mod fuzz;
 use core::cmp;
 
-use awint::{bw, inlawi, Bits, ExtAwi, InlAwi};
+use awint::{bw, extawi, inlawi, Bits, ExtAwi, InlAwi};
 
 const N: u32 = if cfg!(miri) {
     32
@@ -19,16 +19,22 @@ macro_rules! test_extawi {
         $(
             #[test]
             fn $name() {
-                let w = bw($w);
-                let array = [
-                    &mut ExtAwi::zero(w)[..],
-                    &mut ExtAwi::zero(w)[..],
-                    &mut ExtAwi::zero(w)[..],
-                    &mut ExtAwi::zero(w)[..],
-                    &mut ExtAwi::zero(w)[..],
-                    &mut ExtAwi::zero(w)[..],
-                ];
-                fuzz::identities($n, $seed, array).unwrap();
+                let mut x0 = extawi!(zero: ..$w);
+                let mut x1 = extawi!(zero: ..$w);
+                let mut x2 = extawi!(zero: ..$w);
+                let mut x3 = extawi!(zero: ..$w);
+                let mut x4 = extawi!(zero: ..$w);
+                let mut x5 = extawi!(zero: ..$w);
+                fuzz::identities($n, $seed,
+                    [&mut x0, &mut x1, &mut x2, &mut x3, &mut x4, &mut x5]
+                ).unwrap();
+                // prevent certain crazy false negatives from happening
+                assert_eq!(x0.bw(), $w);
+                assert_eq!(x1.bw(), $w);
+                assert_eq!(x2.bw(), $w);
+                assert_eq!(x3.bw(), $w);
+                assert_eq!(x4.bw(), $w);
+                assert_eq!(x5.bw(), $w);
             }
         )*
     };
@@ -66,16 +72,22 @@ macro_rules! test_inlawi {
         $(
             #[test]
             fn $name() {
+                let mut x0 = inlawi!(zero: ..$len);
+                let mut x1 = inlawi!(zero: ..$len);
+                let mut x2 = inlawi!(zero: ..$len);
+                let mut x3 = inlawi!(zero: ..$len);
+                let mut x4 = inlawi!(zero: ..$len);
+                let mut x5 = inlawi!(zero: ..$len);
                 fuzz::identities($n, $seed,
-                    [
-                        inlawi!(zero: ..$len).const_as_mut(),
-                        inlawi!(zero: ..$len).const_as_mut(),
-                        inlawi!(zero: ..$len).const_as_mut(),
-                        inlawi!(zero: ..$len).const_as_mut(),
-                        inlawi!(zero: ..$len).const_as_mut(),
-                        inlawi!(zero: ..$len).const_as_mut(),
-                    ]
+                    [&mut x0, &mut x1, &mut x2, &mut x3, &mut x4, &mut x5]
                 );
+                // prevent certain crazy false negatives from happening
+                InlAwi::assert_invariants(&x0);
+                InlAwi::assert_invariants(&x1);
+                InlAwi::assert_invariants(&x2);
+                InlAwi::assert_invariants(&x3);
+                InlAwi::assert_invariants(&x4);
+                InlAwi::assert_invariants(&x5);
             }
         )*
     };
@@ -107,11 +119,11 @@ fn one_run() {
     let n = 9000;
     for bw_i in 1..=n {
         let w = bw(bw_i);
-        let array = [
-            &mut ExtAwi::zero(w)[..],
-            &mut ExtAwi::zero(w)[..],
-            &mut ExtAwi::zero(w)[..],
-            &mut ExtAwi::zero(w)[..],
+        let array: [&mut Bits; 4] = [
+            &mut ExtAwi::zero(w),
+            &mut ExtAwi::zero(w),
+            &mut ExtAwi::zero(w),
+            &mut ExtAwi::zero(w),
         ];
         fuzz::one_run(array).unwrap();
     }

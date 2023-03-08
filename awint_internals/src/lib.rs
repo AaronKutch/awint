@@ -30,6 +30,9 @@ pub const BITS: usize = usize::BITS as usize;
 /// Maximum value of an inline `Awi`
 pub const MAX: usize = usize::MAX;
 
+/// Number of bytes in a `Digit`
+pub const DIGIT_BYTES: usize = (usize::BITS / u8::BITS) as usize;
+
 /// Subset of `awint::awi`
 pub mod awi {
     // everything except for `char`, `str`, `f32`, and `f64`

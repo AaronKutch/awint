@@ -74,8 +74,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let diff = lbb.0.abs_diff(rbb.0);
         // the fielding will start from 0 in one argument and end at `diff` in the other
         let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
-        this.field(to, rhs, from, width)
-            .unwrap();
+        this.field(to, rhs, from, width).unwrap();
     }
 
     /// Truncate-assigns `rhs` to `this`. For the unsigned case, logically what
@@ -115,8 +114,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
         let diff = lbb.0.abs_diff(rbb.0);
         let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
-        this.field(to, rhs, from, width)
-            .unwrap();
+        this.field(to, rhs, from, width).unwrap();
         // when testing if a less significant numerical bit is cut off, we need to be
         // aware that it can be cut off from above even if overlap happens, for
         // example:
@@ -133,10 +131,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         // invariants
         let mut lsnb = rhs.tz() as isize;
         lsnb = lsnb.wrapping_add(rbb.0);
-        let mut msnb = rhs
-            .bw()
-            .wrapping_sub(rhs.lz())
-            .wrapping_sub(1) as isize;
+        let mut msnb = rhs.bw().wrapping_sub(rhs.lz()).wrapping_sub(1) as isize;
         msnb = msnb.wrapping_add(rbb.0);
         (
             (lsnb < lbb.0) || (lsnb > lbb.1),
