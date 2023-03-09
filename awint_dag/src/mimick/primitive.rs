@@ -204,11 +204,11 @@ prim!(
     u32 U32Assign 32,
     u64 U64Assign 64,
     u128 U128Assign 128,
-    usize UsizeAssign BITS,
+    usize UsizeAssign USIZE_BITS,
     i8 I8Assign 8,
     i16 I16Assign 16,
     i32 I32Assign 32,
     i64 I64Assign 64,
     i128 I128Assign 128,
-    isize IsizeAssign BITS,
+    isize IsizeAssign USIZE_BITS,
 );

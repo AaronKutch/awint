@@ -24,14 +24,14 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imax_(&mut self) {
         unsafe { self.digit_set(true, 0..self.len(), false) }
-        *self.last_mut() = (isize::MAX as usize) >> self.unused();
+        *self.last_mut() = (MAX >> 1) >> self.unused();
     }
 
     /// Signed-minimum-value-assigns. Only the most significant bit is set.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imin_(&mut self) {
         unsafe { self.digit_set(false, 0..self.len(), false) }
-        *self.last_mut() = (isize::MIN as usize) >> self.unused();
+        *self.last_mut() = (IDigit::MIN as Digit) >> self.unused();
     }
 
     /// Unsigned-one-assigns. Only the least significant bit is set. The
@@ -140,7 +140,7 @@ impl Bits {
     /// Or-assigns `rhs` to `self` at a position `shl`. Set bits of `rhs` that
     /// are shifted beyond the bitwidth of `self` are truncated.
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn usize_or_(&mut self, rhs: usize, shl: usize) {
+    pub const fn digit_or_(&mut self, rhs: Digit, shl: usize) {
         if shl >= self.bw() {
             return
         }

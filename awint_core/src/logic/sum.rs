@@ -180,7 +180,7 @@ impl Bits {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
             return None
         }
-        let mut carry = cin as usize;
+        let mut carry = cin as Digit;
         unsafe {
             const_for!(i in {0..(self.len() - 1)} {
                 let tmp = widen_add(lhs.get_unchecked(i), rhs.get_unchecked(i), carry);
@@ -191,9 +191,9 @@ impl Bits {
         let tmp = widen_add(lhs.last(), rhs.last(), carry);
         let extra = self.extra();
         Some(if extra == 0 {
-            let lhs_sign = (lhs.last() as isize) < 0;
-            let rhs_sign = (rhs.last() as isize) < 0;
-            let output_sign = (tmp.0 as isize) < 0;
+            let lhs_sign = (lhs.last() as IDigit) < 0;
+            let rhs_sign = (rhs.last() as IDigit) < 0;
+            let output_sign = (tmp.0 as IDigit) < 0;
             *self.last_mut() = tmp.0;
             (
                 tmp.1 != 0,

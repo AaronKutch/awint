@@ -1,4 +1,7 @@
-use awint::{awi::*, awint_internals::BITS};
+use awint::{
+    awi::*,
+    awint_internals::{Digit, BITS, USIZE_BITS},
+};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
@@ -178,14 +181,18 @@ fn from_primitive() {
     assert_eq!(InlAwi::from(i64::MAX), inlawi!(imax: ..64));
     assert_eq!(InlAwi::from(i128::MAX), inlawi!(imax: ..128));
 
-    assert_eq!(InlAwi::from_usize(usize::MAX).bw(), BITS);
-    assert_eq!(InlAwi::from_isize(isize::MAX).bw(), BITS);
-    assert_eq!(InlAwi::from(usize::MAX).bw(), BITS);
-    assert_eq!(InlAwi::from(isize::MAX).bw(), BITS);
+    assert_eq!(InlAwi::from_usize(usize::MAX).bw(), USIZE_BITS);
+    assert_eq!(InlAwi::from_isize(isize::MAX).bw(), USIZE_BITS);
+    assert_eq!(InlAwi::from_digit(Digit::MAX).bw(), BITS);
+    assert_eq!(InlAwi::from(usize::MAX).bw(), USIZE_BITS);
+    assert_eq!(InlAwi::from(isize::MAX).bw(), USIZE_BITS);
+    assert_eq!(InlAwi::from(Digit::MAX).bw(), BITS);
     assert_eq!(InlAwi::from_usize(usize::MAX).to_usize(), usize::MAX);
     assert_eq!(InlAwi::from_isize(isize::MAX).to_isize(), isize::MAX);
+    assert_eq!(InlAwi::from_digit(Digit::MAX).to_digit(), Digit::MAX);
     assert_eq!(InlAwi::from(usize::MAX).to_usize(), usize::MAX);
     assert_eq!(InlAwi::from(isize::MAX).to_isize(), isize::MAX);
+    assert_eq!(InlAwi::from(Digit::MAX).to_digit(), Digit::MAX);
 
     assert_eq!(ExtAwi::from_bool(true), extawi!(umax: ..1));
     assert_eq!(ExtAwi::from_u8(u8::MAX), extawi!(umax: ..8));
@@ -195,7 +202,7 @@ fn from_primitive() {
     assert_eq!(ExtAwi::from_u128(u128::MAX), extawi!(umax: ..128));
     assert_eq!(
         ExtAwi::from_usize(usize::MAX),
-        extawi!(umax: ..BITS).unwrap()
+        extawi!(umax: ..USIZE_BITS).unwrap()
     );
     assert_eq!(ExtAwi::from_i8(i8::MAX), extawi!(imax: ..8));
     assert_eq!(ExtAwi::from_i16(i16::MAX), extawi!(imax: ..16));
@@ -204,7 +211,11 @@ fn from_primitive() {
     assert_eq!(ExtAwi::from_i128(i128::MAX), extawi!(imax: ..128));
     assert_eq!(
         ExtAwi::from_isize(isize::MAX),
-        extawi!(imax: ..BITS).unwrap()
+        extawi!(imax: ..(isize::BITS as usize)).unwrap()
+    );
+    assert_eq!(
+        ExtAwi::from_digit(Digit::MAX),
+        extawi!(umax: ..BITS).unwrap()
     );
     assert_eq!(ExtAwi::from(true), extawi!(umax: ..1));
     assert_eq!(ExtAwi::from(u8::MAX), extawi!(umax: ..8));
@@ -212,14 +223,18 @@ fn from_primitive() {
     assert_eq!(ExtAwi::from(u32::MAX), extawi!(umax: ..32));
     assert_eq!(ExtAwi::from(u64::MAX), extawi!(umax: ..64));
     assert_eq!(ExtAwi::from(u128::MAX), extawi!(umax: ..128));
-    assert_eq!(ExtAwi::from(usize::MAX), extawi!(umax: ..BITS).unwrap());
+    assert_eq!(
+        ExtAwi::from(usize::MAX),
+        extawi!(umax: ..USIZE_BITS).unwrap()
+    );
     assert_eq!(ExtAwi::from(i8::MAX), extawi!(imax: ..8));
     assert_eq!(ExtAwi::from(i16::MAX), extawi!(imax: ..16));
     assert_eq!(ExtAwi::from(i32::MAX), extawi!(imax: ..32));
     assert_eq!(ExtAwi::from(i64::MAX), extawi!(imax: ..64));
     assert_eq!(ExtAwi::from(i128::MAX), extawi!(imax: ..128));
     assert_eq!(
-        ExtAwi::from_isize(isize::MAX),
-        extawi!(imax: ..BITS).unwrap()
+        ExtAwi::from(isize::MAX),
+        extawi!(imax: ..(isize::BITS as usize)).unwrap()
     );
+    assert_eq!(ExtAwi::from(Digit::MAX), extawi!(umax: ..BITS).unwrap());
 }

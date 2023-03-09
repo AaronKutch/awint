@@ -21,7 +21,7 @@ impl Bits {
     #[must_use]
     pub const fn msb(&self) -> bool {
         if self.extra() == 0 {
-            (self.last() as isize) < 0
+            (self.last() as IDigit) < 0
         } else {
             (self.last() & (1 << (self.extra() - 1))) != 0
         }

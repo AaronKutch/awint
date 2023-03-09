@@ -5,7 +5,7 @@ use core::{
     num::NonZeroUsize,
 };
 
-use awint_core::Bits;
+use awint_core::{awint_internals::Digit, Bits};
 
 use crate::{
     awint_internals::{bits_upper_bound, SerdeError, SerdeError::*},
@@ -36,7 +36,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             None
         } else {
             this.const_as_mut().zero_();
-            this.const_as_mut().usize_or_(1, fp);
+            this.const_as_mut().digit_or_(1, fp);
             Some(())
         }
     }
@@ -319,10 +319,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let mut fraction_part = if fraction_part_zero {
             alloc::vec![b'0'; min_fraction_chars]
         } else {
-            let unique_digits = this
-                .fp_ty()
-                .unique_min_fraction_digits(usize::from(radix))
-                .unwrap();
+            let unique_digits = this.fp_ty().unique_min_fraction_digits(radix).unwrap();
             let calc_digits = max(unique_digits, min_fraction_chars);
             let multiplier_bits = bits_upper_bound(calc_digits, radix)?;
             // avoid needing some calculation by dropping zero bits that have no impact
@@ -334,7 +331,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             tmp.field_from(&unsigned, tot_tz as usize, field_bits)
                 .unwrap();
             for _ in 0..calc_digits {
-                tmp.short_cin_mul(0, usize::from(radix));
+                tmp.digit_cin_mul(0, Digit::from(radix));
             }
             let inc = if (tmp.get_digit(calc_fp.checked_sub(1).ok_or(Overflow)?) & 1) == 0 {
                 // round down

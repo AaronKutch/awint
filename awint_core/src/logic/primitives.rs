@@ -12,27 +12,23 @@ macro_rules! bits_ {
             pub const fn $unsigned_name(&mut self, x: $uX) {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
-                let mut x = x;
-                if LEN < 2 {
-                    *self.first_mut() = x as usize;
+                if LEN <= 1 {
+                    *self.first_mut() = x as Digit;
                     if self.len() > 1 {
-                        unsafe {
-                        self.digit_set(false, 1..self.len(), false);}
+                        unsafe {self.digit_set(false, 1..self.len(), false);}
                     }
                 } else if self.bw() > BW {
                     // Safety: there are at least `LEN` digits in `self`
                     unsafe {
                         const_for!(i in {0..LEN} {
-                            *self.get_unchecked_mut(i) = x as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            *self.get_unchecked_mut(i) = (x >> (i * BITS)) as Digit;
                         });
                         self.digit_set(false, LEN..self.len(), false);
                     }
                 } else {
                     unsafe {
                         const_for!(i in {0..self.len()} {
-                            *self.get_unchecked_mut(i) = x as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            *self.get_unchecked_mut(i) = (x >> (i * BITS)) as Digit;
                         });
                     }
                 }
@@ -43,9 +39,8 @@ macro_rules! bits_ {
             pub const fn $signed_name(&mut self, x: $iX) {
                 const BW: usize = $iX::BITS as usize;
                 const LEN: usize = BW / BITS;
-                let mut x = x;
-                if LEN < 2 {
-                    *self.first_mut() = x as isize as usize;
+                if LEN <= 1 {
+                    *self.first_mut() = x as IDigit as Digit;
                     if self.len() >= 1 {
                         // Safety: there is at least 1 digit in `self`
                         unsafe {
@@ -57,16 +52,14 @@ macro_rules! bits_ {
                     unsafe {
                         let sign = x < 0;
                         const_for!(i in {0..LEN} {
-                            *self.get_unchecked_mut(i) = x as isize as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            *self.get_unchecked_mut(i) = (x >> (i * BITS)) as IDigit as Digit;
                         });
                         self.digit_set(sign, LEN..self.len(), true);
                     }
                 } else {
                     unsafe {
                         const_for!(i in {0..self.len()} {
-                            *self.get_unchecked_mut(i) = x as isize as usize;
-                            x = x.wrapping_shr(usize::BITS);
+                            *self.get_unchecked_mut(i) = (x >> (i * BITS)) as IDigit as Digit;
                         });
                     }
                     self.clear_unused_bits();
@@ -96,7 +89,13 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn bool_(&mut self, x: bool) {
         self.zero_();
-        *self.first_mut() = x as usize;
+        *self.first_mut() = x as Digit;
+    }
+
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn digit_(&mut self, x: Digit) {
+        self.zero_();
+        *self.first_mut() = x;
     }
 }
 
@@ -108,7 +107,7 @@ macro_rules! bits_convert {
             pub const fn $unsigned_name(&self) -> $uX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
-                if LEN < 2 {
+                if LEN <= 1 {
                     self.first() as $uX
                 } else if self.bw() >= BW {
                     // Safety: there are at least `LEN` digits in `self`
@@ -135,8 +134,8 @@ macro_rules! bits_convert {
             pub const fn $signed_name(&self) -> $iX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
-                if LEN < 2 && self.len() == 1 {
-                    let sign_bit = 1usize << (self.bw() - 1);
+                if LEN <= 1 && self.len() == 1 {
+                    let sign_bit: Digit = 1 << (self.bw() - 1);
                     let extension = $uX::MIN.wrapping_sub((self.first() & sign_bit) as $uX);
                     ((self.first() as $uX) | extension) as $iX
                 } else {
@@ -175,6 +174,12 @@ impl Bits {
     #[must_use]
     pub const fn to_bool(&self) -> bool {
         (self.first() & 1) != 0
+    }
+
+    #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
+    pub const fn to_digit(&self) -> Digit {
+        self.first()
     }
 }
 

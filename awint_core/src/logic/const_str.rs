@@ -76,8 +76,8 @@ impl Bits {
                 b.wrapping_sub(b'A').wrapping_add(10)
             } else {
                 b.wrapping_sub(b'a').wrapping_add(10)
-            } as usize;
-            pad.usize_or_(char_digit, shl);
+            } as Digit;
+            pad.digit_or_(char_digit, shl);
             shl += log2;
             if shl >= self.bw() {
                 let tmp = if let Some(tmp) = BITS
@@ -169,12 +169,12 @@ impl Bits {
                 b.wrapping_sub(b'A').wrapping_add(10)
             } else {
                 b.wrapping_sub(b'a').wrapping_add(10)
-            } as usize;
-            let o0 = pad0.short_mul_add_(pad1, char_digit).unwrap();
+            } as Digit;
+            let o0 = pad0.digit_mul_add_(pad1, char_digit).unwrap();
             if o0 {
                 return Err(Overflow)
             }
-            let o1 = pad1.short_cin_mul(0, radix as usize);
+            let o1 = pad1.digit_cin_mul(0, radix as Digit);
             if o1 != 0 {
                 // there may be a bunch of leading zeros, so do not return an error yet
                 const_for!(j in {0..i} {
@@ -238,7 +238,7 @@ impl Bits {
         // happens to do the right thing to `imin`
         pad.neg_(signed && pad.msb());
         const_for!(i in {0..dst.len()}.rev() {
-            let rem = pad.short_udivide_inplace_(radix as usize).unwrap() as u8;
+            let rem = pad.digit_udivide_inplace_(radix as Digit).unwrap() as u8;
             if rem < 10 {
                 dst[i] = b'0'.wrapping_add(rem);
             } else if upper {

@@ -24,14 +24,35 @@ use core::num::NonZeroUsize;
 
 pub use serde_common::*;
 
-/// Maximum bitwidth of an inline `Awi`
-pub const BITS: usize = usize::BITS as usize;
+/// The basic element of the internal slice in `Bits`. This should be a type
+/// alias of the unsigned integer of the architecture's registers. On most
+/// architectures, this is simply `usize`, however there are cases such as AVR
+/// where the pointer size is 16 bits but the register size is 8 bits. If this
+/// were not register size, it can incur excessive unrolling or underutilization
+/// for every loop in the internals.
+pub type Digit = u32;
 
-/// Maximum value of an inline `Awi`
-pub const MAX: usize = usize::MAX;
+/// Signed version of `Digit`
+pub type IDigit = i32;
+
+/// Bitwidth of a `Digit`
+pub const BITS: usize = Digit::BITS as usize;
+
+/// Maximum value of a `Digit`
+pub const MAX: Digit = Digit::MAX;
 
 /// Number of bytes in a `Digit`
-pub const DIGIT_BYTES: usize = (usize::BITS / u8::BITS) as usize;
+pub const DIGIT_BYTES: usize = (Digit::BITS / u8::BITS) as usize;
+
+/// Number of metadata digits
+pub const METADATA_DIGITS: usize = if USIZE_BITS >= BITS {
+    USIZE_BITS / BITS
+} else {
+    1
+};
+
+/// Number of bits in a `usize`
+pub const USIZE_BITS: usize = usize::BITS as usize;
 
 /// Subset of `awint::awi`
 pub mod awi {
@@ -99,32 +120,38 @@ pub const fn regular_digits(w: NonZeroUsize) -> usize {
     digits(w).wrapping_add((extra(w) != 0) as usize)
 }
 
-/// Returns `regular_digits + 1` to account for the bitwidth digit
+/// Returns `regular_digits + 1` to account for the metadata digits
 #[inline]
 pub const fn raw_digits(w: usize) -> usize {
     digits_u(w)
         .wrapping_add((extra_u(w) != 0) as usize)
-        .wrapping_add(1)
+        .wrapping_add(METADATA_DIGITS)
 }
 
 /// Checks that the `BW` and `LEN` values are valid for an `InlAwi`.
 ///
 /// # Panics
 ///
-/// If `BW == 0`, `LEN < 2`, or the bitwidth is outside the range
-/// `(((LEN - 2)*BITS) + 1)..=((LEN - 1)*BITS)`
+/// If `BW == 0`, `LEN < METADATA_DIGITS + 1`, or the bitwidth is outside the
+/// range `(((LEN - METADATA_DIGITS - 1)*BITS) + 1)..=((LEN -
+/// METADATA_DIGITS)*BITS)`
 pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
     if BW == 0 {
         panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
     }
-    if LEN < 2 {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < 2`")
+    if LEN < METADATA_DIGITS + 1 {
+        panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < METADATA_DIGITS + 1`")
     }
-    if BW <= ((LEN - 2) * BITS) {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW <= BITS*(LEN - 2)`")
+    if BW <= ((LEN - METADATA_DIGITS - 1) * BITS) {
+        panic!(
+            "Tried to create an `InlAwi<BW, LEN>` with `BW <= Digit::BITS*(LEN - METADATA_DIGITS \
+             - 1)`"
+        )
     }
-    if BW > ((LEN - 1) * BITS) {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW > BITS*(LEN - 1)`")
+    if BW > ((LEN - METADATA_DIGITS) * BITS) {
+        panic!(
+            "Tried to create an `InlAwi<BW, LEN>` with `BW > Digit::BITS*(LEN - METADATA_DIGITS)`"
+        )
     }
 }
 
@@ -135,14 +162,17 @@ pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
 /// # Panics
 ///
 /// If `raw.len() != LEN`, the bitwidth digit is not equal to `BW`, `BW == 0`,
-/// `LEN < 2`, or the bitwidth is outside the range `(((LEN - 2)*BITS) +
-/// 1)..=((LEN - 1)*BITS)`
-pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[usize]) {
+/// `LEN < METADATA_DIGITS + 1`, or the bitwidth is outside the range
+/// `(((LEN - METADATA_DIGITS - 1)*BITS) + 1)..=((LEN - METADATA_DIGITS)*BITS)`
+pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[Digit]) {
     assert_inlawi_invariants::<BW, LEN>();
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
     }
-    let w = raw[raw.len() - 1];
+    let mut w = 0;
+    const_for!(i in {(raw.len() - METADATA_DIGITS)..raw.len()} {
+        w |= (raw[i] as usize) << ((i + METADATA_DIGITS - raw.len()) * BITS);
+    });
     if w != BW {
         panic!("bitwidth digit does not equal BW")
     }
@@ -150,12 +180,12 @@ pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(r
 
 /// Computes x + y + z and returns the widened result as a tuple.
 #[inline]
-pub const fn widen_add(x: usize, y: usize, z: usize) -> (usize, usize) {
+pub const fn widen_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
     // TODO make sure this is adc on appropriate platforms and also works well on
     // RISCV
     let (sum, carry0) = x.overflowing_add(y);
     let (sum, carry1) = sum.overflowing_add(z);
-    (sum, (carry0 as usize) + (carry1 as usize))
+    (sum, (carry0 as Digit) + (carry1 as Digit))
 }
 
 macro_rules! widen_mul_add_internal {
@@ -164,7 +194,7 @@ macro_rules! widen_mul_add_internal {
             $(
                 $bits => {
                     let tmp = ($x as $uD).wrapping_mul($y as $uD).wrapping_add($z as $uD);
-                    (tmp as usize, tmp.wrapping_shr($bits) as usize)
+                    (tmp as Digit, tmp.wrapping_shr($bits) as Digit)
                 }
             )*
             128 => $other
@@ -211,7 +241,7 @@ pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u1
 /// widened into a tuple, where the first element is the least significant part
 /// of the integer and the second is the most significant.
 #[inline]
-pub const fn widen_mul_add(x: usize, y: usize, z: usize) -> (usize, usize) {
+pub const fn widen_mul_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
     widen_mul_add_internal!(
         x, y, z;
         128 => {
@@ -219,7 +249,7 @@ pub const fn widen_mul_add(x: usize, y: usize, z: usize) -> (usize, usize) {
             // big widening multiplication by the time things like 128 bit RISCV are a
             // thing.
             let tmp = widening_mul_add_u128(x as u128, y as u128, z as u128);
-            (tmp.0 as usize, tmp.1 as usize)
+            (tmp.0 as Digit, tmp.1 as Digit)
         }
         8, u16;
         16, u32;
@@ -239,17 +269,17 @@ macro_rules! dd_division_internal {
                     let tmp1 = duo.wrapping_rem(div);
                     (
                         (
-                            tmp0 as usize,
-                            (tmp0 >> $bits) as usize,
+                            tmp0 as Digit,
+                            (tmp0 >> $bits) as Digit,
                         ),
                         (
-                            tmp1 as usize,
-                            (tmp1 >> $bits) as usize,
+                            tmp1 as Digit,
+                            (tmp1 >> $bits) as Digit,
                         )
                     )
                 }
             )*
-            _ => panic!("Unsupported pointer size"),
+            _ => panic!("Unsupported digit size"),
         }
     };
 }
@@ -261,9 +291,9 @@ macro_rules! dd_division_internal {
 /// If `div == 0`, this function will panic.
 #[inline]
 pub const fn dd_division(
-    duo: (usize, usize),
-    div: (usize, usize),
-) -> ((usize, usize), (usize, usize)) {
+    duo: (Digit, Digit),
+    div: (Digit, Digit),
+) -> ((Digit, Digit), (Digit, Digit)) {
     dd_division_internal!(
         duo, div;
         8, u16;

@@ -1,12 +1,15 @@
 use core::cmp;
 
-use awint::{Bits, ExtAwi};
+use awint::{
+    awint_internals::{Digit, BITS, USIZE_BITS},
+    Bits, ExtAwi,
+};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
 };
 
-use crate::fuzz::{eq, fuzz_step, ne, BITS};
+use crate::fuzz::{eq, fuzz_step, ne};
 
 macro_rules! primitive_conversion {
     (
@@ -50,6 +53,7 @@ fn identities_inner(
     x5: &mut Bits,
     s0: usize,
     s1: usize,
+    d0: Digit,
 ) -> Option<()> {
     // `.unwrap()` is used on operations that fail in ways other than nonequal
     // bitwidth, because it is otherwise a pain to figure out what line the error
@@ -181,7 +185,7 @@ fn identities_inner(
     x4.range_and_(s0..s1).unwrap();
     eq(x2, x4);
 
-    // usize or assign
+    // digit or assign
     x2.copy_(x0)?;
     x3.copy_(x0)?;
     x4.copy_(x1)?;
@@ -189,8 +193,8 @@ fn identities_inner(
         .unwrap();
     x2.or_(x4)?;
     x4.lshr_(s0).unwrap();
-    let digit = x4.to_usize();
-    x3.usize_or_(digit, s0);
+    let digit = x4.to_digit();
+    x3.digit_or_(digit, s0);
     eq(x2, x3);
 
     // arithmetic shift
@@ -338,13 +342,14 @@ fn identities_inner(
         u32_, to_u32, 32;
         u64_, to_u64, 64;
         u128_, to_u128, 128;
-        usize_, to_usize, BITS;
+        usize_, to_usize, USIZE_BITS;
         i8_, to_i8, 8;
         i16_, to_i16, 16;
         i32_, to_i32, 32;
         i64_, to_i64, 64;
         i128_, to_i128, 128;
-        isize_, to_isize, BITS;
+        isize_, to_isize, USIZE_BITS;
+        digit_, to_digit, BITS;
     );
 
     // multiplication and left shift
@@ -358,24 +363,24 @@ fn identities_inner(
     eq(x3, x4);
 
     // negation and multiplication
-    x2.usize_(s0);
+    x2.digit_(d0);
     x2.mul_add_(x0, x1)?;
     x3.copy_(x0)?;
     x4.copy_(x1)?;
     x3.neg_(true);
     x4.neg_(true);
-    x5.usize_(s0);
+    x5.digit_(d0);
     x5.mul_add_(x3, x4)?;
     eq(x2, x5);
 
     // short multiplication and division
     // duo:x0 div:x1,x3 quo:x4 rem:x5
-    let div = x1.to_usize();
+    let div = x1.to_digit();
     if div != 0 {
-        x3.usize_(div);
-        let rem = x4.short_udivide_(x0, div)?;
-        x5.usize_(rem);
-        let oflow = x4.short_cin_mul(0, div);
+        x3.digit_(div);
+        let rem = x4.digit_udivide_(x0, div)?;
+        x5.digit_(rem);
+        let oflow = x4.digit_cin_mul(0, div);
         assert_eq!(oflow, 0);
         x4.add_(x5)?;
         // `rem < div` and `(quo * div) + rem == duo`
@@ -383,18 +388,18 @@ fn identities_inner(
 
         // compare the two short divisions
         x2.copy_(x0)?;
-        x2.short_udivide_inplace_(div)?;
-        x3.short_udivide_(x0, div)?;
+        x2.digit_udivide_inplace_(div)?;
+        x3.digit_udivide_(x0, div)?;
         eq(x2, x3);
     }
 
     // compare short multiplications
     x2.copy_(x0)?;
-    let rhs = x0.to_usize();
-    x2.short_cin_mul(0, rhs);
+    let rhs = x0.to_digit();
+    x2.digit_cin_mul(0, rhs);
     x3.copy_(x0)?;
     x4.copy_(x0)?;
-    x3.short_mul_add_(x4, rhs)?;
+    x3.digit_mul_add_(x4, rhs)?;
 
     // alternate multiplication
     x2.copy_(x0)?;
@@ -559,7 +564,8 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
             edge_cases!(fl, x1, x3, {
                 let s0 = (rng.next_u32() as usize) % w;
                 let s1 = (rng.next_u32() as usize) % w;
-                identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
+                let d0 = (u128::from(rng.next_u64()) | (u128::from(rng.next_u64()) << 64)) as Digit;
+                identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1, d0)?;
             })
         })
     }
@@ -570,8 +576,8 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
         fuzz_step(&mut rng, x1, x2);
         let s0 = (rng.next_u32() as usize) % w;
         let s1 = (rng.next_u32() as usize) % w;
-
-        identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1)?;
+        let d0 = (u128::from(rng.next_u64()) | (u128::from(rng.next_u64()) << 64)) as Digit;
+        identities_inner(&mut rng, x0, x1, x2, x3, x4, x5, s0, s1, d0)?;
 
         // these are handled here because of the requirement that x0 and x1 are mutable
 

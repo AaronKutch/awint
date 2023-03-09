@@ -9,7 +9,7 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
+    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt, USIZE_BITS},
 };
 use smallvec::smallvec;
 
@@ -252,8 +252,7 @@ inlawi_from!(
     128, u128 from_u128 u128_ i128 from_i128 i128_;
 );
 
-type UsizeInlAwi =
-    InlAwi<{ awi::usize::BITS as usize }, { awi::Bits::unstable_raw_digits(usize::BITS as usize) }>;
+type UsizeInlAwi = InlAwi<{ USIZE_BITS }, { awi::Bits::unstable_raw_digits(USIZE_BITS) }>;
 
 impl UsizeInlAwi {
     pub fn from_usize(x: impl Into<dag::usize>) -> Self {

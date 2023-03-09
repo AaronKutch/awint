@@ -9,7 +9,7 @@ use crate::Bits;
 impl Bits {
     /// Assigns `cin + (self * rhs)` to `self` and returns the overflow
     #[const_fn(cfg(feature = "const_support"))]
-    pub const fn short_cin_mul(&mut self, cin: usize, rhs: usize) -> usize {
+    pub const fn digit_cin_mul(&mut self, cin: Digit, rhs: Digit) -> Digit {
         let mut carry = cin;
         unsafe_for_each_mut!(
             self,
@@ -33,7 +33,7 @@ impl Bits {
     /// Add-assigns `lhs * rhs` to `self` and returns if overflow happened
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn short_mul_add_(&mut self, lhs: &Self, rhs: usize) -> Option<bool> {
+    pub const fn digit_mul_add_(&mut self, lhs: &Self, rhs: Digit) -> Option<bool> {
         let mut mul_carry = 0;
         let mut add_carry = 0;
         unsafe_binop_for_each_mut!(

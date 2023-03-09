@@ -7,7 +7,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use awint_core::Bits;
+use awint_core::{awint_internals::Digit, Bits};
 
 use crate::ExtAwi;
 
@@ -27,7 +27,7 @@ impl FPType {
     /// unique representation of the fraction part of this fixed point type.
     /// This function performs allocation. Returns `None` if `radix < 2`.
     #[must_use]
-    pub fn unique_min_fraction_digits(&self, radix: usize) -> Option<usize> {
+    pub fn unique_min_fraction_digits(&self, radix: u8) -> Option<usize> {
         if radix < 2 {
             return None
         }
@@ -38,7 +38,7 @@ impl FPType {
         let mut digits = 0;
         loop {
             digits += 1;
-            if test.short_cin_mul(0, radix) != 0 {
+            if test.digit_cin_mul(0, radix as Digit) != 0 {
                 // as soon as overflow happens, that means
                 // `(((radix^digits) * 1 ULP) >> this.fp()) > 0`
                 break

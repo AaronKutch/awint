@@ -8,7 +8,7 @@ use std::{
     vec,
 };
 
-use awint_ext::{awint_internals::BITS, Bits};
+use awint_ext::{awint_internals::USIZE_BITS, Bits};
 use Op::*;
 
 use crate::{
@@ -409,7 +409,7 @@ impl OpDag {
     #[track_caller]
     pub fn usize(&self, ptr: PNode) -> Result<usize, EvalError> {
         if let Literal(ref lit) = self[ptr].op {
-            if lit.bw() == BITS {
+            if lit.bw() == USIZE_BITS {
                 Ok(lit.to_usize())
             } else {
                 Err(EvalError::WrongBitwidth)

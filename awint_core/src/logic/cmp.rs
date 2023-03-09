@@ -71,7 +71,7 @@ impl Bits {
             }
         });
         if self.extra() == 0 {
-            self.last() == (isize::MIN as usize)
+            self.last() == IDigit::MIN as Digit
         } else {
             self.last() == (1 << (self.extra() - 1))
         }

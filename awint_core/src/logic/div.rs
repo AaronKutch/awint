@@ -32,7 +32,7 @@ impl Bits {
     /// returns the remainder. Returns `None` if `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn short_udivide_inplace_(&mut self, div: usize) -> Option<usize> {
+    pub const fn digit_udivide_inplace_(&mut self, div: Digit) -> Option<Digit> {
         if div == 0 {
             return None
         }
@@ -55,7 +55,7 @@ impl Bits {
     // `div == 0`.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn short_udivide_(&mut self, duo: &Self, div: usize) -> Option<usize> {
+    pub const fn digit_udivide_(&mut self, duo: &Self, div: Digit) -> Option<Digit> {
         if div == 0 || self.bw() != duo.bw() {
             return None
         }
@@ -92,16 +92,16 @@ impl Bits {
         let duo_sig_dd = duo.get_double_digit(i);
         let div_sig_dd = div.get_double_digit(i);
         // Because `lz_diff < BITS`, the quotient will fit in one `usize`
-        let mut small_quo: usize = dd_division(duo_sig_dd, div_sig_dd).0 .0;
+        let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
         // using `rem` as a temporary
         rem.copy_(div).unwrap();
-        let uof = rem.short_cin_mul(0, small_quo);
+        let uof = rem.digit_cin_mul(0, small_quo);
         rem.rsb_(duo).unwrap();
         if (uof != 0) || rem.msb() {
             rem.add_(div).unwrap();
             small_quo -= 1;
         }
-        quo.usize_(small_quo);
+        quo.digit_(small_quo);
     }
 
     /// Unsigned-divides `duo` by `div` and assigns the quotient to `quo` and
@@ -142,10 +142,10 @@ impl Bits {
 
         // small division branch
         if (w - duo_lz) <= BITS {
-            let tmp_duo = duo.to_usize();
-            let tmp_div = div.to_usize();
-            quo.usize_(tmp_duo.wrapping_div(tmp_div));
-            rem.usize_(tmp_duo.wrapping_rem(tmp_div));
+            let tmp_duo = duo.to_digit();
+            let tmp_div = div.to_digit();
+            quo.digit_(tmp_duo.wrapping_div(tmp_div));
+            rem.digit_(tmp_duo.wrapping_rem(tmp_div));
             return Some(())
         }
 
@@ -157,10 +157,10 @@ impl Bits {
                     (duo.first(), duo.get_unchecked(1)),
                     (div.first(), div.get_unchecked(1)),
                 );
-                // using `usize_` to make sure other digits are zeroed
-                quo.usize_(tmp.0 .0);
+                // using `digit_` to make sure other digits are zeroed
+                quo.digit_(tmp.0 .0);
                 *quo.get_unchecked_mut(1) = tmp.0 .1;
-                rem.usize_(tmp.1 .0);
+                rem.digit_(tmp.1 .0);
                 *rem.get_unchecked_mut(1) = tmp.1 .1;
             }
             return Some(())
@@ -172,8 +172,8 @@ impl Bits {
 
         // short division branch
         if w - div_lz <= BITS {
-            let tmp = quo.short_udivide_(duo, div.to_usize()).unwrap();
-            rem.usize_(tmp);
+            let tmp = quo.digit_udivide_(duo, div.to_digit()).unwrap();
+            rem.digit_(tmp);
             return Some(())
         }
 
@@ -303,7 +303,7 @@ impl Bits {
                 let duo_sig_dd = rem.get_double_digit(i);
                 let div_sig_dd = div.get_double_digit(i);
                 // Because `lz_diff < BITS`, the quotient will fit in one `usize`
-                let mut small_quo: usize = dd_division(duo_sig_dd, div_sig_dd).0 .0;
+                let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
                 // subtract `div*small_quo` from `rem` inplace
                 let mut mul_carry = 0;
                 let mut add_carry = 1;
@@ -350,7 +350,6 @@ impl Bits {
                         (rem.first(), rem.get_unchecked(1)),
                         (div.first(), div.get_unchecked(1)),
                     );
-                    // using `usize_` to make sure other digits are zeroed
                     let tmp0 = widen_add(quo.first(), tmp.0 .0, 0);
 
                     *quo.first_mut() = tmp0.0;
@@ -358,7 +357,8 @@ impl Bits {
                     subdigits_mut!(quo, { 1..len }, subquo, {
                         subquo.inc_(tmp0.1 != 0);
                     });
-                    rem.usize_(tmp.1 .0);
+                    // using `digit_` to make sure other digits are zeroed
+                    rem.digit_(tmp.1 .0);
                     *rem.get_unchecked_mut(1) = tmp.1 .1;
                 }
                 return Some(())

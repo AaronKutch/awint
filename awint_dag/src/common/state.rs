@@ -1,7 +1,7 @@
 use std::{cell::RefCell, num::NonZeroUsize};
 
 use awint_ext::{
-    awint_internals::{Location, BITS},
+    awint_internals::{Location, USIZE_BITS},
     bw,
 };
 
@@ -324,7 +324,7 @@ impl PState {
     pub fn try_get_as_usize(&self) -> Option<usize> {
         self.get_state(|state| {
             if let Op::Literal(ref lit) = state?.op {
-                if lit.bw() == BITS {
+                if lit.bw() == USIZE_BITS {
                     return Some(lit.to_usize())
                 }
             }
