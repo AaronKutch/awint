@@ -85,8 +85,7 @@ type U256 = (u128, u128);
 /// Computes the quotient and remainder of `duo` divided by `div` and returns
 /// them as a tuple.
 pub const fn dd_division_u256(duo: U256, div: U256) -> (U256, U256) {
-    // from https://github.com/rust-lang/compiler-builtins
-    // /blob/master/src/int/specialized_div_rem/trifecta.rs
+    // uses the trifecta algorithm from https://crates.io/crates/triple_arena
 
     const fn lz_u256(x: U256) -> usize {
         let res = x.1.leading_zeros() as usize;

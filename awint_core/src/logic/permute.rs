@@ -546,7 +546,7 @@ impl Bits {
         s.assert_cleared_unused_bits();
         // We avoid overflow by checking in this order and with `BITS - 1` instead of
         // `BITS`
-        if (s.bw() >= (BITS - 1))
+        if (s.bw() >= (USIZE_BITS - 1))
             || ((1usize << s.bw()) != self.bw())
             || ((self.bw() << 1) != rhs.bw())
         {

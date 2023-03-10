@@ -90,7 +90,7 @@ fn funnel_() {
     #[cfg(miri)]
     let max_pow = 7;
     #[cfg(not(miri))]
-    let max_pow = 10;
+    let max_pow = 10; // note this also is over BITS when `u8_digits` is active
     for pow in 1..max_pow {
         let mut awi_shift = ExtAwi::zero(bw(pow));
         let mut awi_lhs = ExtAwi::zero(bw(1 << pow));
