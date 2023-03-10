@@ -6,6 +6,7 @@
 - Greatly improved the efficiency of `awint` on restricted architectures such as AVR
 - Fixed that `inlawi!` could cause double the necessary stack usage on all platforms
 - Macro constants are now compiled down to `&'static [u8]` or `&'static Bits`
+- `awint` should now theoretically work with 128 bit architectures like riscv128
 
 ### Additions
 - Added `Digit`, a type alias for the underlying storage element for `Bits`. Also added various

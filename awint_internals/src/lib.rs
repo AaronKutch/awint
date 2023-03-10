@@ -19,10 +19,12 @@
 
 mod macros;
 mod serde_common;
+mod widening;
 
 use core::num::NonZeroUsize;
 
 pub use serde_common::*;
+pub use widening::{dd_division, widen_add, widen_mul_add, widening_mul_add_u128};
 
 /// The basic element of the internal slice in `Bits`. This should be a type
 /// alias of the unsigned integer of the architecture's registers. On most
@@ -216,132 +218,6 @@ pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(r
     if w != BW {
         panic!("bitwidth digit does not equal BW")
     }
-}
-
-/// Computes x + y + z and returns the widened result as a tuple.
-#[inline]
-pub const fn widen_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
-    // TODO make sure this is adc on appropriate platforms and also works well on
-    // RISCV
-    let (sum, carry0) = x.overflowing_add(y);
-    let (sum, carry1) = sum.overflowing_add(z);
-    (sum, (carry0 as Digit) + (carry1 as Digit))
-}
-
-macro_rules! widen_mul_add_internal {
-    ($x:ident, $y:ident, $z:ident; 128 => $other:block $($bits:expr, $uD:ident);*;) => {
-        match BITS {
-            $(
-                $bits => {
-                    let tmp = ($x as $uD).wrapping_mul($y as $uD).wrapping_add($z as $uD);
-                    (tmp as Digit, tmp.wrapping_shr($bits) as Digit)
-                }
-            )*
-            128 => $other
-            _ => panic!("Unsupported pointer size"),
-        }
-    };
-}
-
-pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u128) {
-    //                       [rhs_hi]  [rhs_lo]
-    //                       [lhs_hi]  [lhs_lo]
-    //                     X___________________
-    //                       [------tmp0------]
-    //             [------tmp1------]
-    //             [------tmp2------]
-    //     [------tmp3------]
-    //                       [-------add------]
-    // +_______________________________________
-    //                       [------sum0------]
-    //     [------sum1------]
-
-    let lhs_lo = lhs as u64;
-    let rhs_lo = rhs as u64;
-    let lhs_hi = (lhs.wrapping_shr(64)) as u64;
-    let rhs_hi = (rhs.wrapping_shr(64)) as u64;
-    let tmp0 = (lhs_lo as u128).wrapping_mul(rhs_lo as u128);
-    let tmp1 = (lhs_lo as u128).wrapping_mul(rhs_hi as u128);
-    let tmp2 = (lhs_hi as u128).wrapping_mul(rhs_lo as u128);
-    let tmp3 = (lhs_hi as u128).wrapping_mul(rhs_hi as u128);
-    // tmp1 and tmp2 straddle the boundary. We have to handle three carries
-    let (sum0, carry0) = tmp0.overflowing_add(tmp1.wrapping_shl(64));
-    let (sum0, carry1) = sum0.overflowing_add(tmp2.wrapping_shl(64));
-    let (sum0, carry2) = sum0.overflowing_add(add);
-    let sum1 = tmp3
-        .wrapping_add(tmp1.wrapping_shr(64))
-        .wrapping_add(tmp2.wrapping_shr(64))
-        .wrapping_add(carry0 as u128)
-        .wrapping_add(carry1 as u128)
-        .wrapping_add(carry2 as u128);
-    (sum0, sum1)
-}
-
-/// Computes (x * y) + z. This cannot overflow, because it returns the value
-/// widened into a tuple, where the first element is the least significant part
-/// of the integer and the second is the most significant.
-#[inline]
-pub const fn widen_mul_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
-    widen_mul_add_internal!(
-        x, y, z;
-        128 => {
-            // Hopefully Rust has a built in `widening_mul` or LLVM recognizes this is one
-            // big widening multiplication by the time things like 128 bit RISCV are a
-            // thing.
-            let tmp = widening_mul_add_u128(x as u128, y as u128, z as u128);
-            (tmp.0 as Digit, tmp.1 as Digit)
-        }
-        8, u16;
-        16, u32;
-        32, u64;
-        64, u128;
-    )
-}
-
-macro_rules! dd_division_internal {
-    ($duo:ident, $div:ident; $($bits:expr, $uD:ident);*;) => {
-        match BITS {
-            $(
-                $bits => {
-                    let duo = $duo.0 as $uD | (($duo.1 as $uD) << $bits);
-                    let div = $div.0 as $uD | (($div.1 as $uD) << $bits);
-                    let tmp0 = duo.wrapping_div(div);
-                    let tmp1 = duo.wrapping_rem(div);
-                    (
-                        (
-                            tmp0 as Digit,
-                            (tmp0 >> $bits) as Digit,
-                        ),
-                        (
-                            tmp1 as Digit,
-                            (tmp1 >> $bits) as Digit,
-                        )
-                    )
-                }
-            )*
-            _ => panic!("Unsupported digit size"),
-        }
-    };
-}
-
-/// Divides `duo` by `div` and returns the quotient and remainder.
-///
-/// # Panics
-///
-/// If `div == 0`, this function will panic.
-#[inline]
-pub const fn dd_division(
-    duo: (Digit, Digit),
-    div: (Digit, Digit),
-) -> ((Digit, Digit), (Digit, Digit)) {
-    dd_division_internal!(
-        duo, div;
-        8, u16;
-        16, u32;
-        32, u64;
-        64, u128;
-        // TODO fix this for 128 bits
-    )
 }
 
 /// Location for an item in the source code

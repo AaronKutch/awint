@@ -7,7 +7,7 @@ env:
   # what `.cargo/config.toml` sets for `no_alloc_build`
   RUST_BACKTRACE: 1
   # we can't use `--all-features` because of the `_digits` flags, use
-  ALL_FEATURES: "--features=const_support,std,zeroize_support,rand_support,serde_support,dag,debug"
+  ALL_FEATURES: "--features=const_support,std,zeroize_support,rand_support,serde_support,dag,try_support,debug"
   NON_STD_FEATURES: "--features=const_support,zeroize_support,rand_support,serde_support"
 
 jobs:
@@ -27,6 +27,11 @@ jobs:
           cargo bench $ALL_FEATURES
           cargo test $ALL_FEATURES
           cargo test --release $ALL_FEATURES
+          cargo test $ALL_FEATURES,u8_digits
+          cargo test $ALL_FEATURES,u16_digits
+          cargo test $ALL_FEATURES,u32_digits
+          cargo test $ALL_FEATURES,u64_digits
+          cargo test $ALL_FEATURES,u128_digits
 
   miri:
     name: Miri
@@ -58,11 +63,11 @@ jobs:
           rustup set profile minimal
           rustup default nightly
           rustup target add riscv32i-unknown-none-elf
-      # no_alloc_test has `rand_support` and `serde_support` enabled in its `Cargo.toml`
+      # no_alloc_test has `NON_STD_FEATURES` enabled in its `Cargo.toml`
       - name: Run `cargo doc` and `cargo build`
         run: |
           cargo doc $ALL_FEATURES
-          cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf $NON_STD_FEATURES
+          cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
   stable_build:
     name: Build on stable
@@ -78,11 +83,13 @@ jobs:
       - name: Run `cargo build`
         run: |
           cargo build --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
-          cargo build --no-default-features --features=std
+          cargo build --no-default-features $NON_STD_FEATURES
+          cargo build --no-default-features --features=const_support
           cargo build --no-default-features --features=alloc
+          cargo build --no-default-features --features=std
+          cargo build --no-default-features --features=zeroize_support
           cargo build --no-default-features --features=rand_support
           cargo build --no-default-features --features=serde_support
-          cargo build --no-default-features --features=zeroize_support
           cargo build --no-default-features --features=dag
           cargo build --no-default-features --features=debug
           cargo build --no-default-features

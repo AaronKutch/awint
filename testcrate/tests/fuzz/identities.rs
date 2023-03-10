@@ -373,7 +373,7 @@ fn identities_inner(
     x5.mul_add_(x3, x4)?;
     eq(x2, x5);
 
-    // short multiplication and division
+    // digit multiplication and division
     // duo:x0 div:x1,x3 quo:x4 rem:x5
     let div = x1.to_digit();
     if div != 0 {
@@ -386,14 +386,14 @@ fn identities_inner(
         // `rem < div` and `(quo * div) + rem == duo`
         assert!(x5.ult(x3)? && x4.const_eq(x0)?);
 
-        // compare the two short divisions
+        // compare the two digit divisions
         x2.copy_(x0)?;
         x2.digit_udivide_inplace_(div)?;
         x3.digit_udivide_(x0, div)?;
         eq(x2, x3);
     }
 
-    // compare short multiplications
+    // compare digit multiplications
     x2.copy_(x0)?;
     let rhs = x0.to_digit();
     x2.digit_cin_mul(0, rhs);

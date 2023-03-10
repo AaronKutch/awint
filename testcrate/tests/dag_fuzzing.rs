@@ -5,7 +5,7 @@ use awint::{
     awint_dag::{
         lowering::OpDag, smallvec::smallvec, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
     },
-    awint_internals::BITS,
+    awint_internals::USIZE_BITS,
     awint_macro_internals::triple_arena::{ptr_struct, Arena},
     dag,
 };
@@ -43,8 +43,9 @@ impl Pair {
 #[derive(Debug)]
 struct Mem {
     a: Arena<P0, Pair>,
-    // The outer Vec has 65 Vecs for all the supported bitwidths (there is a dummy 0 bitwidth Vec
-    // and one for each of 1..=64), the inner Vecs are unsorted and used for random querying
+    // The outer Vec has (USIZE_BITS + 1) Vecs for all the supported bitwidths (there is a dummy 0
+    // bitwidth Vec and one for each of 1..=64), the inner Vecs are unsorted and used for
+    // random querying
     v: Vec<Vec<P0>>,
     rng: Xoshiro128StarStar,
 }
@@ -52,7 +53,7 @@ struct Mem {
 impl Mem {
     pub fn new() -> Self {
         let mut v = vec![];
-        for _ in 0..65 {
+        for _ in 0..(USIZE_BITS + 1) {
             v.push(vec![]);
         }
         Self {
@@ -65,7 +66,7 @@ impl Mem {
     pub fn clear(&mut self) {
         self.a.clear();
         self.v.clear();
-        for _ in 0..65 {
+        for _ in 0..(USIZE_BITS + 1) {
             self.v.push(vec![]);
         }
     }
@@ -110,7 +111,7 @@ impl Mem {
     }
 
     pub fn next_usize(&mut self, cap: usize) -> P0 {
-        self.next_capped(BITS, cap)
+        self.next_capped(USIZE_BITS, cap)
     }
 
     // just use cloning for the immutable indexing, because dealing with the guards

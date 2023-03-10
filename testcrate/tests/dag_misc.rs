@@ -105,7 +105,7 @@ fn dag_bits_functions_internal(
     let [x0, x1, x2, x3, x4] = x;
 
     // TODO `mul_`, `neg_add_`, `digit_or_`, `digit_udivide_`,
-    // `short_udivide_inplace`, `range_and`?
+    // `digit_udivide_inplace`, `range_and`?
 
     // test the inlawi macros first
     assert!(x0.is_zero());
