@@ -8,3 +8,11 @@ readme = "README.md"
 repository = "https://github.com/AaronKutch/awint"
 description = "Internal utilities for the `awint` system of crates"
 rust-version = "1.66"
+
+[features]
+# Only zero or one of these should be active
+u8_digits = []
+u16_digits = []
+u32_digits = []
+u64_digits = []
+u128_digits = []

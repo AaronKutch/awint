@@ -33,3 +33,9 @@ rand_support = ["rand_core"]
 # Turns on `serde` support
 serde_support = ["serde"]
 zeroize_support = ["zeroize"]
+# Only zero or one of these should be active
+u8_digits = ["awint_internals/u8_digits"]
+u16_digits = ["awint_internals/u16_digits"]
+u32_digits = ["awint_internals/u32_digits"]
+u64_digits = ["awint_internals/u64_digits"]
+u128_digits = ["awint_internals/u128_digits"]

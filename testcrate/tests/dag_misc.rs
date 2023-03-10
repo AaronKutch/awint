@@ -331,7 +331,7 @@ fn dag_bits_functions() {
     let num_assertions = 170;
     let eq = epoch0.assertions().bits.len() == num_assertions;
     if !eq {
-        println!(
+        panic!(
             "number of assertions ({}) is not as expected",
             epoch0.assertions().bits.len()
         );

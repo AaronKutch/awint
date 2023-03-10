@@ -6,6 +6,9 @@ env:
   # NOTE: do not set RUSTFLAGS here, because it overwrites
   # what `.cargo/config.toml` sets for `no_alloc_build`
   RUST_BACKTRACE: 1
+  # we can't use `--all-features` because of the `_digits` flags, use
+  ALL_FEATURES: "--features=const_support,std,zeroize_support,rand_support,serde_support,dag,debug"
+  NON_STD_FEATURES: "--features=const_support,zeroize_support,rand_support,serde_support"
 
 jobs:
   test_suite:
@@ -21,9 +24,9 @@ jobs:
           rustup default nightly
       - name: Run test suite
         run: |
-          cargo bench
-          cargo test --all-features
-          cargo test --release --all-features
+          cargo bench $ALL_FEATURES
+          cargo test $ALL_FEATURES
+          cargo test --release $ALL_FEATURES
 
   miri:
     name: Miri
@@ -41,7 +44,7 @@ jobs:
           rustup component add miri
       - name: Run test suite with Miri
         run: |
-          cargo miri test
+          cargo miri test $ALL_FEATURES
 
   # we run `cargo doc` here, because running `cargo doc` anywhere somehow requires `core` from the
   # target in no_alloc_test
@@ -58,8 +61,8 @@ jobs:
       # no_alloc_test has `rand_support` and `serde_support` enabled in its `Cargo.toml`
       - name: Run `cargo doc` and `cargo build`
         run: |
-          cargo doc --all-features
-          cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
+          cargo doc $ALL_FEATURES
+          cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf $NON_STD_FEATURES
 
   stable_build:
     name: Build on stable
@@ -114,7 +117,7 @@ jobs:
       - name: Run `cargo clippy`
         # note: run clippy on no_alloc_test manually
         run: |
-          cargo clippy --all --all-targets --all-features -- -D clippy::all
+          cargo clippy --all --all-targets $ALL_FEATURES -- -D clippy::all
 
   # makes sure the tests work on 32 bit and 64 bit big endian targets
   cross-compile-big-endian:
@@ -126,5 +129,5 @@ jobs:
         rustup set profile minimal
         rustup default nightly
         cargo install cross
-        cross test --target mips64-unknown-linux-gnuabi64 --all-features
-        cross test --target mips-unknown-linux-gnu --all-features
+        cross test --target mips64-unknown-linux-gnuabi64 $ALL_FEATURES
+        cross test --target mips-unknown-linux-gnu $ALL_FEATURES

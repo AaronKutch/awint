@@ -2,19 +2,21 @@
 
 ## [0.10.0] - TODO
 ### Fixes
-- Improved the viability of `awint` on architectures such as AVR
+- Fixed that the overflow check in `chars_upper_bound` and `bits_upper_bound` was completely broken
+- Greatly improved the efficiency of `awint` on restricted architectures such as AVR
 - Fixed that `inlawi!` could cause double the necessary stack usage on all platforms
 - Macro constants are now compiled down to `&'static [u8]` or `&'static Bits`
 
 ### Additions
 - Added `Digit`, a type alias for the underlying storage element for `Bits`. Also added various
   primitive related functions for it.
+- Added feature flags to control `Digit`
 
 ### Changes
-- Replaced `usize` with `Digit` where applicable. This does not immediately change things for most
+- Replaced `usize` with `Digit` where applicable. This does not immediately change things for common
   architectures, but `Digit` can be different from `usize` now.
 - Renamed `short_` functions to `digit_` functions
-- `Digit` has a minimum maximum guaranteed value of `u8::MAX` rather than `u16::MAX`
+- `Digit` has a minimum guaranteed maximum value of `u8::MAX` rather than `u16::MAX`
 - `const_as_ref` and `const_as_mut` removed from `InlAwi` and `ExtAwi` (although it still exists as
   a hidden function on `Bits` for macro purposes)
 - Many changes to hidden and unstable items

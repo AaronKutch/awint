@@ -283,14 +283,15 @@ impl<'a> Bits {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
+    #[allow(clippy::unnecessary_cast)] // if `Digit == usize` clippy fires
     pub const fn nzbw(&self) -> NonZeroUsize {
         unsafe {
             let mut w = 0usize;
             // Safety: The bitwidth is stored in the metadata digits. The bitwidth is
             // nonzero if invariants were maintained.
             let raw_len = self.raw_len();
-            const_for!(i in {(raw_len - METADATA_DIGITS)..raw_len} {
-                w |= self.raw_get_unchecked(i) as usize;
+            const_for!(i in {0..METADATA_DIGITS} {
+                w |= (self.raw_get_unchecked(i + raw_len - METADATA_DIGITS) as usize) << (i * BITS);
             });
             // If something with zeroing allocation or mutations accidentally breaks during
             // development, it will probably manifest itself here

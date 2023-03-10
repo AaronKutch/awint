@@ -29,3 +29,9 @@ const_support = ["awint_core/const_support"]
 # Turns on `serde` support
 serde_support = ["serde"]
 zeroize_support = ["zeroize", "awint_core/zeroize_support"]
+# Only zero or one of these should be active
+u8_digits = ["awint_core/u8_digits"]
+u16_digits = ["awint_core/u16_digits"]
+u32_digits = ["awint_core/u32_digits"]
+u64_digits = ["awint_core/u64_digits"]
+u128_digits = ["awint_core/u128_digits"]

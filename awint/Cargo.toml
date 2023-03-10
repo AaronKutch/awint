@@ -40,3 +40,9 @@ zeroize_support = ["awint_ext/zeroize_support"]
 # Turns on `awint_dag` support. Note: this activates `std`.
 dag = ["awint_dag", "std"]
 debug = ["awint_dag/debug", "awint_macro_internals/debug"]
+# Only zero or one of these should be active
+u8_digits = ["awint_core/u8_digits"] # Note: this is automatically active for AVR
+u16_digits = ["awint_core/u16_digits"]
+u32_digits = ["awint_core/u32_digits"]
+u64_digits = ["awint_core/u64_digits"]
+u128_digits = ["awint_core/u128_digits"]

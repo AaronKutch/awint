@@ -30,10 +30,49 @@ pub use serde_common::*;
 /// where the pointer size is 16 bits but the register size is 8 bits. If this
 /// were not register size, it can incur excessive unrolling or underutilization
 /// for every loop in the internals.
+#[cfg(not(any(
+    feature = "u8_digits",
+    feature = "u16_digits",
+    feature = "u32_digits",
+    feature = "u64_digits",
+    feature = "u128_digits",
+    target_arch = "avr",
+)))]
+pub type Digit = usize;
+#[cfg(any(feature = "u8_digits", target_arch = "avr"))]
+pub type Digit = u8;
+#[cfg(feature = "u16_digits")]
+pub type Digit = u16;
+#[cfg(feature = "u32_digits")]
 pub type Digit = u32;
+#[cfg(feature = "u64_digits")]
+pub type Digit = u64;
+#[cfg(feature = "u128_digits")]
+pub type Digit = u128;
+
+// If more than one flag is active it will cause an error because two `Digits`
+// are defined
 
 /// Signed version of `Digit`
+#[cfg(not(any(
+    feature = "u8_digits",
+    feature = "u16_digits",
+    feature = "u32_digits",
+    feature = "u64_digits",
+    feature = "u128_digits",
+    target_arch = "avr",
+)))]
+pub type IDigit = isize;
+#[cfg(any(feature = "u8_digits", target_arch = "avr"))]
+pub type IDigit = i8;
+#[cfg(feature = "u16_digits")]
+pub type IDigit = i16;
+#[cfg(feature = "u32_digits")]
 pub type IDigit = i32;
+#[cfg(feature = "u64_digits")]
+pub type IDigit = i64;
+#[cfg(feature = "u128_digits")]
+pub type IDigit = i128;
 
 /// Bitwidth of a `Digit`
 pub const BITS: usize = Digit::BITS as usize;
@@ -164,14 +203,15 @@ pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
 /// If `raw.len() != LEN`, the bitwidth digit is not equal to `BW`, `BW == 0`,
 /// `LEN < METADATA_DIGITS + 1`, or the bitwidth is outside the range
 /// `(((LEN - METADATA_DIGITS - 1)*BITS) + 1)..=((LEN - METADATA_DIGITS)*BITS)`
+#[allow(clippy::unnecessary_cast)] // if `Digit == usize` clippy fires
 pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[Digit]) {
     assert_inlawi_invariants::<BW, LEN>();
     if raw.len() != LEN {
         panic!("`length of raw slice does not equal LEN")
     }
-    let mut w = 0;
-    const_for!(i in {(raw.len() - METADATA_DIGITS)..raw.len()} {
-        w |= (raw[i] as usize) << ((i + METADATA_DIGITS - raw.len()) * BITS);
+    let mut w = 0usize;
+    const_for!(i in {0..METADATA_DIGITS} {
+        w |= (raw[i + raw.len() - METADATA_DIGITS] as usize) << (i * BITS);
     });
     if w != BW {
         panic!("bitwidth digit does not equal BW")
