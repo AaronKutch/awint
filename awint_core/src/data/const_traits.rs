@@ -113,3 +113,13 @@ impl const From<isize> for UsizeInlAwi {
         Self::from_isize(x)
     }
 }
+
+/// If `self` and `other` have unmatching bit widths, `false` will be returned.
+impl const PartialEq for Bits {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.bw() == rhs.bw() && self.const_eq(rhs).unwrap()
+    }
+}
+
+/// If `self` and `other` have unmatching bit widths, `false` will be returned.
+impl Eq for Bits {}

@@ -91,6 +91,8 @@ pub const AWINT_FN_NAMES: FnNames = FnNames {
 /// - `construction_fn`: is input the specified initialization, width if it is
 ///   statically known, and dynamic width if known. As a special case, the
 ///   initialization is empty for when initialization doesn't matter
+/// - `const_wrapper`: used for the `bits` macro, pass the `String` straight
+///   through otherwise
 pub struct CodeGen<
     'a,
     F0: FnMut(&str) -> String,
@@ -98,6 +100,7 @@ pub struct CodeGen<
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(ExtAwi) -> String,
     F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+    F4: FnMut(String, Option<NonZeroUsize>, bool) -> String,
 > {
     pub static_width: bool,
     pub return_type: Option<&'a str>,
@@ -105,5 +108,6 @@ pub struct CodeGen<
     pub static_construction_fn: F1,
     pub lit_construction_fn: F2,
     pub construction_fn: F3,
+    pub const_wrapper: F4,
     pub fn_names: FnNames<'a>,
 }

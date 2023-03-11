@@ -16,9 +16,10 @@ pub fn cc_macro<
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(ExtAwi) -> String,
     F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+    F4: FnMut(String, Option<NonZeroUsize>, bool) -> String,
 >(
     input: &str,
-    code_gen: CodeGen<'_, F0, F1, F2, F3>,
+    code_gen: CodeGen<'_, F0, F1, F2, F3, F4>,
     names: Names,
 ) -> Result<String, String> {
     // we process in stages to handle more fundamental errors first, reducing bugs

@@ -4,6 +4,7 @@ use awint_internals::*;
 
 use crate::Bits;
 
+/// This exists because we need the macros to work branchlessly with `awint_dag`
 #[doc(hidden)]
 pub struct CCResult<T> {
     run_fielding: bool,

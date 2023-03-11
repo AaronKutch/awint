@@ -1,3 +1,7 @@
+#![feature(const_trait_impl)]
+#![feature(const_mut_refs)]
+#![feature(const_option)]
+
 use awint::awi::*;
 
 macro_rules! construction {
@@ -164,4 +168,9 @@ fn macro_successes() {
     let _: () = cc!(imin: y);
     assert_eq!(y, inlawi!(0u8));
     let _: () = cc!(imin: ..r);
+
+    const A: &Bits = bits!(umax: ..32, 0xfedcba98_u32);
+    const B: &Bits = bits!(0x3210u16);
+    const C: &Bits = bits!(A, 0x7654u16, B; ..96).unwrap();
+    assert_eq!(C, bits!(0xffffffff_fedcba98_76543210_u96));
 }

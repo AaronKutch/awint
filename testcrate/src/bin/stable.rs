@@ -1,10 +1,12 @@
-// This is here because the macros aren't tested on stable by just building the crates
+// This is here because the macros aren't tested on stable by just building the
+// crates
 
 use awint::awi::*;
 
 // can't work on stable yet
 //const B: &Bits = bits!(0x1234u32);
 
+#[allow(clippy::let_unit_value)]
 fn main() {
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);

@@ -38,6 +38,7 @@ fn cc(mut f: impl Write, input: &str) {
                 d
             )
         },
+        const_wrapper: |s, _, _| s,
         fn_names: TEST_FN_NAMES,
     };
     match cc_macro(input, code_gen, AWINT_NAMES) {
@@ -65,6 +66,7 @@ fn static_cc(mut f: impl Write, input: &str) {
                 d
             )
         },
+        const_wrapper: |s, _, _| s,
         fn_names: TEST_FN_NAMES,
     };
     match cc_macro(input, code_gen, AWINT_NAMES) {
@@ -92,6 +94,35 @@ fn dynamic_cc(mut f: impl Write, input: &str) {
                 d
             )
         },
+        const_wrapper: |s, _, _| s,
+        fn_names: TEST_FN_NAMES,
+    };
+    match cc_macro(input, code_gen, AWINT_NAMES) {
+        Ok(s) => {
+            writeln!(f, "{input}\nOk:\n{s}\n\n").unwrap();
+        }
+        Err(e) => {
+            writeln!(f, "{input}\nErr:\n{e}\n\n").unwrap();
+        }
+    }
+}
+
+fn const_cc(mut f: impl Write, input: &str) {
+    let code_gen = CodeGen {
+        static_width: true,
+        return_type: Some("ConstAwi"),
+        must_use: |s| format!("mu({s})"),
+        static_construction_fn: |awi| format!("static({awi})"),
+        lit_construction_fn: |awi| format!("lit({awi})"),
+        construction_fn: |s, w, d| {
+            format!(
+                "awi({},{:?},{:?})",
+                if s.is_empty() { "zero" } else { s },
+                w,
+                d
+            )
+        },
+        const_wrapper: |s, w, i| format!("const({s}, {}, {i})", w.unwrap()),
         fn_names: TEST_FN_NAMES,
     };
     match cc_macro(input, code_gen, AWINT_NAMES) {

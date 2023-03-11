@@ -72,7 +72,8 @@ pub fn unstable_native_inlawi(bits: &Bits) -> String {
     )
 }
 
-// there is some strange issue with feature flags through proc-macro crates that prevents this from working
+// there is some strange issue with feature flags through proc-macro crates that
+// prevents this from working
 /*#[cfg(not(feature = "const_support"))]
 pub fn unstable_native_bits(bits: &Bits) -> String {
     format!("{{let b: &Bits = &{}; b}}", unstable_native_inlawi(bits))
@@ -166,5 +167,41 @@ pub fn extawi_construction_fn(
         extawi_s(init, s)
     } else {
         unreachable!()
+    }
+}
+
+pub fn identity_const_wrapper(
+    inner: String,
+    _w: Option<NonZeroUsize>,
+    _infallible: bool,
+) -> String {
+    inner
+}
+
+pub fn awint_bits_const_wrapper(
+    inner: String,
+    w: Option<NonZeroUsize>,
+    infallible: bool,
+) -> String {
+    let w = if let Some(w) = w {
+        w
+    } else {
+        // this should only be used in a static width context
+        unreachable!()
+    };
+    if infallible {
+        format!(
+            "{{const __B:{}={};\nconst __C:&Bits=&__B;__C}}",
+            unstable_native_inlawi_ty(w.get() as u128),
+            inner
+        )
+    } else {
+        // the match is to avoid bringing in `const_option_ext`
+        format!(
+            "{{const __B:Option<{}>={};\nconst __C:Option<&Bits>=match __B {{Some(ref \
+             b)=>Some(b),None=>None}};__C}}",
+            unstable_native_inlawi_ty(w.get() as u128),
+            inner
+        )
     }
 }

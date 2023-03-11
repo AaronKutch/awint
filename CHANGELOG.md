@@ -12,6 +12,7 @@
 - Added `Digit`, a type alias for the underlying storage element for `Bits`. Also added various
   primitive related functions for it.
 - Added feature flags to control `Digit`
+- Enabled `const` PartialEq
 
 ### Changes
 - Replaced `usize` with `Digit` where applicable. This does not immediately change things for common

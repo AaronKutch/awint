@@ -1,19 +1,7 @@
-use core::cmp::*;
-
 use awint_internals::*;
 use const_fn::const_fn;
 
 use crate::Bits;
-
-/// If `self` and `other` have unmatching bit widths, `false` will be returned.
-impl PartialEq for Bits {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.bw() == rhs.bw() && self.const_eq(rhs).unwrap()
-    }
-}
-
-/// If `self` and `other` have unmatching bit widths, `false` will be returned.
-impl Eq for Bits {}
 
 /// # Comparison
 impl Bits {

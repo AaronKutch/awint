@@ -68,9 +68,10 @@ pub fn cc_macro_code_gen<
     F1: FnMut(ExtAwi) -> String,
     F2: FnMut(ExtAwi) -> String,
     F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+    F4: FnMut(String, Option<NonZeroUsize>, bool) -> String,
 >(
     mut ast: Ast,
-    mut code_gen: CodeGen<'_, F0, F1, F2, F3>,
+    mut code_gen: CodeGen<'_, F0, F1, F2, F3, F4>,
     names: Names,
 ) -> String {
     let is_returning = code_gen.return_type.is_some();
@@ -322,6 +323,7 @@ pub fn cc_macro_code_gen<
     let bindings = l.lower_bindings(code_gen.static_construction_fn);
 
     let inner = format!("{{\n{bindings}{values}{widths}{cws}{common_cw}{inner}}}");
+    let inner = (code_gen.const_wrapper)(inner, ast.common_bw, infallible);
     if wrap_must_use {
         (code_gen.must_use)(&inner)
     } else {
