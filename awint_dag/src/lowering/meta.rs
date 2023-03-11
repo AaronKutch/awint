@@ -2,7 +2,7 @@
 
 use std::{cmp::min, mem, num::NonZeroUsize};
 
-use awint_ext::{awi, awint_internals::BITS};
+use awint_ext::{awi, awint_internals::USIZE_BITS};
 use awint_macros::*;
 
 use crate::mimick::{Bits, ExtAwi, InlAwi};
@@ -399,8 +399,8 @@ pub fn funnel_(x: &Bits, s: &Bits) -> ExtAwi {
 /// Setting `width` to 0 guarantees that nothing happens even with other
 /// arguments being invalid
 pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
-    assert_eq!(from.bw(), BITS);
-    assert_eq!(width.bw(), BITS);
+    assert_eq!(from.bw(), USIZE_BITS);
+    assert_eq!(width.bw(), USIZE_BITS);
     let mut out = ExtAwi::from_bits(lhs);
     // the `width == 0` case will result in a no-op from the later `field_width`
     // part, so we need to be able to handle just `rhs.bw()` possible shifts for
@@ -416,7 +416,7 @@ pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
 }
 
 pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
-    assert_eq!(s.bw(), BITS);
+    assert_eq!(s.bw(), USIZE_BITS);
     let mut signals = selector(s, Some(x.bw()));
     signals.reverse();
     let mut out = ExtAwi::zero(x.nzbw());
@@ -425,7 +425,7 @@ pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
 }
 
 pub fn lshr(x: &Bits, s: &Bits) -> ExtAwi {
-    assert_eq!(s.bw(), BITS);
+    assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
     let mut out = ExtAwi::zero(x.nzbw());
     crossbar(&mut out, x, &signals, (x.bw() - 1, 2 * x.bw() - 1));
@@ -433,7 +433,7 @@ pub fn lshr(x: &Bits, s: &Bits) -> ExtAwi {
 }
 
 pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
-    assert_eq!(s.bw(), BITS);
+    assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
     let mut out = ExtAwi::zero(x.nzbw());
     crossbar(&mut out, x, &signals, (x.bw() - 1, 2 * x.bw() - 1));
@@ -480,7 +480,7 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
 }
 
 pub fn rotl(x: &Bits, s: &Bits) -> ExtAwi {
-    assert_eq!(s.bw(), BITS);
+    assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
     // we will use the whole cross bar, with every signal controlling two diagonals
     // for the wraparound except for the `x.bw() - 1` one
@@ -497,7 +497,7 @@ pub fn rotl(x: &Bits, s: &Bits) -> ExtAwi {
 }
 
 pub fn rotr(x: &Bits, s: &Bits) -> ExtAwi {
-    assert_eq!(s.bw(), BITS);
+    assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
     // we will use the whole cross bar, with every signal controlling two diagonals
     // for the wraparound except for the `x.bw() - 1` one
@@ -626,8 +626,8 @@ pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
 /// Setting `width` to 0 guarantees that nothing happens even with other
 /// arguments being invalid
 pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
-    assert_eq!(to.bw(), BITS);
-    assert_eq!(width.bw(), BITS);
+    assert_eq!(to.bw(), USIZE_BITS);
+    assert_eq!(width.bw(), USIZE_BITS);
 
     // simplified version of `field` below
 
@@ -681,9 +681,9 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
 /// Setting `width` to 0 guarantees that nothing happens even with other
 /// arguments being invalid
 pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
-    assert_eq!(to.bw(), BITS);
-    assert_eq!(from.bw(), BITS);
-    assert_eq!(width.bw(), BITS);
+    assert_eq!(to.bw(), USIZE_BITS);
+    assert_eq!(from.bw(), USIZE_BITS);
+    assert_eq!(width.bw(), USIZE_BITS);
 
     // we use some summation to get the fielding done with a single crossbar
 

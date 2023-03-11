@@ -44,7 +44,7 @@ impl Bits {
         // this is a no-op on little endian, but on big endian this fixes byte order in
         // regular digits and rotates out unused bytes
         const_for!(i in {0..self.len()} {
-            self.as_mut_slice()[i] = usize::from_le(self.as_mut_slice()[i]);
+            self.as_mut_slice()[i] = Digit::from_le(self.as_mut_slice()[i]);
         });
         // clean up unused bits in last byte
         self.clear_unused_bits();

@@ -21,8 +21,8 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
         // Safety: this produces the exact number of bytes needed to satisfy the raw
         // invariants of `Bits`.
         Layout::from_size_align_unchecked(
-            (regular_digits(w) + 1) * mem::size_of::<usize>(),
-            mem::align_of::<usize>(),
+            raw_digits(w.get()) * mem::size_of::<Digit>(),
+            mem::align_of::<Digit>(),
         )
     }
 }
@@ -51,7 +51,7 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 ///     // macros with unbounded fillers from `awint_macros`
 ///     x0.sign_resize_(x1);
 ///     // multiply in place by 2 for an example
-///     x0.short_cin_mul(0, 2);
+///     x0.digit_cin_mul_(0, 2);
 /// }
 ///
 /// // using `bw` function for quick `NonZeroUsize` construction from a literal
@@ -82,13 +82,13 @@ impl<'a> ExtAwi {
     /// # Safety
     ///
     /// `ptr` should be allocated according to the `extawi::layout` function and
-    /// all digits initialized. The metadata digit should be set to the
+    /// all digits initialized. The metadata digits should be set to the
     /// bitwidth. `raw_len` should correspond to the raw length (including
     /// metadata) of the corresponding `Bits`.
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const unsafe fn from_raw_parts(ptr: *mut usize, raw_len: usize) -> ExtAwi {
+    pub const unsafe fn from_raw_parts(ptr: *mut Digit, raw_len: usize) -> ExtAwi {
         // Safety: The requirements on this function satisfies
         // `Bits::from_raw_parts_mut`.
         unsafe {
@@ -102,7 +102,7 @@ impl<'a> ExtAwi {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn const_as_ref(&'a self) -> &'a Bits {
+    const fn internal_as_ref(&'a self) -> &'a Bits {
         // `as_ref` on NonNull is not const yet, so we have to use transmute.
         // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &Bits>(self.raw) }
@@ -112,7 +112,7 @@ impl<'a> ExtAwi {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn const_as_mut(&'a mut self) -> &'a mut Bits {
+    const fn internal_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &mut Bits>(self.raw) }
     }
@@ -122,7 +122,7 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn nzbw(&self) -> NonZeroUsize {
-        self.const_as_ref().nzbw()
+        self.internal_as_ref().nzbw()
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `usize`
@@ -130,7 +130,7 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn bw(&self) -> usize {
-        self.const_as_ref().bw()
+        self.internal_as_ref().bw()
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
@@ -138,7 +138,7 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.const_as_ref().len()
+        self.internal_as_ref().len()
     }
 
     /// Returns the total length of the underlying raw array in `usize`s
@@ -147,7 +147,7 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn raw_len(&self) -> usize {
-        self.const_as_ref().raw_len()
+        self.internal_as_ref().raw_len()
     }
 
     /// Returns a raw pointer to the underlying bit storage. The caller must
@@ -158,8 +158,8 @@ impl<'a> ExtAwi {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub fn as_ptr(&self) -> *const usize {
-        self.const_as_ref().as_ptr()
+    pub fn as_ptr(&self) -> *const Digit {
+        self.internal_as_ref().as_ptr()
     }
 
     /// Returns a raw pointer to the underlying bit storage. The caller must
@@ -169,8 +169,8 @@ impl<'a> ExtAwi {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub fn as_mut_ptr(&mut self) -> *mut usize {
-        self.const_as_mut().as_mut_ptr()
+    pub fn as_mut_ptr(&mut self) -> *mut Digit {
+        self.internal_as_mut().as_mut_ptr()
     }
 
     #[doc(hidden)]
@@ -194,10 +194,13 @@ impl<'a> ExtAwi {
     pub fn zero(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
-            let ptr: *mut usize = alloc_zeroed(layout(w)).cast();
+            let ptr: *mut Digit = alloc_zeroed(layout(w)).cast();
             // set bitwidth
-            ptr.add(regular_digits(w)).write(w.get());
-            ExtAwi::from_raw_parts(ptr, regular_digits(w) + 1)
+            let regular_digits = regular_digits(w);
+            const_for!(i in {0..METADATA_DIGITS} {
+                ptr.add(i + regular_digits).write((w.get() >> (i * BITS)) as Digit);
+            });
+            ExtAwi::from_raw_parts(ptr, regular_digits + METADATA_DIGITS)
         }
     }
 
@@ -205,12 +208,15 @@ impl<'a> ExtAwi {
     pub fn umax(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
-            let ptr: *mut usize = alloc(layout(w)).cast();
+            let ptr: *mut Digit = alloc(layout(w)).cast();
             // initialize everything except for the bitwidth
-            ptr.write_bytes(u8::MAX, regular_digits(w));
+            let regular_digits = regular_digits(w);
+            ptr.write_bytes(u8::MAX, regular_digits);
             // set bitwidth
-            ptr.add(regular_digits(w)).write(w.get());
-            ExtAwi::from_raw_parts(ptr, regular_digits(w) + 1)
+            const_for!(i in {0..METADATA_DIGITS} {
+                ptr.add(i + regular_digits).write((w.get() >> (i * BITS)) as Digit);
+            });
+            ExtAwi::from_raw_parts(ptr, regular_digits + METADATA_DIGITS)
         };
         x.const_as_mut().clear_unused_bits();
         x
@@ -219,14 +225,14 @@ impl<'a> ExtAwi {
     /// Signed-maximum-value construction with bitwidth `bw`
     pub fn imax(w: NonZeroUsize) -> Self {
         let mut awi = Self::umax(w);
-        *awi.const_as_mut().last_mut() = (isize::MAX as usize) >> awi.const_as_ref().unused();
+        *awi.const_as_mut().last_mut() = (MAX >> 1) >> awi.unused();
         awi
     }
 
     /// Signed-minimum-value construction with bitwidth `bw`
     pub fn imin(w: NonZeroUsize) -> Self {
         let mut awi = Self::zero(w);
-        *awi.const_as_mut().last_mut() = (isize::MIN as usize) >> awi.const_as_ref().unused();
+        *awi.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> awi.unused();
         awi
     }
 
@@ -290,7 +296,7 @@ impl Clone for ExtAwi {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl PartialEq for ExtAwi {
     fn eq(&self, rhs: &Self) -> bool {
-        self.const_as_ref() == rhs.const_as_ref()
+        self.as_ref() == rhs.as_ref()
     }
 }
 
@@ -310,7 +316,7 @@ macro_rules! impl_fmt {
             /// Forwards to the corresponding impl for `Bits`
             impl fmt::$ty for ExtAwi {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::$ty::fmt(self.const_as_ref(), f)
+                    fmt::$ty::fmt(self.as_ref(), f)
                 }
             }
         )*
@@ -321,7 +327,7 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl Hash for ExtAwi {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.const_as_ref().hash(state);
+        self.as_ref().hash(state);
     }
 }
 
@@ -330,14 +336,14 @@ impl Deref for ExtAwi {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.const_as_ref()
+        self.internal_as_ref()
     }
 }
 
 impl DerefMut for ExtAwi {
     #[inline]
     fn deref_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self.internal_as_mut()
     }
 }
 
@@ -346,42 +352,42 @@ impl Index<RangeFull> for ExtAwi {
 
     #[inline]
     fn index(&self, _i: RangeFull) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl Borrow<Bits> for ExtAwi {
     #[inline]
     fn borrow(&self) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl AsRef<Bits> for ExtAwi {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl IndexMut<RangeFull> for ExtAwi {
     #[inline]
     fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
+        self
     }
 }
 
 impl BorrowMut<Bits> for ExtAwi {
     #[inline]
     fn borrow_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self
     }
 }
 
 impl AsMut<Bits> for ExtAwi {
     #[inline]
     fn as_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self
     }
 }
 
@@ -401,7 +407,7 @@ impl From<&Bits> for ExtAwi {
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
         let mut tmp = ExtAwi::zero(awi.nzbw());
-        tmp.const_as_mut().copy_(awi.const_as_ref()).unwrap();
+        tmp.const_as_mut().copy_(&awi).unwrap();
         tmp
     }
 }
@@ -412,7 +418,7 @@ macro_rules! extawi_from_ty {
             /// Creates an `ExtAwi` with the same bitwidth and bits as the integer
             pub fn $from(x: $ty) -> Self {
                 let mut tmp = ExtAwi::zero(bw($ty::BITS as usize));
-                tmp.const_as_mut().$assign(x);
+                tmp.$assign(x);
                 tmp
             }
         )*
@@ -438,7 +444,14 @@ impl ExtAwi {
     /// Creates an `ExtAwi` with one bit set to this `bool`
     pub fn from_bool(x: bool) -> Self {
         let mut tmp = ExtAwi::zero(bw(1));
-        tmp.const_as_mut().bool_(x);
+        tmp.bool_(x);
+        tmp
+    }
+
+    /// Creates an `ExtAwi` with the same bitwidth and bits as the integer
+    pub fn from_digit(x: Digit) -> Self {
+        let mut tmp = ExtAwi::zero(bw(BITS));
+        tmp.digit_(x);
         tmp
     }
 }
@@ -446,7 +459,7 @@ impl ExtAwi {
 impl From<bool> for ExtAwi {
     fn from(x: bool) -> ExtAwi {
         let mut tmp = ExtAwi::zero(bw(1));
-        tmp.const_as_mut().bool_(x);
+        tmp.bool_(x);
         tmp
     }
 }
@@ -457,7 +470,7 @@ macro_rules! extawi_from {
             impl From<$ty> for ExtAwi {
                 fn from(x: $ty) -> Self {
                     let mut tmp = ExtAwi::zero(bw($ty::BITS as usize));
-                    tmp.const_as_mut().$assign(x);
+                    tmp.$assign(x);
                     tmp
                 }
             }

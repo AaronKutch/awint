@@ -1,8 +1,21 @@
-use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi, SerdeError::*, FP};
+use awint::{
+    awint_internals::{bits_upper_bound, chars_upper_bound, USIZE_BITS},
+    extawi, inlawi, Bits, ExtAwi, InlAwi,
+    SerdeError::*,
+    FP,
+};
 
 #[test]
-fn string_max_fp() {
-    // tests the 4096 cap
+fn string_overflows() {
+    assert_eq!(chars_upper_bound(1 << (USIZE_BITS - 1), 2), Err(Overflow));
+    assert!(chars_upper_bound(1 << (USIZE_BITS - 2), 2).is_ok());
+    assert!(chars_upper_bound(usize::MAX, 8).is_ok());
+    assert_eq!(bits_upper_bound(1 << (USIZE_BITS - 1), 2), Err(Overflow));
+    assert!(bits_upper_bound(1 << (USIZE_BITS - 2), 2).is_ok());
+    assert!(bits_upper_bound((usize::MAX >> 2) / 6, 36).is_ok());
+    assert_eq!(bits_upper_bound(usize::MAX / 6, 36), Err(Overflow));
+
+    // tests the 4096 fp cap
     assert_eq!(
         &format!("{:?}", FP::new(false, inlawi!(0), 4097).unwrap()),
         ""
@@ -193,7 +206,7 @@ fn fmt_strings() {
     let inl_awi = inlawi!(0xfedcba9876543210u100);
     let ext_awi = extawi!(0xfedcba9876543210u100);
     let bits_awi = inlawi!(0xfedcba9876543210u100);
-    let bits = bits_awi.const_as_ref();
+    let bits = bits_awi.as_ref();
     fmt_test!(inl_awi ext_awi bits);
     assert_eq!(format!("{}", inlawi!(0u100)), "0x0_u100");
     assert_eq!(

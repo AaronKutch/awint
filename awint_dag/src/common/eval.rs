@@ -4,7 +4,7 @@
 
 use std::num::NonZeroUsize;
 
-use awint_ext::{awint_internals::BITS, Bits, ExtAwi};
+use awint_ext::{awint_internals::USIZE_BITS, Bits, ExtAwi};
 use Op::*;
 
 use crate::{EvalError, Op};
@@ -53,7 +53,7 @@ fn cbool(x: &Bits) -> Result<bool, EvalError> {
 }
 
 fn cusize(x: &Bits) -> Result<usize, EvalError> {
-    if x.bw() == BITS {
+    if x.bw() == USIZE_BITS {
         Ok(x.to_usize())
     } else {
         Err(EvalError::OtherStr(

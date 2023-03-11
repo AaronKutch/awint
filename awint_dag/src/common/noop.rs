@@ -3,7 +3,7 @@
 
 use std::num::NonZeroUsize;
 
-use awint_ext::{awi, awint_internals::BITS};
+use awint_ext::{awi, awint_internals::USIZE_BITS};
 use Op::*;
 
 use crate::{EvalError, Op};
@@ -43,7 +43,7 @@ fn cbool(x: NonZeroUsize) -> Result<(), EvalError> {
 }
 
 fn cusize(x: NonZeroUsize) -> Result<(), EvalError> {
-    if x.get() == BITS {
+    if x.get() == USIZE_BITS {
         Ok(())
     } else {
         Err(EvalError::OtherStr(
@@ -117,7 +117,7 @@ impl Op<NonZeroUsize> {
                 true
             }
             StaticLut([a], lit) => {
-                if a.get() < BITS {
+                if a.get() < USIZE_BITS {
                     if let awi::Some(lut_len) = (1usize << a.get()).checked_mul(w.get()) {
                         if lut_len == lit.bw() {
                             return NoopResult::Operational
@@ -151,7 +151,7 @@ impl Op<NonZeroUsize> {
             Copy([a]) => w == a,
             Lut([a, b]) => {
                 let mut res = false;
-                if b.get() < BITS {
+                if b.get() < USIZE_BITS {
                     if let awi::Some(lut_len) = (1usize << b.get()).checked_mul(w.get()) {
                         if lut_len == a.get() {
                             res = true;
@@ -161,7 +161,7 @@ impl Op<NonZeroUsize> {
                 res
             }
             Funnel([a, b]) => {
-                (b.get() < (BITS - 1))
+                (b.get() < (USIZE_BITS - 1))
                     && ((1usize << b.get()) == w.get())
                     && ((w.get() << 1) == a.get())
             }
@@ -307,7 +307,7 @@ impl Op<NonZeroUsize> {
             }
             LutSet([a, b, c]) => {
                 let mut res = false;
-                if c.get() < BITS {
+                if c.get() < USIZE_BITS {
                     if let Some(lut_len) = (1usize << c.get()).checked_mul(b.get()) {
                         if lut_len == a.get() {
                             res = w == a;

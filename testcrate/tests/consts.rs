@@ -3,10 +3,10 @@
 #![feature(const_trait_impl)]
 #![allow(clippy::reversed_empty_ranges)]
 
-use awint::{bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
+use awint::{awint_internals::Digit, bw, cc, inlawi, inlawi_ty, Bits, InlAwi};
 
 const fn check_invariants(x: &Bits) {
-    if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
+    if x.extra() != 0 && (x.last() & (Digit::MAX << x.extra())) != 0 {
         panic!("unused bits are set");
     }
 }
@@ -40,12 +40,12 @@ const fn consts() {
     let mut b1337: inlawi_ty!(12) = inlawi!(010100111001);
     let c_100: inlawi_ty!(12) = inlawi!(100i12);
     let d1437: inlawi_ty!(12) = inlawi!(1437u12);
-    eq(a1337.const_as_ref(), b1337.const_as_ref());
+    eq(a1337.as_ref(), b1337.as_ref());
     let sum = b1337.const_as_mut();
-    sum.add_(c_100.const_as_ref()).unwrap();
-    eq(sum, d1437.const_as_ref());
+    sum.add_(c_100.as_ref()).unwrap();
+    eq(sum, d1437.as_ref());
     let e1337: inlawi_ty!(12) = inlawi!(0101, 0011, 1001);
-    eq(a1337.const_as_ref(), e1337.const_as_ref());
+    eq(a1337.as_ref(), e1337.as_ref());
 
     let y3 = inlawi!(0xba9u12);
     let y2 = inlawi!(0x876u12);
@@ -65,9 +65,9 @@ const fn consts() {
     )
     .unwrap();
 
-    eq(z2.const_as_ref(), inlawi!(0xba98u16).const_as_ref());
-    eq(z1.const_as_ref(), inlawi!(0x7654u16).const_as_ref());
-    eq(z0.const_as_ref(), inlawi!(0x3210u16).const_as_ref());
+    eq(z2.as_ref(), inlawi!(0xba98u16).as_ref());
+    eq(z1.as_ref(), inlawi!(0x7654u16).as_ref());
+    eq(z0.as_ref(), inlawi!(0x3210u16).as_ref());
 }
 
 #[test]
@@ -176,7 +176,7 @@ const fn bits_functions() {
     assert!(x0.lut_set(x1, x3).is_none());
     assert!(x0.funnel_(x1, x3).is_none());
 
-    x0.short_cin_mul(0, 0);
+    x0.digit_cin_mul_(0, 0);
 
     assert!(x0.mul_add_(x1, x2).is_none());
     assert!(x1.mul_add_(x0, x2).is_none());
@@ -196,7 +196,7 @@ const fn bits_functions() {
     assert!(x0.neg_add_(false, x1).is_none());
     assert!(x0.cin_sum_(false, x1, x2).is_none());
 
-    x0.usize_or_(123, 60);
+    x0.digit_or_(123, 60);
 
     // division by zero and differing size
     x1.umax_();
@@ -220,10 +220,10 @@ const fn bits_functions() {
     x3.umax_();
     assert!(Bits::idivide(x0, x1, x2, x3).is_none());
     x1.umax_();
-    assert!(x4.short_udivide_(x1, 0).is_none());
+    assert!(x4.digit_udivide_(x1, 0).is_none());
     x0.umax_();
-    assert!(x4.short_udivide_(x0, 1).is_none());
-    assert!(x4.short_udivide_inplace_(0).is_none());
+    assert!(x4.digit_udivide_(x0, 1).is_none());
+    assert!(x4.digit_udivide_inplace_(0).is_none());
 
     assert!(x0.get(128).is_none());
     assert!(x0.set(128, false).is_none());

@@ -15,9 +15,9 @@ use crate::Bits;
 ///
 /// The range `[mid-left, mid+right)` must be valid for reading and writing
 #[const_fn(cfg(feature = "const_support"))]
-const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: usize) {
+const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: usize) {
     unsafe {
-        type BufType = [usize; 32];
+        type BufType = [Digit; 32];
         loop {
             if (right == 0) || (left == 0) {
                 return
@@ -25,7 +25,7 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
             if left + right < 24 {
                 // Algorithm 1
                 let x = mid.sub(left);
-                let mut tmp: usize = x.read();
+                let mut tmp: Digit = x.read();
                 let mut i = right;
                 let mut gcd = right;
                 loop {
@@ -67,8 +67,8 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
             // I have tested this with Miri to make sure it doesn't complain
             } else if left <= 32 || right <= 32 {
                 // Algorithm 2
-                let mut rawarray = MaybeUninit::<(BufType, [usize; 0])>::uninit();
-                let buf = rawarray.as_mut_ptr() as *mut usize;
+                let mut rawarray = MaybeUninit::<(BufType, [Digit; 0])>::uninit();
+                let buf = rawarray.as_mut_ptr() as *mut Digit;
                 let dim = mid.sub(left).add(right);
                 if left <= right {
                     ptr::copy_nonoverlapping(mid.sub(left), buf, left);
@@ -105,13 +105,13 @@ const unsafe fn usize_rotate(mut left: usize, mut mid: *mut usize, mut right: us
     }
 }
 
-// `usize_rotate` has some unusually large thresholds for some branches that
+// `digit_rotate` has some unusually large thresholds for some branches that
 // don't get tested well by Miri in fuzz.rs, so test them here
 #[test]
-fn usize_rotate_test() {
-    let mut buf = [123usize; 123];
+fn digit_rotate_test() {
+    let mut buf: [Digit; 123] = [123; 123];
     for k in 0..123 {
-        unsafe { usize_rotate(k, buf.as_mut_ptr().add(k), 123 - k) }
+        unsafe { digit_rotate(k, buf.as_mut_ptr().add(k), 123 - k) }
     }
 }
 
@@ -381,7 +381,7 @@ impl Bits {
                 let p = x.as_mut_ptr();
                 // Safety: this satisfies the requirements of `usize_rotate`
                 unsafe {
-                    usize_rotate(mid_digit, p.add(mid_digit), digits);
+                    digit_rotate(mid_digit, p.add(mid_digit), digits);
                 }
 
                 if extra != 0 && digits != 0 {
@@ -546,7 +546,7 @@ impl Bits {
         s.assert_cleared_unused_bits();
         // We avoid overflow by checking in this order and with `BITS - 1` instead of
         // `BITS`
-        if (s.bw() >= (BITS - 1))
+        if (s.bw() >= (USIZE_BITS - 1))
             || ((1usize << s.bw()) != self.bw())
             || ((self.bw() << 1) != rhs.bw())
         {

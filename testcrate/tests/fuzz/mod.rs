@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use awint::Bits;
+use awint::{awint_internals::Digit, Bits};
 use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
 #[cfg(not(miri))]
 mod fp;
@@ -14,7 +14,7 @@ mod one_run;
 
 #[track_caller]
 const fn check_invariants(x: &Bits) {
-    if x.extra() != 0 && (x.last() & (usize::MAX << x.extra())) != 0 {
+    if x.extra() != 0 && (x.last() & (Digit::MAX << x.extra())) != 0 {
         panic!("unused bits are set");
     }
 }
@@ -65,7 +65,6 @@ pub fn fuzz_step(rng: &mut Xoshiro128StarStar, x: &mut Bits, tmp: &mut Bits) {
     .unwrap()
 }
 
-pub const BITS: usize = usize::BITS as usize;
 #[cfg(not(miri))]
 pub use fp::fp_identities;
 #[cfg(not(miri))]

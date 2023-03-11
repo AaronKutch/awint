@@ -37,7 +37,7 @@ system depending on these feature flags:
 Note: By default, "const_support" and "std" are turned on, use `default-features = false` and
 select specific features to avoid requiring nightly.
 
-NOTE: As of Rust 1.64, if you try to use "const_support" with the macros you may get strange
+NOTE: As of Rust 1.66, if you try to use "const_support" with the macros you may get strange
 "erroneous constant used" and "deref_mut" errors unless you add all of
 ```
 #![feature(const_trait_impl)]

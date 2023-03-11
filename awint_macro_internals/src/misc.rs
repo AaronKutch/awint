@@ -30,6 +30,16 @@ pub fn chars_to_string(chars: &[char]) -> String {
     s
 }
 
+pub fn awint_must_use(s: &str) -> String {
+    format!("Bits::must_use({s})")
+}
+
+/// Returns architecture-independent Rust code that returns an
+/// `InlAwi` type with bitwidth `w`.
+pub fn unstable_native_inlawi_ty(w: u128) -> String {
+    format!("InlAwi::<{w},{{Bits::unstable_raw_digits({w})}}>")
+}
+
 /// Returns architecture-independent Rust code that returns an
 /// `InlAwi` preset with the value of `bits`.
 pub fn unstable_native_inlawi(bits: &Bits) -> String {
@@ -46,30 +56,63 @@ pub fn unstable_native_inlawi(bits: &Bits) -> String {
     // potentially be used on multiple architectures). `unstable_raw_digits` adjusts
     // `LEN` based on the native `usize` width, and `unstable_from_u8_slice` also
     // adjusts for big endian archiectures.
+
+    // note: it might be optimal in certain cases to make the `InlAwi` itself const,
+    // this would lead to being able to directly memcpy it. However, if we make the
+    // &[u8] level const then it allows for certain unsigned constants to be shared
+    // in .text even if in different sized integers and makes them smaller for
+    // things with lots of leading zeros. Also, we can't make the `InlAwi` level
+    // const anyway because of `awint_dag`.
     format!(
-        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::unstable_from_u8_slice(&{:?})",
+        "InlAwi::<{},{{Bits::unstable_raw_digits({})}}>::unstable_from_u8_slice({{const B: \
+         &[core::primitive::u8] = &{:?}; B}})",
         bits.bw(),
         bits.bw(),
         buf,
     )
 }
 
-/// Returns architecture-independent Rust code that returns an
-/// `InlAwi` type with bitwidth `w`.
-pub fn unstable_native_inlawi_ty(w: u128) -> String {
-    format!("InlAwi::<{w},{{Bits::unstable_raw_digits({w})}}>")
+// there is some strange issue with feature flags through proc-macro crates that
+// prevents this from working
+/*#[cfg(not(feature = "const_support"))]
+pub fn unstable_native_bits(bits: &Bits) -> String {
+    format!("{{let b: &Bits = &{}; b}}", unstable_native_inlawi(bits))
+}*/
+
+// Returns architecture-independent Rust code that returns a `&'static Bits`
+// equal to `bits`.
+//#[cfg(feature = "const_support")]
+pub fn unstable_native_bits(bits: &Bits) -> String {
+    format!("{{const B: &Bits = &{}; B}}", unstable_native_inlawi(bits))
 }
 
-pub fn awint_must_use(s: &str) -> String {
-    format!("Bits::must_use({s})")
+// Originally, this was going to use `unstable_native_bits`, however:
+//
+// - This will currently require virtually all crates to use
+//   `#![feature(const_trait_impl)]` and some others unconditionally
+// - If the same constant is used several times but with different leading zeros
+//   or other surrounding data, it impacts .text reusability
+// - More generated Rust code
+//
+// `unstable_native_bits` is now just used for `awint_bits_lit_construction_fn`
+pub fn awint_static_construction_fn(awi: ExtAwi) -> String {
+    unstable_native_inlawi(&awi)
 }
 
-pub fn awint_lit_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_unreachable_construction_fn(_awi: ExtAwi) -> String {
+    unreachable!()
+}
+
+pub fn awint_inlawi_lit_construction_fn(awi: ExtAwi) -> String {
     unstable_native_inlawi(&awi)
 }
 
 pub fn awint_extawi_lit_construction_fn(awi: ExtAwi) -> String {
     format!("ExtAwi::from_bits(&{})", unstable_native_inlawi(&awi))
+}
+
+pub fn awint_bits_lit_construction_fn(awi: ExtAwi) -> String {
+    unstable_native_bits(&awi)
 }
 
 pub fn extawi_s(init: &str, s: &str) -> String {
@@ -124,5 +167,41 @@ pub fn extawi_construction_fn(
         extawi_s(init, s)
     } else {
         unreachable!()
+    }
+}
+
+pub fn identity_const_wrapper(
+    inner: String,
+    _w: Option<NonZeroUsize>,
+    _infallible: bool,
+) -> String {
+    inner
+}
+
+pub fn awint_bits_const_wrapper(
+    inner: String,
+    w: Option<NonZeroUsize>,
+    infallible: bool,
+) -> String {
+    let w = if let Some(w) = w {
+        w
+    } else {
+        // this should only be used in a static width context
+        unreachable!()
+    };
+    if infallible {
+        format!(
+            "{{const __B:{}={};\nconst __C:&Bits=&__B;__C}}",
+            unstable_native_inlawi_ty(w.get() as u128),
+            inner
+        )
+    } else {
+        // the match is to avoid bringing in `const_option_ext`
+        format!(
+            "{{const __B:Option<{}>={};\nconst __C:Option<&Bits>=match __B {{Some(ref \
+             b)=>Some(b),None=>None}};__C}}",
+            unstable_native_inlawi_ty(w.get() as u128),
+            inner
+        )
     }
 }

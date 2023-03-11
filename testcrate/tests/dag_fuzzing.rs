@@ -1,11 +1,14 @@
-use std::{cmp::min, num::NonZeroUsize};
+use std::{
+    cmp::{max, min},
+    num::NonZeroUsize,
+};
 
 use awint::{
     awi,
     awint_dag::{
         lowering::OpDag, smallvec::smallvec, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
     },
-    awint_internals::BITS,
+    awint_internals::USIZE_BITS,
     awint_macro_internals::triple_arena::{ptr_struct, Arena},
     dag,
 };
@@ -35,7 +38,7 @@ impl Pair {
     pub fn new(lit: awi::ExtAwi) -> Self {
         Self {
             awi: lit.clone(),
-            dag: lit.const_as_ref().into(),
+            dag: lit.as_ref().into(),
         }
     }
 }
@@ -43,21 +46,25 @@ impl Pair {
 #[derive(Debug)]
 struct Mem {
     a: Arena<P0, Pair>,
-    // The outer Vec has 65 Vecs for all the supported bitwidths (there is a dummy 0 bitwidth Vec
-    // and one for each of 1..=64), the inner Vecs are unsorted and used for random querying
+    // The outer Vec has `v_len` Vecs for all the supported bitwidths (there is a dummy 0
+    // bitwidth Vec and one for each of 1..=(v_len - 1)), the inner Vecs are unsorted and used for
+    // random querying
     v: Vec<Vec<P0>>,
+    v_len: usize,
     rng: Xoshiro128StarStar,
 }
 
 impl Mem {
     pub fn new() -> Self {
         let mut v = vec![];
-        for _ in 0..65 {
+        let v_len = max(65, USIZE_BITS + 1);
+        for _ in 0..v_len {
             v.push(vec![]);
         }
         Self {
             a: Arena::<P0, Pair>::new(),
             v,
+            v_len,
             rng: Xoshiro128StarStar::seed_from_u64(0),
         }
     }
@@ -65,7 +72,7 @@ impl Mem {
     pub fn clear(&mut self) {
         self.a.clear();
         self.v.clear();
-        for _ in 0..65 {
+        for _ in 0..self.v_len {
             self.v.push(vec![]);
         }
     }
@@ -110,7 +117,7 @@ impl Mem {
     }
 
     pub fn next_usize(&mut self, cap: usize) -> P0 {
-        self.next_capped(BITS, cap)
+        self.next_capped(USIZE_BITS, cap)
     }
 
     // just use cloning for the immutable indexing, because dealing with the guards

@@ -9,7 +9,7 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt},
+    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt, USIZE_BITS},
 };
 use smallvec::smallvec;
 
@@ -72,7 +72,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self::new(Op::Literal(awi::ExtAwi::from_bits(
-            awi::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf).const_as_ref(),
+            &awi::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf),
         )))
     }
 
@@ -111,13 +111,13 @@ impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
     type Target = Bits;
 
     fn deref(&self) -> &Self::Target {
-        self.const_as_ref()
+        self.internal_as_ref()
     }
 }
 
 impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
     fn deref_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self.internal_as_mut()
     }
 }
 
@@ -125,37 +125,37 @@ impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
     type Output = Bits;
 
     fn index(&self, _i: RangeFull) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
     fn borrow(&self) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
     fn as_ref(&self) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
     fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
+        self
     }
 }
 
 impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
     fn borrow_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self
     }
 }
 
 impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
     fn as_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self
     }
 }
 
@@ -252,8 +252,7 @@ inlawi_from!(
     128, u128 from_u128 u128_ i128 from_i128 i128_;
 );
 
-type UsizeInlAwi =
-    InlAwi<{ awi::usize::BITS as usize }, { awi::Bits::unstable_raw_digits(usize::BITS as usize) }>;
+type UsizeInlAwi = InlAwi<{ USIZE_BITS }, { awi::Bits::unstable_raw_digits(USIZE_BITS) }>;
 
 impl UsizeInlAwi {
     pub fn from_usize(x: impl Into<dag::usize>) -> Self {
@@ -427,13 +426,13 @@ impl Deref for ExtAwi {
     type Target = Bits;
 
     fn deref(&self) -> &Self::Target {
-        self.const_as_ref()
+        self.internal_as_ref()
     }
 }
 
 impl DerefMut for ExtAwi {
     fn deref_mut(&mut self) -> &mut Bits {
-        self.const_as_mut()
+        self.internal_as_mut()
     }
 }
 
@@ -441,19 +440,19 @@ impl Index<RangeFull> for ExtAwi {
     type Output = Bits;
 
     fn index(&self, _i: RangeFull) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl Borrow<Bits> for ExtAwi {
     fn borrow(&self) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 
 impl AsRef<Bits> for ExtAwi {
     fn as_ref(&self) -> &Bits {
-        self.const_as_ref()
+        self
     }
 }
 

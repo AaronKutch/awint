@@ -1,45 +1,13 @@
-#![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-#![feature(const_option)]
-#![feature(inline_const)]
+// This is here because the macros aren't tested on stable by just building the
+// crates
 
 use awint::awi::*;
 
-macro_rules! construction {
-    ($($w:expr)*) => {
-        $(
-            let inlawi = inlawi!(zero: ..$w);
-            let extawi = ExtAwi::zero(bw($w));
-            assert!(inlawi.as_ref().is_zero());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
-            let inlawi = inlawi!(umax: ..$w);
-            let extawi = ExtAwi::umax(bw($w));
-            assert!(inlawi.as_ref().is_umax());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
-            let inlawi = inlawi!(imax: ..$w);
-            let extawi = ExtAwi::imax(bw($w));
-            assert!(inlawi.as_ref().is_imax());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
-            let inlawi = inlawi!(imin: ..$w);
-            let extawi = ExtAwi::imin(bw($w));
-            assert!(inlawi.as_ref().is_imin());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
-            let inlawi = inlawi!(uone: ..$w);
-            let extawi = ExtAwi::uone(bw($w));
-            assert!(inlawi.as_ref().is_uone());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
-        )*
-    };
-}
+// can't work on stable yet
+//const B: &Bits = bits!(0x1234u32);
 
-#[test]
-fn construction() {
-    construction!(1 2 7 8 62 63 64 65 66 127 128 129 130 191 192 256 4096);
-}
-
-#[test]
 #[allow(clippy::let_unit_value)]
-fn macro_successes() {
+fn main() {
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);
     // basic concatenation
@@ -169,14 +137,4 @@ fn macro_successes() {
     let _: () = cc!(imin: y);
     assert_eq!(y, inlawi!(0u8));
     let _: () = cc!(imin: ..r);
-
-    const A: &Bits = bits!(umax: ..32, 0xfedcba98_u32);
-    const B: &Bits = bits!(0x3210u16);
-    const C: &Bits = bits!(A, 0x7654u16, B; ..96).unwrap();
-    assert_eq!(C, bits!(0xffffffff_fedcba98_76543210_u96));
-    const D: &Bits = const {
-        const R: usize = 48;
-        bits!(C[(R - 42)..R], C[R..(R + 42)]).unwrap()
-    };
-    assert_eq!(D, bits!(0xba987_654323ff_fffffedc_u84));
 }

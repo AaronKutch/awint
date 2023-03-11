@@ -5,7 +5,7 @@ use core::{
     num::NonZeroUsize,
 };
 
-use awint_core::Bits;
+use awint_core::{awint_internals::Digit, Bits};
 
 use crate::{
     awint_internals::{bits_upper_bound, SerdeError, SerdeError::*},
@@ -36,7 +36,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             None
         } else {
             this.const_as_mut().zero_();
-            this.const_as_mut().usize_or_(1, fp);
+            this.const_as_mut().digit_or_(1, fp);
             Some(())
         }
     }
@@ -74,9 +74,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let diff = lbb.0.abs_diff(rbb.0);
         // the fielding will start from 0 in one argument and end at `diff` in the other
         let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
-        this.const_as_mut()
-            .field(to, rhs.const_as_ref(), from, width)
-            .unwrap();
+        this.field(to, rhs, from, width).unwrap();
     }
 
     /// Truncate-assigns `rhs` to `this`. For the unsigned case, logically what
@@ -116,9 +114,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
         let diff = lbb.0.abs_diff(rbb.0);
         let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
-        this.const_as_mut()
-            .field(to, rhs.const_as_ref(), from, width)
-            .unwrap();
+        this.field(to, rhs, from, width).unwrap();
         // when testing if a less significant numerical bit is cut off, we need to be
         // aware that it can be cut off from above even if overlap happens, for
         // example:
@@ -133,12 +129,9 @@ impl<B: BorrowMut<Bits>> FP<B> {
 
         // note overflow cannot happen because of the `rhs.is_zero()` early return and
         // invariants
-        let mut lsnb = rhs.const_as_ref().tz() as isize;
+        let mut lsnb = rhs.tz() as isize;
         lsnb = lsnb.wrapping_add(rbb.0);
-        let mut msnb = rhs
-            .bw()
-            .wrapping_sub(rhs.const_as_ref().lz())
-            .wrapping_sub(1) as isize;
+        let mut msnb = rhs.bw().wrapping_sub(rhs.lz()).wrapping_sub(1) as isize;
         msnb = msnb.wrapping_add(rbb.0);
         (
             (lsnb < lbb.0) || (lsnb > lbb.1),
@@ -326,10 +319,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let mut fraction_part = if fraction_part_zero {
             alloc::vec![b'0'; min_fraction_chars]
         } else {
-            let unique_digits = this
-                .fp_ty()
-                .unique_min_fraction_digits(usize::from(radix))
-                .unwrap();
+            let unique_digits = this.fp_ty().unique_min_fraction_digits(radix).unwrap();
             let calc_digits = max(unique_digits, min_fraction_chars);
             let multiplier_bits = bits_upper_bound(calc_digits, radix)?;
             // avoid needing some calculation by dropping zero bits that have no impact
@@ -341,7 +331,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             tmp.field_from(&unsigned, tot_tz as usize, field_bits)
                 .unwrap();
             for _ in 0..calc_digits {
-                tmp.short_cin_mul(0, usize::from(radix));
+                tmp.digit_cin_mul_(0, Digit::from(radix));
             }
             let inc = if (tmp.get_digit(calc_fp.checked_sub(1).ok_or(Overflow)?) & 1) == 0 {
                 // round down

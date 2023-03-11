@@ -6,6 +6,9 @@ env:
   # NOTE: do not set RUSTFLAGS here, because it overwrites
   # what `.cargo/config.toml` sets for `no_alloc_build`
   RUST_BACKTRACE: 1
+  # we can't use `--all-features` because of the `_digits` flags, use
+  ALL_FEATURES: "--features=const_support,std,zeroize_support,rand_support,serde_support,dag,try_support,debug"
+  NON_STD_FEATURES: "--features=const_support,zeroize_support,rand_support,serde_support"
 
 jobs:
   test_suite:
@@ -21,9 +24,14 @@ jobs:
           rustup default nightly
       - name: Run test suite
         run: |
-          cargo bench
-          cargo test --all-features
-          cargo test --release --all-features
+          cargo bench $ALL_FEATURES
+          cargo test $ALL_FEATURES
+          cargo test --release $ALL_FEATURES
+          cargo test $ALL_FEATURES,u8_digits
+          cargo test $ALL_FEATURES,u16_digits
+          cargo test $ALL_FEATURES,u32_digits
+          cargo test $ALL_FEATURES,u64_digits
+          cargo test $ALL_FEATURES,u128_digits
 
   miri:
     name: Miri
@@ -41,7 +49,7 @@ jobs:
           rustup component add miri
       - name: Run test suite with Miri
         run: |
-          cargo miri test
+          cargo miri test $ALL_FEATURES
 
   # we run `cargo doc` here, because running `cargo doc` anywhere somehow requires `core` from the
   # target in no_alloc_test
@@ -55,10 +63,10 @@ jobs:
           rustup set profile minimal
           rustup default nightly
           rustup target add riscv32i-unknown-none-elf
-      # no_alloc_test has `rand_support` and `serde_support` enabled in its `Cargo.toml`
+      # no_alloc_test has `NON_STD_FEATURES` enabled in its `Cargo.toml`
       - name: Run `cargo doc` and `cargo build`
         run: |
-          cargo doc --all-features
+          cargo doc $ALL_FEATURES
           cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
   stable_build:
@@ -74,12 +82,13 @@ jobs:
       # mistakes, so we test several combinations here
       - name: Run `cargo build`
         run: |
+          cargo run --bin stable --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
           cargo build --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
-          cargo build --no-default-features --features=std
           cargo build --no-default-features --features=alloc
+          cargo build --no-default-features --features=std
+          cargo build --no-default-features --features=zeroize_support
           cargo build --no-default-features --features=rand_support
           cargo build --no-default-features --features=serde_support
-          cargo build --no-default-features --features=zeroize_support
           cargo build --no-default-features --features=dag
           cargo build --no-default-features --features=debug
           cargo build --no-default-features
@@ -114,7 +123,7 @@ jobs:
       - name: Run `cargo clippy`
         # note: run clippy on no_alloc_test manually
         run: |
-          cargo clippy --all --all-targets --all-features -- -D clippy::all
+          cargo clippy --all --all-targets $ALL_FEATURES -- -D clippy::all
 
   # makes sure the tests work on 32 bit and 64 bit big endian targets
   cross-compile-big-endian:
@@ -126,5 +135,5 @@ jobs:
         rustup set profile minimal
         rustup default nightly
         cargo install cross
-        cross test --target mips64-unknown-linux-gnuabi64 --all-features
-        cross test --target mips-unknown-linux-gnu --all-features
+        cross test --target mips64-unknown-linux-gnuabi64 $ALL_FEATURES
+        cross test --target mips-unknown-linux-gnu $ALL_FEATURES

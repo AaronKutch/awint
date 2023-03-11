@@ -2,6 +2,8 @@
 
 use core::fmt;
 
+use crate::USIZE_BITS;
+
 // The reason this is here is because I need the free functions in `awint_core`
 // for speeding up certain serialization tasks, but the free functions also need
 // `SerdeError` to make them more ergonomic in `awint_ext`.
@@ -50,8 +52,6 @@ impl fmt::Display for SerdeError {
 }
 
 use SerdeError::*;
-
-use crate::BITS;
 
 /// Binary logarithms of the integers 2..=36 rounded up and in u16p13 fixed
 /// point format
@@ -114,9 +114,9 @@ pub const fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError
     if let Some(tmp) = (LB_I3F13[radix as usize] as u128).checked_mul((len as u128).wrapping_add(1))
     {
         // `len` should not be larger than `isize::MAX`.
-        let estimate = (tmp >> 13).wrapping_add(1) as usize;
-        if estimate & (1 << (BITS - 1)) == 0 {
-            return Ok(estimate)
+        let estimate = (tmp >> 13).wrapping_add(1);
+        if (estimate & (!((1u128 << (USIZE_BITS - 1)) - 1))) == 0 {
+            return Ok(estimate as usize)
         }
     }
     Err(Overflow)
@@ -132,10 +132,10 @@ pub const fn chars_upper_bound(significant_bits: usize, radix: u8) -> Result<usi
     if let Some(tmp) = (INV_LB_I1F15[radix as usize] as u128)
         .checked_mul((significant_bits as u128).wrapping_add(1))
     {
-        let estimate = (tmp >> 15).wrapping_add(1) as usize;
-        // check that it would fit in an `isize`
-        if estimate & (1 << (BITS - 1)) == 0 {
-            return Ok(estimate)
+        let estimate = (tmp >> 15).wrapping_add(1);
+        // check that it would fit within `isize::MAX`
+        if (estimate & (!((1u128 << (USIZE_BITS - 1)) - 1))) == 0 {
+            return Ok(estimate as usize)
         }
     }
     Err(Overflow)

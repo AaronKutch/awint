@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.10.0] - 2023-03-11
+### Fixes
+- Fixed that the overflow check in `chars_upper_bound` and `bits_upper_bound` was completely broken
+- Greatly improved the efficiency of `awint` on restricted architectures such as AVR
+- Fixed that `inlawi!` could cause double the necessary stack usage on all platforms
+- Macro constants are now compiled down to `&'static [u8]` or `&'static Bits`
+- `awint` should now theoretically work with 128 bit architectures like riscv128
+
+### Additions
+- Added `Digit`, a type alias for the underlying storage element for `Bits`. Also added various
+  primitive related functions for it.
+- Added feature flags to control `Digit`
+- Added the `bits` macro for creating `&'static Bits` constants easily
+- Enabled `const` PartialEq
+
+### Changes
+- Replaced `usize` with `Digit` where applicable. This does not immediately change things for common
+  architectures, but `Digit` can be different from `usize` now.
+- Renamed `short_` functions to `digit_` functions
+- Added missing `_` suffix to `digit_cin_mul_`
+- `Digit` has a minimum guaranteed maximum value of `u8::MAX` rather than `u16::MAX`
+- `const_as_ref` and `const_as_mut` removed from `InlAwi` and `ExtAwi` (although it still exists as
+  a hidden function on `Bits` for macro purposes)
+- Many changes to hidden and unstable items
+
 ## [0.9.0] - 2023-02-28
 ### Fixes
 - Added a limiter to `FP::to_vec_general` and downstream string formatting to prevent easy resource

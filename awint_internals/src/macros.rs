@@ -177,23 +177,54 @@ macro_rules! subdigits_mut {
             // Safety: This maintains the metadata raw invariants of `Bits`. This works even
             // if the range is a full range. The range is nonempty.
 
-            // We temporarily replace the digit needed for the subslice bitwidth
-            // digit.
-            let tmp = $bits.as_ptr().add($range.end).read();
-            *$bits.raw_get_unchecked_mut($range.end) =
-                ($range.end - $range.start) * (usize::BITS as usize);
-            let $subbits: &mut Bits = Bits::from_raw_parts_mut(
-                $bits.as_mut_ptr().add($range.start),
-                ($range.end - $range.start) + 1,
-            );
-            // then run the "closure" on the fixed subslice
-            $f
-            // make sure that the reference is not used again
-            #[allow(unused_variables)]
-            let $subbits = ();
-            // restore the subslice's bitwidth digit to whatever kind of digit it was in the
-            // original slice
-            *$bits.raw_get_unchecked_mut($range.end) = tmp;
+            // when saving the metadata, we need to handle the edge case where `USIZE_BITS < BITS`
+            if $crate::USIZE_BITS >= $crate::BITS {
+                // We temporarily replace the digits needed for the subslice metadata
+                let mut original = 0usize;
+                const_for!(i in {0..$crate::METADATA_DIGITS} {
+                    original |=
+                        ($bits.as_ptr().add(i + $range.end).read() as usize) << (i * $crate::BITS);
+                });
+                // new metadata for the number of bits in our subdigits
+                let mut metadata: usize = ($range.end - $range.start) * $crate::BITS;
+                const_for!(i in {0..$crate::METADATA_DIGITS} {
+                    *$bits.raw_get_unchecked_mut(i + $range.end) =
+                        (metadata >> (i * $crate::BITS)) as $crate::Digit;
+                });
+                let $subbits: &mut Bits = Bits::from_raw_parts_mut(
+                    $bits.as_mut_ptr().add($range.start),
+                    ($range.end - $range.start) + $crate::METADATA_DIGITS,
+                );
+                // then run the "closure" on the fixed subslice
+                $f
+                // make sure that the reference is not used again
+                #[allow(unused_variables)]
+                let $subbits = ();
+                // restore the subslice's bitwidth digit to whatever kind of digit it was in the
+                // original slice
+                const_for!(i in {0..$crate::METADATA_DIGITS} {
+                    *$bits.raw_get_unchecked_mut(i + $range.end) =
+                        (original >> (i * $crate::BITS)) as $crate::Digit;
+                });
+            } else {
+                // We temporarily replace the digits needed for the subslice metadata
+                let mut original: $crate::Digit = $bits.as_ptr().add($range.end).read();
+                // new metadata for the number of bits in our subdigits
+                let mut metadata = (($range.end - $range.start) * $crate::BITS) as $crate::Digit;
+                *$bits.raw_get_unchecked_mut($range.end) = metadata;
+                let $subbits: &mut Bits = Bits::from_raw_parts_mut(
+                    $bits.as_mut_ptr().add($range.start),
+                    ($range.end - $range.start) + $crate::METADATA_DIGITS,
+                );
+                // then run the "closure" on the fixed subslice
+                $f
+                // make sure that the reference is not used again
+                #[allow(unused_variables)]
+                let $subbits = ();
+                // restore the subslice's bitwidth digit to whatever kind of digit it was in the
+                // original slice
+                *$bits.raw_get_unchecked_mut($range.end) = original;
+            }
         }
     }
 }

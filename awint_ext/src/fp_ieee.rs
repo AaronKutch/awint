@@ -4,7 +4,7 @@ use awint_core::{Bits, InlAwi};
 
 use crate::FP;
 
-/// A minimal `FP<inlawi_ty!(25)` real number representation of an IEEE-754 32
+/// A minimal `FP<inlawi_ty!(25)>` real number representation of an IEEE-754 32
 /// bit floating point number. This derives from 23 mantissa bits, the omitted
 /// leading 1 bit, and sign bit. This cannot represent the infinity and NaN
 /// cases, but subnormal values can be represented. Canonically, the fixed point
@@ -12,7 +12,7 @@ use crate::FP;
 /// exponent.
 pub type F32 = FP<InlAwi<25, { Bits::unstable_raw_digits(25) }>>;
 
-/// A minimal `FP<inlawi_ty!(54)` real number representation of an IEEE-754 64
+/// A minimal `FP<inlawi_ty!(54)>` real number representation of an IEEE-754 64
 /// bit floating point number. This derives from 52 mantissa bits, the omitted
 /// leading 1 bit, and sign bit. This cannot represent the infinity and NaN
 /// cases, but subnormal values can be represented. Canonically, the fixed point

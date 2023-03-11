@@ -3,7 +3,7 @@
 
 use std::marker::PhantomData;
 
-use awint_ext::{awi, awint_internals::BITS};
+use awint_ext::{awi, awint_internals::USIZE_BITS};
 use smallvec::smallvec;
 use Op::*;
 
@@ -693,7 +693,7 @@ impl Bits {
         let mut x: Vec<_> = Vec::from(x);
         let last = x.pop().unwrap().into();
         let mut max = if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
-            assert_eq!(lit.bw(), BITS);
+            assert_eq!(lit.bw(), USIZE_BITS);
             lit.to_usize()
         } else {
             panic!();
@@ -701,7 +701,7 @@ impl Bits {
         for _ in 1..N {
             let last = x.pop().unwrap().into();
             if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
-                assert_eq!(lit.bw(), BITS);
+                assert_eq!(lit.bw(), USIZE_BITS);
                 let val = lit.to_usize();
                 if val > max {
                     max = val;
@@ -750,7 +750,7 @@ impl Bits {
         }
         if check_nonzero_cw {
             if let Op::Literal(ref lit) = cw.state().cloned_state().unwrap().op {
-                assert_eq!(lit.bw(), BITS);
+                assert_eq!(lit.bw(), USIZE_BITS);
                 if lit.to_usize() == 0 {
                     return CCResult {
                         run_fielding: false,
