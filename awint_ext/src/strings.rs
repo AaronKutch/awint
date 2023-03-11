@@ -238,7 +238,7 @@ impl ExtAwi {
             let mut i_part = ExtAwi::from_bytes_radix(None, integer, radix, tmp_bw)?;
             // multiply by `radix^f_len` here
             for _ in 0..f_len {
-                i_part.const_as_mut().digit_cin_mul(0, Digit::from(radix));
+                i_part.const_as_mut().digit_cin_mul_(0, Digit::from(radix));
             }
             i_part
         } else {
@@ -257,11 +257,11 @@ impl ExtAwi {
 
         if exp_sub_f_len < 0 {
             for _ in 0..exp_sub_f_len.unsigned_abs() {
-                den.digit_cin_mul(0, Digit::from(radix));
+                den.digit_cin_mul_(0, Digit::from(radix));
             }
         } else {
             for _ in 0..exp_sub_f_len.unsigned_abs() {
-                num.digit_cin_mul(0, Digit::from(radix));
+                num.digit_cin_mul_(0, Digit::from(radix));
             }
         }
         if fp < 0 {

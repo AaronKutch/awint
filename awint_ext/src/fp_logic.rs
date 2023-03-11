@@ -331,7 +331,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             tmp.field_from(&unsigned, tot_tz as usize, field_bits)
                 .unwrap();
             for _ in 0..calc_digits {
-                tmp.digit_cin_mul(0, Digit::from(radix));
+                tmp.digit_cin_mul_(0, Digit::from(radix));
             }
             let inc = if (tmp.get_digit(calc_fp.checked_sub(1).ok_or(Overflow)?) & 1) == 0 {
                 // round down

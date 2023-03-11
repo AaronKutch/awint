@@ -95,7 +95,7 @@ impl Bits {
         let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
         // using `rem` as a temporary
         rem.copy_(div).unwrap();
-        let uof = rem.digit_cin_mul(0, small_quo);
+        let uof = rem.digit_cin_mul_(0, small_quo);
         rem.rsb_(duo).unwrap();
         if (uof != 0) || rem.msb() {
             rem.add_(div).unwrap();

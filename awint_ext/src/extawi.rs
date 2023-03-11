@@ -51,7 +51,7 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 ///     // macros with unbounded fillers from `awint_macros`
 ///     x0.sign_resize_(x1);
 ///     // multiply in place by 2 for an example
-///     x0.digit_cin_mul(0, 2);
+///     x0.digit_cin_mul_(0, 2);
 /// }
 ///
 /// // using `bw` function for quick `NonZeroUsize` construction from a literal

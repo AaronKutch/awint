@@ -105,7 +105,7 @@ use const_fn::const_fn;
 /// few abstractions as possible in the way.
 ///
 /// Visible functions that are not portable in general, but always start from
-/// the zeroeth bit or a given bit position like [Bits::digit_cin_mul],
+/// the zeroeth bit or a given bit position like [Bits::digit_cin_mul_],
 /// [Bits::digit_udivide_], or [Bits::digit_or_], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
 /// `0..=u8::MAX`, or special care is taken.

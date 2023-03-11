@@ -19,6 +19,7 @@
 - Replaced `usize` with `Digit` where applicable. This does not immediately change things for common
   architectures, but `Digit` can be different from `usize` now.
 - Renamed `short_` functions to `digit_` functions
+- Added missing `_` suffix to `digit_cin_mul_`
 - `Digit` has a minimum guaranteed maximum value of `u8::MAX` rather than `u16::MAX`
 - `const_as_ref` and `const_as_mut` removed from `InlAwi` and `ExtAwi` (although it still exists as
   a hidden function on `Bits` for macro purposes)

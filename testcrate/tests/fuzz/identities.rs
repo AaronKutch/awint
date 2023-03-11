@@ -380,7 +380,7 @@ fn identities_inner(
         x3.digit_(div);
         let rem = x4.digit_udivide_(x0, div)?;
         x5.digit_(rem);
-        let oflow = x4.digit_cin_mul(0, div);
+        let oflow = x4.digit_cin_mul_(0, div);
         assert_eq!(oflow, 0);
         x4.add_(x5)?;
         // `rem < div` and `(quo * div) + rem == duo`
@@ -396,7 +396,7 @@ fn identities_inner(
     // compare digit multiplications
     x2.copy_(x0)?;
     let rhs = x0.to_digit();
-    x2.digit_cin_mul(0, rhs);
+    x2.digit_cin_mul_(0, rhs);
     x3.copy_(x0)?;
     x4.copy_(x0)?;
     x3.digit_mul_add_(x4, rhs)?;

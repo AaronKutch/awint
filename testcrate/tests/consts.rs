@@ -176,7 +176,7 @@ const fn bits_functions() {
     assert!(x0.lut_set(x1, x3).is_none());
     assert!(x0.funnel_(x1, x3).is_none());
 
-    x0.digit_cin_mul(0, 0);
+    x0.digit_cin_mul_(0, 0);
 
     assert!(x0.mul_add_(x1, x2).is_none());
     assert!(x1.mul_add_(x0, x2).is_none());

@@ -174,7 +174,7 @@ impl Bits {
             if o0 {
                 return Err(Overflow)
             }
-            let o1 = pad1.digit_cin_mul(0, radix as Digit);
+            let o1 = pad1.digit_cin_mul_(0, radix as Digit);
             if o1 != 0 {
                 // there may be a bunch of leading zeros, so do not return an error yet
                 const_for!(j in {0..i} {

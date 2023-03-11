@@ -38,7 +38,7 @@ impl FPType {
         let mut digits = 0;
         loop {
             digits += 1;
-            if test.digit_cin_mul(0, radix as Digit) != 0 {
+            if test.digit_cin_mul_(0, radix as Digit) != 0 {
                 // as soon as overflow happens, that means
                 // `(((radix^digits) * 1 ULP) >> this.fp()) > 0`
                 break

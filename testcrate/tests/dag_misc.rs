@@ -104,8 +104,7 @@ fn dag_bits_functions_internal(
 
     let [x0, x1, x2, x3, x4] = x;
 
-    // TODO `mul_`, `neg_add_`, `digit_or_`, `digit_udivide_`,
-    // `digit_udivide_inplace`, `range_and`?
+    // TODO `mul_`, `neg_add_`, never add any `digit_` dependent functions
 
     // test the inlawi macros first
     assert!(x0.is_zero());
@@ -166,8 +165,6 @@ fn dag_bits_functions_internal(
     assert!(x0.lut_(x1, x3).is_none());
     assert!(x0.lut_set(x1, x3).is_none());
     assert!(x0.funnel_(x1, x3).is_none());
-
-    // x0.digit_cin_mul(0, 0);
 
     assert!(x0.mul_add_(x1, x2).is_none());
     assert!(x1.mul_add_(x0, x2).is_none());
@@ -256,8 +253,6 @@ fn dag_bits_functions_internal(
     x0.dec_(true);
     x0.neg_(false);
 
-    // x0.digit_or_(123, 60);
-
     // division by zero and differing size
     x4.zero_();
     assert!(Bits::udivide(x1, x2, x3, x4).is_none());
@@ -267,11 +262,6 @@ fn dag_bits_functions_internal(
     assert!(Bits::idivide(x1, x2, x3, x4).is_none());
     x3.umax_();
     assert!(Bits::idivide(x0, x1, x2, x3).is_none());
-    // x1.umax_();
-    // assert!(x4.digit_udivide_(x1, 0).is_none());
-    // x0.umax_();
-    // assert!(x4.digit_udivide_(x0, 1).is_none());
-    // assert!(x4.digit_udivide_inplace_(0).is_none());
 
     x0.bool_(true);
     test_unary_literal!(
