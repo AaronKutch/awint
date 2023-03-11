@@ -235,6 +235,11 @@ fn main() {
     static_cc(&mut s, "imin: y; ..8");
     cc(&mut s, "imin: y");
 
+    const_cc(&mut s, "umax: ..32, 0xfedcba98_u32");
+    const_cc(&mut s, "0x3210u16");
+    const_cc(&mut s, "A, 0x7654u16, B; ..96");
+    const_cc(&mut s, "C[(R-42)..R], C[R..(R+42)]");
+
     let mut f = OpenOptions::new()
         .truncate(true)
         .create(true)

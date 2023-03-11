@@ -12,6 +12,7 @@
 - Added `Digit`, a type alias for the underlying storage element for `Bits`. Also added various
   primitive related functions for it.
 - Added feature flags to control `Digit`
+- Added the `bits` macro for creating `&'static Bits` constants easily
 - Enabled `const` PartialEq
 
 ### Changes

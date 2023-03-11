@@ -1,6 +1,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
+#![feature(inline_const)]
 
 use awint::awi::*;
 
@@ -173,4 +174,9 @@ fn macro_successes() {
     const B: &Bits = bits!(0x3210u16);
     const C: &Bits = bits!(A, 0x7654u16, B; ..96).unwrap();
     assert_eq!(C, bits!(0xffffffff_fedcba98_76543210_u96));
+    const D: &Bits = const {
+        const R: usize = 48;
+        bits!(C[(R - 42)..R], C[R..(R + 42)]).unwrap()
+    };
+    assert_eq!(D, bits!(0xba987_654323ff_fffffedc_u84));
 }

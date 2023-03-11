@@ -347,7 +347,7 @@
 //! ```
 //!
 //! Also, if you are using the `const_support` feature and are trying to use
-//! the macros in a `const` context, as of Rust 1.63 you need to add all of
+//! the macros in a `const` context, as of Rust 1.66 you need to add all of
 //! ```text
 //! #![feature(const_mut_refs)]
 //! #![feature(const_option)]
@@ -355,6 +355,26 @@
 //! ```
 //! to your crate roots or else you will encounter many confusing or misleading
 //! compiler errors.
+//!
+//! ```
+//! #![feature(const_mut_refs)]
+//! #![feature(const_option)]
+//! #![feature(const_trait_impl)]
+//! #![feature(inline_const)]
+//! use awint::awi::*;
+//! // `bits!` is mainly used to create single large `&'static Bits` constants,
+//! // but the source concatenation capability is there.
+//! const A: &Bits = bits!(umax: ..32, 0xfedcba98_u32);
+//! const B: &Bits = bits!(0x3210u16);
+//! const C: &Bits = bits!(A, 0x7654u16, B; ..96).unwrap();
+//! assert_eq!(C, bits!(0xffffffff_fedcba98_76543210_u96));
+//! // there is _a lot_ of stuff going on behind the scenes to make this possible
+//! const D: &Bits = const {
+//!     const R: usize = 48;
+//!     bits!(C[(R-42)..R], C[R..(R+42)]).unwrap()
+//! };
+//! assert_eq!(D, bits!(0xba987_654323ff_fffffedc_u84));
+//! ```
 //!
 //! ### Fillers
 //!
@@ -735,10 +755,7 @@ pub fn extawi(input: TokenStream) -> TokenStream {
 
 /// A concatenations of components macro, additionally using the source value to
 /// construct a `&'static Bits`. Requires `const_support` and some feature flags
-/// (see the README). Variables used by the macro should all be `const` or `const`
-/// evaluatable, otherwise internal errors will occur. Currently requires
-/// statically known width like `inlawi`. See the
-/// [crate documentation](crate) for more.
+/// to work. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn bits(input: TokenStream) -> TokenStream {
     match awint_macro_bits(&input.to_string()) {

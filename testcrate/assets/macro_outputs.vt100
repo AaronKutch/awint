@@ -931,3 +931,69 @@ let __awint_cw=__awint_cw_0;
 }
 
 
+umax: ..32, 0xfedcba98_u32
+Ok:
+mu(const({
+let __awint_bind_0:&B=&static(0xfedcba98_u32);
+let __awint_val_0=cast(32);
+let __awint_width_0=__awint_val_0;
+let __awint_cw=64usize;
+let mut __awint_awi=awi(umax,Some(64),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
+
+
+__awint_awi}, 64, true))
+
+
+0x3210u16
+Ok:
+mu(lit(0x3210_u16))
+
+
+A, 0x7654u16, B; ..96
+Ok:
+mu(const({
+let __awint_bind_0:&B=&B;
+let __awint_bind_1:&B=&static(0x7654_u16);
+let __awint_bind_2:&B=&A;
+let __awint_val_0=cast(bw(__awint_bind_0));
+let __awint_val_1=cast(16);
+let __awint_val_2=cast(bw(__awint_bind_2));
+let __awint_width_0=__awint_val_0;
+let __awint_width_1=__awint_val_1;
+let __awint_width_2=__awint_val_2;
+let __awint_cw_0=add(add(__awint_width_0,__awint_width_1),__awint_width_2);
+let __awint_cw=96usize;
+let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_0],__awint_cw,false,false);
+if __awint_res.run_fielding() {__awint_res.wrap({
+let mut __awint_awi=awi(zero,Some(96),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_2);
+
+
+__awint_awi
+})} else {__awint_res.wrap_none()}}, 96, false))
+
+
+C[(R-42)..R], C[R..(R+42)]
+Ok:
+mu(const({
+let __awint_bind_0:&B=&C;
+let __awint_val_0=cast(R);
+let __awint_val_1=cast(42);
+let __awint_val_2=cast(add(R,42));
+let __awint_val_3=cast(bw(__awint_bind_0));
+let __awint_val_4=cast(sub(R,42));
+let __awint_width_1=__awint_val_1;
+let __awint_cw=84usize;
+let __awint_res = check_fn([__awint_val_2,__awint_val_0],[__awint_val_3,__awint_val_3],[0;0],[0;0],__awint_cw,false,false);
+if __awint_res.run_fielding() {__awint_res.wrap({
+let mut __awint_awi=awi(zero,Some(84),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
+let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_0,__awint_width_1);let mut __awint_shl=__awint_width_1;
+let _ = field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_4,__awint_width_1);
+
+__awint_awi
+})} else {__awint_res.wrap_none()}}, 84, false))
+
+
