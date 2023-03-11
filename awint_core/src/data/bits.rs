@@ -432,7 +432,10 @@ impl<'a> Bits {
     pub const fn assert_cleared_unused_bits(&self) {
         let one: Digit = 1;
         if (self.extra() != 0) && (self.last() >= one.wrapping_shl(self.extra() as u32)) {
-            panic!("unused bits are set");
+            panic!(
+                "unused bits are set in a `Bits` struct, they have been set with one of the \
+                 hidden functions and not properly unset with `Bits::clear_unused_bits`"
+            );
         }
     }
 

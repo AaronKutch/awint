@@ -228,6 +228,9 @@ impl Bits {
         upper: bool,
         pad: &mut Self,
     ) -> Result<(), SerdeError> {
+        // there's going to be a lot of potential for downstream confusion if we do not
+        // check
+        self.assert_cleared_unused_bits();
         if self.bw() != pad.bw() {
             return Err(NonEqualWidths)
         }
@@ -263,6 +266,7 @@ impl Bits {
         f: &mut fmt::Formatter,
         upper: bool,
     ) -> fmt::Result {
+        self.assert_cleared_unused_bits();
         f.write_fmt(format_args!("0x"))?;
         const_for!(j0 in {0..(self.bw() >> 2).wrapping_add(1)}.rev() {
             if (self.get_digit(j0 << 2) & 0b1111) != 0 {
@@ -295,6 +299,7 @@ impl Bits {
 
     #[inline]
     pub(crate) fn debug_format_octal(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.assert_cleared_unused_bits();
         f.write_fmt(format_args!("0o"))?;
         const_for!(j0 in {0..(self.bw() / 3).wrapping_add(1)}.rev() {
             if (self.get_digit(j0.wrapping_mul(3)) & 0b111) != 0 {
@@ -324,6 +329,7 @@ impl Bits {
     // TODO this could be optimized
     #[inline]
     pub(crate) fn debug_format_binary(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.assert_cleared_unused_bits();
         f.write_fmt(format_args!("0b"))?;
         const_for!(j0 in {0..self.bw()}.rev() {
             if (self.get_digit(j0) & 0b1) != 0 {
