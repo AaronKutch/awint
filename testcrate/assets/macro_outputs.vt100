@@ -358,7 +358,7 @@ mu(lit(0xa37_u12))
 0x123u12[i]
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_bind_0:&B=&static(0x123_u12);
 let __awint_val_0=cast(i);
 let __awint_val_1=cast(1);
 let __awint_val_2=cast(add(i,1));
@@ -415,7 +415,7 @@ __awint_awi
 0x123u12[(7 + j)..(i + 5)]
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_bind_0:&B=&static(0x123_u12);
 let __awint_val_0=cast(add(i,5));
 let __awint_val_1=cast(bw(__awint_bind_0));
 let __awint_val_2=cast(add(j,7));
@@ -434,7 +434,7 @@ __awint_awi
 0x123u12[..(i - j + 5)]
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_bind_0:&B=&static(0x123_u12);
 let __awint_val_0=cast(add(i-j,5));
 let __awint_val_1=cast(bw(__awint_bind_0));
 let __awint_width_1=__awint_val_0;
@@ -452,7 +452,7 @@ __awint_awi
 0x123u12[(i - 1)..(i + 5)]
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_bind_0:&B=&static(0x123_u12);
 let __awint_val_0=cast(sub(i,1));
 let __awint_val_1=cast(6);
 let __awint_val_2=cast(add(i,5));
@@ -471,7 +471,7 @@ __awint_awi
 0x123u12[(+ 5 + i - j)..(var - 7)]; ..64
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_bind_0:&B=&static(0x123_u12);
 let __awint_val_0=cast(sub(var,7));
 let __awint_val_1=cast(bw(__awint_bind_0));
 let __awint_val_2=cast(add(i-j,5));
@@ -491,7 +491,7 @@ __awint_awi
 0x123u12[(+ 5 + i - j)..(var - 7)]; ..8
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0x123_u12);
+let __awint_bind_0:&B=&static(0x123_u12);
 let __awint_val_0=cast(sub(var,7));
 let __awint_val_1=cast(bw(__awint_bind_0));
 let __awint_val_2=cast(add(i-j,5));
@@ -565,12 +565,12 @@ __awint_awi
 umax: 0xau4, b, 0xcu4, .., 0x98765_u20[x..(sink0.bw() - 9)], e, 0xfu4; sink0; sink1,;
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0xf_u4);
+let __awint_bind_0:&B=&static(0xf_u4);
 let __awint_bind_1:&B=&e;
-let __awint_bind_2:&B=&lit(0x98765_u20);
-let __awint_bind_3:&B=&lit(0xc_u4);
+let __awint_bind_2:&B=&static(0x98765_u20);
+let __awint_bind_3:&B=&static(0xc_u4);
 let __awint_bind_4:&B=&b;
-let __awint_bind_5:&B=&lit(0xa_u4);
+let __awint_bind_5:&B=&static(0xa_u4);
 let __awint_bind_6:&mut B=&mut sink0;
 let __awint_bind_7:&mut B=&mut sink1;
 let __awint_val_0=cast(4);
@@ -674,7 +674,7 @@ __awint_awi
 ..8, 0x1111u16, ..8; a, b; c, d;
 Ok:
 {
-let __awint_bind_0:&B=&lit(0x1111_u16);
+let __awint_bind_0:&B=&static(0x1111_u16);
 let __awint_bind_1:&mut B=&mut b;
 let __awint_bind_2:&mut B=&mut a;
 let __awint_bind_3:&mut B=&mut d;
@@ -741,12 +741,12 @@ __awint_awi})
 umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1
 Ok:
 mu({
-let __awint_bind_0:&B=&lit(0xf_u4);
+let __awint_bind_0:&B=&static(0xf_u4);
 let __awint_bind_1:&B=&e;
-let __awint_bind_2:&B=&lit(0xd_u4);
-let __awint_bind_3:&B=&lit(0xc_u4);
+let __awint_bind_2:&B=&static(0xd_u4);
+let __awint_bind_3:&B=&static(0xc_u4);
 let __awint_bind_4:&B=&b;
-let __awint_bind_5:&B=&lit(0xa_u4);
+let __awint_bind_5:&B=&static(0xa_u4);
 let __awint_bind_6:&mut B=&mut sink0;
 let __awint_bind_7:&mut B=&mut sink1;
 let __awint_val_0=cast(4);
@@ -785,7 +785,7 @@ imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y
 Ok:
 {
 let __awint_bind_0:&B=&x;
-let __awint_bind_1:&B=&lit(0x0_u1);
+let __awint_bind_1:&B=&static(0x0_u1);
 let __awint_bind_2:&mut B=&mut y;
 let __awint_val_0=cast(3);
 let __awint_val_1=cast(add(r,1));

@@ -28,6 +28,7 @@ fn cc(mut f: impl Write, input: &str) {
         static_width: false,
         return_type: None,
         must_use: |s| format!("mu({s})"),
+        static_construction_fn: |awi| format!("static({awi})"),
         lit_construction_fn: |awi| format!("lit({awi})"),
         construction_fn: |s, w, d| {
             format!(
@@ -54,6 +55,7 @@ fn static_cc(mut f: impl Write, input: &str) {
         static_width: true,
         return_type: Some("StaticAwi"),
         must_use: |s| format!("mu({s})"),
+        static_construction_fn: |awi| format!("static({awi})"),
         lit_construction_fn: |awi| format!("lit({awi})"),
         construction_fn: |s, w, d| {
             format!(
@@ -80,6 +82,7 @@ fn dynamic_cc(mut f: impl Write, input: &str) {
         static_width: false,
         return_type: Some("DynamicAwi"),
         must_use: |s| format!("mu({s})"),
+        static_construction_fn: |awi| format!("static({awi})"),
         lit_construction_fn: |awi| format!("lit({awi})"),
         construction_fn: |s, w, d| {
             format!(

@@ -66,10 +66,11 @@ use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, EitherResult,
 pub fn cc_macro_code_gen<
     F0: FnMut(&str) -> String,
     F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+    F2: FnMut(ExtAwi) -> String,
+    F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     mut ast: Ast,
-    mut code_gen: CodeGen<'_, F0, F1, F2>,
+    mut code_gen: CodeGen<'_, F0, F1, F2, F3>,
     names: Names,
 ) -> String {
     let is_returning = code_gen.return_type.is_some();
@@ -318,7 +319,7 @@ pub fn cc_macro_code_gen<
     let cws = l.lower_cws();
     let widths = l.lower_widths();
     let values = l.lower_values();
-    let bindings = l.lower_bindings(code_gen.lit_construction_fn);
+    let bindings = l.lower_bindings(code_gen.static_construction_fn);
 
     let inner = format!("{{\n{bindings}{values}{widths}{cws}{common_cw}{inner}}}");
     if wrap_must_use {

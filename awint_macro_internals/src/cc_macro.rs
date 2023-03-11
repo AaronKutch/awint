@@ -14,10 +14,11 @@ pub fn cc_macro<
     F0: FnMut(&str) -> String,
     // we run into lifetime generalization issues when trying `&Bits`
     F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+    F2: FnMut(ExtAwi) -> String,
+    F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 >(
     input: &str,
-    code_gen: CodeGen<'_, F0, F1, F2>,
+    code_gen: CodeGen<'_, F0, F1, F2, F3>,
     names: Names,
 ) -> Result<String, String> {
     // we process in stages to handle more fundamental errors first, reducing bugs

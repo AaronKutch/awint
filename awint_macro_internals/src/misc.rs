@@ -30,6 +30,16 @@ pub fn chars_to_string(chars: &[char]) -> String {
     s
 }
 
+pub fn awint_must_use(s: &str) -> String {
+    format!("Bits::must_use({s})")
+}
+
+/// Returns architecture-independent Rust code that returns an
+/// `InlAwi` type with bitwidth `w`.
+pub fn unstable_native_inlawi_ty(w: u128) -> String {
+    format!("InlAwi::<{w},{{Bits::unstable_raw_digits({w})}}>")
+}
+
 /// Returns architecture-independent Rust code that returns an
 /// `InlAwi` preset with the value of `bits`.
 pub fn unstable_native_inlawi(bits: &Bits) -> String {
@@ -62,22 +72,46 @@ pub fn unstable_native_inlawi(bits: &Bits) -> String {
     )
 }
 
-/// Returns architecture-independent Rust code that returns an
-/// `InlAwi` type with bitwidth `w`.
-pub fn unstable_native_inlawi_ty(w: u128) -> String {
-    format!("InlAwi::<{w},{{Bits::unstable_raw_digits({w})}}>")
+// there is some strange issue with feature flags through proc-macro crates that prevents this from working
+/*#[cfg(not(feature = "const_support"))]
+pub fn unstable_native_bits(bits: &Bits) -> String {
+    format!("{{let b: &Bits = &{}; b}}", unstable_native_inlawi(bits))
+}*/
+
+// Returns architecture-independent Rust code that returns a `&'static Bits`
+// equal to `bits`.
+//#[cfg(feature = "const_support")]
+pub fn unstable_native_bits(bits: &Bits) -> String {
+    format!("{{const B: &Bits = &{}; B}}", unstable_native_inlawi(bits))
 }
 
-pub fn awint_must_use(s: &str) -> String {
-    format!("Bits::must_use({s})")
+// Originally, this was going to use `unstable_native_bits`, however:
+//
+// - This will currently require virtually all crates to use
+//   `#![feature(const_trait_impl)]` and some others unconditionally
+// - If the same constant is used several times but with different leading zeros
+//   or other surrounding data, it impacts .text reusability
+// - More generated Rust code
+//
+// `unstable_native_bits` is now just used for `awint_bits_lit_construction_fn`
+pub fn awint_static_construction_fn(awi: ExtAwi) -> String {
+    unstable_native_inlawi(&awi)
 }
 
-pub fn awint_lit_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_unreachable_construction_fn(_awi: ExtAwi) -> String {
+    unreachable!()
+}
+
+pub fn awint_inlawi_lit_construction_fn(awi: ExtAwi) -> String {
     unstable_native_inlawi(&awi)
 }
 
 pub fn awint_extawi_lit_construction_fn(awi: ExtAwi) -> String {
     format!("ExtAwi::from_bits(&{})", unstable_native_inlawi(&awi))
+}
+
+pub fn awint_bits_lit_construction_fn(awi: ExtAwi) -> String {
+    unstable_native_bits(&awi)
 }
 
 pub fn extawi_s(init: &str, s: &str) -> String {

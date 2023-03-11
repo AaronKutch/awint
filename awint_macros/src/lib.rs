@@ -644,10 +644,10 @@
 //!   bitfields independently to a buffer, then field from the buffer to the
 //!   sink components. When concatenations take the form `variable or constant
 //!   with full range; var_1[..]; var_2[..]; var_3[..], ...`, the macros use
-//!   `Bits::copy_` to directly copy without an intermediate buffer. This
-//!   copy assigning mode cannot copy between `Bits` references that point to
-//!   the same underlying storage, because it results in aliasing. Thus, trying
-//!   to do something like `cc!(x; x)` results in the borrow checker complaining
+//!   `Bits::copy_` to directly copy without an intermediate buffer. This copy
+//!   assigning mode cannot copy between `Bits` references that point to the
+//!   same underlying storage, because it results in aliasing. Thus, trying to
+//!   do something like `cc!(x; x)` results in the borrow checker complaining
 //!   about macro generated variables within the macro being borrowed as both
 //!   immutable and mutable. `cc!(x; x)` is semantically a no-op anyway, so it
 //!   should not be used.
@@ -662,11 +662,13 @@
 //!   functions like [awint_macro_internals::awint_macro_inlawi] and call it
 //!   with the macro input as a string
 
-// TODO when  fully-qualified syntax is supported, make links for `FromStr` above and elsewhere
+// TODO when  fully-qualified syntax is supported, make links for `FromStr`
+// above and elsewhere
 
 extern crate proc_macro;
 use awint_macro_internals::{
-    awint_macro_cc, awint_macro_extawi, awint_macro_inlawi, unstable_native_inlawi_ty,
+    awint_macro_bits, awint_macro_cc, awint_macro_extawi, awint_macro_inlawi,
+    unstable_native_inlawi_ty,
 };
 use proc_macro::TokenStream;
 
@@ -724,6 +726,23 @@ pub fn extawi(input: TokenStream) -> TokenStream {
     }
 }
 
-// I considered `bits!` and `bits_mut!` macros, but they tend to run into weird
-// errors that would confuse people, better to have us decide and use the
-// storage types directly
+// We make the `bits` macro `&'static`, because making a relaxed `bits` or
+// `bits_mut` macro typically leads to unoptimality and weird compiler errors.
+// Users should use references from `extawi` or `inlawi` in any other case.
+
+// TODO The only thing we might change is making the configuration
+// `static_width: false` if `const` allocation is ever supported.
+
+/// A concatenations of components macro, additionally using the source value to
+/// construct a `&'static Bits`. Requires `const_support` and some feature flags
+/// (see the README). Variables used by the macro should all be `const` or `const`
+/// evaluatable, otherwise internal errors will occur. Currently requires
+/// statically known width like `inlawi`. See the
+/// [crate documentation](crate) for more.
+#[proc_macro]
+pub fn bits(input: TokenStream) -> TokenStream {
+    match awint_macro_bits(&input.to_string()) {
+        Ok(s) => s.parse().unwrap(),
+        Err(s) => panic!("{}", s),
+    }
+}

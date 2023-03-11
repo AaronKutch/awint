@@ -82,6 +82,7 @@ jobs:
       # mistakes, so we test several combinations here
       - name: Run `cargo build`
         run: |
+          cargo run --bin stable --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
           cargo build --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
           cargo build --no-default-features $NON_STD_FEATURES
           cargo build --no-default-features --features=const_support

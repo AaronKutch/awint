@@ -683,7 +683,7 @@ impl<'a> Lower<'a> {
 
     pub fn lower_bindings<F: FnMut(ExtAwi) -> String>(
         &mut self,
-        mut lit_construction_fn: F,
+        mut static_construction_fn: F,
     ) -> String {
         let mut s = String::new();
         for (p_b, (bind, (used, mutable))) in self.binds.arena() {
@@ -696,7 +696,7 @@ impl<'a> Lower<'a> {
                             self.names.bind,
                             p_b.inx(),
                             self.fn_names.bits_ref,
-                            (lit_construction_fn)(ExtAwi::from_bits(awi))
+                            (static_construction_fn)(ExtAwi::from_bits(awi))
                         )
                         .unwrap();
                     }

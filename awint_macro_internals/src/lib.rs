@@ -45,7 +45,8 @@ pub fn awint_macro_cc(input: &str) -> Result<String, String> {
         static_width: false,
         return_type: None,
         must_use: awint_must_use,
-        lit_construction_fn: awint_lit_construction_fn,
+        static_construction_fn: awint_static_construction_fn,
+        lit_construction_fn: awint_unreachable_construction_fn,
         construction_fn: cc_construction_fn,
         fn_names: AWINT_FN_NAMES,
     };
@@ -57,7 +58,8 @@ pub fn awint_macro_inlawi(input: &str) -> Result<String, String> {
         static_width: true,
         return_type: Some("InlAwi"),
         must_use: awint_must_use,
-        lit_construction_fn: awint_lit_construction_fn,
+        static_construction_fn: awint_static_construction_fn,
+        lit_construction_fn: awint_inlawi_lit_construction_fn,
         construction_fn: inlawi_construction_fn,
         fn_names: AWINT_FN_NAMES,
     };
@@ -69,8 +71,22 @@ pub fn awint_macro_extawi(input: &str) -> Result<String, String> {
         static_width: false,
         return_type: Some("ExtAwi"),
         must_use: awint_must_use,
+        static_construction_fn: awint_static_construction_fn,
         lit_construction_fn: awint_extawi_lit_construction_fn,
         construction_fn: extawi_construction_fn,
+        fn_names: AWINT_FN_NAMES,
+    };
+    cc_macro(input, code_gen, AWINT_NAMES)
+}
+
+pub fn awint_macro_bits(input: &str) -> Result<String, String> {
+    let code_gen = CodeGen {
+        static_width: true,
+        return_type: Some("&'static Bits"),
+        must_use: awint_must_use,
+        static_construction_fn: awint_static_construction_fn,
+        lit_construction_fn: awint_bits_lit_construction_fn,
+        construction_fn: inlawi_construction_fn,
         fn_names: AWINT_FN_NAMES,
     };
     cc_macro(input, code_gen, AWINT_NAMES)

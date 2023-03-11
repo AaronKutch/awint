@@ -85,7 +85,9 @@ pub const AWINT_FN_NAMES: FnNames = FnNames {
 /// - `static_width`: if the type needs a statically known width
 /// - `return_type`: if the bits need to be returned
 /// - `must_use`: wraps return values in a function for insuring `#[must_use]`
-/// - `lit_construction_fn`: construction function for known literals
+/// - `static_construction_fn`: construction for internal constants
+/// - `lit_construction_fn`: construction function for known literals of the
+///   return type
 /// - `construction_fn`: is input the specified initialization, width if it is
 ///   statically known, and dynamic width if known. As a special case, the
 ///   initialization is empty for when initialization doesn't matter
@@ -94,12 +96,14 @@ pub struct CodeGen<
     F0: FnMut(&str) -> String,
     // I run into weird lifetime issues trying to use &Bits
     F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
+    F2: FnMut(ExtAwi) -> String,
+    F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
 > {
     pub static_width: bool,
     pub return_type: Option<&'a str>,
     pub must_use: F0,
-    pub lit_construction_fn: F1,
-    pub construction_fn: F2,
+    pub static_construction_fn: F1,
+    pub lit_construction_fn: F2,
+    pub construction_fn: F3,
     pub fn_names: FnNames<'a>,
 }

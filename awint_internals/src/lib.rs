@@ -26,6 +26,15 @@ use core::num::NonZeroUsize;
 pub use serde_common::*;
 pub use widening::{dd_division, widen_add, widen_mul_add, widening_mul_add_u128};
 
+// If more than one flag is active it will cause an error because two `Digits`
+// are defined. However, we have this one duplication check in case of trying to
+// use `--all-features`.
+#[cfg(all(feature = "u8_digits", feature = "u64_digits"))]
+compile_error!(
+    "Attempted to activate multiple `*_digits` features at the same time. This is likely because \
+     `--all-features` was used, which does not work for `awint`."
+);
+
 /// The basic element of the internal slice in `Bits`. This should be a type
 /// alias of the unsigned integer of the architecture's registers. On most
 /// architectures, this is simply `usize`, however there are cases such as AVR
@@ -51,9 +60,6 @@ pub type Digit = u32;
 pub type Digit = u64;
 #[cfg(feature = "u128_digits")]
 pub type Digit = u128;
-
-// If more than one flag is active it will cause an error because two `Digits`
-// are defined
 
 /// Signed version of `Digit`
 #[cfg(not(any(
