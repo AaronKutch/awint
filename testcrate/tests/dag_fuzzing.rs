@@ -1,4 +1,7 @@
-use std::{cmp::min, num::NonZeroUsize};
+use std::{
+    cmp::{max, min},
+    num::NonZeroUsize,
+};
 
 use awint::{
     awi,
@@ -43,22 +46,25 @@ impl Pair {
 #[derive(Debug)]
 struct Mem {
     a: Arena<P0, Pair>,
-    // The outer Vec has (USIZE_BITS + 1) Vecs for all the supported bitwidths (there is a dummy 0
-    // bitwidth Vec and one for each of 1..=64), the inner Vecs are unsorted and used for
+    // The outer Vec has `v_len` Vecs for all the supported bitwidths (there is a dummy 0
+    // bitwidth Vec and one for each of 1..=(v_len - 1)), the inner Vecs are unsorted and used for
     // random querying
     v: Vec<Vec<P0>>,
+    v_len: usize,
     rng: Xoshiro128StarStar,
 }
 
 impl Mem {
     pub fn new() -> Self {
         let mut v = vec![];
-        for _ in 0..(USIZE_BITS + 1) {
+        let v_len = max(65, USIZE_BITS + 1);
+        for _ in 0..v_len {
             v.push(vec![]);
         }
         Self {
             a: Arena::<P0, Pair>::new(),
             v,
+            v_len,
             rng: Xoshiro128StarStar::seed_from_u64(0),
         }
     }
@@ -66,7 +72,7 @@ impl Mem {
     pub fn clear(&mut self) {
         self.a.clear();
         self.v.clear();
-        for _ in 0..(USIZE_BITS + 1) {
+        for _ in 0..self.v_len {
             self.v.push(vec![]);
         }
     }
