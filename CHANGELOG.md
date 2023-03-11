@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.10.0] - TODO
+## [0.10.0] - 2023-03-11
 ### Fixes
 - Fixed that the overflow check in `chars_upper_bound` and `bits_upper_bound` was completely broken
 - Greatly improved the efficiency of `awint` on restricted architectures such as AVR

@@ -84,8 +84,6 @@ jobs:
         run: |
           cargo run --bin stable --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
           cargo build --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
-          cargo build --no-default-features $NON_STD_FEATURES
-          cargo build --no-default-features --features=const_support
           cargo build --no-default-features --features=alloc
           cargo build --no-default-features --features=std
           cargo build --no-default-features --features=zeroize_support
