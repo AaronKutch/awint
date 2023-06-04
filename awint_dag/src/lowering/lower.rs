@@ -1,5 +1,8 @@
 //! Lowers everything into LUT form
 
+// TODO https://github.com/rust-lang/rust-clippy/issues/10577
+#![allow(clippy::redundant_clone)]
+
 use std::{cmp::min, num::NonZeroUsize};
 
 use awint_ext::bw;

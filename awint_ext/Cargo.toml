@@ -23,7 +23,7 @@ awint = { path = "../awint" }
 ron = "0.8"
 
 [features]
-default = ["const_support"]
+default = []
 # Turns on nightly features required for many functions to be marked `const`
 const_support = ["awint_core/const_support"]
 # Turns on `serde` support

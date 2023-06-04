@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.11.0] - TODO
+### Changes
+- Made "const_support" not a default feature flag
+
 ## [0.10.0] - 2023-03-11
 ### Fixes
 - Fixed that the overflow check in `chars_upper_bound` and `bits_upper_bound` was completely broken

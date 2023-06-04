@@ -38,6 +38,30 @@ use crate::Bits;
 /// only `ExtAwi` implements.
 ///
 /// ```
+/// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
+///
+/// fn example(mut lhs: &mut Bits, rhs: &Bits) {
+///     // `InlAwi` stored on the stack does no allocation
+///     let mut tmp = inlawi!(0i100);
+///     tmp.mul_add_(lhs, rhs).unwrap();
+///     cc!(tmp; lhs).unwrap();
+/// }
+///
+/// let awi: inlawi_ty!(100) = {
+///     let mut x = inlawi!(123i100);
+///     let y = inlawi!(2i100);
+///     x.neg_(true);
+///     example(&mut x, &y);
+///     x
+/// };
+/// let x: &Bits = &awi;
+///
+/// assert_eq!(x, inlawi!(-246i100).as_ref());
+/// ```
+// FIXME
+/// ```text
+/// // note: see README because this is broken on some nightlies
+///
 /// // only needed if you are trying to use in `const` contexts
 /// #![feature(const_trait_impl)]
 /// #![feature(const_mut_refs)]

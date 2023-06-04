@@ -13,7 +13,7 @@ mod multi_bw;
 mod one_run;
 
 #[track_caller]
-const fn check_invariants(x: &Bits) {
+fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (Digit::MAX << x.extra())) != 0 {
         panic!("unused bits are set");
     }

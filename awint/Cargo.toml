@@ -22,7 +22,7 @@ awint_macros = { version = "0.10.0", path = "../awint_macros" }
 
 # note: running the tests requires `--all-features`
 [features]
-default = ["try_support", "const_support", "std"]
+default = ["try_support", "std"]
 # Turns on nightly features required for some functions to be marked `const`
 const_support = ["awint_core/const_support", "awint_ext?/const_support"]
 # Turns on nightly features required for `Try` to work with some mimick types

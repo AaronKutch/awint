@@ -46,6 +46,9 @@ NOTE: As of Rust 1.66, if you try to use "const_support" with the macros you may
 ```
 to _all_ of the crate roots where you use the macros in `const` contexts.
 
+NOTE: As of some versions of Rust starting around 1.70, "const_support" is unfortunately broken on
+nightly (see https://github.com/AaronKutch/awint/issues/19).
+
 ## Planned Features
 
 These are currently unimplemented because of other developments and improvements that are being
