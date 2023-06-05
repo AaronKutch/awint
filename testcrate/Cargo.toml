@@ -13,7 +13,7 @@ awint = { path = "../awint", default-features = false, features = ["rand_support
 awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std", "try_support"] }
 rand_xoshiro = "0.6"
 ron = "0.8"
-zeroize = { version = "1.5", default-features = false }
+zeroize = { version = "1.6", default-features = false }
 
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }

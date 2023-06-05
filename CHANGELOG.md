@@ -1,6 +1,9 @@
 # Changelog
 
 ## [0.11.0] - TODO
+### Crate
+- Updated "zeroize_support" to use `zeroize` 1.6
+
 ### Changes
 - Made "const_support" not a default feature flag
 

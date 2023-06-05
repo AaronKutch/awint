@@ -15,7 +15,7 @@ categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 awint_core = { version = "0.10.0", path = "../awint_core", default-features = false }
 const_fn = "0.4"
 serde = { version = "1.0", default-features = false, optional = true }
-zeroize = { version = "1.5", default-features = false, optional = true }
+zeroize = { version = "1.6", default-features = false, optional = true }
 
 # for examples
 [dev-dependencies]
