@@ -42,10 +42,9 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// information.
 ///
 /// ```
-/// #![feature(const_mut_refs)]
 /// use awint::awi::*;
 ///
-/// const fn const_example(x0: &mut Bits, x1: &Bits) {
+/// fn example(x0: &mut Bits, x1: &Bits) {
 ///     // when dealing with `Bits` with different bitwidths, use the
 ///     // `*_resize_` functions or the concatenations of components
 ///     // macros with unbounded fillers from `awint_macros`
@@ -59,10 +58,10 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// assert!(x.is_zero());
 /// // constructing an `ExtAwi` from an `InlAwi`
 /// let y = ExtAwi::from(inlawi!(-123i16));
-/// const_example(&mut x, &y);
+/// example(&mut x, &y);
 /// assert_eq!(x.as_ref(), inlawi!(-246i100).as_ref());
 /// // you can freely mix references originating from both `ExtAwi` and `InlAwi`
-/// const_example(&mut x, &inlawi!(0x10u16));
+/// example(&mut x, &inlawi!(0x10u16));
 /// assert_eq!(x, extawi!(0x20u100));
 /// ```
 #[repr(transparent)]

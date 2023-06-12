@@ -100,6 +100,8 @@ fn dag_bits_functions_internal(
     _epoch0: &StateEpoch,
 ) {
     use awint::dag::*;
+    // TODO https://github.com/rust-lang/rust/issues/109261
+    #[allow(unused_imports)]
     use dag::assert;
 
     let [x0, x1, x2, x3, x4] = x;

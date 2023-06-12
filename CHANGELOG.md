@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0] - 2023-06-04
+### Crate
+- Updated "zeroize_support" to use `zeroize` 1.6
+- Updated to `triple_arena` 0.9
+
+### Changes
+- Made "const_support" not a default feature flag
+
 ## [0.10.0] - 2023-03-11
 ### Fixes
 - Fixed that the overflow check in `chars_upper_bound` and `bits_upper_bound` was completely broken

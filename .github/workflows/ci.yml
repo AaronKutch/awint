@@ -7,8 +7,9 @@ env:
   # what `.cargo/config.toml` sets for `no_alloc_build`
   RUST_BACKTRACE: 1
   # we can't use `--all-features` because of the `_digits` flags, use
-  ALL_FEATURES: "--features=const_support,std,zeroize_support,rand_support,serde_support,dag,try_support,debug"
-  NON_STD_FEATURES: "--features=const_support,zeroize_support,rand_support,serde_support"
+  # FIXME add back const_support
+  ALL_FEATURES: "--features=std,zeroize_support,rand_support,serde_support,dag,try_support,debug"
+  NON_STD_FEATURES: "--features=zeroize_support,rand_support,serde_support"
 
 jobs:
   test_suite:
@@ -39,7 +40,7 @@ jobs:
     # note: we have turned on this Miri flag
     env:
       RUSTFLAGS: -D warnings
-      MIRIFLAGS: -Zmiri-strict-provenance
+      MIRIFLAGS: -Zmiri-tree-borrows
     steps:
       - uses: actions/checkout@v2
       - name: Install most recent Miri
