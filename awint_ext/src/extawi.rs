@@ -103,6 +103,7 @@ impl<'a> ExtAwi {
     #[must_use]
     const fn internal_as_ref(&'a self) -> &'a Bits {
         // `as_ref` on NonNull is not const yet, so we have to use transmute.
+        // TODO: remove these final two transmutes
         // Safety: The explicit lifetimes make sure they do not become unbounded.
         unsafe { mem::transmute::<NonNull<Bits>, &Bits>(self.raw) }
     }

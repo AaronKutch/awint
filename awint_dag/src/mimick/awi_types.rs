@@ -19,16 +19,17 @@ use crate::{dag, Bits, Lineage, Op, PState};
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
 #[derive(Clone, Copy)]
+#[repr(C)] // needed for `internal_as_ref*`, also this needs to just be a `PState`
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     // prevents the type from implementing `Send` or `Sync` on stable while still being able to be
     // `Copy`
     _no_send_or_sync: PhantomData<Rc<()>>,
-    pub(in crate::mimick) _inlawi_raw: [PState; 1],
+    pub(in crate::mimick) _state: PState,
 }
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     fn state(&self) -> PState {
-        self._inlawi_raw[0]
+        self._state
     }
 }
 
@@ -36,8 +37,8 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn from_state(state: PState) -> Self {
         assert_inlawi_invariants::<BW, LEN>();
         Self {
-            _inlawi_raw: [state],
             _no_send_or_sync: PhantomData,
+            _state: state,
         }
     }
 
@@ -161,7 +162,7 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> fmt::Debug for InlAwi<BW, LEN> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "InlAwi({:?})", self._inlawi_raw[0])
+        write!(f, "InlAwi({:?})", self.state())
     }
 }
 
@@ -296,22 +297,23 @@ impl From<awi::isize> for UsizeInlAwi {
 ///
 /// Note: `extawi!(opaque: ..64)` just works
 #[derive(Clone)]
+#[repr(C)] // needed for `internal_as_ref*`, also this needs to just be a `PState`
 pub struct ExtAwi {
     _no_send_or_sync: PhantomData<Rc<()>>,
-    pub(in crate::mimick) _extawi_raw: [PState; 1],
+    pub(in crate::mimick) _state: PState,
 }
 
 impl Lineage for ExtAwi {
     fn state(&self) -> PState {
-        self._extawi_raw[0]
+        self._state
     }
 }
 
 impl ExtAwi {
     pub(crate) fn from_state(state: PState) -> Self {
         Self {
-            _extawi_raw: [state],
             _no_send_or_sync: PhantomData,
+            _state: state,
         }
     }
 
@@ -476,7 +478,7 @@ impl AsMut<Bits> for ExtAwi {
 
 impl fmt::Debug for ExtAwi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ExtAwi({:?})", self._extawi_raw[0])
+        write!(f, "ExtAwi({:?})", self.state())
     }
 }
 

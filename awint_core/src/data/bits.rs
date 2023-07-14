@@ -20,7 +20,6 @@
 use core::{
     fmt,
     hash::{Hash, Hasher},
-    mem,
     num::NonZeroUsize,
     ops::Range,
     ptr,
@@ -109,6 +108,8 @@ use const_fn::const_fn;
 /// [Bits::digit_udivide_], or [Bits::digit_or_], are always
 /// portable as long as the digit inputs and/or outputs are restricted to
 /// `0..=u8::MAX`, or special care is taken.
+// We don't need the `transparent` anymore, but we will keep it anyway in case of external users who
+// may want to do something unsafe with `Bits`
 #[repr(transparent)]
 pub struct Bits {
     /// # Raw Invariants
@@ -176,10 +177,14 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const unsafe fn from_raw_parts(raw_ptr: *const Digit, raw_len: usize) -> &'a Self {
-        // Safety: `Bits` follows standard slice initialization invariants and is marked
-        // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
-        // unbounded.
-        unsafe { mem::transmute::<&[Digit], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, raw_len)) }
+        // Safety: `Bits` follows standard slice initialization invariants. The explicit
+        // lifetimes make sure they do not become unbounded.
+
+        // note: previously, we used a transmute from `&[Digit]` to `&Bits`, but this
+        // technically could allow for layout mismatch UB since the references are not
+        // inside the `#[transparent]` `Bits` struct
+        let bits = ptr::slice_from_raw_parts(raw_ptr, raw_len) as *const Bits;
+        unsafe { &*bits }
     }
 
     /// # Safety
@@ -190,14 +195,10 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const unsafe fn from_raw_parts_mut(raw_ptr: *mut Digit, raw_len: usize) -> &'a mut Self {
-        // Safety: `Bits` follows standard slice initialization invariants and is marked
-        // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
-        // unbounded.
-        unsafe {
-            mem::transmute::<&mut [Digit], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
-                raw_ptr, raw_len,
-            ))
-        }
+        // Safety: `Bits` follows standard slice initialization invariants. The explicit
+        // lifetimes make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts_mut(raw_ptr, raw_len) as *mut Bits;
+        unsafe { &mut *bits }
     }
 
     /// Returns the argument of this function. This exists so that the macros in
