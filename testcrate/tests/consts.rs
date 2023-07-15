@@ -1,5 +1,5 @@
-// FIXME
-#![cfg(feature = "fixme")]
+// FIXME restore const configuration
+#![cfg(feature = "const_support")]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(const_trait_impl)]

@@ -34,6 +34,22 @@ jobs:
           cargo test $ALL_FEATURES,u64_digits
           cargo test $ALL_FEATURES,u128_digits
 
+  # FIXME fix features when we can compile const_support again
+  const_test:
+    name: Test suite
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust components
+        run: |
+          rustup set profile minimal
+          rustup install nightly-2023-04-14
+      - name: Run test suite
+        run: |
+          cargo +nightly-2023-04-14 t $ALL_FEATURES,const_support
+
   miri:
     name: Miri
     runs-on: ubuntu-latest
