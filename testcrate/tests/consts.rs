@@ -314,6 +314,7 @@ const fn bits_functions() {
         ile
         igt
         ige
+        total_cmp
         add_
         sub_
         rsb_

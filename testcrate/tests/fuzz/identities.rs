@@ -1,4 +1,5 @@
 use core::cmp;
+use std::cmp::Ordering;
 
 use awint::{
     awint_internals::{Digit, BITS, USIZE_BITS},
@@ -294,6 +295,11 @@ fn identities_inner(
     }
     x2.zero_();
     assert!(x0.ilt(x2)? == x0.msb());
+    if matches!(x0.total_cmp(x1), Ordering::Equal) {
+        assert_eq!(x0, x1);
+    } else {
+        assert_ne!(x0, x1);
+    }
 
     // Summation and Comparison
     let cin = (s0 & 1) != 0;

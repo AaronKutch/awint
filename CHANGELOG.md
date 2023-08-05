@@ -5,6 +5,10 @@
 - Replaced some usages of transmutation with fat pointer `as` casts to prevent a technical subtlety
   that could lead to UB (even if it wouldn't occur with `-Zrandomize-layout` in practice)
 
+### Additions
+- Added `Bits::total_cmp`
+- Added `OrdBits`
+
 ## [0.11.0] - 2023-06-04
 ### Crate
 - Updated "zeroize_support" to use `zeroize` 1.6

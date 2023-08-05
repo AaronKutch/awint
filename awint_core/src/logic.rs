@@ -11,3 +11,4 @@ mod primitives;
 #[cfg(feature = "rand_support")]
 mod rand;
 mod sum;
+pub use cmp::OrdBits;
