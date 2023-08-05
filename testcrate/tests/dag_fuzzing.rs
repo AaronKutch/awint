@@ -9,7 +9,7 @@ use awint::{
         lowering::OpDag, smallvec::smallvec, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
     },
     awint_internals::USIZE_BITS,
-    awint_macro_internals::triple_arena::{ptr_struct, Arena},
+    awint_macro_internals::triple_arena::{ptr_struct, Advancer, Arena},
     dag,
 };
 use rand_xoshiro::{
@@ -174,11 +174,8 @@ impl Mem {
         // convert back and evaluate to check that the lowering did not break the DAG
         // function.
         let mut literals = vec![];
-        let (mut p, mut b) = op_dag.a.first_ptr();
-        loop {
-            if b {
-                break
-            }
+        let mut adv = op_dag.a.advancer();
+        while let Some(p) = adv.advance(&op_dag.a) {
             if op_dag[p].op.is_literal() && ((self.rng.next_u32() & 1) == 0) {
                 op_dag.note_pnode(p).unwrap();
                 if let Op::Literal(lit) = op_dag[p].op.take() {
@@ -188,7 +185,6 @@ impl Mem {
                     unreachable!()
                 }
             }
-            op_dag.a.next_ptr(&mut p, &mut b);
         }
         // op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
         //    .unwrap();

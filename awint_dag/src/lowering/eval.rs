@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use awint_ext::ExtAwi;
+use awint_macro_internals::triple_arena::Advancer;
 use Op::*;
 
 use crate::{
@@ -126,13 +127,9 @@ impl OpDag {
     /// `assert_assertions` which makes sure no assertions are unevaluated.
     pub fn eval_all(&mut self) -> Result<(), EvalError> {
         self.visit_gen += 1;
-        let (mut p, mut b) = self.a.first_ptr();
-        loop {
-            if b {
-                break
-            }
+        let mut adv = self.a.advancer();
+        while let Some(p) = adv.advance(&self.a) {
             self.eval_tree(p, self.visit_gen)?;
-            self.a.next_ptr(&mut p, &mut b);
         }
         self.assert_assertions_weak()?;
         self.unnote_true_assertions();
@@ -165,15 +162,11 @@ impl OpDag {
 
     /// Deletes all nodes unused by any noted node.
     pub fn delete_unused_nodes(&mut self) {
-        let (mut p, mut b) = self.a.first_ptr();
-        loop {
-            if b {
-                break
-            }
+        let mut adv = self.a.advancer();
+        while let Some(p) = adv.advance(&self.a) {
             if self[p].rc == 0 {
                 self.trim_zero_rc_tree(p).unwrap();
             }
-            self.a.next_ptr(&mut p, &mut b);
         }
     }
 }

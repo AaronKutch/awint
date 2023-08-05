@@ -6,6 +6,7 @@
 use std::{cmp::min, num::NonZeroUsize};
 
 use awint_ext::bw;
+use awint_macro_internals::triple_arena::Advancer;
 use awint_macros::{extawi, inlawi};
 
 use crate::{
@@ -854,13 +855,9 @@ impl OpDag {
         let lowered_visit = self.visit_gen;
         self.visit_gen += 1;
         let tree_visit = self.visit_gen;
-        let (mut p, mut b) = self.a.first_ptr();
-        loop {
-            if b {
-                break
-            }
+        let mut adv = self.a.advancer();
+        while let Some(p) = adv.advance(&self.a) {
             self.lower_tree(p, lowered_visit, tree_visit)?;
-            self.a.next_ptr(&mut p, &mut b);
         }
         self.assert_assertions_weak()?;
         self.unnote_true_assertions();

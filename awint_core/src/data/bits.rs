@@ -151,6 +151,10 @@ pub struct Bits {
     raw: [Digit],
 }
 
+// TODO use the zero cost DST trick
+// #[repr(C)] Bits { _digits: NonNull<Digit>, _bw: NonZeroUsize, _dst: [()] }
+// ExtAwi and InlAwi also need to store bitwidth
+
 /// `Bits` is safe to send between threads since it does not own
 /// aliasing memory and has no reference counting mechanism like `Rc`.
 unsafe impl Send for Bits {}
