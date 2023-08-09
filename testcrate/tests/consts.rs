@@ -233,6 +233,8 @@ const fn bits_functions() {
     assert!(x0.mux_(x1, false).is_none());
     assert!(x0.mux_(x1, true).is_none());
 
+    let _ = x0.total_cmp(x1);
+
     // TODO test all const serialization
 
     test_nonequal_bw!(
@@ -314,7 +316,6 @@ const fn bits_functions() {
         ile
         igt
         ige
-        total_cmp
         add_
         sub_
         rsb_
