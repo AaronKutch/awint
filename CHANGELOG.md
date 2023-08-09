@@ -4,6 +4,9 @@
 ### Fixes
 - Replaced some usages of transmutation with fat pointer `as` casts to prevent a technical subtlety
   that could lead to UB (even if it wouldn't occur with `-Zrandomize-layout` in practice)
+- Finally found a "custom" DST workaround to store the bitwidth inline and derive the slice length
+  from that instead of using the metadata hack. Note that this currently requires
+  `-Zmiri-tree-borrows` for Miri to accept it.
 
 ### Additions
 - Added `Bits::total_cmp`

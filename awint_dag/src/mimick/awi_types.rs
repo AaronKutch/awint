@@ -9,7 +9,7 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt, USIZE_BITS},
+    awint_internals::{bw, forward_debug_fmt, RawStackBits, USIZE_BITS},
 };
 use smallvec::smallvec;
 
@@ -35,7 +35,7 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn from_state(state: PState) -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self {
             _no_send_or_sync: PhantomData,
             _state: state,
@@ -47,12 +47,12 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         NonZeroUsize::new(BW).unwrap()
     }
 
     pub fn const_bw() -> usize {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         BW
     }
 
@@ -65,45 +65,45 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub fn const_raw_len() -> usize {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         LEN
     }
 
     #[doc(hidden)]
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::from_bits(
             &awi::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf),
         )))
     }
 
     pub fn opaque() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Opaque(smallvec![], None))
     }
 
     pub fn zero() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::zero(bw(BW))))
     }
 
     pub fn umax() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::umax(bw(BW))))
     }
 
     pub fn imax() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::imax(bw(BW))))
     }
 
     pub fn imin() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::imin(bw(BW))))
     }
 
     pub fn uone() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::uone(bw(BW))))
     }
 }

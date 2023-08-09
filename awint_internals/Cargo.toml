@@ -9,7 +9,11 @@ repository = "https://github.com/AaronKutch/awint"
 description = "Internal utilities for the `awint` system of crates"
 rust-version = "1.66"
 
+[dependencies]
+const_fn = "0.4"
+
 [features]
+const_support = []
 # Only zero or one of these should be active
 u8_digits = []
 u16_digits = []

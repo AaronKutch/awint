@@ -10,6 +10,9 @@
 //! `awint`.
 
 #![no_std]
+// TODO
+#![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts_mut))]
+#![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
 #![allow(clippy::needless_range_loop)]
@@ -18,11 +21,13 @@
 // trait again
 
 mod macros;
+mod raw_bits;
 mod serde_common;
 mod widening;
 
 use core::num::NonZeroUsize;
 
+pub use raw_bits::{CustomDst, RawBits, RawStackBits};
 pub use serde_common::*;
 pub use widening::{dd_division, widen_add, widen_mul_add, widening_mul_add_u128};
 
@@ -91,13 +96,6 @@ pub const MAX: Digit = Digit::MAX;
 /// Number of bytes in a `Digit`
 pub const DIGIT_BYTES: usize = (Digit::BITS / u8::BITS) as usize;
 
-/// Number of metadata digits
-pub const METADATA_DIGITS: usize = if USIZE_BITS >= BITS {
-    USIZE_BITS / BITS
-} else {
-    1
-};
-
 /// Number of bits in a `usize`
 pub const USIZE_BITS: usize = usize::BITS as usize;
 
@@ -163,67 +161,9 @@ pub const fn digits(w: NonZeroUsize) -> usize {
 /// Returns the number of `usize` digits needed to represent `w`, including any
 /// digit with unused bits
 #[inline]
-pub const fn regular_digits(w: NonZeroUsize) -> usize {
-    digits(w).wrapping_add((extra(w) != 0) as usize)
-}
-
-/// Returns `regular_digits + 1` to account for the metadata digits
-#[inline]
-pub const fn raw_digits(w: usize) -> usize {
-    digits_u(w)
-        .wrapping_add((extra_u(w) != 0) as usize)
-        .wrapping_add(METADATA_DIGITS)
-}
-
-/// Checks that the `BW` and `LEN` values are valid for an `InlAwi`.
-///
-/// # Panics
-///
-/// If `BW == 0`, `LEN < METADATA_DIGITS + 1`, or the bitwidth is outside the
-/// range `(((LEN - METADATA_DIGITS - 1)*BITS) + 1)..=((LEN -
-/// METADATA_DIGITS)*BITS)`
-pub const fn assert_inlawi_invariants<const BW: usize, const LEN: usize>() {
-    if BW == 0 {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `BW == 0`")
-    }
-    if LEN < METADATA_DIGITS + 1 {
-        panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < METADATA_DIGITS + 1`")
-    }
-    if BW <= ((LEN - METADATA_DIGITS - 1) * BITS) {
-        panic!(
-            "Tried to create an `InlAwi<BW, LEN>` with `BW <= Digit::BITS*(LEN - METADATA_DIGITS \
-             - 1)`"
-        )
-    }
-    if BW > ((LEN - METADATA_DIGITS) * BITS) {
-        panic!(
-            "Tried to create an `InlAwi<BW, LEN>` with `BW > Digit::BITS*(LEN - METADATA_DIGITS)`"
-        )
-    }
-}
-
-/// Checks that a raw slice for `InlAwi` construction is correct. Also runs
-/// `assert_inlawi_invariants` to check the correctness of the `BW` and `LEN`
-/// values.
-///
-/// # Panics
-///
-/// If `raw.len() != LEN`, the bitwidth digit is not equal to `BW`, `BW == 0`,
-/// `LEN < METADATA_DIGITS + 1`, or the bitwidth is outside the range
-/// `(((LEN - METADATA_DIGITS - 1)*BITS) + 1)..=((LEN - METADATA_DIGITS)*BITS)`
-#[allow(clippy::unnecessary_cast)] // if `Digit == usize` clippy fires
-pub const fn assert_inlawi_invariants_slice<const BW: usize, const LEN: usize>(raw: &[Digit]) {
-    assert_inlawi_invariants::<BW, LEN>();
-    if raw.len() != LEN {
-        panic!("`length of raw slice does not equal LEN")
-    }
-    let mut w = 0usize;
-    const_for!(i in {0..METADATA_DIGITS} {
-        w |= (raw[i + raw.len() - METADATA_DIGITS] as usize) << (i * BITS);
-    });
-    if w != BW {
-        panic!("bitwidth digit does not equal BW")
-    }
+pub const fn total_digits(w: NonZeroUsize) -> NonZeroUsize {
+    // Safety: if `digits(w)` is zero, `extra(w)` must be nonzero
+    unsafe { NonZeroUsize::new_unchecked(digits(w).wrapping_add((extra(w) != 0) as usize)) }
 }
 
 /// Location for an item in the source code

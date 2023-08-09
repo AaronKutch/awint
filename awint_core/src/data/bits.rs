@@ -22,7 +22,7 @@ use core::{
     hash::{Hash, Hasher},
     num::NonZeroUsize,
     ops::Range,
-    ptr,
+    ptr::{self, NonNull},
 };
 
 use awint_internals::*;
@@ -110,50 +110,31 @@ use const_fn::const_fn;
 /// `0..=u8::MAX`, or special care is taken.
 // We don't need the `transparent` anymore, but we will keep it anyway in case of external users who
 // may want to do something unsafe with `Bits`
-#[repr(transparent)]
+#[repr(C)]
 pub struct Bits {
     /// # Raw Invariants
     ///
     /// We have chosen `Bits` to be a DST in order to avoid double indirection
     /// (`&mut Bits` would be a pointer to a `Bits` struct which in turn had a
-    /// pointer inside itself to the actual digits). A DST also lets us harness
-    /// the power of Rust's desugering and inference surrounding other DSTS.
+    /// pointer inside itself to the actual digits). A DST also lets us get
+    /// around https://github.com/rust-lang/rust/issues/57749 ,
+    /// which is absolutely required for the macros.
     ///
-    /// In addition to the minimum number of digits required to store all the
-    /// bits, there is one or more metadata digits on the end of the slice
-    /// responsible for storing the actual bitwidth. The length field on the
-    /// `[Digit]` DST is the total number of digits in the slice, including
-    /// regular digits and the metadata digits. This design decision was made to
-    /// prevent invoking UB by having a fake slice with the bitwidth instead of
-    /// the true slice width. Even if we completely avoid all Rust core methods
-    /// on slices (and thus avoid practical UB due to avoiding standard slice
-    /// functions expecting a standard length field), Miri can still detect a
-    /// fake slice being made (even if we completely avoid
-    /// `core::ptr::slice_from_raw_parts` with the jankest of transmutation
-    /// shenanigans).
+    /// Until true custom DSTs are supported in Rust, I have found a workaround
     ///
-    /// The metadata bitwidth is on the end of the slice, because accesses of
-    /// the bitwidth also commonly access the last digit right next to it
-    /// through `clear_unused_bits`. This means good cache locality even if the
-    /// slice is huge and interior digits are rarely accessed. Storing the
-    /// bitwidth at the beginning of the slice instead (which is what Rust does
-    /// if we add the bitwidth directly as a field in the `Bits` DST) would lead
-    /// to extra offsetting operations being done to skip the first digit
-    /// pointed to by the pointer in the DST.
+    /// https://rust-lang.zulipchat.com/#narrow/stream/213817-t-lang/topic/
+    /// Is.20there.20an.20easy.20solution.20for.20custom.20DST.20problems.3F
     ///
-    /// The unfortunate consequence is that taking `Bits` digitwise subslices of
-    /// `Bits` in the same general no-copy way that you can take subslices of
-    /// regular Rust slices is not possible. `subdigits_mut!` almost achieves it
-    /// by temporarily replacing digits with the needed metadata where the end
-    /// of the subslice is, running a closure on the subslice, and
-    /// then replacing the digit at the end. However, we have the concatenation
-    /// macros which cover almost every bitfield transformation one could want.
-    raw: [Digit],
+    /// Which avoids expensive metadata tricks that earlier `awint` versions
+    /// had to do. The `CustomDst` stores a pointer to the digits, and stores
+    /// the bitwidth instead of the digit length. The pointer must be nonnull
+    /// and to an allocation array of `Digits`, with the length being equal to
+    /// `awint_internals::total_digits(bitwidth)`. In other words, the
+    /// invariants are the same as `std::slice::from_raw_parts_mut` except we
+    /// store only the bitwidth and calculate the slice length through
+    /// `total_digits`.
+    _custom_dst: CustomDst<Digit>,
 }
-
-// TODO use the zero cost DST trick
-// #[repr(C)] Bits { _digits: NonNull<Digit>, _bw: NonZeroUsize, _dst: [()] }
-// ExtAwi and InlAwi also need to store bitwidth
 
 /// `Bits` is safe to send between threads since it does not own
 /// aliasing memory and has no reference counting mechanism like `Rc`.
@@ -167,28 +148,23 @@ unsafe impl Sync for Bits {}
 impl<'a> Bits {
     /// # Safety
     ///
-    /// `raw_ptr` and `raw_len` should satisfy the raw invariants (not just the
-    /// regular invariants, but those that account for the extra bitwidth digit)
-    /// of `Bits` along with [standard alignment and initialization
-    /// conditions](core::slice::from_raw_parts_mut). `Bits` itself does not
-    /// allocate or deallocate memory. It is expected that the caller had a
-    /// struct with proper `Drop` implementation, created `Bits` from that
-    /// struct, and insured that the struct is borrowed for the duration of
-    /// the `Bits` lifetime. The memory referenced by `bits` must not be
-    /// accessed through any other reference for the duration of lifetime `'a`.
+    /// `raw_bits` should satisfy the raw invariants of `Bits` (see bits.rs).
+    /// `Bits` itself does not allocate or deallocate memory. It is expected
+    /// that the caller had a struct with proper `Drop` implementation,
+    /// created `Bits` from that struct, and insured that the struct is
+    /// borrowed for the duration of the `Bits` lifetime. The memory
+    /// referenced by `bits` must not be accessed through any other
+    /// reference for the duration of lifetime `'a`.
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const unsafe fn from_raw_parts(raw_ptr: *const Digit, raw_len: usize) -> &'a Self {
-        // Safety: `Bits` follows standard slice initialization invariants. The explicit
+    pub const unsafe fn from_raw_parts(raw_bits: RawBits) -> &'a Self {
+        // Safety: `Bits` follows the assumptions of `CustomDst`. The explicit
         // lifetimes make sure they do not become unbounded.
-
-        // note: previously, we used a transmute from `&[Digit]` to `&Bits`, but this
-        // technically could allow for layout mismatch UB since the references are not
-        // inside the `#[transparent]` `Bits` struct
-        let bits = ptr::slice_from_raw_parts(raw_ptr, raw_len) as *const Bits;
-        unsafe { &*bits }
+        let custom_dst =
+            CustomDst::<Digit>::from_raw_parts(raw_bits.as_non_null_ptr(), raw_bits.bw());
+        unsafe { &*(custom_dst as *const Bits) }
     }
 
     /// # Safety
@@ -198,11 +174,12 @@ impl<'a> Bits {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const unsafe fn from_raw_parts_mut(raw_ptr: *mut Digit, raw_len: usize) -> &'a mut Self {
-        // Safety: `Bits` follows standard slice initialization invariants. The explicit
+    pub const unsafe fn from_raw_parts_mut(raw_bits: RawBits) -> &'a mut Self {
+        // Safety: `Bits` follows the assumptions of `CustomDst`. The explicit
         // lifetimes make sure they do not become unbounded.
-        let bits = ptr::slice_from_raw_parts_mut(raw_ptr, raw_len) as *mut Bits;
-        unsafe { &mut *bits }
+        let custom_dst =
+            CustomDst::<Digit>::from_raw_parts(raw_bits.as_non_null_ptr(), raw_bits.bw());
+        unsafe { &mut *(custom_dst as *mut Bits) }
     }
 
     /// Returns the argument of this function. This exists so that the macros in
@@ -233,7 +210,7 @@ impl<'a> Bits {
     #[inline]
     #[must_use]
     pub const fn as_ptr(&self) -> *const Digit {
-        self.raw.as_ptr()
+        self._custom_dst.as_ptr()
     }
 
     /// Returns a raw pointer to the underlying bit storage. The caller must
@@ -243,66 +220,17 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut Digit {
-        self.raw.as_mut_ptr()
-    }
-
-    /// Returns the raw total length of `self`, including the bitwidth metadata.
-    #[doc(hidden)]
-    #[inline]
-    #[must_use]
-    pub const fn raw_len(&self) -> usize {
-        self.raw.len()
-    }
-
-    /// This allows access of all digits including the bitwidth digits.
-    ///
-    /// # Safety
-    ///
-    /// `i < self.raw_len()` should hold true
-    #[doc(hidden)]
-    #[inline]
-    #[const_fn(cfg(feature = "const_support"))]
-    #[must_use]
-    pub(crate) const unsafe fn raw_get_unchecked(&self, i: usize) -> Digit {
-        debug_assert!(i < self.raw_len());
-        // Safety: `i` is bounded by `raw_len`
-        unsafe { *self.as_ptr().add(i) }
-    }
-
-    /// This allows mutable access of all digits including the bitwidth digit.
-    ///
-    /// # Safety
-    ///
-    /// `i < self.raw_len()` should hold true
-    #[doc(hidden)]
-    #[inline]
-    #[const_fn(cfg(feature = "const_support"))]
-    #[must_use]
-    pub(crate) const unsafe fn raw_get_unchecked_mut(&'a mut self, i: usize) -> &'a mut Digit {
-        debug_assert!(i < self.raw_len());
-        // Safety: `i` is bounded by `raw_len`. The lifetimes are bounded.
-        unsafe { &mut *self.as_mut_ptr().add(i) }
+        self._custom_dst.as_mut_ptr()
     }
 
     /// Returns the bitwidth as a `NonZeroUsize`
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    #[allow(clippy::unnecessary_cast)] // if `Digit == usize` clippy fires
     pub const fn nzbw(&self) -> NonZeroUsize {
-        unsafe {
-            let mut w = 0usize;
-            // Safety: The bitwidth is stored in the metadata digits. The bitwidth is
-            // nonzero if invariants were maintained.
-            let raw_len = self.raw_len();
-            const_for!(i in {0..METADATA_DIGITS} {
-                w |= (self.raw_get_unchecked(i + raw_len - METADATA_DIGITS) as usize) << (i * BITS);
-            });
-            // If something with zeroing allocation or mutations accidentally breaks during
-            // development, it will probably manifest itself here
-            debug_assert!(w != 0);
-            NonZeroUsize::new_unchecked(w)
-        }
+        // Safety: `Bits::from_raw...` uses the `NonZeroUsize` of `RawBits` for setting
+        // the `usize`
+        unsafe { NonZeroUsize::new_unchecked(self._custom_dst.get_usize()) }
     }
 
     /// Returns the bitwidth as a `usize`
@@ -323,7 +251,7 @@ impl<'a> Bits {
     pub const unsafe fn get_unchecked(&self, i: usize) -> Digit {
         debug_assert!(i < self.len());
         // Safety: `i < self.len()` means the access is within the slice
-        unsafe { self.raw_get_unchecked(i) }
+        unsafe { *self.as_ptr().add(i) }
     }
 
     /// # Safety
@@ -336,18 +264,16 @@ impl<'a> Bits {
     pub const unsafe fn get_unchecked_mut(&'a mut self, i: usize) -> &'a mut Digit {
         debug_assert!(i < self.len());
         // Safety: The bounds of this are a subset of `raw_get_unchecked_mut`
-        unsafe { self.raw_get_unchecked_mut(i) }
+        unsafe { &mut *self.as_mut_ptr().add(i) }
     }
 
     /// Returns the exact number of `usize` digits needed to store all bits.
     #[doc(hidden)]
     #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn len(&self) -> usize {
-        // Safety: The length on the raw slice is the number of `usize` digits plus the
-        // metadata bitwidth digit. To get the number of regular digits, we just
-        // subtract the metadata digits.
-        self.raw_len() - METADATA_DIGITS
+        total_digits(self.nzbw()).get()
     }
 
     /// Returns the number of unused bits.
@@ -444,6 +370,30 @@ impl<'a> Bits {
         }
     }
 
+    /// This is an extremely unsafe function that is intended only to be used
+    /// through the `subdigits_mut` macro.
+    #[doc(hidden)]
+    #[inline]
+    #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
+    pub const unsafe fn internal_subdigits_mut(
+        this: &'a mut Self,
+        range_start: usize,
+        range_end: usize,
+    ) -> &'a mut Self {
+        // Safety: `range_start < range_end` and is a nonzero digit range in another
+        // `Bits`
+        unsafe {
+            let new_start: *mut Digit = this.as_mut_ptr().add(range_start);
+            let new_nzbw =
+                NonZeroUsize::new_unchecked(range_end.wrapping_sub(range_start).wrapping_mul(BITS));
+            Bits::from_raw_parts_mut(RawBits::from_raw_parts(
+                NonNull::new_unchecked(new_start),
+                new_nzbw,
+            ))
+        }
+    }
+
     /// Returns a reference to all of the underlying bits of `self`, including
     /// unused bits.
     ///
@@ -457,19 +407,8 @@ impl<'a> Bits {
     #[must_use]
     pub const fn as_slice(&'a self) -> &'a [Digit] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
-        // acquires a subslice that includes everything except for the metadata digit.
+        // acquires a subslice that uses the total length instead of the bitwidth.
         unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.len()) }
-    }
-
-    /// Same as [Bits::as_slice] except it includes the bitwidth digit
-    #[doc(hidden)]
-    #[inline]
-    #[const_fn(cfg(feature = "const_support"))]
-    #[must_use]
-    pub const fn as_raw_slice(&'a self) -> &'a [Digit] {
-        // Safety: `Bits` already follows standard slice initialization invariants. This
-        // acquires a subslice that includes everything except for the metadata digit.
-        unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.raw_len()) }
     }
 
     /// Returns a mutable reference to all of the underlying bits of `self`,
@@ -486,9 +425,7 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn as_mut_slice(&'a mut self) -> &'a mut [Digit] {
-        // Safety: `Bits` already follows standard slice initialization invariants. This
-        // acquires a subslice that includes everything except for the metadata digit,
-        // so that it cannot be mutated.
+        // Safety: The same as `as_slice`
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len()) }
     }
 

@@ -27,7 +27,7 @@ ron = "0.8"
 [features]
 default = []
 # Turns on nightly features required for many functions to be marked `const`
-const_support = []
+const_support = ["awint_internals/const_support"]
 # Turns on `rand` support
 rand_support = ["rand_core"]
 # Turns on `serde` support

@@ -685,7 +685,7 @@ impl Bits {
     }
 
     pub const fn unstable_raw_digits(w: usize) -> usize {
-        awint_ext::awint_internals::raw_digits(w)
+        awint_ext::awint_internals::total_digits(awint_ext::awint_internals::bw(w)).get()
     }
 
     pub fn unstable_max<const N: usize>(x: [impl Into<dag::usize>; N]) -> awi::usize {
