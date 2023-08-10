@@ -199,12 +199,24 @@ impl<const BW: usize, const LEN: usize> RawStackBits<BW, LEN> {
         Self { _digits: [!0; LEN] }
     }
 
+    /// Note: use `to_raw_bits_mut` instead if mutable access is required
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_raw_bits(&self) -> RawBits {
         // Safety: we can get a `NonNull` from an array address
         unsafe {
             RawBits::from_raw_parts(
                 NonNull::new_unchecked(self._digits.as_ptr() as *mut Digit),
+                Self::nzbw(),
+            )
+        }
+    }
+
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn to_raw_bits_mut(&mut self) -> RawBits {
+        // Safety: we can get a `NonNull` from an array address
+        unsafe {
+            RawBits::from_raw_parts(
+                NonNull::new_unchecked(self._digits.as_mut_ptr()),
                 Self::nzbw(),
             )
         }

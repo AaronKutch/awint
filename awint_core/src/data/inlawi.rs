@@ -120,8 +120,9 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub(in crate::data) const fn internal_as_mut(&'a mut self) -> &'a mut Bits {
-        // Safety: Same as `internal_as_ref`
-        unsafe { Bits::from_raw_parts_mut(self._raw_stack_bits.to_raw_bits()) }
+        // Safety: Same as `internal_as_ref`, except we use `to_raw_bits_mut` so that
+        // the pointer tag is not `Frozen`
+        unsafe { Bits::from_raw_parts_mut(self._raw_stack_bits.to_raw_bits_mut()) }
     }
 
     /// Returns the bitwidth of this type of `InlAwi` as a `NonZeroUsize`
