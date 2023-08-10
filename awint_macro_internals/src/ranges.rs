@@ -3,7 +3,6 @@ use awint_ext::Bits;
 use crate::{chars_to_string, usize_to_i128, Ast, CCMacroError, Delimiter, PText, Text};
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
-#[allow(clippy::manual_filter)] // TODO remove after clippy issue #9766
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {
     let mut s = s;
     if s.is_empty() {

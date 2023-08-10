@@ -15,7 +15,6 @@ use crate::{
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
-// TODO fix when PR 83850 is merged
 
 /// Mimicking `awint_core::Bits`
 #[repr(C)] // needed for `internal_as_ref*`
