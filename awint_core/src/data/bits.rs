@@ -117,15 +117,11 @@ pub struct Bits {
     /// We have chosen `Bits` to be a DST in order to avoid double indirection
     /// (`&mut Bits` would be a pointer to a `Bits` struct which in turn had a
     /// pointer inside itself to the actual digits). A DST also lets us get
-    /// around https://github.com/rust-lang/rust/issues/57749 ,
+    /// around <https://github.com/rust-lang/rust/issues/57749> ,
     /// which is absolutely required for the macros.
     ///
     /// Until true custom DSTs are supported in Rust, I have found a workaround
-    ///
-    /// https://rust-lang.zulipchat.com/#narrow/stream/213817-t-lang/topic/
-    /// Is.20there.20an.20easy.20solution.20for.20custom.20DST.20problems.3F
-    ///
-    /// Which avoids expensive metadata tricks that earlier `awint` versions
+    /// that avoids expensive metadata tricks that earlier `awint` versions
     /// had to do. The `CustomDst` stores a pointer to the digits, and stores
     /// the bitwidth instead of the digit length. The pointer must be nonnull
     /// and to an allocation array of `Digits`, with the length being equal to
