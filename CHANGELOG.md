@@ -11,6 +11,7 @@
 ### Additions
 - Added `Bits::total_cmp`
 - Added `OrdBits`
+- Added `Error` impl for `EvalError`
 
 ## [0.11.0] - 2023-06-04
 ### Crate
