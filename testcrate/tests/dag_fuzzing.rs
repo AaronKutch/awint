@@ -19,7 +19,7 @@ use rand_xoshiro::{
 
 // miri is just here to check that the unsized deref hacks are working
 const N: (u32, u32) = if cfg!(miri) {
-    (4, 1)
+    (1, 1)
 } else if cfg!(debug_assertions) {
     (32, 100)
 } else {

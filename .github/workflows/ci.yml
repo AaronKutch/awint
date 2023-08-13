@@ -56,7 +56,7 @@ jobs:
     # note: we have turned on this Miri flag
     env:
       RUSTFLAGS: -D warnings
-      MIRIFLAGS: -Zmiri-tree-borrows
+      MIRIFLAGS: -Zmiri-tree-borrows -Zmiri-strict-provenance
     steps:
       - uses: actions/checkout@v2
       - name: Install most recent Miri
