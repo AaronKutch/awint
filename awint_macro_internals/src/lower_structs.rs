@@ -80,24 +80,24 @@ impl<'a> Lower<'a> {
 
     pub fn lower_bound(&mut self, usb: &Usb) -> PVal {
         if let Some(x) = usb.static_val() {
-            self.values.insert((Value::Usize(format!("{x}")), false)).0
+            self.values.insert(Value::Usize(format!("{x}")), false).0
         } else {
             let txt = self.try_txt_bound_to_binding(&usb.s);
             if usb.x < 0 {
                 self.values
-                    .insert((
+                    .insert(
                         Value::Usize(format!("{}({},{})", self.fn_names.usize_sub, txt, -usb.x)),
                         false,
-                    ))
+                    )
                     .0
             } else if usb.x == 0 {
-                self.values.insert((Value::Usize(txt), false)).0
+                self.values.insert(Value::Usize(txt), false).0
             } else {
                 self.values
-                    .insert((
+                    .insert(
                         Value::Usize(format!("{}({},{})", self.fn_names.usize_add, txt, usb.x)),
                         false,
-                    ))
+                    )
                     .0
             }
         }
@@ -119,21 +119,21 @@ impl<'a> Lower<'a> {
                 let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
                 comp.start = Some(start_p_val);
             }
-            let p_val = self.values.insert((Value::Usize(format!("{w}")), false)).0;
+            let p_val = self.values.insert(Value::Usize(format!("{w}")), false).0;
             if need_extra_check {
                 if let Some(ref end) = comp.range.end {
                     // range end is not the same as variable end, need to check
                     let end_p_val = self.lower_bound(end);
                     let var_end_p_val = self
                         .values
-                        .insert((Value::Bitwidth(comp.bind.unwrap()), false))
+                        .insert(Value::Bitwidth(comp.bind.unwrap()), false)
                         .0;
                     let _ = self
                         .widths
-                        .insert((Width::Range(end_p_val, var_end_p_val), (true, false)));
+                        .insert(Width::Range(end_p_val, var_end_p_val), (true, false));
                 };
             }
-            self.widths.insert((Width::Single(p_val), (false, false))).0
+            self.widths.insert(Width::Single(p_val), (false, false)).0
         } else {
             let end_p_val = if let Some(ref end) = comp.range.end {
                 let end_p_val = self.lower_bound(end);
@@ -141,28 +141,28 @@ impl<'a> Lower<'a> {
                     // range end is not the same as variable end, need to check
                     let var_end_p_val = self
                         .values
-                        .insert((Value::Bitwidth(comp.bind.unwrap()), false))
+                        .insert(Value::Bitwidth(comp.bind.unwrap()), false)
                         .0;
                     let _ = self
                         .widths
-                        .insert((Width::Range(end_p_val, var_end_p_val), (true, false)));
+                        .insert(Width::Range(end_p_val, var_end_p_val), (true, false));
                 }
                 end_p_val
             } else {
                 // need information from component
                 self.values
-                    .insert((Value::Bitwidth(comp.bind.unwrap()), false))
+                    .insert(Value::Bitwidth(comp.bind.unwrap()), false)
                     .0
             };
             if comp.range.start.as_ref().unwrap().is_guaranteed_zero() {
                 self.widths
-                    .insert((Width::Single(end_p_val), (false, false)))
+                    .insert(Width::Single(end_p_val), (false, false))
                     .0
             } else {
                 let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
                 comp.start = Some(start_p_val);
                 self.widths
-                    .insert((Width::Range(start_p_val, end_p_val), (true, false)))
+                    .insert(Width::Range(start_p_val, end_p_val), (true, false))
                     .0
             }
         });
@@ -179,7 +179,7 @@ impl<'a> Lower<'a> {
         }
         // `v` can be empty in cases like `extawi!(umax: ..; ..8)`
         if !v.is_empty() {
-            concat.cw = Some(self.cw.insert((CWidth(v), false)).0);
+            concat.cw = Some(self.cw.insert(CWidth(v), false).0);
         }
     }
 
@@ -189,7 +189,7 @@ impl<'a> Lower<'a> {
     pub fn lower_le_checks(&mut self) -> (bool, String, String) {
         let mut s0 = String::new();
         let mut s1 = String::new();
-        for (_, (width, used)) in self.widths.iter() {
+        for (_, width, used) in self.widths.iter() {
             if used.0 {
                 if let Width::Range(lo, hi) = width {
                     if !s0.is_empty() {
@@ -576,7 +576,7 @@ impl<'a> Lower<'a> {
 
     pub fn lower_cws(&mut self) -> String {
         let mut s = String::new();
-        for (p_cw, (cw, used)) in self.cw.iter() {
+        for (p_cw, cw, used) in self.cw.iter() {
             if *used {
                 let mut tmp = String::new();
                 for (i, w) in cw.0.iter().enumerate() {
@@ -601,7 +601,7 @@ impl<'a> Lower<'a> {
 
     pub fn lower_widths(&mut self) -> String {
         let mut s = String::new();
-        for (p_w, (w, used)) in self.widths.iter() {
+        for (p_w, w, used) in self.widths.iter() {
             if used.1 {
                 match w {
                     Width::Single(v) => {
@@ -640,7 +640,7 @@ impl<'a> Lower<'a> {
 
     pub fn lower_values(&mut self) -> String {
         let mut s = String::new();
-        for (p_v, (v, used)) in self.values.iter() {
+        for (p_v, v, used) in self.values.iter() {
             if *used {
                 match v {
                     Value::Bitwidth(b) => {
@@ -679,7 +679,7 @@ impl<'a> Lower<'a> {
         mut static_construction_fn: F,
     ) -> String {
         let mut s = String::new();
-        for (p_b, (bind, (used, mutable))) in self.binds.iter() {
+        for (p_b, bind, (used, mutable)) in self.binds.iter() {
             if *used {
                 match bind {
                     Bind::Literal(ref awi) => {

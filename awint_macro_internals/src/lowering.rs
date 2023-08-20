@@ -105,7 +105,7 @@ pub fn cc_macro_code_gen<
                 Literal(ref awi) => {
                     ast.cc[concat_i].comps[comp_i].bind = Some(
                         l.binds
-                            .insert((Bind::Literal(OrdBits(awi.clone())), (false, false)))
+                            .insert(Bind::Literal(OrdBits(awi.clone())), (false, false))
                             .0,
                     )
                 }
@@ -117,7 +117,7 @@ pub fn cc_macro_code_gen<
                         ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
                     );
                     ast.cc[concat_i].comps[comp_i].bind =
-                        Some(l.binds.insert((Bind::Txt(chars), (false, false))).0)
+                        Some(l.binds.insert(Bind::Txt(chars), (false, false)).0)
                 }
                 Filler => {
                     if concat_i == 0 {
