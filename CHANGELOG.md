@@ -1,6 +1,10 @@
 # Changelog
 
-## [0.12.0] - TODO
+## [0.12.0] - 2023-08-29
+### Crate
+- bumped MSRV to 1.70.0
+- `triple_arena` 0.12
+
 ### Fixes
 - Replaced some usages of transmutation with fat pointer `as` casts to prevent a technical subtlety
   that could lead to UB (even if it wouldn't occur with `-Zrandomize-layout` in practice)

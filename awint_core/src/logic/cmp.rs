@@ -30,7 +30,7 @@ impl<B: BorrowMut<Bits>> Eq for OrdBits<B> {}
 
 impl<B: BorrowMut<Bits>> PartialOrd for OrdBits<B> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.0.borrow().total_cmp(other.0.borrow()))
+        Some(self.cmp(other))
     }
 }
 

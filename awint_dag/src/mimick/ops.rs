@@ -537,6 +537,7 @@ impl Bits {
     }
 
     #[must_use]
+    #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn idivide(quo: &mut Self, rem: &mut Self, duo: &mut Self, div: &mut Self) -> Option<()> {
         if (quo.bw() == rem.bw()) && (duo.bw() == div.bw()) && (quo.bw() == duo.bw()) {
             try_option!(quo.update_state(quo.state_nzbw(), IQuo([duo.state(), div.state()])));
@@ -567,6 +568,7 @@ impl Bits {
         .unwrap_at_runtime();
     }
 
+    #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn arb_imul_add_(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
         let mut lhs = dag::ExtAwi::from_bits(lhs);
         let mut rhs = dag::ExtAwi::from_bits(rhs);

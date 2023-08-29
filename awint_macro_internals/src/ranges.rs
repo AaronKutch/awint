@@ -276,7 +276,7 @@ impl Usbr {
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
 /// being a constant we can parse, which passes upward the `Usb` and `Usbr`
 /// chain to get calculated into a static width.
-pub fn parse_usb(ast: &mut Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
+pub fn parse_usb(ast: &Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
     assert!(!ast.txt[usb_txt].is_empty());
     let mut usb_inner = usb_txt;
     let mut invalid = false;

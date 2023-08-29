@@ -348,7 +348,7 @@
 //!
 // FIXME
 // Also, if you are using the `const_support` feature and are trying to use
-// the macros in a `const` context, as of Rust 1.66 you need to add all of
+// the macros in a `const` context, as of Rust 1.70 you need to add all of
 // ```text
 // #![feature(const_mut_refs)]
 // #![feature(const_option)]
