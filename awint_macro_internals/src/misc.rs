@@ -1,3 +1,5 @@
+#[cfg(not(feature = "debug"))]
+use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
 use awint_ext::{Bits, ExtAwi};
@@ -8,7 +10,7 @@ ptr_struct!(PText; PBind; PVal; PWidth; PCWidth);
 
 // we should never need 4 billion entries for these macros
 #[cfg(not(feature = "debug"))]
-ptr_struct!(PText[u32](); PBind[u32](); PVal[u32](); PWidth[u32](); PCWidth[u32]());
+ptr_struct!(PText[NonZeroU32](); PBind[NonZeroU32](); PVal[NonZeroU32](); PWidth[NonZeroU32](); PCWidth[NonZeroU32]());
 
 pub fn i128_to_usize(x: i128) -> Result<usize, String> {
     usize::try_from(x).map_err(|_| "`usize::try_from` overflow".to_owned())

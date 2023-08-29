@@ -21,7 +21,7 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
         // Safety: this produces the exact number of bytes needed to satisfy the raw
         // invariants of `Bits`.
         Layout::from_size_align_unchecked(
-            raw_digits(w.get()) * mem::size_of::<Digit>(),
+            total_digits(w).get() * mem::size_of::<Digit>(),
             mem::align_of::<Digit>(),
         )
     }
@@ -64,9 +64,9 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// example(&mut x, &inlawi!(0x10u16));
 /// assert_eq!(x, extawi!(0x20u100));
 /// ```
-#[repr(transparent)]
+#[repr(C)]
 pub struct ExtAwi {
-    raw: NonNull<Bits>,
+    _raw_bits: RawBits,
 }
 
 /// `ExtAwi` is safe to send between threads since it does not own
@@ -81,19 +81,13 @@ impl<'a> ExtAwi {
     /// # Safety
     ///
     /// `ptr` should be allocated according to the `extawi::layout` function and
-    /// all digits initialized. The metadata digits should be set to the
-    /// bitwidth. `raw_len` should correspond to the raw length (including
-    /// metadata) of the corresponding `Bits`.
+    /// all digits initialized. The `Bits` raw invariants should be followed.
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
-    pub const unsafe fn from_raw_parts(ptr: *mut Digit, raw_len: usize) -> ExtAwi {
-        // Safety: The requirements on this function satisfies
-        // `Bits::from_raw_parts_mut`.
-        unsafe {
-            ExtAwi {
-                raw: NonNull::new_unchecked(Bits::from_raw_parts_mut(ptr, raw_len)),
-            }
+    pub const fn from_raw_parts(digits: NonNull<Digit>, bw: NonZeroUsize) -> ExtAwi {
+        ExtAwi {
+            _raw_bits: RawBits::from_raw_parts(digits, bw),
         }
     }
 
@@ -102,9 +96,14 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     const fn internal_as_ref(&'a self) -> &'a Bits {
-        // `as_ref` on NonNull is not const yet, so we have to use transmute.
-        // Safety: The explicit lifetimes make sure they do not become unbounded.
-        unsafe { mem::transmute::<NonNull<Bits>, &Bits>(self.raw) }
+        // Safety: We copy the `RawBits`, and the explicit lifetimes make sure
+        // they do not become unbounded.
+        unsafe {
+            Bits::from_raw_parts(RawBits::from_raw_parts(
+                self._raw_bits.as_non_null_ptr(),
+                self._raw_bits.nzbw(),
+            ))
+        }
     }
 
     /// Returns a reference to `self` in the form of `&mut Bits`
@@ -112,8 +111,14 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     const fn internal_as_mut(&'a mut self) -> &'a mut Bits {
-        // Safety: The explicit lifetimes make sure they do not become unbounded.
-        unsafe { mem::transmute::<NonNull<Bits>, &mut Bits>(self.raw) }
+        // Safety: We copy the `RawBits`, and the explicit lifetimes make sure
+        // they do not become unbounded.
+        unsafe {
+            Bits::from_raw_parts_mut(RawBits::from_raw_parts(
+                self._raw_bits.as_non_null_ptr(),
+                self._raw_bits.nzbw(),
+            ))
+        }
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `NonZeroUsize`
@@ -121,7 +126,7 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn nzbw(&self) -> NonZeroUsize {
-        self.internal_as_ref().nzbw()
+        self._raw_bits.nzbw()
     }
 
     /// Returns the bitwidth of this `ExtAwi` as a `usize`
@@ -129,24 +134,16 @@ impl<'a> ExtAwi {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn bw(&self) -> usize {
-        self.internal_as_ref().bw()
+        self._raw_bits.bw()
     }
 
-    /// Returns the exact number of `usize` digits needed to store all bits.
-    #[inline]
-    #[const_fn(cfg(feature = "const_support"))]
-    #[must_use]
-    pub const fn len(&self) -> usize {
-        self.internal_as_ref().len()
-    }
-
-    /// Returns the total length of the underlying raw array in `usize`s
+    /// Returns the total number of digits of this `ExtAwi`
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn raw_len(&self) -> usize {
-        self.internal_as_ref().raw_len()
+    pub const fn total_digits(&self) -> NonZeroUsize {
+        self._raw_bits.total_digits()
     }
 
     /// Returns a raw pointer to the underlying bit storage. The caller must
@@ -194,12 +191,7 @@ impl<'a> ExtAwi {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
             let ptr: *mut Digit = alloc_zeroed(layout(w)).cast();
-            // set bitwidth
-            let regular_digits = regular_digits(w);
-            const_for!(i in {0..METADATA_DIGITS} {
-                ptr.add(i + regular_digits).write((w.get() >> (i * BITS)) as Digit);
-            });
-            ExtAwi::from_raw_parts(ptr, regular_digits + METADATA_DIGITS)
+            ExtAwi::from_raw_parts(NonNull::new_unchecked(ptr), w)
         }
     }
 
@@ -208,14 +200,8 @@ impl<'a> ExtAwi {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
             let ptr: *mut Digit = alloc(layout(w)).cast();
-            // initialize everything except for the bitwidth
-            let regular_digits = regular_digits(w);
-            ptr.write_bytes(u8::MAX, regular_digits);
-            // set bitwidth
-            const_for!(i in {0..METADATA_DIGITS} {
-                ptr.add(i + regular_digits).write((w.get() >> (i * BITS)) as Digit);
-            });
-            ExtAwi::from_raw_parts(ptr, regular_digits + METADATA_DIGITS)
+            ptr.write_bytes(u8::MAX, total_digits(w).get());
+            ExtAwi::from_raw_parts(NonNull::new_unchecked(ptr), w)
         };
         x.const_as_mut().clear_unused_bits();
         x
@@ -283,11 +269,12 @@ impl Drop for ExtAwi {
 
 impl Clone for ExtAwi {
     fn clone(&self) -> ExtAwi {
-        // Safety: The digits and metadata are copied wholesale to the correct layout
+        // Safety: The allocation is made according to the layout, digits are copied
+        // according to digit length, and the `ExtAwi` is constructed with bitwidth
         unsafe {
             let dst = alloc(self.layout()).cast();
-            ptr::copy_nonoverlapping(self.as_ptr(), dst, self.raw_len());
-            ExtAwi::from_raw_parts(dst, self.raw_len())
+            ptr::copy_nonoverlapping(self.as_ptr(), dst, self.total_digits().get());
+            ExtAwi::from_raw_parts(NonNull::new_unchecked(dst), self.nzbw())
         }
     }
 }

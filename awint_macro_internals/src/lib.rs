@@ -10,7 +10,6 @@
 #![allow(clippy::comparison_chain)]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
 
-mod bimap;
 mod cc_macro;
 mod component;
 mod concatenation;
@@ -24,7 +23,6 @@ mod token_stream;
 mod token_tree;
 
 pub use awint_ext::{self, awint_core};
-pub use bimap::*;
 pub use cc_macro::*;
 pub use component::*;
 pub use concatenation::*;

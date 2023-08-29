@@ -682,7 +682,6 @@ fn main() {
                         .wrapping_add(
                             (width & ((usize::MAX.count_ones() as usize) - 1) != 0) as usize
                         )
-                        .wrapping_add(1)
                 ),
             )
         } else {

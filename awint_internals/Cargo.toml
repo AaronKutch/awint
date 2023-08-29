@@ -1,15 +1,19 @@
 [package]
 name = "awint_internals"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/AaronKutch/awint"
 description = "Internal utilities for the `awint` system of crates"
-rust-version = "1.66"
+rust-version = "1.70"
+
+[dependencies]
+const_fn = "0.4"
 
 [features]
+const_support = []
 # Only zero or one of these should be active
 u8_digits = []
 u16_digits = []

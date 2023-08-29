@@ -1,7 +1,90 @@
+use core::{
+    borrow::BorrowMut,
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+};
+
 use awint_internals::*;
 use const_fn::const_fn;
 
 use crate::Bits;
+
+/// A wrapper implementing total ordering
+///
+/// Implements `PartialEq`, `Eq`, `PartialOrd`, and `Ord` by using
+/// `Bits::total_cmp`. `Hash` also uses the `Bits`. This does not specify
+/// anything other than that it provides a total ordering over bit strings
+/// (including differentiating by the bit width). This is intended for fast
+/// comparisons in ordered structures.
+pub struct OrdBits<B: BorrowMut<Bits>>(pub B);
+
+impl<B: BorrowMut<Bits>> PartialEq for OrdBits<B> {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.0.borrow() == rhs.0.borrow()
+    }
+}
+
+impl<B: BorrowMut<Bits>> Eq for OrdBits<B> {}
+
+impl<B: BorrowMut<Bits>> PartialOrd for OrdBits<B> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<B: BorrowMut<Bits>> Ord for OrdBits<B> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.borrow().total_cmp(other.0.borrow())
+    }
+}
+
+impl<B: BorrowMut<Bits>> Hash for OrdBits<B> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.borrow().hash(state);
+    }
+}
+
+impl<B: BorrowMut<Bits>> Deref for OrdBits<B> {
+    type Target = Bits;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.0.borrow()
+    }
+}
+
+impl<B: BorrowMut<Bits>> DerefMut for OrdBits<B> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Bits {
+        self.0.borrow_mut()
+    }
+}
+
+impl<B: Clone + BorrowMut<Bits>> Clone for OrdBits<B> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<B: Copy + BorrowMut<Bits>> Copy for OrdBits<B> {}
+
+macro_rules! impl_fmt {
+    ($($ty:ident)*) => {
+        $(
+            impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for OrdBits<B> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$ty::fmt(&self.0, f)
+                }
+            }
+        )*
+    };
+}
+
+impl_fmt!(
+    Debug Display LowerHex UpperHex Octal Binary
+);
 
 /// # Comparison
 impl Bits {
@@ -235,5 +318,35 @@ impl Bits {
             }
         });
         Some(true)
+    }
+
+    /// Total ordering for `self` and `rhs`, including differentiation between
+    /// differing bitwidths of `self` and `rhs`. This is intended just to
+    /// provide some way of ordering over all possible bit strings.
+    #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
+    pub const fn total_cmp(&self, rhs: &Self) -> Ordering {
+        if self.bw() != rhs.bw() {
+            if self.bw() < rhs.bw() {
+                return Ordering::Less
+            } else {
+                return Ordering::Greater
+            }
+        }
+        unsafe {
+            // Safety: This accesses all regular digits within their bounds. If the
+            // bitwidths are equal, then the slice lengths are also equal.
+            const_for!(i in {0..self.len()} {
+                let x = self.get_unchecked(i);
+                let y = rhs.get_unchecked(i);
+                if x < y {
+                    return Ordering::Less
+                } else if x != y {
+                    return Ordering::Greater
+                }
+                // else it is indeterminant and the next digit has to be checked
+            });
+        }
+        Ordering::Equal
     }
 }

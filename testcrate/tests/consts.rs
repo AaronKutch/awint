@@ -1,5 +1,5 @@
-// FIXME
-#![cfg(feature = "fixme")]
+// FIXME restore const configuration
+#![cfg(feature = "const_support")]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(const_trait_impl)]
@@ -232,6 +232,8 @@ const fn bits_functions() {
 
     assert!(x0.mux_(x1, false).is_none());
     assert!(x0.mux_(x1, true).is_none());
+
+    let _ = x0.total_cmp(x1);
 
     // TODO test all const serialization
 

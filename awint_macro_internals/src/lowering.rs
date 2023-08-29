@@ -57,10 +57,10 @@
 
 use std::{fmt::Write, num::NonZeroUsize};
 
-use awint_ext::ExtAwi;
+use awint_ext::{awint_core::OrdBits, ExtAwi};
 use triple_arena::Ptr;
 
-use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, EitherResult, Lower, Names};
+use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, Lower, Names};
 
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
@@ -105,8 +105,8 @@ pub fn cc_macro_code_gen<
                 Literal(ref awi) => {
                     ast.cc[concat_i].comps[comp_i].bind = Some(
                         l.binds
-                            .insert(Bind::Literal(awi.clone()), (false, false))
-                            .either(),
+                            .insert(Bind::Literal(OrdBits(awi.clone())), (false, false))
+                            .0,
                     )
                 }
                 Variable => {
@@ -117,7 +117,7 @@ pub fn cc_macro_code_gen<
                         ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
                     );
                     ast.cc[concat_i].comps[comp_i].bind =
-                        Some(l.binds.insert(Bind::Txt(chars), (false, false)).either())
+                        Some(l.binds.insert(Bind::Txt(chars), (false, false)).0)
                 }
                 Filler => {
                     if concat_i == 0 {
@@ -155,7 +155,7 @@ pub fn cc_macro_code_gen<
     let common_cw = if let Some(bw) = ast.common_bw {
         format!("let {}={}usize;\n", names.cw, bw)
     } else if let Some(p_cw) = l.dynamic_width {
-        *l.cw.a_get_mut(p_cw) = true;
+        *l.cw.get_val_mut(p_cw).unwrap() = true;
         let s = format!("let {}={}_{};\n", names.cw, names.cw, p_cw.inx());
         s
     } else {
@@ -170,7 +170,7 @@ pub fn cc_macro_code_gen<
                 s += ",";
             }
             let p_cw = concat.cw.unwrap();
-            *l.cw.a_get_mut(p_cw) = true;
+            *l.cw.get_val_mut(p_cw).unwrap() = true;
             write!(s, "{}_{}", names.cw, p_cw.inx()).unwrap();
         }
         format!("let {}={}([{}]);\n", names.cw, fn_names.max_fn, s)

@@ -18,3 +18,6 @@ zeroize = { version = "1.6", default-features = false }
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }
 rand_xoshiro = "0.6"
+
+[features]
+const_support = ["awint/const_support"]

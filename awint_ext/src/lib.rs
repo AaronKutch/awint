@@ -34,7 +34,7 @@ mod strings;
 pub use awint_core;
 #[doc(hidden)]
 pub use awint_core::awint_internals;
-pub use awint_core::{bw, Bits, InlAwi, SerdeError};
+pub use awint_core::{bw, Bits, InlAwi, OrdBits, SerdeError};
 pub use extawi::ExtAwi;
 pub use fp_core::{FPType, FP};
 

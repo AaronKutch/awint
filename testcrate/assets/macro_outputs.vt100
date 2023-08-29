@@ -358,17 +358,17 @@ mu(lit(0xa37_u12))
 0x123u12[i]
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0x123_u12);
-let __awint_val_0=cast(i);
-let __awint_val_1=cast(1);
-let __awint_val_2=cast(add(i,1));
-let __awint_val_3=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_1;
+let __awint_bind_1:&B=&static(0x123_u12);
+let __awint_val_4=cast(bw(__awint_bind_1));
+let __awint_val_2=cast(1);
+let __awint_val_3=cast(add(i,1));
+let __awint_val_1=cast(i);
+let __awint_width_2=__awint_val_2;
 let __awint_cw=1usize;
-let __awint_res = check_fn([__awint_val_2],[__awint_val_3],[0;0],[0;0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_3],[__awint_val_4],[0;0],[0;0],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(1),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_bit(__awint_awi_ref,0,__awint_bind_0,__awint_val_0);
+let _ = field_bit(__awint_awi_ref,0,__awint_bind_1,__awint_val_1);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -377,17 +377,17 @@ __awint_awi
 var[i][j][k]
 Ok:
 mu({
-let __awint_bind_0:&B=&var[i][j];
-let __awint_val_0=cast(k);
-let __awint_val_1=cast(1);
-let __awint_val_2=cast(add(k,1));
-let __awint_val_3=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_1;
+let __awint_bind_1:&B=&var[i][j];
+let __awint_val_4=cast(bw(__awint_bind_1));
+let __awint_val_2=cast(1);
+let __awint_val_3=cast(add(k,1));
+let __awint_val_1=cast(k);
+let __awint_width_2=__awint_val_2;
 let __awint_cw=1usize;
-let __awint_res = check_fn([__awint_val_2],[__awint_val_3],[0;0],[0;0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_3],[__awint_val_4],[0;0],[0;0],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(1),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_bit(__awint_awi_ref,0,__awint_bind_0,__awint_val_0);
+let _ = field_bit(__awint_awi_ref,0,__awint_bind_1,__awint_val_1);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -396,17 +396,17 @@ __awint_awi
  var [ 3 ..= 7 ] 
 Ok:
 mu({
-let __awint_bind_0:&B=&var;
-let __awint_val_0=cast(3);
-let __awint_val_1=cast(5);
-let __awint_val_2=cast(8);
-let __awint_val_3=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_1;
+let __awint_bind_1:&B=&var;
+let __awint_val_4=cast(bw(__awint_bind_1));
+let __awint_val_1=cast(3);
+let __awint_val_2=cast(5);
+let __awint_val_3=cast(8);
+let __awint_width_2=__awint_val_2;
 let __awint_cw=5usize;
-let __awint_res = check_fn([__awint_val_2],[__awint_val_3],[0;0],[0;0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_3],[__awint_val_4],[0;0],[0;0],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(5),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_0,__awint_width_1);
+let _ = field_from(__awint_awi_ref,__awint_bind_1,__awint_val_1,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -415,17 +415,17 @@ __awint_awi
 0x123u12[(7 + j)..(i + 5)]
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0x123_u12);
-let __awint_val_0=cast(add(i,5));
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_val_2=cast(add(j,7));
-let __awint_width_1=sub(__awint_val_0,__awint_val_2);
-let __awint_cw_0=__awint_width_1;
-let __awint_cw=__awint_cw_0;
-let __awint_res = check_fn([__awint_val_0,__awint_val_2],[__awint_val_1,__awint_val_0],[0;0],[0;0],__awint_cw,true,false);
+let __awint_bind_1:&B=&static(0x123_u12);
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_1=cast(add(i,5));
+let __awint_val_3=cast(add(j,7));
+let __awint_width_2=sub(__awint_val_1,__awint_val_3);
+let __awint_cw_1=__awint_width_2;
+let __awint_cw=__awint_cw_1;
+let __awint_res = check_fn([__awint_val_1,__awint_val_3],[__awint_val_2,__awint_val_1],[0;0],[0;0],__awint_cw,true,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_2,__awint_width_1);
+let _ = field_from(__awint_awi_ref,__awint_bind_1,__awint_val_3,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -434,16 +434,16 @@ __awint_awi
 0x123u12[..(i - j + 5)]
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0x123_u12);
-let __awint_val_0=cast(add(i-j,5));
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_0;
-let __awint_cw_0=__awint_width_1;
-let __awint_cw=__awint_cw_0;
-let __awint_res = check_fn([__awint_val_0],[__awint_val_1],[0;0],[0;0],__awint_cw,true,false);
+let __awint_bind_1:&B=&static(0x123_u12);
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_1=cast(add(i-j,5));
+let __awint_width_2=__awint_val_1;
+let __awint_cw_1=__awint_width_2;
+let __awint_cw=__awint_cw_1;
+let __awint_res = check_fn([__awint_val_1],[__awint_val_2],[0;0],[0;0],__awint_cw,true,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_1);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -452,17 +452,17 @@ __awint_awi
 0x123u12[(i - 1)..(i + 5)]
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0x123_u12);
-let __awint_val_0=cast(sub(i,1));
-let __awint_val_1=cast(6);
-let __awint_val_2=cast(add(i,5));
-let __awint_val_3=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_1;
+let __awint_bind_1:&B=&static(0x123_u12);
+let __awint_val_4=cast(bw(__awint_bind_1));
+let __awint_val_2=cast(6);
+let __awint_val_3=cast(add(i,5));
+let __awint_val_1=cast(sub(i,1));
+let __awint_width_2=__awint_val_2;
 let __awint_cw=6usize;
-let __awint_res = check_fn([__awint_val_2],[__awint_val_3],[0;0],[0;0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_3],[__awint_val_4],[0;0],[0;0],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(6),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_0,__awint_width_1);
+let _ = field_from(__awint_awi_ref,__awint_bind_1,__awint_val_1,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -471,17 +471,17 @@ __awint_awi
 0x123u12[(+ 5 + i - j)..(var - 7)]; ..64
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0x123_u12);
-let __awint_val_0=cast(sub(var,7));
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_val_2=cast(add(i-j,5));
-let __awint_width_1=sub(__awint_val_0,__awint_val_2);
-let __awint_cw_0=__awint_width_1;
+let __awint_bind_1:&B=&static(0x123_u12);
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_3=cast(add(i-j,5));
+let __awint_val_1=cast(sub(var,7));
+let __awint_width_2=sub(__awint_val_1,__awint_val_3);
+let __awint_cw_1=__awint_width_2;
 let __awint_cw=64usize;
-let __awint_res = check_fn([__awint_val_0,__awint_val_2],[__awint_val_1,__awint_val_0],[0;0],[__awint_cw_0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_1,__awint_val_3],[__awint_val_2,__awint_val_1],[0;0],[__awint_cw_1],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(64),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_2,__awint_width_1);
+let _ = field_from(__awint_awi_ref,__awint_bind_1,__awint_val_3,__awint_width_2);
 
 
 __awint_awi
@@ -491,17 +491,17 @@ __awint_awi
 0x123u12[(+ 5 + i - j)..(var - 7)]; ..8
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0x123_u12);
-let __awint_val_0=cast(sub(var,7));
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_val_2=cast(add(i-j,5));
-let __awint_width_1=sub(__awint_val_0,__awint_val_2);
-let __awint_cw_0=__awint_width_1;
+let __awint_bind_1:&B=&static(0x123_u12);
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_3=cast(add(i-j,5));
+let __awint_val_1=cast(sub(var,7));
+let __awint_width_2=sub(__awint_val_1,__awint_val_3);
+let __awint_cw_1=__awint_width_2;
 let __awint_cw=8usize;
-let __awint_res = check_fn([__awint_val_0,__awint_val_2],[__awint_val_1,__awint_val_0],[0;0],[__awint_cw_0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_1,__awint_val_3],[__awint_val_2,__awint_val_1],[0;0],[__awint_cw_1],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(8),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_2,__awint_width_1);
+let _ = field_from(__awint_awi_ref,__awint_bind_1,__awint_val_3,__awint_width_2);
 
 
 __awint_awi
@@ -511,16 +511,16 @@ __awint_awi
 x[..(r as usize)]
 Ok:
 mu({
-let __awint_bind_0:&B=&x;
-let __awint_val_0=cast(r as usize);
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_0;
-let __awint_cw_0=__awint_width_1;
-let __awint_cw=__awint_cw_0;
-let __awint_res = check_fn([__awint_val_0],[__awint_val_1],[0;0],[0;0],__awint_cw,true,false);
+let __awint_bind_1:&B=&x;
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_1=cast(r as usize);
+let __awint_width_2=__awint_val_1;
+let __awint_cw_1=__awint_width_2;
+let __awint_cw=__awint_cw_1;
+let __awint_res = check_fn([__awint_val_1],[__awint_val_2],[0;0],[0;0],__awint_cw,true,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_1);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -529,16 +529,16 @@ __awint_awi
 x[..(r)]
 Ok:
 mu({
-let __awint_bind_0:&B=&x;
-let __awint_val_0=cast(r);
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_0;
-let __awint_cw_0=__awint_width_1;
-let __awint_cw=__awint_cw_0;
-let __awint_res = check_fn([__awint_val_0],[__awint_val_1],[0;0],[0;0],__awint_cw,true,false);
+let __awint_bind_1:&B=&x;
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_1=cast(r);
+let __awint_width_2=__awint_val_1;
+let __awint_cw_1=__awint_width_2;
+let __awint_cw=__awint_cw_1;
+let __awint_res = check_fn([__awint_val_1],[__awint_val_2],[0;0],[0;0],__awint_cw,true,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_1);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -547,16 +547,16 @@ __awint_awi
 x[..((r - lo) as usize)]
 Ok:
 mu({
-let __awint_bind_0:&B=&x;
-let __awint_val_0=cast((r-lo)as usize);
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_width_1=__awint_val_0;
-let __awint_cw_0=__awint_width_1;
-let __awint_cw=__awint_cw_0;
-let __awint_res = check_fn([__awint_val_0],[__awint_val_1],[0;0],[0;0],__awint_cw,true,false);
+let __awint_bind_1:&B=&x;
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_1=cast((r-lo)as usize);
+let __awint_width_2=__awint_val_1;
+let __awint_cw_1=__awint_width_2;
+let __awint_cw=__awint_cw_1;
+let __awint_res = check_fn([__awint_val_1],[__awint_val_2],[0;0],[0;0],__awint_cw,true,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_1);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -565,45 +565,45 @@ __awint_awi
 umax: 0xau4, b, 0xcu4, .., 0x98765_u20[x..(sink0.bw() - 9)], e, 0xfu4; sink0; sink1,;
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0xf_u4);
-let __awint_bind_1:&B=&e;
-let __awint_bind_2:&B=&static(0x98765_u20);
-let __awint_bind_3:&B=&static(0xc_u4);
-let __awint_bind_4:&B=&b;
-let __awint_bind_5:&B=&static(0xa_u4);
-let __awint_bind_6:&mut B=&mut sink0;
-let __awint_bind_7:&mut B=&mut sink1;
-let __awint_val_0=cast(4);
-let __awint_val_1=cast(bw(__awint_bind_1));
-let __awint_val_2=cast(sub(bw(__awint_bind_6),9));
-let __awint_val_3=cast(bw(__awint_bind_2));
-let __awint_val_4=cast(x);
-let __awint_val_5=cast(bw(__awint_bind_4));
-let __awint_val_6=cast(bw(__awint_bind_6));
+let __awint_bind_6:&B=&static(0xa_u4);
+let __awint_bind_4:&B=&static(0xc_u4);
+let __awint_bind_1:&B=&static(0xf_u4);
+let __awint_bind_3:&B=&static(0x98765_u20);
+let __awint_bind_5:&B=&b;
+let __awint_bind_2:&B=&e;
+let __awint_bind_7:&mut B=&mut sink0;
+let __awint_bind_8:&mut B=&mut sink1;
+let __awint_val_2=cast(bw(__awint_bind_2));
+let __awint_val_4=cast(bw(__awint_bind_3));
+let __awint_val_6=cast(bw(__awint_bind_5));
 let __awint_val_7=cast(bw(__awint_bind_7));
-let __awint_width_0=__awint_val_0;
+let __awint_val_8=cast(bw(__awint_bind_8));
+let __awint_val_1=cast(4);
+let __awint_val_3=cast(sub(bw(__awint_bind_7),9));
+let __awint_val_5=cast(x);
 let __awint_width_1=__awint_val_1;
-let __awint_width_3=sub(__awint_val_2,__awint_val_4);
-let __awint_width_4=__awint_val_5;
+let __awint_width_2=__awint_val_2;
 let __awint_width_5=__awint_val_6;
 let __awint_width_6=__awint_val_7;
-let __awint_cw_0=add(add(add(add(add(__awint_width_0,__awint_width_1),__awint_width_3),__awint_width_0),__awint_width_4),__awint_width_0);
-let __awint_cw_1=__awint_width_5;
+let __awint_width_7=__awint_val_8;
+let __awint_width_4=sub(__awint_val_3,__awint_val_5);
+let __awint_cw_1=add(add(add(add(add(__awint_width_1,__awint_width_2),__awint_width_4),__awint_width_1),__awint_width_5),__awint_width_1);
 let __awint_cw_2=__awint_width_6;
-let __awint_cw=__awint_cw_1;
-let __awint_res = check_fn([__awint_val_2,__awint_val_4],[__awint_val_3,__awint_val_2],[__awint_cw_0],[__awint_cw_2],__awint_cw,false,false);
+let __awint_cw_3=__awint_width_7;
+let __awint_cw=__awint_cw_2;
+let __awint_res = check_fn([__awint_val_3,__awint_val_5],[__awint_val_4,__awint_val_3],[__awint_cw_1],[__awint_cw_3],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(umax,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
-let _ = field(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_val_4,__awint_width_3);__awint_shl=add(__awint_shl,__awint_width_3);
-let mut __awint_shl=sub(__awint_cw,__awint_width_0);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_5,__awint_width_0);
-__awint_shl=sub(__awint_shl,__awint_width_4);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_4);
-__awint_shl=sub(__awint_shl,__awint_width_0);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_0);
-
-let _ = copy(__awint_bind_6,__awint_awi_ref);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_1);let mut __awint_shl=__awint_width_1;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_2);__awint_shl=add(__awint_shl,__awint_width_2);
+let _ = field(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_val_5,__awint_width_4);__awint_shl=add(__awint_shl,__awint_width_4);
+let mut __awint_shl=sub(__awint_cw,__awint_width_1);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_6,__awint_width_1);
+__awint_shl=sub(__awint_shl,__awint_width_5);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_5,__awint_width_5);
+__awint_shl=sub(__awint_shl,__awint_width_1);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_1);
 
 let _ = copy(__awint_bind_7,__awint_awi_ref);
+
+let _ = copy(__awint_bind_8,__awint_awi_ref);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -612,19 +612,19 @@ __awint_awi
 zero: .., x; .., y
 Ok:
 mu({
-let __awint_bind_0:&B=&x;
-let __awint_bind_1:&mut B=&mut y;
-let __awint_val_0=cast(bw(__awint_bind_0));
+let __awint_bind_1:&B=&x;
+let __awint_bind_2:&mut B=&mut y;
 let __awint_val_1=cast(bw(__awint_bind_1));
-let __awint_width_0=__awint_val_0;
+let __awint_val_2=cast(bw(__awint_bind_2));
 let __awint_width_1=__awint_val_1;
-let __awint_cw_0=__awint_width_0;
+let __awint_width_2=__awint_val_2;
 let __awint_cw_1=__awint_width_1;
-let __awint_cw=max([__awint_cw_0,__awint_cw_1]);
+let __awint_cw_2=__awint_width_2;
+let __awint_cw=max([__awint_cw_1,__awint_cw_2]);
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_1);let mut __awint_shl=__awint_width_1;
 
-let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_1);let mut __awint_shl=__awint_width_1;
+let _ = field_width(__awint_bind_2,__awint_awi_ref,__awint_width_2);let mut __awint_shl=__awint_width_2;
 
 __awint_awi})
 
@@ -632,39 +632,39 @@ __awint_awi})
 x; .., a[..(x.bw())], b[..y]; .., c[..z], d[..w]; ..128
 Ok:
 mu({
-let __awint_bind_0:&B=&x;
-let __awint_bind_1:&mut B=&mut b;
-let __awint_bind_2:&mut B=&mut a;
-let __awint_bind_3:&mut B=&mut d;
-let __awint_bind_4:&mut B=&mut c;
-let __awint_val_0=cast(bw(__awint_bind_0));
-let __awint_val_1=cast(y);
-let __awint_val_2=cast(bw(__awint_bind_1));
-let __awint_val_3=cast(bw(__awint_bind_0));
-let __awint_val_4=cast(bw(__awint_bind_2));
-let __awint_val_5=cast(w);
-let __awint_val_6=cast(bw(__awint_bind_3));
-let __awint_val_7=cast(z);
-let __awint_val_8=cast(bw(__awint_bind_4));
-let __awint_width_0=__awint_val_0;
-let __awint_width_2=__awint_val_1;
-let __awint_width_4=__awint_val_3;
-let __awint_width_6=__awint_val_5;
-let __awint_width_8=__awint_val_7;
-let __awint_cw_0=__awint_width_0;
-let __awint_cw_1=add(__awint_width_2,__awint_width_4);
-let __awint_cw_2=add(__awint_width_6,__awint_width_8);
+let __awint_bind_3:&mut B=&mut a;
+let __awint_bind_2:&mut B=&mut b;
+let __awint_bind_5:&mut B=&mut c;
+let __awint_bind_4:&mut B=&mut d;
+let __awint_bind_1:&B=&x;
+let __awint_val_1=cast(bw(__awint_bind_1));
+let __awint_val_3=cast(bw(__awint_bind_2));
+let __awint_val_5=cast(bw(__awint_bind_3));
+let __awint_val_7=cast(bw(__awint_bind_4));
+let __awint_val_9=cast(bw(__awint_bind_5));
+let __awint_val_4=cast(bw(__awint_bind_1));
+let __awint_val_6=cast(w);
+let __awint_val_2=cast(y);
+let __awint_val_8=cast(z);
+let __awint_width_1=__awint_val_1;
+let __awint_width_3=__awint_val_2;
+let __awint_width_5=__awint_val_4;
+let __awint_width_7=__awint_val_6;
+let __awint_width_9=__awint_val_8;
+let __awint_cw_1=__awint_width_1;
+let __awint_cw_2=add(__awint_width_3,__awint_width_5);
+let __awint_cw_3=add(__awint_width_7,__awint_width_9);
 let __awint_cw=128usize;
-let __awint_res = check_fn([__awint_val_1,__awint_val_3,__awint_val_5,__awint_val_7],[__awint_val_2,__awint_val_4,__awint_val_6,__awint_val_8],[__awint_cw_1,__awint_cw_2],[__awint_cw_0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_2,__awint_val_4,__awint_val_6,__awint_val_8],[__awint_val_3,__awint_val_5,__awint_val_7,__awint_val_9],[__awint_cw_2,__awint_cw_3],[__awint_cw_1],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(128),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = copy(__awint_awi_ref,__awint_bind_0);
+let _ = copy(__awint_awi_ref,__awint_bind_1);
 
-let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_2);let mut __awint_shl=__awint_width_2;
-let _ = field_from(__awint_bind_2,__awint_awi_ref,__awint_shl,__awint_width_4);__awint_shl=add(__awint_shl,__awint_width_4);
+let _ = field_width(__awint_bind_2,__awint_awi_ref,__awint_width_3);let mut __awint_shl=__awint_width_3;
+let _ = field_from(__awint_bind_3,__awint_awi_ref,__awint_shl,__awint_width_5);__awint_shl=add(__awint_shl,__awint_width_5);
 
-let _ = field_width(__awint_bind_3,__awint_awi_ref,__awint_width_6);let mut __awint_shl=__awint_width_6;
-let _ = field_from(__awint_bind_4,__awint_awi_ref,__awint_shl,__awint_width_8);__awint_shl=add(__awint_shl,__awint_width_8);
+let _ = field_width(__awint_bind_4,__awint_awi_ref,__awint_width_7);let mut __awint_shl=__awint_width_7;
+let _ = field_from(__awint_bind_5,__awint_awi_ref,__awint_shl,__awint_width_9);__awint_shl=add(__awint_shl,__awint_width_9);
 
 
 __awint_awi
@@ -674,48 +674,48 @@ __awint_awi
 ..8, 0x1111u16, ..8; a, b; c, d;
 Ok:
 {
-let __awint_bind_0:&B=&static(0x1111_u16);
-let __awint_bind_1:&mut B=&mut b;
-let __awint_bind_2:&mut B=&mut a;
-let __awint_bind_3:&mut B=&mut d;
-let __awint_bind_4:&mut B=&mut c;
-let __awint_val_0=cast(8);
-let __awint_val_1=cast(16);
-let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_bind_1:&B=&static(0x1111_u16);
+let __awint_bind_3:&mut B=&mut a;
+let __awint_bind_2:&mut B=&mut b;
+let __awint_bind_5:&mut B=&mut c;
+let __awint_bind_4:&mut B=&mut d;
 let __awint_val_3=cast(bw(__awint_bind_2));
 let __awint_val_4=cast(bw(__awint_bind_3));
 let __awint_val_5=cast(bw(__awint_bind_4));
-let __awint_width_0=__awint_val_0;
+let __awint_val_6=cast(bw(__awint_bind_5));
+let __awint_val_2=cast(16);
+let __awint_val_1=cast(8);
 let __awint_width_1=__awint_val_1;
 let __awint_width_2=__awint_val_2;
 let __awint_width_3=__awint_val_3;
 let __awint_width_4=__awint_val_4;
 let __awint_width_5=__awint_val_5;
-let __awint_cw_1=add(__awint_width_2,__awint_width_3);
-let __awint_cw_2=add(__awint_width_4,__awint_width_5);
+let __awint_width_6=__awint_val_6;
+let __awint_cw_2=add(__awint_width_3,__awint_width_4);
+let __awint_cw_3=add(__awint_width_5,__awint_width_6);
 let __awint_cw=32usize;
-let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_1,__awint_cw_2],__awint_cw,false,false);
+let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_2,__awint_cw_3],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(32),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_2);let mut __awint_shl=__awint_width_2;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_3);
+let _ = field_width(__awint_awi_ref,__awint_bind_2,__awint_width_3);let mut __awint_shl=__awint_width_3;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_4);
 
-let mut __awint_shl=__awint_width_0;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
-
-
-let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_2);let mut __awint_shl=__awint_width_2;
-let _ = field_from(__awint_bind_2,__awint_awi_ref,__awint_shl,__awint_width_3);
-
-let _ = field_width(__awint_awi_ref,__awint_bind_3,__awint_width_4);let mut __awint_shl=__awint_width_4;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_5);
-
-let mut __awint_shl=__awint_width_0;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
+let mut __awint_shl=__awint_width_1;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_2);__awint_shl=add(__awint_shl,__awint_width_2);
 
 
-let _ = field_width(__awint_bind_3,__awint_awi_ref,__awint_width_4);let mut __awint_shl=__awint_width_4;
-let _ = field_from(__awint_bind_4,__awint_awi_ref,__awint_shl,__awint_width_5);
+let _ = field_width(__awint_bind_2,__awint_awi_ref,__awint_width_3);let mut __awint_shl=__awint_width_3;
+let _ = field_from(__awint_bind_3,__awint_awi_ref,__awint_shl,__awint_width_4);
+
+let _ = field_width(__awint_awi_ref,__awint_bind_4,__awint_width_5);let mut __awint_shl=__awint_width_5;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_5,__awint_width_6);
+
+let mut __awint_shl=__awint_width_1;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_2);__awint_shl=add(__awint_shl,__awint_width_2);
+
+
+let _ = field_width(__awint_bind_4,__awint_awi_ref,__awint_width_5);let mut __awint_shl=__awint_width_5;
+let _ = field_from(__awint_bind_5,__awint_awi_ref,__awint_shl,__awint_width_6);
 
 
 })} else {__awint_res.wrap_none()}}
@@ -724,16 +724,16 @@ let _ = field_from(__awint_bind_4,__awint_awi_ref,__awint_shl,__awint_width_5);
 uone:  ..=, ; ..=18, ..e, ..=, 
 Ok:
 mu({
-let __awint_val_0=cast(e);
-let __awint_val_1=cast(19);
-let __awint_width_0=__awint_val_0;
+let __awint_val_2=cast(19);
+let __awint_val_1=cast(e);
 let __awint_width_1=__awint_val_1;
-let __awint_cw_0=add(__awint_width_0,__awint_width_1);
-let __awint_cw=max([__awint_cw_0]);
+let __awint_width_2=__awint_val_2;
+let __awint_cw_1=add(__awint_width_1,__awint_width_2);
+let __awint_cw=max([__awint_cw_1]);
 let mut __awint_awi=awi(uone,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
 
-let mut __awint_shl=sub(__awint_cw,__awint_width_1);
-__awint_shl=sub(__awint_shl,__awint_width_0);
+let mut __awint_shl=sub(__awint_cw,__awint_width_2);
+__awint_shl=sub(__awint_shl,__awint_width_1);
 
 __awint_awi})
 
@@ -741,41 +741,41 @@ __awint_awi})
 umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1
 Ok:
 mu({
-let __awint_bind_0:&B=&static(0xf_u4);
-let __awint_bind_1:&B=&e;
-let __awint_bind_2:&B=&static(0xd_u4);
-let __awint_bind_3:&B=&static(0xc_u4);
-let __awint_bind_4:&B=&b;
-let __awint_bind_5:&B=&static(0xa_u4);
-let __awint_bind_6:&mut B=&mut sink0;
-let __awint_bind_7:&mut B=&mut sink1;
-let __awint_val_0=cast(4);
-let __awint_val_1=cast(bw(__awint_bind_1));
-let __awint_val_2=cast(bw(__awint_bind_4));
-let __awint_val_3=cast(bw(__awint_bind_6));
+let __awint_bind_6:&B=&static(0xa_u4);
+let __awint_bind_4:&B=&static(0xc_u4);
+let __awint_bind_3:&B=&static(0xd_u4);
+let __awint_bind_1:&B=&static(0xf_u4);
+let __awint_bind_5:&B=&b;
+let __awint_bind_2:&B=&e;
+let __awint_bind_7:&mut B=&mut sink0;
+let __awint_bind_8:&mut B=&mut sink1;
+let __awint_val_2=cast(bw(__awint_bind_2));
+let __awint_val_3=cast(bw(__awint_bind_5));
 let __awint_val_4=cast(bw(__awint_bind_7));
-let __awint_width_0=__awint_val_0;
+let __awint_val_5=cast(bw(__awint_bind_8));
+let __awint_val_1=cast(4);
 let __awint_width_1=__awint_val_1;
 let __awint_width_2=__awint_val_2;
 let __awint_width_3=__awint_val_3;
 let __awint_width_4=__awint_val_4;
-let __awint_cw_0=add(add(add(add(add(__awint_width_0,__awint_width_1),__awint_width_0),__awint_width_0),__awint_width_2),__awint_width_0);
-let __awint_cw_1=__awint_width_3;
+let __awint_width_5=__awint_val_5;
+let __awint_cw_1=add(add(add(add(add(__awint_width_1,__awint_width_2),__awint_width_1),__awint_width_1),__awint_width_3),__awint_width_1);
 let __awint_cw_2=__awint_width_4;
-let __awint_cw=__awint_cw_1;
-let __awint_res = check_fn([0;0],[0;0],[__awint_cw_0],[__awint_cw_2],__awint_cw,false,false);
+let __awint_cw_3=__awint_width_5;
+let __awint_cw=__awint_cw_2;
+let __awint_res = check_fn([0;0],[0;0],[__awint_cw_1],[__awint_cw_3],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(umax,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_0);__awint_shl=add(__awint_shl,__awint_width_0);
-let mut __awint_shl=sub(__awint_cw,__awint_width_0);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_5,__awint_width_0);
-__awint_shl=sub(__awint_shl,__awint_width_2);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_2);
-__awint_shl=sub(__awint_shl,__awint_width_0);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_0);
-
-let _ = copy(__awint_bind_6,__awint_awi_ref);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_1);let mut __awint_shl=__awint_width_1;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_2);__awint_shl=add(__awint_shl,__awint_width_2);
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
+let mut __awint_shl=sub(__awint_cw,__awint_width_1);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_6,__awint_width_1);
+__awint_shl=sub(__awint_shl,__awint_width_3);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_5,__awint_width_3);
+__awint_shl=sub(__awint_shl,__awint_width_1);let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_4,__awint_width_1);
 
 let _ = copy(__awint_bind_7,__awint_awi_ref);
+
+let _ = copy(__awint_bind_8,__awint_awi_ref);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}})
@@ -784,34 +784,34 @@ __awint_awi
 imax: 0..=1, 0x0_u1[0..1], x[..=], 0..=r, ..3; y
 Ok:
 {
-let __awint_bind_0:&B=&x;
-let __awint_bind_1:&B=&static(0x0_u1);
-let __awint_bind_2:&mut B=&mut y;
-let __awint_val_0=cast(3);
-let __awint_val_1=cast(add(r,1));
-let __awint_val_2=cast(bw(__awint_bind_0));
-let __awint_val_3=cast(1);
-let __awint_val_4=cast(2);
-let __awint_val_5=cast(bw(__awint_bind_2));
-let __awint_width_0=__awint_val_0;
+let __awint_bind_2:&B=&static(0x0_u1);
+let __awint_bind_1:&B=&x;
+let __awint_bind_3:&mut B=&mut y;
+let __awint_val_3=cast(bw(__awint_bind_1));
+let __awint_val_6=cast(bw(__awint_bind_3));
+let __awint_val_4=cast(1);
+let __awint_val_5=cast(2);
+let __awint_val_1=cast(3);
+let __awint_val_2=cast(add(r,1));
 let __awint_width_1=__awint_val_1;
 let __awint_width_2=__awint_val_2;
 let __awint_width_3=__awint_val_3;
 let __awint_width_4=__awint_val_4;
 let __awint_width_5=__awint_val_5;
-let __awint_cw_0=add(add(add(add(__awint_width_0,__awint_width_1),__awint_width_2),__awint_width_3),__awint_width_4);
-let __awint_cw_1=__awint_width_5;
-let __awint_cw=__awint_cw_0;
-let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_1],__awint_cw,false,false);
+let __awint_width_6=__awint_val_6;
+let __awint_cw_1=add(add(add(add(__awint_width_1,__awint_width_2),__awint_width_3),__awint_width_4),__awint_width_5);
+let __awint_cw_2=__awint_width_6;
+let __awint_cw=__awint_cw_1;
+let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_2],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(imax,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let mut __awint_shl=__awint_width_0;
-__awint_shl=add(__awint_shl,__awint_width_1);
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_width_2);__awint_shl=add(__awint_shl,__awint_width_2);
-let _ = field_bit(__awint_awi_ref,__awint_shl,__awint_bind_1,0);__awint_shl=add(__awint_shl,__awint_width_3);
+let mut __awint_shl=__awint_width_1;
+__awint_shl=add(__awint_shl,__awint_width_2);
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_3);__awint_shl=add(__awint_shl,__awint_width_3);
+let _ = field_bit(__awint_awi_ref,__awint_shl,__awint_bind_2,0);__awint_shl=add(__awint_shl,__awint_width_4);
 
 
-let _ = copy(__awint_bind_2,__awint_awi_ref);
+let _ = copy(__awint_bind_3,__awint_awi_ref);
 
 
 })} else {__awint_res.wrap_none()}}
@@ -820,24 +820,24 @@ let _ = copy(__awint_bind_2,__awint_awi_ref);
 zero: ..; .., x[..r0]; .., y[..r1]
 Ok:
 {
-let __awint_bind_0:&mut B=&mut x;
-let __awint_bind_1:&mut B=&mut y;
-let __awint_val_0=cast(r0);
-let __awint_val_1=cast(bw(__awint_bind_0));
-let __awint_val_2=cast(r1);
-let __awint_val_3=cast(bw(__awint_bind_1));
-let __awint_width_1=__awint_val_0;
-let __awint_width_3=__awint_val_2;
-let __awint_cw_0=__awint_width_1;
-let __awint_cw_1=__awint_width_3;
-let __awint_cw=max([__awint_cw_0,__awint_cw_1]);
-let __awint_res = check_fn([__awint_val_0,__awint_val_2],[__awint_val_1,__awint_val_3],[0;0],[0;0],__awint_cw,true,true);
+let __awint_bind_1:&mut B=&mut x;
+let __awint_bind_2:&mut B=&mut y;
+let __awint_val_2=cast(bw(__awint_bind_1));
+let __awint_val_4=cast(bw(__awint_bind_2));
+let __awint_val_1=cast(r0);
+let __awint_val_3=cast(r1);
+let __awint_width_2=__awint_val_1;
+let __awint_width_4=__awint_val_3;
+let __awint_cw_1=__awint_width_2;
+let __awint_cw_2=__awint_width_4;
+let __awint_cw=max([__awint_cw_1,__awint_cw_2]);
+let __awint_res = check_fn([__awint_val_1,__awint_val_3],[__awint_val_2,__awint_val_4],[0;0],[0;0],__awint_cw,true,true);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
 
-let _ = field_width(__awint_bind_0,__awint_awi_ref,__awint_width_1);let mut __awint_shl=__awint_width_1;
+let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_2);let mut __awint_shl=__awint_width_2;
 
-let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_3);let mut __awint_shl=__awint_width_3;
+let _ = field_width(__awint_bind_2,__awint_awi_ref,__awint_width_4);let mut __awint_shl=__awint_width_4;
 
 
 })} else {__awint_res.wrap_if_success()}}
@@ -846,20 +846,20 @@ let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_3);let mut __aw
 imax: ..; .., x; .., y
 Ok:
 mu({
-let __awint_bind_0:&mut B=&mut x;
-let __awint_bind_1:&mut B=&mut y;
-let __awint_val_0=cast(bw(__awint_bind_0));
+let __awint_bind_1:&mut B=&mut x;
+let __awint_bind_2:&mut B=&mut y;
 let __awint_val_1=cast(bw(__awint_bind_1));
-let __awint_width_0=__awint_val_0;
+let __awint_val_2=cast(bw(__awint_bind_2));
 let __awint_width_1=__awint_val_1;
-let __awint_cw_0=__awint_width_0;
+let __awint_width_2=__awint_val_2;
 let __awint_cw_1=__awint_width_1;
-let __awint_cw=max([__awint_cw_0,__awint_cw_1]);
+let __awint_cw_2=__awint_width_2;
+let __awint_cw=max([__awint_cw_1,__awint_cw_2]);
 let mut __awint_awi=awi(imax,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
 
-let _ = field_width(__awint_bind_0,__awint_awi_ref,__awint_width_0);let mut __awint_shl=__awint_width_0;
-
 let _ = field_width(__awint_bind_1,__awint_awi_ref,__awint_width_1);let mut __awint_shl=__awint_width_1;
+
+let _ = field_width(__awint_bind_2,__awint_awi_ref,__awint_width_2);let mut __awint_shl=__awint_width_2;
 
 __awint_awi})
 
@@ -867,10 +867,10 @@ __awint_awi})
 imin: ..r
 Ok:
 mu({
-let __awint_val_0=cast(r);
-let __awint_width_0=__awint_val_0;
-let __awint_cw_0=__awint_width_0;
-let __awint_cw=__awint_cw_0;
+let __awint_val_1=cast(r);
+let __awint_width_1=__awint_val_1;
+let __awint_cw_1=__awint_width_1;
+let __awint_cw=__awint_cw_1;
 let __awint_res = check_fn([0;0],[0;0],[0;0],[0;0],__awint_cw,true,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(imin,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
@@ -891,13 +891,13 @@ __awint_awi})
 imin: y
 Ok:
 mu({
-let __awint_bind_0:&B=&y;
-let __awint_val_0=cast(bw(__awint_bind_0));
-let __awint_width_0=__awint_val_0;
-let __awint_cw_0=__awint_width_0;
-let __awint_cw=__awint_cw_0;
+let __awint_bind_1:&B=&y;
+let __awint_val_1=cast(bw(__awint_bind_1));
+let __awint_width_1=__awint_val_1;
+let __awint_cw_1=__awint_width_1;
+let __awint_cw=__awint_cw_1;
 let mut __awint_awi=awi(imin,None,Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = copy(__awint_awi_ref,__awint_bind_0);
+let _ = copy(__awint_awi_ref,__awint_bind_1);
 
 __awint_awi})
 
@@ -905,15 +905,15 @@ __awint_awi})
 imin: y; ..8
 Ok:
 mu({
-let __awint_bind_0:&B=&y;
-let __awint_val_0=cast(bw(__awint_bind_0));
-let __awint_width_0=__awint_val_0;
-let __awint_cw_0=__awint_width_0;
+let __awint_bind_1:&B=&y;
+let __awint_val_1=cast(bw(__awint_bind_1));
+let __awint_width_1=__awint_val_1;
+let __awint_cw_1=__awint_width_1;
 let __awint_cw=8usize;
-let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_0],__awint_cw,false,false);
+let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_1],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(imin,Some(8),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = copy(__awint_awi_ref,__awint_bind_0);
+let _ = copy(__awint_awi_ref,__awint_bind_1);
 
 
 __awint_awi
@@ -923,23 +923,23 @@ __awint_awi
 imin: y
 Ok:
 {
-let __awint_bind_0:&B=&y;
-let __awint_val_0=cast(bw(__awint_bind_0));
-let __awint_width_0=__awint_val_0;
-let __awint_cw_0=__awint_width_0;
-let __awint_cw=__awint_cw_0;
+let __awint_bind_1:&B=&y;
+let __awint_val_1=cast(bw(__awint_bind_1));
+let __awint_width_1=__awint_val_1;
+let __awint_cw_1=__awint_width_1;
+let __awint_cw=__awint_cw_1;
 }
 
 
 umax: ..32, 0xfedcba98_u32
 Ok:
 mu(const({
-let __awint_bind_0:&B=&static(0xfedcba98_u32);
-let __awint_val_0=cast(32);
-let __awint_width_0=__awint_val_0;
+let __awint_bind_1:&B=&static(0xfedcba98_u32);
+let __awint_val_1=cast(32);
+let __awint_width_1=__awint_val_1;
 let __awint_cw=64usize;
 let mut __awint_awi=awi(umax,Some(64),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_1);let mut __awint_shl=__awint_width_1;
 
 
 __awint_awi}, 64, true))
@@ -953,23 +953,23 @@ mu(lit(0x3210_u16))
 A, 0x7654u16, B; ..96
 Ok:
 mu(const({
-let __awint_bind_0:&B=&B;
-let __awint_bind_1:&B=&static(0x7654_u16);
-let __awint_bind_2:&B=&A;
-let __awint_val_0=cast(bw(__awint_bind_0));
-let __awint_val_1=cast(16);
-let __awint_val_2=cast(bw(__awint_bind_2));
-let __awint_width_0=__awint_val_0;
+let __awint_bind_2:&B=&static(0x7654_u16);
+let __awint_bind_3:&B=&A;
+let __awint_bind_1:&B=&B;
+let __awint_val_1=cast(bw(__awint_bind_1));
+let __awint_val_3=cast(bw(__awint_bind_3));
+let __awint_val_2=cast(16);
 let __awint_width_1=__awint_val_1;
 let __awint_width_2=__awint_val_2;
-let __awint_cw_0=add(add(__awint_width_0,__awint_width_1),__awint_width_2);
+let __awint_width_3=__awint_val_3;
+let __awint_cw_1=add(add(__awint_width_1,__awint_width_2),__awint_width_3);
 let __awint_cw=96usize;
-let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_0],__awint_cw,false,false);
+let __awint_res = check_fn([0;0],[0;0],[0;0],[__awint_cw_1],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(96),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_width(__awint_awi_ref,__awint_bind_0,__awint_width_0);let mut __awint_shl=__awint_width_0;
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_width_1);__awint_shl=add(__awint_shl,__awint_width_1);
-let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_2);
+let _ = field_width(__awint_awi_ref,__awint_bind_1,__awint_width_1);let mut __awint_shl=__awint_width_1;
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_2,__awint_width_2);__awint_shl=add(__awint_shl,__awint_width_2);
+let _ = field_to(__awint_awi_ref,__awint_shl,__awint_bind_3,__awint_width_3);
 
 
 __awint_awi
@@ -979,19 +979,19 @@ __awint_awi
 C[(R-42)..R], C[R..(R+42)]
 Ok:
 mu(const({
-let __awint_bind_0:&B=&C;
-let __awint_val_0=cast(R);
-let __awint_val_1=cast(42);
-let __awint_val_2=cast(add(R,42));
-let __awint_val_3=cast(bw(__awint_bind_0));
-let __awint_val_4=cast(sub(R,42));
-let __awint_width_1=__awint_val_1;
+let __awint_bind_1:&B=&C;
+let __awint_val_4=cast(bw(__awint_bind_1));
+let __awint_val_2=cast(42);
+let __awint_val_1=cast(R);
+let __awint_val_3=cast(add(R,42));
+let __awint_val_5=cast(sub(R,42));
+let __awint_width_2=__awint_val_2;
 let __awint_cw=84usize;
-let __awint_res = check_fn([__awint_val_2,__awint_val_0],[__awint_val_3,__awint_val_3],[0;0],[0;0],__awint_cw,false,false);
+let __awint_res = check_fn([__awint_val_1,__awint_val_3],[__awint_val_4,__awint_val_4],[0;0],[0;0],__awint_cw,false,false);
 if __awint_res.run_fielding() {__awint_res.wrap({
 let mut __awint_awi=awi(zero,Some(84),Some("__awint_cw"));let __awint_awi_ref=&mut __awint_awi;
-let _ = field_from(__awint_awi_ref,__awint_bind_0,__awint_val_0,__awint_width_1);let mut __awint_shl=__awint_width_1;
-let _ = field(__awint_awi_ref,__awint_shl,__awint_bind_0,__awint_val_4,__awint_width_1);
+let _ = field_from(__awint_awi_ref,__awint_bind_1,__awint_val_1,__awint_width_2);let mut __awint_shl=__awint_width_2;
+let _ = field(__awint_awi_ref,__awint_shl,__awint_bind_1,__awint_val_5,__awint_width_2);
 
 __awint_awi
 })} else {__awint_res.wrap_none()}}, 84, false))

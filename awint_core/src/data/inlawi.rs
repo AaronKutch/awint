@@ -88,16 +88,10 @@ use crate::Bits;
 ///
 /// assert_eq!(X, inlawi!(-246i100).as_ref());
 /// ```
+#[repr(C)]
 #[derive(Clone, Copy)] // following what arrays do
 pub struct InlAwi<const BW: usize, const LEN: usize> {
-    /// # Raw Invariants
-    ///
-    /// The digits contained here have the raw invariants of `Bits`. This
-    /// implies that `LEN >= METADATA_DIGITS + 1`, or else there is not enough
-    /// storage for the first digit and metadata. The bitwidth must be set
-    /// to value in the range `(((LEN - METADATA_DIGITS - 1)*BITS) +
-    /// 1)..=((LEN - METADATA_DIGITS)*BITS)`.
-    raw: [Digit; LEN],
+    _raw_stack_bits: RawStackBits<BW, LEN>,
 }
 
 /// `InlAwi` is safe to send between threads since it does not own
@@ -114,11 +108,11 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub(in crate::data) const fn internal_as_ref(&'a self) -> &'a Bits {
-        // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
-        // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
-        // to insure the raw invariants. The explicit lifetimes make sure they do not
-        // become unbounded.
-        unsafe { Bits::from_raw_parts(self.raw.as_ptr(), self.raw.len()) }
+        // Safety: Only functions like `unstable_from_u8_slice` can construct the
+        // `_raw_stack_bits` field on `InlAwi`s. The `RawStackBits` functions
+        // checks to insure the raw invariants. The explicit lifetimes make sure they do
+        // not become unbounded.
+        unsafe { Bits::from_raw_parts(self._raw_stack_bits.to_raw_bits()) }
     }
 
     /// Returns a reference to `self` in the form of `&mut Bits`.
@@ -126,36 +120,23 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub(in crate::data) const fn internal_as_mut(&'a mut self) -> &'a mut Bits {
-        // Safety: Only functions like `unstable_from_u8_slice` can construct the `raw`
-        // field on `InlAwi`s. These always have the `assert_inlawi_invariants_` checks
-        // to insure the raw invariants. The explicit lifetimes make sure they do not
-        // become unbounded.
-        unsafe { Bits::from_raw_parts_mut(self.raw.as_mut_ptr(), self.raw.len()) }
+        // Safety: Same as `internal_as_ref`, except we use `to_raw_bits_mut` so that
+        // the pointer tag is not `Frozen`
+        unsafe { Bits::from_raw_parts_mut(self._raw_stack_bits.to_raw_bits_mut()) }
     }
 
     /// Returns the bitwidth of this type of `InlAwi` as a `NonZeroUsize`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn const_nzbw() -> NonZeroUsize {
-        assert_inlawi_invariants::<BW, LEN>();
-        NonZeroUsize::new(BW).unwrap()
+        RawStackBits::<BW, LEN>::nzbw()
     }
 
     /// Returns the bitwidth of this type of `InlAwi` as a `usize`
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn const_bw() -> usize {
-        assert_inlawi_invariants::<BW, LEN>();
-        BW
-    }
-
-    /// Returns the raw length of this type of `InlAwi` as a `usize`
-    #[doc(hidden)]
-    #[const_fn(cfg(feature = "const_support"))]
-    #[must_use]
-    pub const fn const_raw_len() -> usize {
-        assert_inlawi_invariants::<BW, LEN>();
-        LEN
+        RawStackBits::<BW, LEN>::bw()
     }
 
     /// The same as `Self::const_nzbw()` except that it takes `&self`, this
@@ -178,7 +159,8 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn len(&self) -> usize {
-        Self::const_raw_len() - METADATA_DIGITS
+        // TODO use `NonZeroUsize` in the `len` and `total_digits` returns?
+        RawStackBits::<BW, LEN>::total_digits().get()
     }
 
     /// This is not intended for direct use, use `awint_macros::inlawi`
@@ -188,18 +170,9 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn unstable_from_u8_slice(buf: &[u8]) -> Self {
-        if LEN < METADATA_DIGITS + 1 {
-            // the invariants asserter checks for this, but we put a value
-            // in `raw` first
-            panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < METADATA_DIGITS + 1`")
-        }
-        // note: this needs to be set as all zeros for the inlining below
-        let mut raw: [Digit; LEN] = [0; LEN];
-        const_for!(i in {0..METADATA_DIGITS} {
-            raw[LEN - METADATA_DIGITS + i] = (BW >> (i * BITS)) as Digit;
-        });
-        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
-        let mut awi = InlAwi { raw };
+        let mut awi = InlAwi {
+            _raw_stack_bits: RawStackBits::zero(),
+        };
 
         // At this point, we would call `awi.u8_slice_(buf)` and could return that.
         // However, we run into a problem where the compiler has difficulty. For
@@ -260,29 +233,17 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Zero-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn zero() -> Self {
-        if LEN < METADATA_DIGITS + 1 {
-            panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < METADATA_DIGITS + 1`")
+        Self {
+            _raw_stack_bits: RawStackBits::zero(),
         }
-        let mut raw: [Digit; LEN] = [0; LEN];
-        const_for!(i in {0..METADATA_DIGITS} {
-            raw[LEN - METADATA_DIGITS + i] = (BW >> (i * BITS)) as Digit;
-        });
-        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
-        InlAwi { raw }
     }
 
     /// Unsigned-maximum-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn umax() -> Self {
-        if LEN < METADATA_DIGITS + 1 {
-            panic!("Tried to create an `InlAwi<BW, LEN>` with `LEN < METADATA_DIGITS + 1`")
-        }
-        let mut raw: [Digit; LEN] = [MAX; LEN];
-        const_for!(i in {0..METADATA_DIGITS} {
-            raw[LEN - METADATA_DIGITS + i] = (BW >> (i * BITS)) as Digit;
-        });
-        assert_inlawi_invariants_slice::<BW, LEN>(&raw);
-        let mut awi = InlAwi { raw };
+        let mut awi = Self {
+            _raw_stack_bits: RawStackBits::all_set(),
+        };
         awi.const_as_mut().clear_unused_bits();
         awi
     }
@@ -315,13 +276,8 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn assert_invariants(this: &Self) {
-        assert_inlawi_invariants::<BW, LEN>();
-        if this.bw() != BW {
-            panic!("bitwidth digit does not equal BW")
-        }
-        if this.raw_len() != LEN {
-            panic!("`length of raw slice does not equal LEN")
-        }
+        // double check
+        RawStackBits::<BW, LEN>::_assert_invariants();
         // not a strict invariant but we want to test it
         this.assert_cleared_unused_bits();
     }

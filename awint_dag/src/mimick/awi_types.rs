@@ -9,7 +9,7 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{assert_inlawi_invariants, bw, forward_debug_fmt, USIZE_BITS},
+    awint_internals::{bw, forward_debug_fmt, RawStackBits, USIZE_BITS},
 };
 use smallvec::smallvec;
 
@@ -19,25 +19,26 @@ use crate::{dag, Bits, Lineage, Op, PState};
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
 #[derive(Clone, Copy)]
+#[repr(C)] // needed for `internal_as_ref*`, also this needs to just be a `PState`
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     // prevents the type from implementing `Send` or `Sync` on stable while still being able to be
     // `Copy`
     _no_send_or_sync: PhantomData<Rc<()>>,
-    pub(in crate::mimick) _inlawi_raw: [PState; 1],
+    pub(in crate::mimick) _state: PState,
 }
 
 impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     fn state(&self) -> PState {
-        self._inlawi_raw[0]
+        self._state
     }
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(crate) fn from_state(state: PState) -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self {
-            _inlawi_raw: [state],
             _no_send_or_sync: PhantomData,
+            _state: state,
         }
     }
 
@@ -46,12 +47,12 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub fn const_nzbw() -> NonZeroUsize {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         NonZeroUsize::new(BW).unwrap()
     }
 
     pub fn const_bw() -> usize {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         BW
     }
 
@@ -64,45 +65,45 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     }
 
     pub fn const_raw_len() -> usize {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         LEN
     }
 
     #[doc(hidden)]
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::from_bits(
             &awi::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf),
         )))
     }
 
     pub fn opaque() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Opaque(smallvec![], None))
     }
 
     pub fn zero() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::zero(bw(BW))))
     }
 
     pub fn umax() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::umax(bw(BW))))
     }
 
     pub fn imax() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::imax(bw(BW))))
     }
 
     pub fn imin() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::imin(bw(BW))))
     }
 
     pub fn uone() -> Self {
-        assert_inlawi_invariants::<BW, LEN>();
+        RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Literal(awi::ExtAwi::uone(bw(BW))))
     }
 }
@@ -161,7 +162,7 @@ impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> fmt::Debug for InlAwi<BW, LEN> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "InlAwi({:?})", self._inlawi_raw[0])
+        write!(f, "InlAwi({:?})", self.state())
     }
 }
 
@@ -296,22 +297,23 @@ impl From<awi::isize> for UsizeInlAwi {
 ///
 /// Note: `extawi!(opaque: ..64)` just works
 #[derive(Clone)]
+#[repr(C)] // needed for `internal_as_ref*`, also this needs to just be a `PState`
 pub struct ExtAwi {
     _no_send_or_sync: PhantomData<Rc<()>>,
-    pub(in crate::mimick) _extawi_raw: [PState; 1],
+    pub(in crate::mimick) _state: PState,
 }
 
 impl Lineage for ExtAwi {
     fn state(&self) -> PState {
-        self._extawi_raw[0]
+        self._state
     }
 }
 
 impl ExtAwi {
     pub(crate) fn from_state(state: PState) -> Self {
         Self {
-            _extawi_raw: [state],
             _no_send_or_sync: PhantomData,
+            _state: state,
         }
     }
 
@@ -476,7 +478,7 @@ impl AsMut<Bits> for ExtAwi {
 
 impl fmt::Debug for ExtAwi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ExtAwi({:?})", self._extawi_raw[0])
+        write!(f, "ExtAwi({:?})", self.state())
     }
 }
 

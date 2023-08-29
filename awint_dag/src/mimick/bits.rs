@@ -1,4 +1,10 @@
-use std::{fmt, marker::PhantomData, mem, num::NonZeroUsize, ptr, rc::Rc};
+use std::{
+    fmt,
+    marker::PhantomData,
+    num::NonZeroUsize,
+    ptr::{self},
+    rc::Rc,
+};
 
 use awint_ext::awi;
 
@@ -9,66 +15,66 @@ use crate::{
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
-// TODO fix when PR 83850 is merged
 
 /// Mimicking `awint_core::Bits`
-#[repr(transparent)] // for the transmute
+#[repr(C)] // needed for `internal_as_ref*`
 pub struct Bits {
     _no_send_or_sync: PhantomData<Rc<()>>,
     // use different names for the different raw `PState`s, or else Rust can think we are
     // trying to go through the `Deref` impls
-    _bits_raw: [PState],
+    _state: PState,
+    _dst: [()],
 }
 
 // Safety: `Bits` follows standard slice initialization invariants and is marked
 // `#[repr(transparent)]`. The explicit lifetimes make sure they do not become
 // unbounded.
 
-impl<'a> Bits {
-    /// Assumes this is called on a pointer from a `[PState; 1]`
-    unsafe fn from_raw_parts(raw_ptr: *const PState) -> &'a Self {
-        unsafe { mem::transmute::<&[PState], &Bits>(&*ptr::slice_from_raw_parts(raw_ptr, 1)) }
-    }
-
-    /// Assumes this is called on a pointer from a `[PState; 1]`
-    unsafe fn from_raw_parts_mut(raw_ptr: *mut PState) -> &'a mut Self {
-        unsafe {
-            mem::transmute::<&mut [PState], &mut Bits>(&mut *ptr::slice_from_raw_parts_mut(
-                raw_ptr, 1,
-            ))
-        }
-    }
-}
-
 impl<'a> ExtAwi {
     pub(in crate::mimick) fn internal_as_ref(&'a self) -> &'a Bits {
-        unsafe { Bits::from_raw_parts(self._extawi_raw.as_ptr()) }
+        // Safety: `ExtAwi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts(self as *const Self, 0) as *const Bits;
+        unsafe { &*bits }
     }
 
     pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
-        unsafe { Bits::from_raw_parts_mut(self._extawi_raw.as_mut_ptr()) }
+        // Safety: `ExtAwi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts_mut(self as *mut Self, 0) as *mut Bits;
+        unsafe { &mut *bits }
     }
 }
 
 impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     pub(in crate::mimick) fn internal_as_ref(&'a self) -> &'a Bits {
-        unsafe { Bits::from_raw_parts(self._inlawi_raw.as_ptr()) }
+        // Safety: `InlAwi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts(self as *const Self, 0) as *const Bits;
+        unsafe { &*bits }
     }
 
     pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
-        unsafe { Bits::from_raw_parts_mut(self._inlawi_raw.as_mut_ptr()) }
+        // Safety: `InlAwi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts_mut(self as *mut Self, 0) as *mut Bits;
+        unsafe { &mut *bits }
     }
 }
 
 impl Lineage for &Bits {
     fn state(&self) -> PState {
-        self._bits_raw[0]
+        self._state
     }
 }
 
 impl Lineage for &mut Bits {
     fn state(&self) -> PState {
-        self._bits_raw[0]
+        self._state
     }
 }
 
@@ -90,9 +96,9 @@ impl Bits {
     }
 
     pub(crate) fn set_state(&mut self, state: PState) {
-        // other `PState`s that need the old state will keep it alive despite this one
-        // being dropped
-        let _: PState = mem::replace(&mut self._bits_raw[0], state);
+        // other `PState`s that need the old state will keep it alive despite the
+        // previous one being dropped
+        self._state = state;
     }
 
     /// This function is guaranteed to not return `Option::Opaque`, and may
@@ -196,7 +202,7 @@ impl Bits {
 
 impl fmt::Debug for Bits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Bits({:?})", self._bits_raw[0])
+        write!(f, "Bits({:?})", self.state())
     }
 }
 

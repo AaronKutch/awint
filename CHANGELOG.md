@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.12.0] - 2023-08-29
+### Crate
+- bumped MSRV to 1.70.0
+- `triple_arena` 0.12
+
+### Fixes
+- Replaced some usages of transmutation with fat pointer `as` casts to prevent a technical subtlety
+  that could lead to UB (even if it wouldn't occur with `-Zrandomize-layout` in practice)
+- Finally found a "custom" DST workaround to store the bitwidth inline and derive the slice length
+  from that instead of using the metadata hack. Note that this currently requires
+  `-Zmiri-tree-borrows` for Miri to accept it.
+
+### Additions
+- Added `Bits::total_cmp`
+- Added `OrdBits`
+- Added `Error` impl for `EvalError`
+
 ## [0.11.0] - 2023-06-04
 ### Crate
 - Updated "zeroize_support" to use `zeroize` 1.6

@@ -397,6 +397,8 @@ pub use data::{Bits, InlAwi};
 
 mod logic;
 
+pub use logic::OrdBits;
+
 /// Subset of `awint::awi`
 pub mod awi {
     pub use awint_internals::awi::*;

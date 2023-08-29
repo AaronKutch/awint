@@ -3,7 +3,6 @@ use awint_ext::Bits;
 use crate::{chars_to_string, usize_to_i128, Ast, CCMacroError, Delimiter, PText, Text};
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
-#[allow(clippy::manual_filter)] // TODO remove after clippy issue #9766
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {
     let mut s = s;
     if s.is_empty() {
@@ -277,7 +276,7 @@ impl Usbr {
 /// In ranges we commonly see stuff like `(x + y)` or `(x - y)` with one of them
 /// being a constant we can parse, which passes upward the `Usb` and `Usbr`
 /// chain to get calculated into a static width.
-pub fn parse_usb(ast: &mut Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
+pub fn parse_usb(ast: &Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
     assert!(!ast.txt[usb_txt].is_empty());
     let mut usb_inner = usb_txt;
     let mut invalid = false;

@@ -34,13 +34,29 @@ jobs:
           cargo test $ALL_FEATURES,u64_digits
           cargo test $ALL_FEATURES,u128_digits
 
+  # FIXME fix features when we can compile const_support again
+  const_test:
+    name: Test suite
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust components
+        run: |
+          rustup set profile minimal
+          rustup install nightly-2023-04-14
+      - name: Run test suite
+        run: |
+          cargo +nightly-2023-04-14 t $ALL_FEATURES,const_support
+
   miri:
     name: Miri
     runs-on: ubuntu-latest
     # note: we have turned on this Miri flag
     env:
       RUSTFLAGS: -D warnings
-      MIRIFLAGS: -Zmiri-tree-borrows
+      MIRIFLAGS: -Zmiri-tree-borrows -Zmiri-strict-provenance
     steps:
       - uses: actions/checkout@v2
       - name: Install most recent Miri
@@ -78,7 +94,7 @@ jobs:
       - name: Install Rust components
         run: |
           rustup set profile minimal
-          rustup install 1.66.1
+          rustup install 1.70.0
       # In the past I have had problems with features not being orthogonal due to configuration
       # mistakes, so we test several combinations here
       - name: Run `cargo build`

@@ -1,8 +1,5 @@
 //! Using combined normal and mimick types to assist in lowering
 
-// TODO https://github.com/rust-lang/rust-clippy/issues/10577
-#![allow(clippy::redundant_clone)]
-
 use std::{cmp::min, mem, num::NonZeroUsize};
 
 use awint_ext::{awi, awint_internals::USIZE_BITS};

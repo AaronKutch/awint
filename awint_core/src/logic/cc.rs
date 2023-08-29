@@ -78,7 +78,7 @@ impl Bits {
     /// the procedural macro crate is running for).
     #[inline]
     pub const fn unstable_raw_digits(w: usize) -> usize {
-        raw_digits(w)
+        total_digits(bw(w)).get()
     }
 
     /// this panics if `N == 0`
