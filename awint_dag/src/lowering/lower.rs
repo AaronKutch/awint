@@ -849,8 +849,11 @@ impl OpDag {
 
     /// Calls `lower_node` on everything, also evaluates everything. This also
     /// checks assertions, but not as strictly as `assert_assertions` which
-    /// makes sure no assertions are unevaluated.
+    /// makes sure no assertions are unevaluated. Automatically calls
+    /// `delete_unused_nodes` before and after the lowering.
     pub fn lower_all(&mut self) -> Result<(), EvalError> {
+        // because I keep on forgetting this and end up with 64 bit `usize`s everywhere
+        self.delete_unused_nodes();
         self.visit_gen += 1;
         let lowered_visit = self.visit_gen;
         self.visit_gen += 1;
@@ -861,6 +864,7 @@ impl OpDag {
         }
         self.assert_assertions_weak()?;
         self.unnote_true_assertions();
+        self.delete_unused_nodes();
         Ok(())
     }
 }

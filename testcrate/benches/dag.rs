@@ -24,7 +24,6 @@ fn lower_funnel(bencher: &mut Bencher) {
         res.unwrap();
         op_dag.note_pstate(out.state()).unwrap();
         op_dag.lower_all().unwrap();
-        op_dag.delete_unused_nodes();
         awi::assert_eq!(op_dag.a.len(), 7044);
     })
 }
