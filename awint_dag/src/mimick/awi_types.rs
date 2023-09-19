@@ -496,9 +496,41 @@ impl From<&awi::Bits> for ExtAwi {
     }
 }
 
+// there are some bizaare trait conflicts if we don't enumerate all these cases
+
+impl From<&awi::ExtAwi> for ExtAwi {
+    fn from(bits: &awi::ExtAwi) -> ExtAwi {
+        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+    }
+}
+
+impl From<awi::ExtAwi> for ExtAwi {
+    fn from(bits: awi::ExtAwi) -> ExtAwi {
+        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+    }
+}
+
 impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: InlAwi<BW, LEN>) -> ExtAwi {
         Self::from_state(awi.state())
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<&InlAwi<BW, LEN>> for ExtAwi {
+    fn from(awi: &InlAwi<BW, LEN>) -> ExtAwi {
+        Self::from_state(awi.state())
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for ExtAwi {
+    fn from(awi: awi::InlAwi<BW, LEN>) -> ExtAwi {
+        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for ExtAwi {
+    fn from(awi: &awi::InlAwi<BW, LEN>) -> ExtAwi {
+        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
     }
 }
 
@@ -541,3 +573,19 @@ extawi_from!(
     i128, from_i128;
     isize, from_isize;
 );
+
+// misc
+
+impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {
+    fn from(awi: awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
+        let awi = ExtAwi::from(awi);
+        Self::from_state(awi.state())
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {
+    fn from(awi: &awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
+        let awi = ExtAwi::from(awi);
+        Self::from_state(awi.state())
+    }
+}

@@ -1,5 +1,9 @@
 # Changelog
 
+## TODO
+### Additions
+- Added more `awi` to `dag` `From` impls
+
 ## [0.12.0] - 2023-08-29
 ### Crate
 - bumped MSRV to 1.70.0
