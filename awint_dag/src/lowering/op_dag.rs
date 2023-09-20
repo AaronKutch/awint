@@ -203,6 +203,10 @@ impl OpDag {
                                 }
                             },
                         );
+                        // TODO this is a hack for starlight `Loop`s
+                        if matches!(self[current_p_node].op, Op::Opaque(_, Some("LoopHandle"))) {
+                            self[current_p_node].rc += 1;
+                        }
                         self.tmp_stack.pop().unwrap();
                         if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
