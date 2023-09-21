@@ -1,5 +1,9 @@
 // Note: we use `impl Into<...>` heavily instead of `U: Into<...>` generics,
-// because it allows arguments to be different types
+// because it allows arguments to be different types.
+
+// Note: unfortunately, `impl Into<...>` can only be used for the totally
+// copyable types, and does not work for `impl Into<&'a Bits>` which causes
+// failures with `&mut Bits`, same goes for any `AsRef` strategy
 
 use std::marker::PhantomData;
 
