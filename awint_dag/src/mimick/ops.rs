@@ -3,7 +3,9 @@
 
 // Note: unfortunately, `impl Into<...>` can only be used for the totally
 // copyable types, and does not work for `impl Into<&'a Bits>` which causes
-// failures with `&mut Bits`, same goes for any `AsRef` strategy
+// failures with `&mut Bits`, same goes for any `impl ...` strategy because the
+// mutable reference is moved into the function and can't be copied on the
+// outside
 
 use std::marker::PhantomData;
 
