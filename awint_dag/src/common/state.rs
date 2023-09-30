@@ -99,7 +99,6 @@ pub fn next_state_visit_gen() -> u64 {
 }
 
 /// Registers `bit` to the assertions of the current epoch
-#[track_caller]
 pub fn register_assertion_bit(bit: dag::bool, location: Location) {
     // need a new bit to attach location data to
     let new_bit =

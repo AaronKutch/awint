@@ -19,7 +19,7 @@ use crate::{
 /// Mimicking `awint_core::Bits`
 #[repr(C)] // needed for `internal_as_ref*`
 pub struct Bits {
-    _no_send_or_sync: PhantomData<Rc<()>>,
+    _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
     // use different names for the different raw `PState`s, or else Rust can think we are
     // trying to go through the `Deref` impls
     _state: PState,

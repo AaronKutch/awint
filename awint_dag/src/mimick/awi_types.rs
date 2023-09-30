@@ -23,7 +23,7 @@ use crate::{dag, Bits, Lineage, Op, PState};
 pub struct InlAwi<const BW: usize, const LEN: usize> {
     // prevents the type from implementing `Send` or `Sync` on stable while still being able to be
     // `Copy`
-    _no_send_or_sync: PhantomData<Rc<()>>,
+    _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
     pub(in crate::mimick) _state: PState,
 }
 
@@ -299,7 +299,7 @@ impl From<awi::isize> for UsizeInlAwi {
 #[derive(Clone)]
 #[repr(C)] // needed for `internal_as_ref*`, also this needs to just be a `PState`
 pub struct ExtAwi {
-    _no_send_or_sync: PhantomData<Rc<()>>,
+    _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
     pub(in crate::mimick) _state: PState,
 }
 

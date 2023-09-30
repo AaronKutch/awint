@@ -644,7 +644,7 @@ impl Bits {
 pub struct CCResult<T> {
     run_fielding: awi::bool,
     success: dag::bool,
-    _phantom_data: PhantomData<T>,
+    _phantom_data: PhantomData<fn() -> T>,
 }
 
 impl<T> CCResult<T> {
