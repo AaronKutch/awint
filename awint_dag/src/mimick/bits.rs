@@ -117,10 +117,7 @@ impl Bits {
         // early.
         let mut all_literals = true;
         for p_state in p_state_op.operands() {
-            if !p_state
-                .get_state(|state| state.map(|x| x.op.is_literal()))
-                .expect("failed to get state")
-            {
+            if !p_state.get_op().is_literal() {
                 all_literals = false;
                 break
             }
@@ -129,15 +126,11 @@ impl Bits {
             let lit_op: Op<awi::ExtAwi> =
                 Op::translate(&p_state_op, |lhs: &mut [awi::ExtAwi], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        rhs.get_state(|state| {
-                            if let Op::Literal(ref lit) = state?.op {
-                                *lhs = lit.clone();
-                                Some(())
-                            } else {
-                                None
-                            }
-                        })
-                        .expect("failed to get state, or it was not a literal")
+                        if let Op::Literal(ref lit) = rhs.get_op() {
+                            *lhs = lit.clone();
+                        } else {
+                            unreachable!()
+                        }
                     }
                 });
             match lit_op.eval(nzbw) {
@@ -167,7 +160,7 @@ impl Bits {
             let bw_op: Op<NonZeroUsize> =
                 Op::translate(&p_state_op, |lhs: &mut [NonZeroUsize], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        *lhs = rhs.get_nzbw().expect("failed to get state");
+                        *lhs = rhs.get_nzbw();
                     }
                 });
             match bw_op.noop_check(nzbw) {

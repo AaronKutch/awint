@@ -4,6 +4,9 @@
 ### Additions
 - Added more `awi` to `dag` `From` impls
 
+### Changes
+- Overhauled the epoch system for `awint_dag` and various related things
+
 ## [0.12.0] - 2023-08-29
 ### Crate
 - bumped MSRV to 1.70.0

@@ -8,7 +8,7 @@ use std::{
 use awint_ext::{awi, awint_internals::Location};
 use StdOption::{None as StdNone, Some as StdSome};
 
-use crate::{common::register_assertion_bit, dag, mimick::*};
+use crate::{dag, epoch::register_assertion_bit_for_current_epoch, mimick::*};
 
 // the type itself must be public, but nothing else about it can
 #[derive(Debug, Clone, Copy)]
@@ -265,7 +265,7 @@ impl<T> Option<T> {
                     line: tmp.line(),
                     col: tmp.column(),
                 };
-                register_assertion_bit(z.is_some, location);
+                register_assertion_bit_for_current_epoch(z.is_some, location);
                 if let StdSome(t) = z.t {
                     t
                 } else {
@@ -336,7 +336,7 @@ impl<T> std::ops::Try for Option<T> {
                     line: tmp.line(),
                     col: tmp.column(),
                 };
-                register_assertion_bit(z.is_some, location);
+                register_assertion_bit_for_current_epoch(z.is_some, location);
                 if let StdSome(t) = z.t {
                     ControlFlow::Continue(t)
                 } else {

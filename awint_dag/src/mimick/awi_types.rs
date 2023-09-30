@@ -13,7 +13,7 @@ use awint_ext::{
 };
 use smallvec::smallvec;
 
-use crate::{dag, Bits, Lineage, Op, PState};
+use crate::{dag, mimick::Bits, Lineage, Op, PState};
 
 /// Mimicking `awint_core::InlAwi`.
 ///

@@ -1,36 +1,73 @@
 use awint::{
     awi,
-    awint_dag::{state::STATE_ARENA, EvalError, Lineage, Op, OpDag, StateEpoch},
-    dag,
+    awint_dag::{
+        basic_state_epoch::{StateEpoch, _callback, _get_epoch_data_arena},
+        epoch::{_get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback},
+        EvalError, Lineage, Op, OpDag,
+    },
+    dag, inlawi_ty,
 };
 
 #[test]
 fn state_epochs() {
     use awint::dag::u8;
-    let state = {
+    assert_eq!(_get_epoch_gen().get(), 2);
+    assert!(_get_epoch_stack().is_empty());
+    assert_eq!(_get_epoch_callback(), _unregistered_callback());
+    {
         let _epoch0 = StateEpoch::new();
+        assert_eq!(_get_epoch_gen().get(), 3);
+        assert_eq!(_get_epoch_stack().len(), 1);
+        assert_eq!(_get_epoch_callback(), _callback());
         let x: &u8 = &7.into();
         // test `Copy` trait
-        let y: u8 = *x;
-        assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
+        let _y: u8 = *x;
+        _get_epoch_data_arena(|a| assert_eq!(a.len(), 1));
         {
             let _epoch1 = StateEpoch::new();
+            assert_eq!(_get_epoch_gen().get(), 4);
+            assert_eq!(_get_epoch_stack().len(), 2);
             let mut _z: u8 = 7.into();
-            assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 2);
+            _get_epoch_data_arena(|a| assert_eq!(a.len(), 2));
         }
-        assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
+        assert_eq!(_get_epoch_stack().len(), 1);
+        _get_epoch_data_arena(|a| assert_eq!(a.len(), 1));
         {
             let _epoch2 = StateEpoch::new();
+            assert_eq!(_get_epoch_gen().get(), 5);
+            assert_eq!(_get_epoch_stack().len(), 2);
             let mut _w: u8 = 7.into();
-            assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 2);
+            _get_epoch_data_arena(|a| assert_eq!(a.len(), 2));
         }
-        assert_eq!(STATE_ARENA.with(|f| f.borrow().len()), 1);
-        let state = y.state();
-        assert!(state.cloned_state().is_some());
-        state
+        assert_eq!(_get_epoch_stack().len(), 1);
+        _get_epoch_data_arena(|a| assert_eq!(a.len(), 1));
     };
-    assert!(state.cloned_state().is_none());
-    assert!(STATE_ARENA.with(|f| f.borrow().is_empty()))
+    assert!(_get_epoch_stack().is_empty());
+    assert_eq!(_get_epoch_callback(), _unregistered_callback());
+    _get_epoch_data_arena(|a| assert_eq!(a.len(), 0));
+}
+
+#[test]
+#[should_panic]
+fn state_epoch_unregistered0() {
+    use dag::*;
+    let _x = ExtAwi::zero(bw(1));
+}
+
+#[test]
+#[should_panic]
+fn state_epoch_unregistered1() {
+    use dag::*;
+    let _x: u8 = 7.into();
+}
+
+#[test]
+#[should_panic]
+fn state_epoch_unregistered2() {
+    use dag::*;
+    let epoch0 = StateEpoch::new();
+    drop(epoch0);
+    let _x: inlawi_ty!(1) = InlAwi::zero();
 }
 
 #[test]
@@ -330,13 +367,13 @@ fn dag_bits_functions() {
     }
     let (mut graph, res) = OpDag::from_epoch(&epoch0);
     res.unwrap();
-    let x5 = graph.note_pstate(x5.state()).unwrap();
-    let x6 = graph.note_pstate(x6.state()).unwrap();
-    let x7 = graph.note_pstate(x7.state()).unwrap();
-    let x8 = graph.note_pstate(x8.state()).unwrap();
-    let x9 = graph.note_pstate(x9.state()).unwrap();
-    let s2 = graph.note_pstate(s2.state()).unwrap();
-    let s3 = graph.note_pstate(s3.state()).unwrap();
+    let x5 = graph.note_pstate(&epoch0, x5.state()).unwrap();
+    let x6 = graph.note_pstate(&epoch0, x6.state()).unwrap();
+    let x7 = graph.note_pstate(&epoch0, x7.state()).unwrap();
+    let x8 = graph.note_pstate(&epoch0, x8.state()).unwrap();
+    let x9 = graph.note_pstate(&epoch0, x9.state()).unwrap();
+    let s2 = graph.note_pstate(&epoch0, s2.state()).unwrap();
+    let s3 = graph.note_pstate(&epoch0, s3.state()).unwrap();
 
     {
         use awi::{assert_eq, *};
@@ -392,8 +429,11 @@ fn dag_result_try_fail() {
 #[test]
 fn dag_try() {
     use dag::*;
+
+    let epoch1 = StateEpoch::new();
     stuff::test_option_try(7.into()).unwrap();
     stuff::test_result_try(7.into()).unwrap();
+    drop(epoch1);
 
     let epoch0 = StateEpoch::new();
     let s = inlawi!(opaque: ..64).to_usize();
@@ -412,7 +452,7 @@ fn dag_try() {
 
     let (mut graph, res) = OpDag::from_epoch(&epoch0);
     res.unwrap();
-    let s = graph.note_pstate(s.state()).unwrap();
+    let s = graph.note_pstate(&epoch0, s.state()).unwrap();
     {
         use awi::{assert, *};
         // fix the opaques

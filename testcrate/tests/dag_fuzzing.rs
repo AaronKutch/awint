@@ -6,7 +6,10 @@ use std::{
 use awint::{
     awi,
     awint_dag::{
-        lowering::OpDag, smallvec::smallvec, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
+        basic_state_epoch::{StateEpoch, _get_epoch_data_arena},
+        lowering::OpDag,
+        smallvec::smallvec,
+        EvalError, Lineage, Op,
     },
     awint_internals::USIZE_BITS,
     awint_macro_internals::triple_arena::{ptr_struct, Advancer, Arena},
@@ -145,14 +148,14 @@ impl Mem {
         let (mut op_dag, res) = OpDag::from_epoch(epoch);
         res?;
         for pair in self.a.vals() {
-            op_dag.note_pstate(pair.dag.state()).unwrap();
+            op_dag.note_pstate(epoch, pair.dag.state()).unwrap();
         }
         op_dag.verify_integrity().unwrap();
         op_dag.eval_all()?;
         op_dag.verify_integrity().unwrap();
         op_dag.assert_assertions().unwrap();
         for pair in self.a.vals() {
-            let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
+            let p = epoch.pstate_to_pnode(pair.dag.state());
             if let Op::Literal(ref lit) = op_dag[p].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
@@ -167,7 +170,7 @@ impl Mem {
         let (mut op_dag, res) = OpDag::from_epoch(epoch);
         res?;
         for pair in self.a.vals() {
-            op_dag.note_pstate(pair.dag.state()).unwrap();
+            op_dag.note_pstate(epoch, pair.dag.state()).unwrap();
         }
         // if all constants are known, the lowering will simply become an evaluation. We
         // convert half of the literals to opaques at random, lower the dag, and finally
@@ -217,7 +220,7 @@ impl Mem {
         op_dag.eval_all().unwrap();
         op_dag.assert_assertions().unwrap();
         for pair in self.a.vals() {
-            let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
+            let p = epoch.pstate_to_pnode(pair.dag.state());
             if let Op::Literal(ref lit) = op_dag[p].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
@@ -825,6 +828,6 @@ fn dag_fuzzing() {
         let res = m.lower_and_verify_equal(&epoch);
         res.unwrap();
         drop(epoch);
-        assert!(STATE_ARENA.with(|f| f.borrow().is_empty()));
+        _get_epoch_data_arena(|a| assert!(a.is_empty()));
     }
 }

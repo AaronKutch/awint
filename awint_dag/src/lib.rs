@@ -21,7 +21,8 @@
 //! different `Bits` operations are applied.
 //!
 //! ```
-//! use awint::{awi, dag};
+//! use awint::{awi, dag, awint_dag::basic_state_epoch::StateEpoch};
+//!
 //! // In the future we may have a macro that can duplicate the code into a
 //! // module that has `awint::awi` imported, and another module that has
 //! // `awint::dag` imported, so that you can have a normal running version
@@ -57,8 +58,9 @@
 //!     }
 //! }
 //!
-//! // first, create an epoch, this will live until this struct is dropped
-//! let epoch0 = awint::awint_dag::StateEpoch::new();
+//! // First, create an epoch, this will live until this struct is dropped. Note
+//! // that downstream crates may have their own epoch management structs.
+//! let epoch0 = StateEpoch::new();
 //!
 //! let mut m = StateMachine::new();
 //! let input = inlawi!(opaque: ..4);
@@ -88,8 +90,8 @@
 //!     // dynamic assertions are marked with a nonzero reference count, and
 //!     // thus can be freely invalidated. The `PNote`s can be used as stable
 //!     // references after epochs are dropped.
-//!     let input = graph.note_pstate(input.state()).unwrap();
-//!     let output = graph.note_pstate(output.state()).unwrap();
+//!     let input = graph.note_pstate(&epoch0, input.state()).unwrap();
+//!     let output = graph.note_pstate(&epoch0, output.state()).unwrap();
 //!
 //!     // will do basic evaluations on DAGs
 //!     graph.eval_all().unwrap();
@@ -141,6 +143,8 @@
 //!   ```
 //!   //use awint::awi::*;
 //!   use awint::dag::*;
+//!
+//!   let epoch = awint::awint_dag::basic_state_epoch::StateEpoch::new();
 //!
 //!   let mut lhs = inlawi!(zero: ..8);
 //!   let rhs = inlawi!(umax: ..8);
@@ -201,23 +205,15 @@ pub use awint_ext::awint_internals::location;
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{EvalError, EvalResult, Lineage, Op, PNode, PNote, PState, State, StateEpoch};
+pub use common::{epoch, EvalError, EvalResult, Lineage, Op, PNode, PNote, PState, State};
 pub use lowering::{OpDag, OpNode};
-pub use mimick::{
-    assertion::{internal_assert, internal_assert_eq, internal_assert_ne},
-    primitive,
-};
+// export needed by the macros
+#[doc(hidden)]
+pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne};
+pub use mimick::primitive;
 pub use smallvec;
 
-/// Raw access to thread-local `State` related things
-pub mod state {
-    pub use crate::common::{
-        clear_thread_local_state, next_state_visit_gen, StateEpoch, EPOCH_GEN, EPOCH_STACK,
-        STATE_ARENA, STATE_VISIT_GEN,
-    };
-}
-
-pub use crate::mimick::{Bits, ExtAwi, InlAwi};
+pub use crate::common::basic_state_epoch;
 
 /// All mimicking items
 pub mod dag {

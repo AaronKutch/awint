@@ -700,22 +700,28 @@ impl Bits {
         let x: Box<[_]> = Box::from(x);
         let mut x: Vec<_> = Vec::from(x);
         let last = x.pop().unwrap().into();
-        let mut max = if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
+        let mut max = if let Op::Literal(ref lit) = last.state().get_op() {
             assert_eq!(lit.bw(), USIZE_BITS);
             lit.to_usize()
         } else {
-            panic!();
+            panic!(
+                "statically known bitwidths are needed for certain concatenation macro usages \
+                 with mimicking types"
+            );
         };
         for _ in 1..N {
             let last = x.pop().unwrap().into();
-            if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
+            if let Op::Literal(ref lit) = last.state().get_op() {
                 assert_eq!(lit.bw(), USIZE_BITS);
                 let val = lit.to_usize();
                 if val > max {
                     max = val;
                 }
             } else {
-                panic!();
+                panic!(
+                    "statically known bitwidths are needed for certain concatenation macro usages \
+                     with mimicking types"
+                );
             }
         }
         max
@@ -757,7 +763,7 @@ impl Bits {
                 .unwrap();
         }
         if check_nonzero_cw {
-            if let Op::Literal(ref lit) = cw.state().cloned_state().unwrap().op {
+            if let Op::Literal(ref lit) = cw.state().get_op() {
                 assert_eq!(lit.bw(), USIZE_BITS);
                 if lit.to_usize() == 0 {
                     return CCResult {

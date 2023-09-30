@@ -10,11 +10,11 @@ use awint_macro_internals::triple_arena::Advancer;
 use awint_macros::{extawi, inlawi};
 
 use crate::{
+    basic_state_epoch::StateEpoch,
     lowering::{meta::*, OpDag, PNode},
     mimick::{Bits, ExtAwi, InlAwi},
     EvalError, Lineage,
     Op::{self, *},
-    StateEpoch,
 };
 
 impl OpDag {

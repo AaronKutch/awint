@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value)]
 
 use awint::{
-    awint_dag::{OpDag, StateEpoch},
+    awint_dag::{basic_state_epoch::StateEpoch, OpDag},
     dag::{assert, assert_eq, *},
 };
 

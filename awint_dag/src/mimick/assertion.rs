@@ -2,11 +2,11 @@
 
 use awint_ext::awint_internals::Location;
 
-use crate::{common::register_assertion_bit, dag};
+use crate::{dag, epoch::register_assertion_bit_for_current_epoch};
 
 #[doc(hidden)]
 pub fn internal_assert(assert_true: impl Into<dag::bool>, location: Location) {
-    register_assertion_bit(assert_true.into(), location)
+    register_assertion_bit_for_current_epoch(assert_true.into(), location)
 }
 
 #[doc(hidden)]
@@ -21,7 +21,7 @@ pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(
     } else {
         panic!("`assert_eq` failed for `lhs` and `rhs` because they have different bitwidths")
     };
-    register_assertion_bit(eq, location)
+    register_assertion_bit_for_current_epoch(eq, location)
 }
 
 #[doc(hidden)]
@@ -36,7 +36,8 @@ pub fn internal_assert_ne<AsRefBitsType: AsRef<dag::Bits>>(
     } else {
         panic!("`assert_ne` failed for `lhs` and `rhs` because they have different bitwidths")
     };
-    register_assertion_bit(ne, location)
+
+    register_assertion_bit_for_current_epoch(ne, location)
 }
 
 /// Mimicking `assert` that takes `awi::bool` or `dag::bool`
