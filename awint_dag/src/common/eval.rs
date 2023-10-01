@@ -9,34 +9,24 @@ use Op::*;
 
 use crate::{EvalError, Op};
 
-/// A Valid result
-///
-/// `Valid(ExtAwi),`
-///
-/// Pass-through, usually because of an Awi operation that can fail from
-/// out-of-bounds values
-///
-/// `Pass(ExtAwi),`
-///
-/// No-operation, usually because of Awi operations with invalid bitwidths
-///
-/// `Noop,`
-///
-/// Some evaluation error because of something that is not an Awi operation.
-/// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
-/// static variants with bad inputs, and bad bitwidths on operations
-/// involving compile-time bitwidths (such as booleans and `usize`s in
-/// arguements)
-///
-/// `Error(EvalError),`
+/// The result of an evaluation on an `Op<ExtAwi>`
 ///
 /// In cases like `UQuo` where both invalid bitwidths and values at the same
 /// time are possible, `Noop` takes precedence
 #[derive(Debug, Clone)]
 pub enum EvalResult {
+    /// A Valid result
     Valid(ExtAwi),
+    /// Pass-through, usually because of an Awi operation that can fail from
+    /// out-of-bounds values
     Pass(ExtAwi),
+    /// No-operation, usually because of Awi operations with invalid bitwidths
     Noop,
+    /// Some evaluation error because of something that is not an Awi operation.
+    /// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
+    /// static variants with bad inputs, and bad bitwidths on operations
+    /// involving compile-time bitwidths (such as booleans and `usize`s in
+    /// arguements)
     Error(EvalError),
 }
 
@@ -119,6 +109,7 @@ macro_rules! ceq {
 }
 
 impl Op<ExtAwi> {
+    /// Evaluates the result of an `Op<ExtAwi>`
     pub fn eval(self, self_w: NonZeroUsize) -> EvalResult {
         let w = self_w;
         let res: Option<ExtAwi> = match self {

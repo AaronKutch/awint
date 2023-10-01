@@ -205,7 +205,9 @@ pub use awint_ext::awint_internals::location;
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{epoch, EvalError, EvalResult, Lineage, Op, PNode, PNote, PState, State};
+pub use common::{
+    epoch, DummyDefault, EvalError, EvalResult, Lineage, NoopResult, Op, PNode, PNote, PState,
+};
 pub use lowering::{OpDag, OpNode};
 // export needed by the macros
 #[doc(hidden)]

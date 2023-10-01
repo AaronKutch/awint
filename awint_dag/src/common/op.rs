@@ -1,34 +1,10 @@
 use std::{fmt::Debug, mem, num::NonZeroUsize};
 
-use awint_ext::{bw, ExtAwi};
+use awint_ext::ExtAwi;
 use smallvec::{smallvec, SmallVec};
 use Op::*;
 
-use crate::PState;
-
-// Some types can't implement `Default`, we need some dummy `Default`-like trait
-#[doc(hidden)]
-pub trait DummyDefault {
-    fn default() -> Self;
-}
-
-impl DummyDefault for NonZeroUsize {
-    fn default() -> Self {
-        bw(1)
-    }
-}
-
-impl DummyDefault for ExtAwi {
-    fn default() -> Self {
-        ExtAwi::zero(bw(1))
-    }
-}
-
-impl DummyDefault for PState {
-    fn default() -> Self {
-        Default::default()
-    }
-}
+use crate::DummyDefault;
 
 /// A mimicking `Op`eration
 #[derive(Debug, Default, Clone)]
@@ -379,6 +355,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         v
     }
 
+    /// Returns the `T` operands as a slice
     pub fn operands(&self) -> &[T] {
         match self {
             Invalid => &[],
@@ -451,6 +428,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         }
     }
 
+    /// Returns the `T` operands as a mutable slice
     pub fn operands_mut(&mut self) -> &mut [T] {
         match self {
             Invalid => &mut [],
@@ -523,12 +501,13 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         }
     }
 
+    /// Returns the number of operands
     pub fn operands_len(&self) -> usize {
         self.operands().len()
     }
 
-    /// If `this` has no operands (including `Opaque`s with empty `Vec`s) then
-    /// this translation succeeds.
+    /// Translates an `Op<U>` into an `Op<T>`. Returns an error if `this` has a
+    /// nonzero number of operands (`Opaque`s with empty `Vec`s succeed).
     pub fn translate_root<U: Debug + DummyDefault + Clone>(this: &Op<U>) -> Option<Self> {
         match this {
             Invalid => Some(Invalid),
@@ -544,12 +523,15 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         }
     }
 
-    // this is structured this way to avoid excessive allocations after the initial
-    // mimick stage
+    /// Translates an `Op<U>` into an `Op<T>`. It starts with each `T`
+    /// initialized to the result of `DummyDefault`, then `map` is given
+    /// a mutable reference to it and a reference to the corresponding `U`.
     pub fn translate<U: Debug + DummyDefault + Clone, F: FnMut(&mut [T], &[U])>(
         this: &Op<U>,
         map: F,
     ) -> Self {
+        // this is structured this way to avoid excessive allocations after the initial
+        // mimick stage
         let mut m = map;
         match this {
             Invalid => Invalid,

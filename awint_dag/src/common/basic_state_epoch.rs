@@ -16,8 +16,29 @@ use crate::{
     common::Op,
     dag,
     triple_arena::{Arena, Ptr},
-    Lineage, PNode, PState, State,
+    Lineage, PNode, PState,
 };
+
+/// Represents a single state that `mimick::Bits` is in at one point in time.
+/// The operands point to other `State`s. `Bits`, `InlAwi`, and `ExtAwi` use
+/// `Ptr`s to `States` in a thread local arena, so that they can change their
+/// state without borrowing issues or mutating `States` (which could be used as
+/// operands by other `States`).
+#[derive(Debug, Clone)]
+pub struct State {
+    /// Bitwidth
+    pub nzbw: NonZeroUsize,
+    /// Operation
+    pub op: Op<PState>,
+    /// Location where this state is derived from
+    pub location: Option<Location>,
+    /// Used to avoid needing hashmaps
+    pub node_map: PNode,
+    /// Used in algorithms for DFS tracking and to allow multiple DAG
+    /// constructions from same nodes
+    pub visit: NonZeroU64,
+    pub prev_in_epoch: Option<PState>,
+}
 
 #[derive(Default)]
 struct EpochData {
