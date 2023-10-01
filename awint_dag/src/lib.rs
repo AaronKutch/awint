@@ -201,7 +201,7 @@
 mod common;
 pub mod lowering;
 pub mod mimick;
-pub use awint_ext::awint_internals::location;
+pub use awint_ext::awint_internals::{location, Location};
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
