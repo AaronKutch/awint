@@ -17,9 +17,9 @@ use crate::awint_internals::*;
 
 #[inline]
 pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
+    // Safety: this produces the exact number of bytes needed to satisfy the raw
+    // invariants of `Bits`.
     unsafe {
-        // Safety: this produces the exact number of bytes needed to satisfy the raw
-        // invariants of `Bits`.
         Layout::from_size_align_unchecked(
             total_digits(w).get() * mem::size_of::<Digit>(),
             mem::align_of::<Digit>(),
@@ -35,7 +35,7 @@ pub(crate) const fn layout(w: NonZeroUsize) -> Layout {
 /// [Bits](awint_core::Bits) for more. There are also some functions that
 /// `InlAwi` and `Bits` do not implement, namely some higher level string
 /// serialization functions that require allocation. Also note that `ExtAwi`
-/// cannot take advance of the `const`ness of `Bits` operations, see
+/// cannot take advantage of the `const`ness of `Bits` operations, see
 /// [InlAwi](awint_core::InlAwi).
 ///
 /// See the crate level documentation of `awint_macros` for more macros and
@@ -186,7 +186,7 @@ impl<'a> ExtAwi {
         tmp
     }
 
-    /// Zero-value construction with bitwidth `bw`
+    /// Zero-value construction with bitwidth `w`
     pub fn zero(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         unsafe {
@@ -195,7 +195,7 @@ impl<'a> ExtAwi {
         }
     }
 
-    /// Unsigned-maximum-value construction with bitwidth `bw`
+    /// Unsigned-maximum-value construction with bitwidth `w`
     pub fn umax(w: NonZeroUsize) -> Self {
         // Safety: This satisfies `ExtAwi::from_raw_parts`
         let mut x = unsafe {
@@ -207,21 +207,21 @@ impl<'a> ExtAwi {
         x
     }
 
-    /// Signed-maximum-value construction with bitwidth `bw`
+    /// Signed-maximum-value construction with bitwidth `w`
     pub fn imax(w: NonZeroUsize) -> Self {
         let mut awi = Self::umax(w);
         *awi.const_as_mut().last_mut() = (MAX >> 1) >> awi.unused();
         awi
     }
 
-    /// Signed-minimum-value construction with bitwidth `bw`
+    /// Signed-minimum-value construction with bitwidth `w`
     pub fn imin(w: NonZeroUsize) -> Self {
         let mut awi = Self::zero(w);
         *awi.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> awi.unused();
         awi
     }
 
-    /// Unsigned-one-value construction with bitwidth `bw`
+    /// Unsigned-one-value construction with bitwidth `w`
     pub fn uone(w: NonZeroUsize) -> Self {
         let mut awi = Self::zero(w);
         *awi.const_as_mut().first_mut() = 1;

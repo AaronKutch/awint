@@ -22,6 +22,7 @@
 
 extern crate alloc;
 
+mod awi_struct;
 mod extawi;
 mod fp_core;
 mod fp_ieee;
@@ -30,6 +31,7 @@ mod fp_logic;
 mod serde;
 mod strings;
 
+pub use awi_struct::Awi;
 #[doc(hidden)]
 pub use awint_core;
 #[doc(hidden)]
@@ -44,7 +46,7 @@ pub mod awi {
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
 
-    pub use crate::{ExtAwi, FPType, FP};
+    pub use crate::{Awi, ExtAwi, FPType, FP};
 }
 
 /// Fixed point related items

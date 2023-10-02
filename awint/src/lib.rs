@@ -12,7 +12,7 @@ pub use awint_core::{bw, Bits, InlAwi, SerdeError};
 #[cfg(feature = "dag")]
 pub use awint_dag;
 #[cfg(feature = "alloc")]
-pub use awint_ext::{ExtAwi, FPType, OrdBits, FP};
+pub use awint_ext::{Awi, ExtAwi, FPType, OrdBits, FP};
 #[doc(hidden)]
 #[cfg(feature = "std")]
 pub use awint_macro_internals;
@@ -49,7 +49,7 @@ pub mod dag {
 pub mod prelude {
     pub use awint_core::{bw, Bits, InlAwi};
     #[cfg(feature = "alloc")]
-    pub use awint_ext::{ExtAwi, FPType, FP};
+    pub use awint_ext::{Awi, ExtAwi, FPType, FP};
     pub use awint_macros::*;
 }
 
