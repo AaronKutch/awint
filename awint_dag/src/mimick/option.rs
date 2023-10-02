@@ -3,6 +3,7 @@ use std::{
     borrow::{Borrow, BorrowMut},
     mem,
     ops::{Deref, DerefMut},
+    process::{ExitCode, Termination},
 };
 
 use awint_ext::{awi, awint_internals::Location};
@@ -293,6 +294,23 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>> Option<T> {
                     t
                 } else {
                     panic!("called `Option::unwrap_or()` on an unrealizable `Opaque` value")
+                }
+            }
+        }
+    }
+}
+
+impl<T> Termination for Option<T> {
+    fn report(self) -> ExitCode {
+        match self {
+            None => ExitCode::FAILURE,
+            Some(_) => ExitCode::SUCCESS,
+            Opaque(z) => {
+                match z.t {
+                    StdSome(_) => ExitCode::SUCCESS,
+                    // TODO not sure if this is the functionality we want or if we want
+                    //panic!("called `Termination::report` on an unrealizable `Opaque` value")
+                    StdNone => ExitCode::FAILURE,
                 }
             }
         }

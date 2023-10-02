@@ -3,6 +3,7 @@ use std::{
     borrow::{Borrow, BorrowMut},
     fmt::Debug,
     ops::{Deref, DerefMut},
+    process::{ExitCode, Termination},
 };
 
 use awint_ext::{awi, awint_internals::Location};
@@ -333,6 +334,19 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>, E> Result<T, E> {
                 StdErr(_) => {
                     panic!("called `Result::unwrap_or()` with error-type `Opaque`")
                 }
+            },
+        }
+    }
+}
+
+impl<T, E> Termination for Result<T, E> {
+    fn report(self) -> ExitCode {
+        match self {
+            Ok(_) => ExitCode::SUCCESS,
+            Err(_) => ExitCode::FAILURE,
+            Opaque(z) => match z.res {
+                StdOk(_) => ExitCode::SUCCESS,
+                StdErr(_) => ExitCode::FAILURE,
             },
         }
     }
