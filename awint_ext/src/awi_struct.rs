@@ -1,6 +1,7 @@
-use alloc::alloc::{alloc, alloc_zeroed, dealloc, Layout};
+use alloc::alloc::{alloc, alloc_zeroed, dealloc, realloc, Layout};
 use core::{
     borrow::{Borrow, BorrowMut},
+    cmp::max,
     fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,
@@ -11,7 +12,7 @@ use core::{
     ptr::NonNull,
 };
 
-use awint_core::Bits;
+use awint_core::{Bits, InlAwi};
 use const_fn::const_fn;
 
 use crate::awint_internals::*;
@@ -63,7 +64,8 @@ pub struct Awi {
     ///
     /// Invariants:
     ///
-    /// - If `_cap == 0`, only `_inl_or_ext._inl` is used, and `_nzbw <= BITS`
+    /// - If `_cap == 0`, only `_inl_or_ext._inl` is used, `_nzbw <= BITS`, and
+    ///   `_cap == BITS`
     /// - If `_cap != 0`, only `_inl_or_ext._ext` is used, pointing to an
     ///   allocation with `_cap` bytes and an aligned array of `Digit`s. `_cap *
     ///   8` must not overflow. `_nzbw <= _cap * 8`. The allocation must always
@@ -246,7 +248,14 @@ impl<'a> Awi {
         }
     }
 
-    //from_bits
+    /// Creates an `Awi` from copying a `Bits` reference. The same
+    /// functionality is provided by an `From<&Bits>` implementation for
+    /// `Awi`.
+    pub fn from_bits(bits: &Bits) -> Awi {
+        let mut tmp = Awi::zero(bits.nzbw());
+        tmp.const_as_mut().copy_(bits).unwrap();
+        tmp
+    }
 
     /// Zero-value construction with bitwidth `w`
     pub fn zero(w: NonZeroUsize) -> Self {
@@ -255,7 +264,7 @@ impl<'a> Awi {
             unsafe { Awi::inl_from_raw_parts(0, w) }
         } else {
             // Safety: we allocate for a capacity that can store `w`. We use `size_in_bytes`
-            // for `cap_in_bytes`.
+            // for `cap_in_bytes`. `alloc_zeroed` initializes the allocation.
             unsafe {
                 let size_in_digits = total_digits(w).get();
                 let size_in_bytes = size_in_digits * mem::size_of::<Digit>();
@@ -267,23 +276,273 @@ impl<'a> Awi {
         }
     }
 
-    //from_bits_with_capacity
-    //zero_with_capacity
+    /// Unsigned-maximum-value construction with bitwidth `w`
+    pub fn umax(w: NonZeroUsize) -> Self {
+        let mut res = if w.get() <= BITS {
+            // Safety: the bitwidth is no larger than `BITS`
+            unsafe { Awi::inl_from_raw_parts(MAX, w) }
+        } else {
+            // Safety: we allocate for a capacity that can store `w`. We use `size_in_bytes`
+            // for `cap_in_bytes`. The allocation is initialized with `write_bytes`.
+            unsafe {
+                let size_in_digits = total_digits(w).get();
+                let size_in_bytes = size_in_digits * mem::size_of::<Digit>();
+                let layout =
+                    Layout::from_size_align_unchecked(size_in_bytes, mem::align_of::<Digit>());
+                let ptr: *mut Digit = alloc(layout).cast();
+                ptr.write_bytes(u8::MAX, size_in_digits);
+                Awi::ext_from_raw_parts(ptr, w, size_in_bytes)
+            }
+        };
+        res.const_as_mut().clear_unused_bits();
+        res
+    }
 
-    // Increases capacity if necessary, otherwise just changes the bitwidth and
-    // overwrites nothing, even previously set bits in the capacity
-    // internal_resize()
+    /// Signed-maximum-value construction with bitwidth `w`
+    pub fn imax(w: NonZeroUsize) -> Self {
+        let mut awi = Self::umax(w);
+        *awi.const_as_mut().last_mut() = (MAX >> 1) >> awi.unused();
+        awi
+    }
 
-    // Reserves capacity for at least `additional` more bits. More bits than
-    // requested may be allocated.
-    //
-    // # Panics
-    //
-    // Panics if the new capacity exceeds `usize::MAX` bits
-    //reserve(&mut self, additional: usize)
+    /// Signed-minimum-value construction with bitwidth `w`
+    pub fn imin(w: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(w);
+        *awi.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> awi.unused();
+        awi
+    }
 
-    //shrink_to(&mut self, min_capacity: NonZeroUsize)
-    //shrink_to_fit(&mut self)
+    /// Unsigned-one-value construction with bitwidth `w`
+    pub fn uone(w: NonZeroUsize) -> Self {
+        let mut awi = Self::zero(w);
+        *awi.const_as_mut().first_mut() = 1;
+        awi
+    }
+
+    /// Creates an `Awi` from copying a `Bits` reference. The result is created
+    /// to have a minimum bit capacity of `min_capacity`.
+    pub fn from_bits_with_capacity(bits: &Bits, min_capacity: NonZeroUsize) -> Awi {
+        let mut tmp = Awi::zero_with_capacity(bits.nzbw(), min_capacity);
+        tmp.const_as_mut().copy_(bits).unwrap();
+        tmp
+    }
+
+    /// Zero-value construction with bitwidth `w` and minimum bit capacity
+    /// `min_capacity`
+    pub fn zero_with_capacity(w: NonZeroUsize, min_capacity: NonZeroUsize) -> Self {
+        let min_capacity = max(w, min_capacity);
+        if min_capacity.get() <= BITS {
+            // Safety: the bitwidth is no larger than `BITS`
+            unsafe { Awi::inl_from_raw_parts(0, w) }
+        } else {
+            // Safety: we allocate for a capacity that can store `w`. We use `size_in_bytes`
+            // for `cap_in_bytes`. `alloc_zeroed` initializes the allocation.
+            unsafe {
+                let size_in_digits = total_digits(min_capacity).get();
+                let size_in_bytes = size_in_digits * mem::size_of::<Digit>();
+                let layout =
+                    Layout::from_size_align_unchecked(size_in_bytes, mem::align_of::<Digit>());
+                let ptr: *mut Digit = alloc_zeroed(layout).cast();
+                Awi::ext_from_raw_parts(ptr, w, size_in_bytes)
+            }
+        }
+    }
+
+    /// Unsigned-maximum-value construction with bitwidth `w` and minimum bit
+    /// capacity `min_capacity`
+    pub fn umax_with_capacity(w: NonZeroUsize, min_capacity: NonZeroUsize) -> Self {
+        let min_capacity = max(w, min_capacity);
+        let mut res = if min_capacity.get() <= BITS {
+            // Safety: the bitwidth is no larger than `BITS`
+            unsafe { Awi::inl_from_raw_parts(MAX, w) }
+        } else {
+            // Safety: we allocate for a capacity that can store `w`. We use `size_in_bytes`
+            // for `cap_in_bytes`. The allocation is initialized with `write_bytes`.
+            unsafe {
+                let size_in_digits = total_digits(min_capacity).get();
+                let size_in_bytes = size_in_digits * mem::size_of::<Digit>();
+                let layout =
+                    Layout::from_size_align_unchecked(size_in_bytes, mem::align_of::<Digit>());
+                let ptr: *mut Digit = alloc(layout).cast();
+                ptr.write_bytes(u8::MAX, size_in_digits);
+                Awi::ext_from_raw_parts(ptr, w, size_in_bytes)
+            }
+        };
+        res.const_as_mut().clear_unused_bits();
+        res
+    }
+
+    /// Signed-maximum-value construction with bitwidth `w` and minimum bit
+    /// capacity `min_capacity`
+    pub fn imax_with_capacity(w: NonZeroUsize, min_capacity: NonZeroUsize) -> Self {
+        let mut awi = Self::umax_with_capacity(w, min_capacity);
+        *awi.const_as_mut().last_mut() = (MAX >> 1) >> awi.unused();
+        awi
+    }
+
+    /// Signed-minimum-value construction with bitwidth `w` and minimum bit
+    /// capacity `min_capacity`
+    pub fn imin_with_capacity(w: NonZeroUsize, min_capacity: NonZeroUsize) -> Self {
+        let mut awi = Self::zero_with_capacity(w, min_capacity);
+        *awi.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> awi.unused();
+        awi
+    }
+
+    /// Unsigned-one-value construction with bitwidth `w` and minimum bit
+    /// capacity `min_capacity`
+    pub fn uone_with_capacity(w: NonZeroUsize, min_capacity: NonZeroUsize) -> Self {
+        let mut awi = Self::zero_with_capacity(w, min_capacity);
+        *awi.const_as_mut().first_mut() = 1;
+        awi
+    }
+
+    /// Changes the capacity to a minimum of `min_new_capacity`, first seeing if
+    /// inlining is possible, then trying to do nothing if `min_new_capacity`
+    /// gives the same number of digits of capacity, then allocating or
+    /// reallocating otherwise.
+    ///
+    /// # Safety
+    ///
+    /// This function does not change `_nzbw`, which may need to be changed
+    /// afterwards if the new capacity is less than that. Note also that if
+    /// inlining state changes, then the first digit can be clobbered.
+    unsafe fn internal_capacity_change(&mut self, min_new_capacity: NonZeroUsize) {
+        if min_new_capacity.get() <= BITS {
+            // we can switch to inline mode
+            if let Some(layout) = self.layout() {
+                // Safety: deallocates our layout at the right pointer, and sets capacity to 0
+                unsafe {
+                    dealloc(self._inl_or_ext._ext as *mut u8, layout);
+                    self._cap = 0;
+                }
+            } // else the inlining state is already correct
+        } else if self._cap == 0 {
+            // we are currently inlined and need to change to external mode
+
+            let size_in_digits = total_digits(min_new_capacity).get();
+            let size_in_bytes = size_in_digits * mem::size_of::<Digit>();
+            // Safety: we allocate for a capacity that can store `min_new_capacity`. We use
+            // `size_in_bytes` for `_cap`. `alloc_zeroed` initializes the
+            // allocation.
+            unsafe {
+                let layout =
+                    Layout::from_size_align_unchecked(size_in_bytes, mem::align_of::<Digit>());
+                let ptr: *mut Digit = alloc_zeroed(layout).cast();
+                self._inl_or_ext._ext = ptr;
+                self._cap = size_in_bytes;
+            }
+        } else {
+            let size_in_digits = total_digits(min_new_capacity).get();
+            let size_in_bytes = size_in_digits * mem::size_of::<Digit>();
+            if size_in_bytes != self._cap {
+                // reallocate
+
+                // Safety: We first get the old values for reallocation of the old layout. We
+                // use the `new_ptr` always and do not use `old_ptr` even if the reallocation
+                // turns out to be in-place. `size_in_bytes` is nonzero and can't cause bit
+                // capacity overflow. If the capacity increased, we initialize all the new
+                // bytes.
+                unsafe {
+                    let old_ptr = self._inl_or_ext._ext as *mut u8;
+                    let old_size_in_bytes = self._cap;
+                    let old_layout = Layout::from_size_align_unchecked(
+                        old_size_in_bytes,
+                        mem::align_of::<Digit>(),
+                    );
+                    let new_ptr: *mut Digit = realloc(old_ptr, old_layout, size_in_bytes).cast();
+                    self._inl_or_ext._ext = new_ptr;
+                    self._cap = size_in_bytes;
+                    if size_in_bytes > old_size_in_bytes {
+                        let start_ptr = (new_ptr as *mut u8).add(old_size_in_bytes);
+                        start_ptr.write_bytes(u8::MAX, size_in_bytes - old_size_in_bytes);
+                    }
+                }
+            } // else no capacity change needed
+        }
+    }
+
+    /// Reserves capacity for at least `additional` more bits. More bits than
+    /// requested may be allocated.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `usize::MAX` bits
+    pub fn reserve(&mut self, additional: usize) {
+        let new_cap = self
+            .capacity()
+            .get()
+            .checked_add(additional)
+            .expect("new capacity exceeds `usize::MAX`");
+        // Safety: the capacity does not decrease, so we do not need to set `_nzbw`
+        unsafe {
+            self.internal_capacity_change(NonZeroUsize::new(new_cap).unwrap());
+        }
+    }
+
+    /// Shrinks capacity to a minimum of `min_capacity` bits
+    pub fn shrink_to(&mut self, min_capacity: NonZeroUsize) {
+        let new_cap = max(self._nzbw, min_capacity);
+        // Safety: the capacity does not decrease below `_nzbw`, so we do not need to
+        // set `_nzbw`
+        unsafe {
+            self.internal_capacity_change(new_cap);
+        }
+    }
+
+    /// Shrinks capacity to fit a minimum of `self.nzbw()` bits
+    pub fn shrink_to_fit(&mut self) {
+        // Safety: the capacity does not decrease below `_nzbw`, so we do not need to
+        // set `_nzbw`
+        unsafe {
+            self.internal_capacity_change(self._nzbw);
+        }
+    }
+
+    /// Increases capacity if necessary, otherwise just changes the bitwidth and
+    /// overwrites nothing (meaning that previously set bits in the capacity can
+    /// appear in the available bits). Increases capacity to at least the next
+    /// power of two if it needs to increase. Does not fix any new bits.
+    fn internal_resize(&mut self, new_nzbw: NonZeroUsize) {
+        let old_capacity = self.capacity();
+        // note that `old_capacity` is at least `BITS`
+        if new_nzbw <= old_capacity {
+            // Safety: this is within the current capacity
+            self._nzbw = new_nzbw;
+        } else if self._cap == 0 {
+            // remember to copy the inline bits for writing later to the allocation
+
+            // Safety: we are in inline mode
+            let old_digit = unsafe { self._inl_or_ext._inl };
+            // if the `new_nzbw` is more than the next power of two of capacity, go to it
+            // instead
+            let minimum = max(
+                old_capacity
+                    .checked_next_power_of_two()
+                    .expect("reallocation failure"),
+                new_nzbw,
+            );
+            // Safety: we fix the `_nzbw`, and write the guaranteed first digit
+            unsafe {
+                self.internal_capacity_change(minimum);
+                self._nzbw = new_nzbw;
+                let ptr = self._inl_or_ext._ext as *mut Digit;
+                ptr.write(old_digit);
+            }
+        } else {
+            // reallocate
+            let minimum = max(
+                old_capacity
+                    .checked_next_power_of_two()
+                    .expect("reallocation failure"),
+                new_nzbw,
+            );
+            // Safety: we fix the `_nzbw`
+            unsafe {
+                self.internal_capacity_change(minimum);
+                self._nzbw = new_nzbw;
+            }
+        }
+    }
 
     // Not the same as `Bits::resize_`.
     //resize(&mut self, new_bitwidth: NonZeroUsize)
@@ -294,12 +553,38 @@ impl<'a> Awi {
     pub fn panicking_zero(w: usize) -> Self {
         Self::zero(NonZeroUsize::new(w).unwrap())
     }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_umax(w: usize) -> Self {
+        Self::umax(NonZeroUsize::new(w).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_imax(w: usize) -> Self {
+        Self::imax(NonZeroUsize::new(w).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_imin(w: usize) -> Self {
+        Self::imin(NonZeroUsize::new(w).unwrap())
+    }
+
+    /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
+    #[doc(hidden)]
+    pub fn panicking_uone(w: usize) -> Self {
+        Self::uone(NonZeroUsize::new(w).unwrap())
+    }
 }
 
 impl Drop for Awi {
     fn drop(&mut self) {
         if let Some(layout) = self.layout() {
-            // Safety: deallocates our layout at the right pointer
+            // Safety: deallocates our layout at the right pointer. The `_cap` and `_nzbw`
+            // are going to be invalidated, but the whole struct is being dropped and will
+            // not be used again.
             unsafe {
                 dealloc(self._inl_or_ext._ext as *mut u8, layout);
             }
@@ -438,6 +723,27 @@ impl AsMut<Bits> for Awi {
     #[inline]
     fn as_mut(&mut self) -> &mut Bits {
         self
+    }
+}
+
+// we unfortunately can't do something like `impl<B: Borrow<Bits>> From<B>`
+// because specialization is not stabilized
+
+/// Creates an `Awi` from copying a `Bits` reference
+impl From<&Bits> for Awi {
+    fn from(bits: &Bits) -> Awi {
+        let mut tmp = Awi::zero(bits.nzbw());
+        tmp.const_as_mut().copy_(bits).unwrap();
+        tmp
+    }
+}
+
+/// Creates an `Awi` from copying an `InlAwi`
+impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for Awi {
+    fn from(awi: InlAwi<BW, LEN>) -> Awi {
+        let mut tmp = Awi::zero(awi.nzbw());
+        tmp.const_as_mut().copy_(&awi).unwrap();
+        tmp
     }
 }
 
