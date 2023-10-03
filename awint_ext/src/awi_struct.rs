@@ -399,14 +399,15 @@ impl<'a> Awi {
     /// Changes the capacity to a minimum of `min_new_capacity`, first seeing if
     /// inlining is possible, then trying to do nothing if `min_new_capacity`
     /// gives the same number of digits of capacity, then allocating or
-    /// reallocating otherwise.
+    /// reallocating otherwise. If `init`, any new digits are set to all `MAX`,
+    /// else they are set to zero.
     ///
     /// # Safety
     ///
     /// This function does not change `_nzbw`, which may need to be changed
     /// afterwards if the new capacity is less than that. Note also that if
     /// inlining state changes, then the first digit can be clobbered.
-    unsafe fn internal_capacity_change(&mut self, min_new_capacity: NonZeroUsize) {
+    unsafe fn internal_capacity_change(&mut self, min_new_capacity: NonZeroUsize, init: bool) {
         if min_new_capacity.get() <= BITS {
             // we can switch to inline mode
             if let Some(layout) = self.layout() {
@@ -427,7 +428,14 @@ impl<'a> Awi {
             unsafe {
                 let layout =
                     Layout::from_size_align_unchecked(size_in_bytes, mem::align_of::<Digit>());
-                let ptr: *mut Digit = alloc_zeroed(layout).cast();
+                let ptr: *mut Digit = if init {
+                    let ptr = alloc(layout);
+                    ptr.write_bytes(u8::MAX, size_in_bytes);
+                    ptr
+                } else {
+                    alloc_zeroed(layout)
+                }
+                .cast();
                 self._inl_or_ext._ext = ptr;
                 self._cap = size_in_bytes;
             }
@@ -454,7 +462,11 @@ impl<'a> Awi {
                     self._cap = size_in_bytes;
                     if size_in_bytes > old_size_in_bytes {
                         let start_ptr = (new_ptr as *mut u8).add(old_size_in_bytes);
-                        start_ptr.write_bytes(u8::MAX, size_in_bytes - old_size_in_bytes);
+                        if init {
+                            start_ptr.write_bytes(u8::MAX, size_in_bytes - old_size_in_bytes);
+                        } else {
+                            start_ptr.write_bytes(0u8, size_in_bytes - old_size_in_bytes);
+                        }
                     }
                 }
             } // else no capacity change needed
@@ -473,36 +485,84 @@ impl<'a> Awi {
             .get()
             .checked_add(additional)
             .expect("new capacity exceeds `usize::MAX`");
+        let old_digit = if self._cap == 0 {
+            // Safety: we are in inline mode
+            Some(unsafe { self._inl_or_ext._inl })
+        } else {
+            None
+        };
         // Safety: the capacity does not decrease, so we do not need to set `_nzbw`
         unsafe {
-            self.internal_capacity_change(NonZeroUsize::new(new_cap).unwrap());
+            self.internal_capacity_change(NonZeroUsize::new(new_cap).unwrap(), false);
+        }
+        if let Some(old_digit) = old_digit {
+            if self._cap != 0 {
+                // we have changed to external
+
+                // Safety: write the guaranteed first digit
+                unsafe {
+                    let ptr = self._inl_or_ext._ext as *mut Digit;
+                    ptr.write(old_digit);
+                }
+            }
         }
     }
 
     /// Shrinks capacity to a minimum of `min_capacity` bits
     pub fn shrink_to(&mut self, min_capacity: NonZeroUsize) {
         let new_cap = max(self._nzbw, min_capacity);
+        let old_digit = self.to_digit();
+        let old_internal = self._cap == 0;
         // Safety: the capacity does not decrease below `_nzbw`, so we do not need to
         // set `_nzbw`
         unsafe {
-            self.internal_capacity_change(new_cap);
+            self.internal_capacity_change(new_cap, false);
+        }
+        if (!old_internal) && (self._cap == 0) {
+            // we have changed to internal
+            // Safety: we write to the internal digit
+            self._inl_or_ext._inl = old_digit;
+        } else if old_internal && (self._cap != 0) {
+            // we have changed to external
+            // Safety: we write the guaranteed first digit
+            unsafe {
+                let ptr = self._inl_or_ext._ext as *mut Digit;
+                ptr.write(old_digit);
+            }
         }
     }
 
     /// Shrinks capacity to fit a minimum of `self.nzbw()` bits
     pub fn shrink_to_fit(&mut self) {
+        let old_digit = if self._cap != 0 {
+            // Safety: read the guaranteed first digit
+            Some(unsafe {
+                let ptr = self._inl_or_ext._ext as *mut Digit;
+                ptr.read()
+            })
+        } else {
+            None
+        };
         // Safety: the capacity does not decrease below `_nzbw`, so we do not need to
         // set `_nzbw`
         unsafe {
-            self.internal_capacity_change(self._nzbw);
+            self.internal_capacity_change(self._nzbw, false);
         }
+        if let Some(old_digit) = old_digit {
+            if self._cap == 0 {
+                // we have changed to internal
+                // Safety: we write to the internal digit
+                self._inl_or_ext._inl = old_digit;
+            }
+        }
+        // we cannot change from internal to external
     }
 
     /// Increases capacity if necessary, otherwise just changes the bitwidth and
     /// overwrites nothing (meaning that previously set bits in the capacity can
     /// appear in the available bits). Increases capacity to at least the next
     /// power of two if it needs to increase. Does not fix any new bits.
-    fn internal_resize(&mut self, new_nzbw: NonZeroUsize) {
+    fn internal_resize(&mut self, new_nzbw: NonZeroUsize, init: bool) {
         let old_capacity = self.capacity();
         // note that `old_capacity` is at least `BITS`
         if new_nzbw <= old_capacity {
@@ -523,7 +583,7 @@ impl<'a> Awi {
             );
             // Safety: we fix the `_nzbw`, and write the guaranteed first digit
             unsafe {
-                self.internal_capacity_change(minimum);
+                self.internal_capacity_change(minimum, init);
                 self._nzbw = new_nzbw;
                 let ptr = self._inl_or_ext._ext as *mut Digit;
                 ptr.write(old_digit);
@@ -538,15 +598,79 @@ impl<'a> Awi {
             );
             // Safety: we fix the `_nzbw`
             unsafe {
-                self.internal_capacity_change(minimum);
+                self.internal_capacity_change(minimum, init);
                 self._nzbw = new_nzbw;
             }
         }
     }
 
-    // Not the same as `Bits::resize_`.
-    //resize(&mut self, new_bitwidth: NonZeroUsize)
-    //resize_unsigned()
+    /// Resizes the bitwidth of `self` inplace, reusing capacity if possible. If
+    /// `new_bitwidth.get() > self.bw()`, new bits will be set to `extension`.
+    /// If `new_bitwidth.bw() < self.bw()`, the upper `self.bw() -
+    /// new_bitwidth.get()` bits will be truncated.
+    pub fn resize(&mut self, new_bitwidth: NonZeroUsize, extension: bool) {
+        let original_bw = self.bw();
+        self.internal_resize(new_bitwidth, extension);
+        if new_bitwidth.get() > original_bw {
+            // Safety: `new_bitwidth.get() > original_bw` so `digits_u(original_bw)` is in
+            // bounds
+            unsafe {
+                let original_extra = extra_u(original_bw);
+                let start = if original_extra != 0 {
+                    if extension {
+                        // there are unset bits in `self`s original end digit
+                        *self.get_unchecked_mut(digits_u(original_bw)) |= MAX << original_extra;
+                    }
+                    digits_u(original_bw).wrapping_add(2)
+                } else {
+                    digits_u(original_bw).wrapping_add(1)
+                };
+                let end = self.len();
+                self.digit_set(extension, start..end, extension)
+            }
+        }
+        self.clear_unused_bits();
+    }
+
+    /// Zero-resizes the bitwidth of `self` inplace, reusing capacity if
+    /// possible. This is the same as `self.resize(false)`, but returns `true`
+    /// if the unsigned meaning of the integer is changed.
+    pub fn zero_resize(&mut self, new_bitwidth: NonZeroUsize) -> bool {
+        let overflow = if new_bitwidth.get() < self.bw() {
+            // Safety:
+            unsafe {
+                // check if there are set bits that would be truncated
+                if (extra(new_bitwidth) != 0)
+                    && ((self.get_unchecked(digits(new_bitwidth) - 1) >> extra(new_bitwidth)) != 0)
+                {
+                    true
+                } else {
+                    let mut overflow = false;
+                    const_for!(i in {total_digits(new_bitwidth).get()..self.len()} {
+                        if self.get_unchecked(i) != 0 {
+                            overflow = true;
+                            break
+                        }
+                    });
+                    overflow
+                }
+            }
+        } else {
+            false
+        };
+        self.internal_resize(new_bitwidth, false);
+        overflow
+    }
+
+    // TODO
+    /*
+    /// Sign-resizes the bitwidth of `self` inplace, reusing capacity if possible. This is the same as `self.resize(self.msb())`, but returns `true` if the signed meaning of the integer is changed.
+    pub fn sign_resize(&mut self, new_bitwidth: NonZeroUsize) -> bool {
+        let extension = self.msb();
+        self.resize(new_bitwidth, extension);
+        false
+    }
+    */
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]
