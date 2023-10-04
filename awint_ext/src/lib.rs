@@ -22,6 +22,7 @@
 
 extern crate alloc;
 
+mod awi_strings;
 mod awi_struct;
 mod extawi;
 mod fp_core;
@@ -29,6 +30,7 @@ mod fp_ieee;
 mod fp_logic;
 #[cfg(feature = "serde_support")]
 mod serde;
+pub(crate) mod string_internals;
 mod strings;
 
 pub use awi_struct::Awi;

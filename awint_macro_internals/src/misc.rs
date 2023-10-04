@@ -2,7 +2,7 @@
 use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
-use awint_ext::{Bits, ExtAwi};
+use awint_ext::{Awi, Bits};
 use triple_arena::ptr_struct;
 
 #[cfg(feature = "debug")]
@@ -97,27 +97,27 @@ pub fn unstable_native_bits(bits: &Bits) -> String {
 // - More generated Rust code
 //
 // `unstable_native_bits` is now just used for `awint_bits_lit_construction_fn`
-pub fn awint_static_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_static_construction_fn(awi: Awi) -> String {
     unstable_native_inlawi(&awi)
 }
 
-pub fn awint_unreachable_construction_fn(_awi: ExtAwi) -> String {
+pub fn awint_unreachable_construction_fn(_awi: Awi) -> String {
     unreachable!()
 }
 
-pub fn awint_inlawi_lit_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_inlawi_lit_construction_fn(awi: Awi) -> String {
     unstable_native_inlawi(&awi)
 }
 
-pub fn awint_extawi_lit_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_extawi_lit_construction_fn(awi: Awi) -> String {
     format!("ExtAwi::from_bits(&{})", unstable_native_inlawi(&awi))
 }
 
-pub fn awint_awi_lit_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_awi_lit_construction_fn(awi: Awi) -> String {
     format!("Awi::from_bits(&{})", unstable_native_inlawi(&awi))
 }
 
-pub fn awint_bits_lit_construction_fn(awi: ExtAwi) -> String {
+pub fn awint_bits_lit_construction_fn(awi: Awi) -> String {
     unstable_native_bits(&awi)
 }
 

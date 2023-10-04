@@ -8,14 +8,11 @@ use crate::{
         bits_to_string_radix, bits_to_vec_radix, internal_from_bytes_general,
         internal_from_bytes_radix, internal_from_str,
     },
-    ExtAwi,
+    Awi,
 };
 
 /// # non-`const` string representation conversion
-impl ExtAwi {
-    // note: we use the name `..._to_vec` instead of `..._to_bytes` to avoid name
-    // collisions and confusion with the literal byte values instead of chars.
-
+impl Awi {
     /// Creates a `Vec<u8>` representing `bits` (sign indicators, prefixes, and
     /// postfixes not included). This function performs allocation. This is
     /// a wrapper around [awint_core::Bits::to_bytes_radix] that truncates
@@ -41,7 +38,7 @@ impl ExtAwi {
     }
 
     /// Creates a string representing `bits`. This function performs allocation.
-    /// This does the same thing as [ExtAwi::bits_to_vec_radix] but with a
+    /// This does the same thing as [Awi::bits_to_vec_radix] but with a
     /// `String`.
     pub fn bits_to_string_radix(
         bits: &Bits,
@@ -53,7 +50,7 @@ impl ExtAwi {
         bits_to_string_radix(bits, signed, radix, upper, min_chars)
     }
 
-    /// Creates an `ExtAwi` representing the given arguments. This function
+    /// Creates an `Awi` representing the given arguments. This function
     /// performs allocation. This is a wrapper around
     /// [awint_core::Bits::bytes_radix_] that zero or sign resizes the
     /// result to match `bw`.
@@ -71,28 +68,28 @@ impl ExtAwi {
         src: &[u8],
         radix: u8,
         bw: NonZeroUsize,
-    ) -> Result<ExtAwi, SerdeError> {
-        let mut res = ExtAwi::zero(bw);
+    ) -> Result<Awi, SerdeError> {
+        let mut res = Awi::zero(bw);
         internal_from_bytes_radix(&mut res, sign, src, radix)?;
         Ok(res)
     }
 
-    /// Creates an `ExtAwi` representing the given arguments. This does the same
-    /// thing as [ExtAwi::from_bytes_radix] but with an `&str`.
+    /// Creates an `Awi` representing the given arguments. This does the same
+    /// thing as [Awi::from_bytes_radix] but with an `&str`.
     pub fn from_str_radix(
         sign: Option<bool>,
         str: &str,
         radix: u8,
         bw: NonZeroUsize,
-    ) -> Result<ExtAwi, SerdeError> {
-        let mut res = ExtAwi::zero(bw);
+    ) -> Result<Awi, SerdeError> {
+        let mut res = Awi::zero(bw);
         internal_from_bytes_radix(&mut res, sign, str.as_bytes(), radix)?;
         Ok(res)
     }
 
-    /// Creates an `ExtAwi` representing the given arguments. This function
+    /// Creates an `Awi` representing the given arguments. This function
     /// performs allocation. In addition to the arguments and semantics from
-    /// [ExtAwi::from_bytes_radix], this function includes the ability to deal
+    /// [Awi::from_bytes_radix], this function includes the ability to deal
     /// with general fixed point integer deserialization. `src` is now split
     /// into separate `integer` and `fraction` parts. An exponent `exp` further
     /// multiplies the numerical value by `radix^exp`. `fp` is the location
@@ -108,7 +105,7 @@ impl ExtAwi {
     ///
     /// # Errors
     ///
-    /// See the error conditions of [ExtAwi::from_bytes_radix]. The precision
+    /// See the error conditions of [Awi::from_bytes_radix]. The precision
     /// can now be arbitrarily large (any overflow in the low numerical
     /// significance direction will be rounded), but overflow can still happen
     /// in the more significant direction. Empty strings are interpreted as a
@@ -121,14 +118,14 @@ impl ExtAwi {
         radix: u8,
         bw: NonZeroUsize,
         fp: isize,
-    ) -> Result<ExtAwi, SerdeError> {
-        let mut res = ExtAwi::zero(bw);
+    ) -> Result<Awi, SerdeError> {
+        let mut res = Awi::zero(bw);
         internal_from_bytes_general(&mut res, sign, integer, fraction, exp, radix, fp)?;
         Ok(res)
     }
 
-    /// Creates an `ExtAwi` representing the given arguments. This does the same
-    /// thing as [ExtAwi::from_bytes_general] but with `&str`s.
+    /// Creates an `Awi` representing the given arguments. This does the same
+    /// thing as [Awi::from_bytes_general] but with `&str`s.
     pub fn from_str_general(
         sign: Option<bool>,
         integer: &str,
@@ -137,8 +134,8 @@ impl ExtAwi {
         radix: u8,
         bw: NonZeroUsize,
         fp: isize,
-    ) -> Result<ExtAwi, SerdeError> {
-        let mut res = ExtAwi::zero(bw);
+    ) -> Result<Awi, SerdeError> {
+        let mut res = Awi::zero(bw);
         internal_from_bytes_general(
             &mut res,
             sign,
@@ -152,18 +149,18 @@ impl ExtAwi {
     }
 }
 
-impl core::str::FromStr for ExtAwi {
+impl core::str::FromStr for Awi {
     type Err = SerdeError;
 
-    /// Creates an `ExtAwi` described by `s`. There are three modes of operation
-    /// which invoke [ExtAwi::from_str_radix] or [ExtAwi::from_str_general]
+    /// Creates an `Awi` described by `s`. There are three modes of operation
+    /// which invoke [Awi::from_str_radix] or [Awi::from_str_general]
     /// differently.
     ///
     /// Note: there is currently a
     /// [bug](https://github.com/rust-lang/rust/issues/108385) in Rust that
     /// causes certain fixed point literals to fail to parse when attempting
     /// to use them in the concatenation macros. In case of getting
-    /// "literal is not supported" errors, use `ExtAwi::from_str` directly.
+    /// "literal is not supported" errors, use `Awi::from_str` directly.
     ///
     /// Additionally, note that it is easy to cause resource exhaustion with
     /// large bitwidths, exponents, or fixed points that can approach
@@ -208,7 +205,7 @@ impl core::str::FromStr for ExtAwi {
     /// example: "123e5u32" has numerical value 12300000. "123e-5u32" returns an
     /// error since it is trying to use a negative exponent in integer mode.
     /// "-0x1234.5678p-3i32f16" has a numerical value of -0x1234.5678 *
-    /// 0x10^-0x3 and uses [ExtAwi::from_bytes_general] to round-to-even to a 32
+    /// 0x10^-0x3 and uses [Awi::from_bytes_general] to round-to-even to a 32
     /// bit fixed point number with fixed point position 16. You probably want
     /// to use underscores to make it clearer where different parts are, e.x.
     /// "-0x1234.5678_p-3_i32_f16".
@@ -219,6 +216,6 @@ impl core::str::FromStr for ExtAwi {
     /// "0xu8" should be "0x0u8". ".i8f0" should be "0.0i8f0". "1u32f" should be
     /// "1u32f0".
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        internal_from_str(s, |w| ExtAwi::zero(w))
+        internal_from_str(s, |w| Awi::zero(w))
     }
 }

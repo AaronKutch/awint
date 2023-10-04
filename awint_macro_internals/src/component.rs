@@ -1,6 +1,6 @@
 use std::{mem, num::NonZeroUsize, str::FromStr};
 
-use awint_ext::ExtAwi;
+use awint_ext::Awi;
 use ComponentType::*;
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum ComponentType {
     Unparsed,
-    Literal(ExtAwi),
+    Literal(Awi),
     Variable,
     Filler,
 }
@@ -45,7 +45,7 @@ impl Component {
                 // static ranges on literals have been verified, attempt to truncate
                 if let Some(ref end) = self.range.end {
                     if let Some(x) = end.static_val() {
-                        let mut tmp = ExtAwi::zero(i128_to_nonzerousize(x)?);
+                        let mut tmp = Awi::zero(i128_to_nonzerousize(x)?);
                         tmp.zero_resize_(lit);
                         *lit = tmp;
                     }
@@ -60,7 +60,7 @@ impl Component {
                             if x > 0 {
                                 let nz_x = i128_to_nonzerousize(x)?;
                                 let w = lit.bw() - nz_x.get();
-                                let mut tmp = ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+                                let mut tmp = Awi::zero(NonZeroUsize::new(w).unwrap());
                                 tmp.field_from(lit, nz_x.get(), w).unwrap();
                                 *lit = tmp;
                                 self.range.start.as_mut().unwrap().x = 0;
@@ -225,7 +225,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                         let mut s = vec![];
                         ast.chars_assign_subtree(&mut s, mid_txt);
                         let s = chars_to_string(&s);
-                        match ExtAwi::from_str(&s) {
+                        match Awi::from_str(&s) {
                             Ok(awi) => {
                                 ast.cc[concat_i].comps[comp_i].c_type = Literal(awi);
                                 needs_parsing = false;
@@ -233,7 +233,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                             Err(e) => {
                                 return Err(CCMacroError::new(
                                     format!(
-                                        "was parsed with `<ExtAwi as FromStr>::from_str(\"{s}\")` \
+                                        "was parsed with `<Awi as FromStr>::from_str(\"{s}\")` \
                                          which returned SerdeError::{e:?}"
                                     ),
                                     mid_txt,

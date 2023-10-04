@@ -7,11 +7,11 @@ use rand_xoshiro::{
 };
 
 const N: (u64, u64) = if cfg!(miri) {
-    (1000, 44)
+    (1000, 48)
 } else if cfg!(debug_assertions) {
-    (50000, 2622)
+    (50000, 2461)
 } else {
-    (1000000, 52722)
+    (1000000, 49779)
 };
 
 #[test]
@@ -19,7 +19,7 @@ fn awi_struct() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     let mut rng1 = Xoshiro128StarStar::seed_from_u64(0);
 
-    let mut next_nzbw = || NonZeroUsize::new(((rng1.next_u32() % 259) + 1) as usize).unwrap();
+    let mut next_nzbw = || NonZeroUsize::new(((rng1.next_u32() % 137) + 1) as usize).unwrap();
 
     let mut iter_max = 0;
 
@@ -32,7 +32,7 @@ fn awi_struct() {
             assert!(x0.capacity() >= x0.nzbw());
             assert_eq!(x0.as_ref(), x1.as_ref());
         }
-        match rng.next_u32() % 19 {
+        match rng.next_u32() % 20 {
             0 => {
                 let w = next_nzbw();
                 x0 = Awi::zero(w);
@@ -130,6 +130,9 @@ fn awi_struct() {
                 assert_eq!(o0, o1);
             }
             18 => {
+                x0 = x0.clone();
+            }
+            19 => {
                 assert_eq!(x0.as_ref(), x1.as_ref());
                 iter_max += 1;
             }
