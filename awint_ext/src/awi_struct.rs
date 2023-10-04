@@ -621,9 +621,9 @@ impl<'a> Awi {
                         // there are unset bits in `self`s original end digit
                         *self.get_unchecked_mut(digits_u(original_bw)) |= MAX << original_extra;
                     }
-                    digits_u(original_bw).wrapping_add(2)
-                } else {
                     digits_u(original_bw).wrapping_add(1)
+                } else {
+                    digits_u(original_bw)
                 };
                 let end = self.len();
                 self.digit_set(extension, start..end, extension)
@@ -641,7 +641,7 @@ impl<'a> Awi {
             unsafe {
                 // check if there are set bits that would be truncated
                 if (extra(new_bitwidth) != 0)
-                    && ((self.get_unchecked(digits(new_bitwidth) - 1) >> extra(new_bitwidth)) != 0)
+                    && ((self.get_unchecked(digits(new_bitwidth)) >> extra(new_bitwidth)) != 0)
                 {
                     true
                 } else {
@@ -658,7 +658,7 @@ impl<'a> Awi {
         } else {
             false
         };
-        self.internal_resize(new_bitwidth, false);
+        self.resize(new_bitwidth, false);
         overflow
     }
 

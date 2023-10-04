@@ -24,7 +24,7 @@ fn awi_struct() {
         assert_eq!(Awi::bw(&x0), Bits::bw(&x0));
         assert!(x0.capacity() >= x0.nzbw());
         assert_eq!(x0.as_ref(), x1.as_ref());
-        match rng.next_u32() % 16 {
+        match rng.next_u32() % 18 {
             0 => {
                 let w = next_nzbw();
                 x0 = Awi::zero(w);
@@ -98,6 +98,22 @@ fn awi_struct() {
                 x0.shrink_to_fit();
             }
             15 => {
+                let new_bitwidth = next_nzbw();
+                let extension = (rng.next_u32() & 1) == 0;
+                let tmp = x1.clone();
+                x1 = ExtAwi::zero(new_bitwidth);
+                x1.resize_(&tmp, extension);
+                x0.resize(new_bitwidth, extension);
+            }
+            16 => {
+                let new_bitwidth = next_nzbw();
+                let tmp = x1.clone();
+                x1 = ExtAwi::zero(new_bitwidth);
+                let o1 = x1.zero_resize_(&tmp);
+                let o0 = x0.zero_resize(new_bitwidth);
+                assert_eq!(o0, o1);
+            }
+            17 => {
                 iter_max += 1;
             }
             _ => unreachable!(),
