@@ -223,7 +223,7 @@ pub mod dag {
 
     pub use crate::{
         mimick::{
-            assert, assert_eq, assert_ne, Bits, ExtAwi, InlAwi, Option,
+            assert, assert_eq, assert_ne, Awi, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
             Result,
             Result::{Err, Ok},

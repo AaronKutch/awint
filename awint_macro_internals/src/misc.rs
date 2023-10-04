@@ -144,7 +144,7 @@ pub fn cc_construction_fn(
     if let Some(w) = static_width {
         inlawi_s(init, w)
     } else if let Some(s) = dynamic_width {
-        extawi_s(init, s)
+        awi_s(init, s)
     } else {
         unreachable!()
     }

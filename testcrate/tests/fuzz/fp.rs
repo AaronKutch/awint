@@ -1,6 +1,6 @@
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint::{bw, cc, Bits, ExtAwi, FP};
+use awint::{bw, cc, Awi, Bits, ExtAwi, FP};
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,

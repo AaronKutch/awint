@@ -574,6 +574,287 @@ extawi_from!(
     isize, from_isize;
 );
 
+/// Mimicking `awint_ext::Awi`
+///
+/// Note: `awi!(opaque: ..64)` just works
+#[derive(Clone)]
+#[repr(C)] // needed for `internal_as_ref*`, also this needs to just be a `PState`
+pub struct Awi {
+    _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
+    pub(in crate::mimick) _state: PState,
+}
+
+impl Lineage for Awi {
+    fn state(&self) -> PState {
+        self._state
+    }
+}
+
+impl Awi {
+    pub(crate) fn from_state(state: PState) -> Self {
+        Self {
+            _no_send_or_sync: PhantomData,
+            _state: state,
+        }
+    }
+
+    pub(crate) fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
+        Self::from_state(PState::new(nzbw, op, None))
+    }
+
+    pub fn nzbw(&self) -> NonZeroUsize {
+        self.state_nzbw()
+    }
+
+    pub fn bw(&self) -> usize {
+        self.nzbw().get()
+    }
+
+    pub fn from_bits(bits: &Bits) -> Awi {
+        Self::from_state(bits.state())
+    }
+
+    pub fn opaque(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Opaque(smallvec![], None))
+    }
+
+    pub fn zero(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::zero(w)))
+    }
+
+    pub fn umax(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::umax(w)))
+    }
+
+    pub fn imax(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::imax(w)))
+    }
+
+    pub fn imin(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::imin(w)))
+    }
+
+    pub fn uone(w: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::ExtAwi::uone(w)))
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_opaque(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::opaque(NonZeroUsize::new(w).expect("called `panicking_opaque` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_zero(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::zero(NonZeroUsize::new(w).expect("called `panicking_zero` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_umax(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::umax(NonZeroUsize::new(w).expect("called `panicking_umax` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_imax(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::imax(NonZeroUsize::new(w).expect("called `panicking_imax` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_imin(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::imin(NonZeroUsize::new(w).expect("called `panicking_imin` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+
+    #[doc(hidden)]
+    #[track_caller]
+    pub fn panicking_uone(w: impl Into<dag::usize>) -> Self {
+        let w = w.into();
+        if let Some(w) = w.state().try_get_as_usize() {
+            Self::uone(NonZeroUsize::new(w).expect("called `panicking_uone` with zero width"))
+        } else {
+            panic!("Input was not evaluatable to a literal `usize`");
+        }
+    }
+}
+
+impl Deref for Awi {
+    type Target = Bits;
+
+    fn deref(&self) -> &Self::Target {
+        self.internal_as_ref()
+    }
+}
+
+impl DerefMut for Awi {
+    fn deref_mut(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}
+
+impl Index<RangeFull> for Awi {
+    type Output = Bits;
+
+    fn index(&self, _i: RangeFull) -> &Bits {
+        self
+    }
+}
+
+impl Borrow<Bits> for Awi {
+    fn borrow(&self) -> &Bits {
+        self
+    }
+}
+
+impl AsRef<Bits> for Awi {
+    fn as_ref(&self) -> &Bits {
+        self
+    }
+}
+
+impl IndexMut<RangeFull> for Awi {
+    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl BorrowMut<Bits> for Awi {
+    fn borrow_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl AsMut<Bits> for Awi {
+    fn as_mut(&mut self) -> &mut Bits {
+        self.const_as_mut()
+    }
+}
+
+impl fmt::Debug for Awi {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Awi({:?})", self.state())
+    }
+}
+
+forward_debug_fmt!(Awi);
+
+impl From<&Bits> for Awi {
+    fn from(bits: &Bits) -> Awi {
+        Self::from_state(bits.state())
+    }
+}
+
+impl From<&awi::Bits> for Awi {
+    fn from(bits: &awi::Bits) -> Awi {
+        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits)))
+    }
+}
+
+// there are some bizaare trait conflicts if we don't enumerate all these cases
+
+impl From<&awi::Awi> for Awi {
+    fn from(bits: &awi::Awi) -> Awi {
+        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+    }
+}
+
+impl From<awi::Awi> for Awi {
+    fn from(bits: awi::Awi) -> Awi {
+        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for Awi {
+    fn from(awi: InlAwi<BW, LEN>) -> Awi {
+        Self::from_state(awi.state())
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<&InlAwi<BW, LEN>> for Awi {
+    fn from(awi: &InlAwi<BW, LEN>) -> Awi {
+        Self::from_state(awi.state())
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for Awi {
+    fn from(awi: awi::InlAwi<BW, LEN>) -> Awi {
+        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+    }
+}
+
+impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for Awi {
+    fn from(awi: &awi::InlAwi<BW, LEN>) -> Awi {
+        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+    }
+}
+
+macro_rules! extawi_from {
+    ($($ty:ident, $from:ident);*;) => {
+        $(
+            impl Awi {
+                pub fn $from(x: impl Into<dag::$ty>) -> Self {
+                    Self::from(InlAwi::$from(x))
+                }
+            }
+
+            impl From<dag::$ty> for Awi {
+                fn from(x: dag::$ty) -> Self {
+                    Self::$from(x)
+                }
+            }
+
+            impl From<awi::$ty> for Awi {
+                fn from(x: awi::$ty) -> Self {
+                    Self::$from(x)
+                }
+            }
+        )*
+    };
+}
+
+extawi_from!(
+    bool, from_bool;
+    u8, from_u8;
+    u16, from_u16;
+    u32, from_u32;
+    u64, from_u64;
+    u128, from_u128;
+    usize, from_usize;
+    i8, from_i8;
+    i16, from_i16;
+    i32, from_i32;
+    i64, from_i64;
+    i128, from_i128;
+    isize, from_isize;
+);
+
 // misc
 
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {

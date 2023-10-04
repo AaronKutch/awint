@@ -6,6 +6,7 @@
 - Added more `awi` to `dag` `From` impls
 
 ### Changes
+- The `cc` macro now uses `Awi` for dynamic storage
 - Overhauled the epoch system for `awint_dag` and various related things
 
 ## [0.12.0] - 2023-08-29

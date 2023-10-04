@@ -10,7 +10,7 @@ use awint_ext::awi;
 
 use crate::{
     common::NoopResult,
-    mimick::{ExtAwi, InlAwi},
+    mimick::{Awi, ExtAwi, InlAwi},
     EvalError, EvalResult, Lineage, Op, PState,
 };
 
@@ -41,6 +41,24 @@ impl<'a> ExtAwi {
 
     pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: `ExtAwi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts_mut(self as *mut Self, 0) as *mut Bits;
+        unsafe { &mut *bits }
+    }
+}
+
+impl<'a> Awi {
+    pub(in crate::mimick) fn internal_as_ref(&'a self) -> &'a Bits {
+        // Safety: `Awi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts(self as *const Self, 0) as *const Bits;
+        unsafe { &*bits }
+    }
+
+    pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
+        // Safety: `Awi` is a `#[repr(C)]` `PState`, and here we use a pointer from
         // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
         // make sure they do not become unbounded.
         let bits = ptr::slice_from_raw_parts_mut(self as *mut Self, 0) as *mut Bits;
