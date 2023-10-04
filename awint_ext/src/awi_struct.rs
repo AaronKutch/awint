@@ -637,7 +637,7 @@ impl<'a> Awi {
     /// if the unsigned meaning of the integer is changed.
     pub fn zero_resize(&mut self, new_bitwidth: NonZeroUsize) -> bool {
         let overflow = if new_bitwidth.get() < self.bw() {
-            // Safety:
+            // Safety: we stay in bounds
             unsafe {
                 // check if there are set bits that would be truncated
                 if (extra(new_bitwidth) != 0)
@@ -662,15 +662,101 @@ impl<'a> Awi {
         overflow
     }
 
-    // TODO
-    /*
-    /// Sign-resizes the bitwidth of `self` inplace, reusing capacity if possible. This is the same as `self.resize(self.msb())`, but returns `true` if the signed meaning of the integer is changed.
+    /// Sign-resizes the bitwidth of `self` inplace, reusing capacity if
+    /// possible. This is the same as `self.resize(self.msb())`, but returns
+    /// `true` if the signed meaning of the integer is changed.
     pub fn sign_resize(&mut self, new_bitwidth: NonZeroUsize) -> bool {
-        let extension = self.msb();
-        self.resize(new_bitwidth, extension);
-        false
+        let old_msb = self.msb();
+        let old_len = self.len();
+        let old_extra = self.extra();
+        let new_len = total_digits(new_bitwidth).get();
+        let new_extra = extra(new_bitwidth);
+        let mut overflow = false;
+        if new_bitwidth.get() < self.bw() {
+            // Safety: we stay in bounds
+            unsafe {
+                if old_msb {
+                    // check if there are unset bits that would be truncated
+                    if new_len == old_len {
+                        // first and only digit
+                        if old_extra != 0 {
+                            //  old extra mask and new cutoff mask
+                            let expected = (MAX >> (BITS - old_extra)) & (MAX << new_extra);
+                            if (self.last() & expected) != expected {
+                                overflow = true;
+                            }
+                        } else {
+                            let expected = MAX << new_extra;
+                            if (self.last() & expected) != expected {
+                                overflow = true;
+                            }
+                        }
+                        self.resize(new_bitwidth, old_msb);
+                        // avoid the other tests if this is the only digit
+
+                        if !self.msb() {
+                            overflow = true;
+                        }
+                        overflow
+                    } else {
+                        // first digit
+                        if new_extra != 0 {
+                            let expected = MAX << new_extra;
+                            if (self.get_unchecked(new_len - 1) & expected) != expected {
+                                overflow = true;
+                            }
+                        }
+                        // middle digits
+                        if !overflow {
+                            const_for!(i in {new_len..(old_len - 1)} {
+                                if self.get_unchecked(i) != MAX {
+                                    overflow = true;
+                                }
+                            });
+                        }
+                        // last digit
+                        if old_extra != 0 {
+                            let expected = MAX >> (BITS - old_extra);
+                            if (self.last() & expected) != expected {
+                                overflow = true;
+                            }
+                        } else if self.last() != MAX {
+                            overflow = true;
+                        }
+                        self.resize(new_bitwidth, old_msb);
+                        // check if the new most significant bit is unset (which would mean overflow
+                        // from negative to positive)
+                        if !self.msb() {
+                            overflow = true;
+                        }
+                        overflow
+                    }
+                } else {
+                    // check if there are set bits that would be truncated
+                    if (new_extra != 0) && ((self.get_unchecked(new_len - 1) >> new_extra) != 0) {
+                        overflow = true;
+                    } else {
+                        const_for!(i in {new_len..old_len} {
+                            if self.get_unchecked(i) != 0 {
+                                overflow = true;
+                                break
+                            }
+                        });
+                    }
+                    self.resize(new_bitwidth, old_msb);
+                    // check if the new most significant bit is set (which would mean overflow from
+                    // positive to negative)
+                    if self.msb() {
+                        overflow = true;
+                    }
+                    overflow
+                }
+            }
+        } else {
+            self.resize(new_bitwidth, old_msb);
+            false
+        }
     }
-    */
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency
     #[doc(hidden)]

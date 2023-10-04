@@ -6,7 +6,13 @@ use rand_xoshiro::{
     Xoshiro128StarStar,
 };
 
-const N: (u64, u64) = (10_000, 9);
+const N: (u64, u64) = if cfg!(miri) {
+    (1000, 44)
+} else if cfg!(debug_assertions) {
+    (50000, 2622)
+} else {
+    (1000000, 52722)
+};
 
 #[test]
 fn awi_struct() {
@@ -20,11 +26,13 @@ fn awi_struct() {
     let mut x0 = Awi::zero(bw(1));
     let mut x1 = ExtAwi::zero(bw(1));
     for _ in 0..N.0 {
-        assert_eq!(Awi::nzbw(&x0), Bits::nzbw(&x0));
-        assert_eq!(Awi::bw(&x0), Bits::bw(&x0));
-        assert!(x0.capacity() >= x0.nzbw());
-        assert_eq!(x0.as_ref(), x1.as_ref());
-        match rng.next_u32() % 18 {
+        if !cfg!(miri) {
+            assert_eq!(Awi::nzbw(&x0), Bits::nzbw(&x0));
+            assert_eq!(Awi::bw(&x0), Bits::bw(&x0));
+            assert!(x0.capacity() >= x0.nzbw());
+            assert_eq!(x0.as_ref(), x1.as_ref());
+        }
+        match rng.next_u32() % 19 {
             0 => {
                 let w = next_nzbw();
                 x0 = Awi::zero(w);
@@ -114,6 +122,15 @@ fn awi_struct() {
                 assert_eq!(o0, o1);
             }
             17 => {
+                let new_bitwidth = next_nzbw();
+                let tmp = x1.clone();
+                x1 = ExtAwi::zero(new_bitwidth);
+                let o1 = x1.sign_resize_(&tmp);
+                let o0 = x0.sign_resize(new_bitwidth);
+                assert_eq!(o0, o1);
+            }
+            18 => {
+                assert_eq!(x0.as_ref(), x1.as_ref());
                 iter_max += 1;
             }
             _ => unreachable!(),
