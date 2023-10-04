@@ -219,6 +219,6 @@ impl core::str::FromStr for ExtAwi {
     /// "0xu8" should be "0x0u8". ".i8f0" should be "0.0i8f0". "1u32f" should be
     /// "1u32f0".
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        internal_from_str(s, |w| ExtAwi::zero(w))
+        internal_from_str(s, ExtAwi::zero)
     }
 }

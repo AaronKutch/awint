@@ -531,22 +531,21 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
 
                 let mut res = f(w);
                 internal_from_bytes_general(&mut res, sign, integer, fraction, exp, radix, fp)?;
-                return Ok(res)
+                Ok(res)
             } else {
                 // integer mode
 
                 if (exp < 0) || (fraction.is_some()) {
-                    return Err(Fractional)
-                }
-                if exp > 0 {
+                    Err(Fractional)
+                } else if exp > 0 {
                     // there are a lot of tricky edge cases, just use this
                     let mut res = f(w);
                     internal_from_bytes_general(&mut res, sign, integer, &[], exp, radix, 0)?;
-                    return Ok(res)
+                    Ok(res)
                 } else {
                     let mut res = f(w);
                     internal_from_bytes_radix(&mut res, sign, integer, radix)?;
-                    return Ok(res)
+                    Ok(res)
                 }
             }
         } else {
