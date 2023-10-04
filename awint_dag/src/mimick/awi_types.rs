@@ -72,7 +72,7 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     pub fn unstable_from_u8_slice(buf: &[u8]) -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
-        Self::new(Op::Literal(awi::ExtAwi::from_bits(
+        Self::new(Op::Literal(awi::Awi::from_bits(
             &awi::InlAwi::<BW, LEN>::unstable_from_u8_slice(buf),
         )))
     }
@@ -84,27 +84,27 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 
     pub fn zero() -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
-        Self::new(Op::Literal(awi::ExtAwi::zero(bw(BW))))
+        Self::new(Op::Literal(awi::Awi::zero(bw(BW))))
     }
 
     pub fn umax() -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
-        Self::new(Op::Literal(awi::ExtAwi::umax(bw(BW))))
+        Self::new(Op::Literal(awi::Awi::umax(bw(BW))))
     }
 
     pub fn imax() -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
-        Self::new(Op::Literal(awi::ExtAwi::imax(bw(BW))))
+        Self::new(Op::Literal(awi::Awi::imax(bw(BW))))
     }
 
     pub fn imin() -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
-        Self::new(Op::Literal(awi::ExtAwi::imin(bw(BW))))
+        Self::new(Op::Literal(awi::Awi::imin(bw(BW))))
     }
 
     pub fn uone() -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
-        Self::new(Op::Literal(awi::ExtAwi::uone(bw(BW))))
+        Self::new(Op::Literal(awi::Awi::uone(bw(BW))))
     }
 }
 
@@ -338,23 +338,23 @@ impl ExtAwi {
     }
 
     pub fn zero(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::zero(w)))
+        Self::new(w, Op::Literal(awi::Awi::zero(w)))
     }
 
     pub fn umax(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::umax(w)))
+        Self::new(w, Op::Literal(awi::Awi::umax(w)))
     }
 
     pub fn imax(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::imax(w)))
+        Self::new(w, Op::Literal(awi::Awi::imax(w)))
     }
 
     pub fn imin(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::imin(w)))
+        Self::new(w, Op::Literal(awi::Awi::imin(w)))
     }
 
     pub fn uone(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::uone(w)))
+        Self::new(w, Op::Literal(awi::Awi::uone(w)))
     }
 
     #[doc(hidden)]
@@ -492,7 +492,7 @@ impl From<&Bits> for ExtAwi {
 
 impl From<&awi::Bits> for ExtAwi {
     fn from(bits: &awi::Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits)))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits)))
     }
 }
 
@@ -500,13 +500,13 @@ impl From<&awi::Bits> for ExtAwi {
 
 impl From<&awi::ExtAwi> for ExtAwi {
     fn from(bits: &awi::ExtAwi) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
     }
 }
 
 impl From<awi::ExtAwi> for ExtAwi {
     fn from(bits: awi::ExtAwi) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
     }
 }
 
@@ -524,13 +524,13 @@ impl<const BW: usize, const LEN: usize> From<&InlAwi<BW, LEN>> for ExtAwi {
 
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: awi::InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: &awi::InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
     }
 }
 
@@ -619,23 +619,23 @@ impl Awi {
     }
 
     pub fn zero(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::zero(w)))
+        Self::new(w, Op::Literal(awi::Awi::zero(w)))
     }
 
     pub fn umax(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::umax(w)))
+        Self::new(w, Op::Literal(awi::Awi::umax(w)))
     }
 
     pub fn imax(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::imax(w)))
+        Self::new(w, Op::Literal(awi::Awi::imax(w)))
     }
 
     pub fn imin(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::imin(w)))
+        Self::new(w, Op::Literal(awi::Awi::imin(w)))
     }
 
     pub fn uone(w: NonZeroUsize) -> Self {
-        Self::new(w, Op::Literal(awi::ExtAwi::uone(w)))
+        Self::new(w, Op::Literal(awi::Awi::uone(w)))
     }
 
     #[doc(hidden)]
@@ -773,7 +773,7 @@ impl From<&Bits> for Awi {
 
 impl From<&awi::Bits> for Awi {
     fn from(bits: &awi::Bits) -> Awi {
-        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits)))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits)))
     }
 }
 
@@ -781,13 +781,13 @@ impl From<&awi::Bits> for Awi {
 
 impl From<&awi::Awi> for Awi {
     fn from(bits: &awi::Awi) -> Awi {
-        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
     }
 }
 
 impl From<awi::Awi> for Awi {
     fn from(bits: awi::Awi) -> Awi {
-        Self::new(bits.nzbw(), Op::Literal(awi::ExtAwi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
     }
 }
 
@@ -805,13 +805,13 @@ impl<const BW: usize, const LEN: usize> From<&InlAwi<BW, LEN>> for Awi {
 
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for Awi {
     fn from(awi: awi::InlAwi<BW, LEN>) -> Awi {
-        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for Awi {
     fn from(awi: &awi::InlAwi<BW, LEN>) -> Awi {
-        Self::new(awi.nzbw(), Op::Literal(awi::ExtAwi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
     }
 }
 
@@ -859,14 +859,14 @@ extawi_from!(
 
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {
     fn from(awi: awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
-        let awi = ExtAwi::from(awi);
+        let awi = Awi::from(awi);
         Self::from_state(awi.state())
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {
     fn from(awi: &awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
-        let awi = ExtAwi::from(awi);
+        let awi = Awi::from(awi);
         Self::from_state(awi.state())
     }
 }

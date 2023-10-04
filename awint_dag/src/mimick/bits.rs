@@ -141,8 +141,8 @@ impl Bits {
             }
         }
         if all_literals {
-            let lit_op: Op<awi::ExtAwi> =
-                Op::translate(&p_state_op, |lhs: &mut [awi::ExtAwi], rhs: &[PState]| {
+            let lit_op: Op<awi::Awi> =
+                Op::translate(&p_state_op, |lhs: &mut [awi::Awi], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
                         if let Op::Literal(ref lit) = rhs.get_op() {
                             *lhs = lit.clone();

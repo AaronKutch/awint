@@ -28,9 +28,9 @@ use core::{
 use awint_internals::*;
 use const_fn::const_fn;
 
-/// A reference to the bits in an `InlAwi`, `ExtAwi`, or other backing
+/// A reference to the bits in an `InlAwi`, `ExtAwi`, `Awi`, or other backing
 /// construct. If a function is written just in terms of `Bits`, it can work on
-/// mixed references to `InlAwi`s, `ExtAwi`s, and `FP<B>`s.
+/// mixed references to any of the storage structs and wrappers like `FP<B>`.
 /// `const` big integer arithmetic is possible if the backing type is `InlAwi`
 /// and the "const_support" flag is enabled.
 ///

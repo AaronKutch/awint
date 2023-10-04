@@ -1,6 +1,6 @@
 use std::{fmt::Debug, mem, num::NonZeroUsize};
 
-use awint_ext::ExtAwi;
+use awint_ext::Awi;
 use smallvec::{smallvec, SmallVec};
 use Op::*;
 
@@ -18,10 +18,10 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     Opaque(SmallVec<[T; 2]>, Option<&'static str>),
 
     // literal assign
-    Literal(ExtAwi),
+    Literal(Awi),
 
     // Static versions of `Lut`, `Get`, and `Set`
-    StaticLut([T; 1], ExtAwi),
+    StaticLut([T; 1], Awi),
     StaticGet([T; 1], usize),
     StaticSet([T; 2], usize),
 

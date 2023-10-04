@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use awint_ext::{
     awint_internals::{Location, USIZE_BITS},
-    bw, ExtAwi,
+    bw, Awi,
 };
 
 use crate::{
@@ -75,9 +75,9 @@ impl DummyDefault for NonZeroUsize {
     }
 }
 
-impl DummyDefault for ExtAwi {
+impl DummyDefault for Awi {
     fn default() -> Self {
-        ExtAwi::zero(bw(1))
+        Awi::zero(bw(1))
     }
 }
 

@@ -20,8 +20,8 @@ use crate::{
 };
 
 /// Represents a single state that `mimick::Bits` is in at one point in time.
-/// The operands point to other `State`s. `Bits`, `InlAwi`, and `ExtAwi` use
-/// `Ptr`s to `States` in a thread local arena, so that they can change their
+/// The operands point to other `State`s. `Bits` and `*Awi` use `Ptr`s to
+/// `States` in a thread local arena, so that they can change their
 /// state without borrowing issues or mutating `States` (which could be used as
 /// operands by other `States`).
 #[derive(Debug, Clone)]

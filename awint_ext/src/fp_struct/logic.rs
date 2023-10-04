@@ -9,7 +9,7 @@ use awint_core::{awint_internals::Digit, Bits};
 
 use crate::{
     awint_internals::{bits_upper_bound, SerdeError, SerdeError::*},
-    ExtAwi, FP,
+    Awi, FP,
 };
 
 // TODO there are variations of algorithms that can eliminate all the cases
@@ -219,8 +219,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// Creates a tuple of `Vec<u8>`s representing the integer and fraction
     /// parts `this` (sign indicators, prefixes, points, and postfixes not
     /// included). This function performs allocation. This is the inverse of
-    /// [ExtAwi::from_bytes_general] and extends the abilities of
-    /// [ExtAwi::bits_to_vec_radix]. Signedness and fixed point position
+    /// [Awi::from_bytes_general] and extends the abilities of
+    /// [Awi::bits_to_vec_radix]. Signedness and fixed point position
     /// information is taken from `this`. `min_integer_chars` specifies the
     /// minimum number of chars in the integer part, inserting leading '0's if
     /// there are not enough chars. `min_fraction_chars` works likewise for the
@@ -234,7 +234,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// // the notation they prefer.
     ///
     /// // This creates a fixed point value of -42.1234_i32f16 (see `Awi::from_str`)
-    /// let awi = ExtAwi::from_str_general(Some(true), "42", "1234", 0, 10, bw(32), 16).unwrap();
+    /// let awi = Awi::from_str_general(Some(true), "42", "1234", 0, 10, bw(32), 16).unwrap();
     /// let fp_awi = FP::new(true, awi, 16).unwrap();
     /// assert_eq!(
     ///     // note: in many situations users will want at least 1 zero for
@@ -278,7 +278,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
 
         let is_zero = this.is_zero();
         let is_negative = this.is_negative();
-        let mut unsigned = ExtAwi::zero(this.nzbw());
+        let mut unsigned = Awi::zero(this.nzbw());
         unsigned.copy_(this).unwrap();
         // reinterpret as unsigned for `imin`
         unsigned.neg_(is_negative);
@@ -304,10 +304,10 @@ impl<B: BorrowMut<Bits>> FP<B> {
             };
             match NonZeroUsize::new(integer_bits) {
                 Some(integer_bits) => {
-                    let mut tmp = ExtAwi::zero(integer_bits);
+                    let mut tmp = Awi::zero(integer_bits);
                     tmp.field(extra_zeros, &unsigned, from, field_bits).unwrap();
                     // note: we do not unwrap here in case of resource exhaustion
-                    ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, min_integer_chars)?
+                    Awi::bits_to_vec_radix(&tmp, false, radix, upper, min_integer_chars)?
                 }
                 None => alloc::vec![b'0'; min_integer_chars],
             }
@@ -325,7 +325,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             // avoid needing some calculation by dropping zero bits that have no impact
             let calc_fp = this.fp().wrapping_sub(tot_tz) as usize;
             let field_bits = min(this.fp(), this.ibw()).wrapping_sub(tot_tz) as usize;
-            let mut tmp = ExtAwi::zero(
+            let mut tmp = Awi::zero(
                 NonZeroUsize::new(multiplier_bits.checked_add(calc_fp).ok_or(Overflow)?).unwrap(),
             );
             tmp.field_from(&unsigned, tot_tz as usize, field_bits)
@@ -346,7 +346,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
             tmp.lshr_(calc_fp).unwrap();
             tmp.inc_(inc);
             // note: we do not unwrap here in case of resource exhaustion
-            let mut s = ExtAwi::bits_to_vec_radix(&tmp, false, radix, upper, calc_digits)?;
+            let mut s = Awi::bits_to_vec_radix(&tmp, false, radix, upper, calc_digits)?;
             // trim off zeroes
             while s.len() > min_fraction_chars {
                 // s.len() > 0 so this cannot overflow

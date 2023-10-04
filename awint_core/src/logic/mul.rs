@@ -115,11 +115,11 @@ impl Bits {
     /// use awint::awi::*;
     ///
     /// fn arb_umul_(add: &mut Bits, lhs: &Bits, rhs: &Bits) {
-    ///     let mut resized_lhs = ExtAwi::zero(add.nzbw());
+    ///     let mut resized_lhs = Awi::zero(add.nzbw());
     ///     // Note that this function is specified as unsigned,
     ///     // because we use `zero_resize_`
     ///     resized_lhs.zero_resize_(lhs);
-    ///     let mut resized_rhs = ExtAwi::zero(add.nzbw());
+    ///     let mut resized_rhs = Awi::zero(add.nzbw());
     ///     resized_rhs.zero_resize_(rhs);
     ///     add.mul_add_(&resized_lhs, &resized_rhs).unwrap();
     /// }

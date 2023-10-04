@@ -505,45 +505,45 @@
 //! // This first case has no fillers in the first concatenation, so the filler
 //! // in the second concatenation will expand to be of bitwidth `12 - y.bw()`.
 //!
-//! let mut y = extawi!(0u8);
+//! let mut y = awi!(0u8);
 //! cc!(
 //!     0x321u12;
 //!     .., y;
 //! ).unwrap();
-//! assert_eq!(y, extawi!(0x21u8));
+//! assert_eq!(y, awi!(0x21u8));
 //!
 //! // Do the same call again, but with `y.bw() == 4`
-//! let mut y = extawi!(0u4);
+//! let mut y = awi!(0u4);
 //! cc!(
 //!     0x321u12;
 //!     .., y;
 //! ).unwrap();
-//! assert_eq!(y, extawi!(0x1u4));
+//! assert_eq!(y, awi!(0x1u4));
 //!
 //! // The 12 bits of the first concatenation cannot correspond with
 //! // the minimum 16 bits of the second, so this call returns `None`.
-//! let mut y = extawi!(0u16);
+//! let mut y = awi!(0u16);
 //! assert!(cc!(0x321u12; .., y).is_none());
 //!
 //! // This second case ends up enforcing that `y.bw()` is at least 12. The 12
 //! // bits of the literal always get copied to the least significant bits of
 //! // `y`.
 //!
-//! let mut y = extawi!(0u20);
+//! let mut y = awi!(0u20);
 //! cc!(
 //!     .., 0x321u12;
 //!     y;
 //! ).unwrap();
-//! assert_eq!(y, extawi!(0x00321u20));
+//! assert_eq!(y, awi!(0x00321u20));
 //!
-//! let mut y = extawi!(0u32);
+//! let mut y = awi!(0u32);
 //! cc!(umax:
 //!     .., 0x321u12;
 //!     y;
 //! ).unwrap();
-//! assert_eq!(y, extawi!(0xffff_f321_u32));
+//! assert_eq!(y, awi!(0xffff_f321_u32));
 //!
-//! let mut y = extawi!(0u8);
+//! let mut y = awi!(0u8);
 //! assert!(cc!(.., 0x321u12; y).is_none());
 //!
 //! // The third case allows `y.bw()` to be any possible bitwidth. If
@@ -552,42 +552,42 @@
 //! // widths and there are no ranges that could index the variables out of
 //! // bounds, these calls are infallible and no `Option` is returned.
 //!
-//! let mut y = extawi!(0u20);
+//! let mut y = awi!(0u20);
 //! cc!(
 //!     .., 0x321u12;
 //!     .., y;
 //! );
-//! assert_eq!(y, extawi!(0x00321u20));
+//! assert_eq!(y, awi!(0x00321u20));
 //!
-//! let mut y = extawi!(0u4);
+//! let mut y = awi!(0u4);
 //! cc!(
 //!     .., 0x321u12;
 //!     .., y;
 //! );
-//! assert_eq!(y, extawi!(0x1u4));
+//! assert_eq!(y, awi!(0x1u4));
 //!
 //! // Unbounded fillers are also allowed in less significant positions, in
 //! // which case alignment of the components occurs starting from the most
 //! // significant bit.
 //!
-//! let mut y = extawi!(0u20);
+//! let mut y = awi!(0u20);
 //! cc!(
 //!     0x321u12, ..;
 //!     y, ..;
 //! );
-//! assert_eq!(y, extawi!(0x32100u20));
+//! assert_eq!(y, awi!(0x32100u20));
 //!
 //! // The macros are even smart enough to do this:
 //!
-//! let mut y = extawi!(0u24);
+//! let mut y = awi!(0u24);
 //! cc!(umax: 0x3u4, .., 0x21u8; y).unwrap();
-//! assert_eq!(y, extawi!(0x3fff21u24));
+//! assert_eq!(y, awi!(0x3fff21u24));
 //!
 //! // Note again that filler widths cannot be negative, and so this will cause
 //! // an error because we are trying to compress the 4 bit and 8 bit
 //! // components into a less than 12 bit space.
 //!
-//! let mut y = extawi!(0u8);
+//! let mut y = awi!(0u8);
 //! assert!(cc!(0x3u4, .., 0x21u8; y).is_none());
 //! ```
 //!

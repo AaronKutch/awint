@@ -5,7 +5,7 @@ use std::{cmp::min, mem, num::NonZeroUsize};
 use awint_ext::{awi, awint_internals::USIZE_BITS};
 use awint_macros::*;
 
-use crate::mimick::{Bits, ExtAwi, InlAwi};
+use crate::mimick::{Awi, Bits, InlAwi};
 
 // This code here is especially messy because we do not want to get into
 // infinite lowering loops. These first few functions need to use manual `get`
@@ -46,17 +46,17 @@ pub fn selector(inx: &Bits, cap: Option<usize>) -> Vec<inlawi_ty!(1)> {
     signals
 }
 
-pub fn selector_awi(inx: &Bits, cap: Option<usize>) -> ExtAwi {
+pub fn selector_awi(inx: &Bits, cap: Option<usize>) -> Awi {
     let num = cap.unwrap_or_else(|| 1usize << inx.bw());
     if num == 0 {
         // not sure if this should be reachable
         panic!();
     }
     if num == 1 {
-        return extawi!(1)
+        return awi!(1)
     }
     let lb_num = num.next_power_of_two().trailing_zeros() as usize;
-    let mut signals = ExtAwi::zero(NonZeroUsize::new(num).unwrap());
+    let mut signals = Awi::zero(NonZeroUsize::new(num).unwrap());
     let lut0 = inlawi!(0100);
     let lut1 = inlawi!(1000);
     for i in 0..num {
@@ -129,14 +129,14 @@ pub fn tsmear_inx(inx: &Bits, num_signals: usize) -> Vec<inlawi_ty!(1)> {
     signals
 }
 
-pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> ExtAwi {
+pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> Awi {
     let next_pow = num_signals.next_power_of_two();
     let mut lb_num = next_pow.trailing_zeros() as usize;
     if next_pow == num_signals {
         // need extra bit to get all `n + 1`
         lb_num += 1;
     }
-    let mut signals = ExtAwi::zero(NonZeroUsize::new(num_signals).unwrap());
+    let mut signals = Awi::zero(NonZeroUsize::new(num_signals).unwrap());
     let lut_s0 = inlawi!(10010000);
     let lut_and = inlawi!(1000);
     let lut_or = inlawi!(1110);
@@ -176,10 +176,10 @@ pub fn tsmear_awi(inx: &Bits, num_signals: usize) -> ExtAwi {
     signals
 }
 
-pub fn mux_(x0: &Bits, x1: &Bits, inx: &Bits) -> ExtAwi {
+pub fn mux_(x0: &Bits, x1: &Bits, inx: &Bits) -> Awi {
     assert_eq!(x0.bw(), x1.bw());
     assert_eq!(inx.bw(), 1);
-    let mut out = ExtAwi::zero(x0.nzbw());
+    let mut out = Awi::zero(x0.nzbw());
     let lut = inlawi!(1100_1010);
     for i in 0..x0.bw() {
         let mut tmp0 = inlawi!(000);
@@ -249,12 +249,12 @@ pub fn dynamic_to_static_get(bits: &Bits, inx: &Bits) -> inlawi_ty!(1) {
     out
 }
 
-pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
+pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> Awi {
     if bits.bw() == 1 {
-        return ExtAwi::from(bit)
+        return Awi::from(bit)
     }
     let signals = selector(inx, Some(bits.bw()));
-    let mut out = ExtAwi::zero(bits.nzbw());
+    let mut out = Awi::zero(bits.nzbw());
     let lut = inlawi!(1101_1000);
     for (i, signal) in signals.iter().enumerate() {
         let mut tmp0 = inlawi!(000);
@@ -269,8 +269,8 @@ pub fn dynamic_to_static_set(bits: &Bits, inx: &Bits, bit: &Bits) -> ExtAwi {
     out
 }
 
-pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
-    let mut out = ExtAwi::zero(w);
+pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> Awi {
+    let mut out = Awi::zero(w);
     if out.nzbw() == x.nzbw() {
         out.copy_(x).unwrap();
     } else if out.nzbw() < x.nzbw() {
@@ -290,9 +290,9 @@ pub fn resize(x: &Bits, w: NonZeroUsize, signed: bool) -> ExtAwi {
     out
 }
 
-pub fn resize_cond(x: &Bits, w: NonZeroUsize, signed: &Bits) -> ExtAwi {
+pub fn resize_cond(x: &Bits, w: NonZeroUsize, signed: &Bits) -> Awi {
     assert_eq!(signed.bw(), 1);
-    let mut out = ExtAwi::zero(w);
+    let mut out = Awi::zero(w);
     if out.nzbw() == x.nzbw() {
         out.copy_(x).unwrap();
     } else if out.nzbw() < x.nzbw() {
@@ -312,14 +312,8 @@ pub fn resize_cond(x: &Bits, w: NonZeroUsize, signed: &Bits) -> ExtAwi {
 }
 
 /// Returns (`lhs`, true) if there are invalid values
-pub fn static_field(
-    lhs: &Bits,
-    to: usize,
-    rhs: &Bits,
-    from: usize,
-    width: usize,
-) -> (ExtAwi, bool) {
-    let mut out = ExtAwi::from_bits(lhs);
+pub fn static_field(lhs: &Bits, to: usize, rhs: &Bits, from: usize, width: usize) -> (Awi, bool) {
+    let mut out = Awi::from_bits(lhs);
     if (width > lhs.bw())
         || (width > rhs.bw())
         || (to > (lhs.bw() - width))
@@ -335,8 +329,8 @@ pub fn static_field(
 }
 
 /// This does not handle invalid arguments; set `width` to zero to cause no-ops
-pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
-    let mut out = ExtAwi::from_bits(lhs);
+pub fn field_width(lhs: &Bits, rhs: &Bits, width: &Bits) -> Awi {
+    let mut out = Awi::from_bits(lhs);
     let min_w = min(lhs.bw(), rhs.bw());
     let signals = tsmear_inx(width, min_w);
     let lut = inlawi!(1100_1010);
@@ -384,10 +378,10 @@ pub fn crossbar(
     }
 }
 
-pub fn funnel_(x: &Bits, s: &Bits) -> ExtAwi {
+pub fn funnel_(x: &Bits, s: &Bits) -> Awi {
     assert_eq!(x.bw() & 1, 0);
     assert_eq!(x.bw() / 2, 1 << s.bw());
-    let mut out = ExtAwi::zero(NonZeroUsize::new(x.bw() / 2).unwrap());
+    let mut out = Awi::zero(NonZeroUsize::new(x.bw() / 2).unwrap());
     let signals = selector(s, None);
     // select zero should connect the zeroeth crossbars, so the offset is `out.bw()
     // - 1 + 0 - 0`
@@ -398,10 +392,10 @@ pub fn funnel_(x: &Bits, s: &Bits) -> ExtAwi {
 
 /// Setting `width` to 0 guarantees that nothing happens even with other
 /// arguments being invalid
-pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
+pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Awi {
     assert_eq!(from.bw(), USIZE_BITS);
     assert_eq!(width.bw(), USIZE_BITS);
-    let mut out = ExtAwi::from_bits(lhs);
+    let mut out = Awi::from_bits(lhs);
     // the `width == 0` case will result in a no-op from the later `field_width`
     // part, so we need to be able to handle just `rhs.bw()` possible shifts for
     // `width == 1` cases. There are `rhs.bw()` output bars needed. `from == 0`
@@ -409,33 +403,33 @@ pub fn field_from(lhs: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
     // 0`. `j` stays zero and we have `0 <= i < rhs.bw()`
     let signals = selector(from, Some(rhs.bw()));
     let range = (rhs.bw() - 1, 2 * rhs.bw() - 1);
-    let mut tmp = ExtAwi::zero(rhs.nzbw());
+    let mut tmp = Awi::zero(rhs.nzbw());
     crossbar(&mut tmp, rhs, &signals, range);
     out.field_width(&tmp, width.to_usize()).unwrap();
     out
 }
 
-pub fn shl(x: &Bits, s: &Bits) -> ExtAwi {
+pub fn shl(x: &Bits, s: &Bits) -> Awi {
     assert_eq!(s.bw(), USIZE_BITS);
     let mut signals = selector(s, Some(x.bw()));
     signals.reverse();
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     crossbar(&mut out, x, &signals, (0, x.bw()));
     out
 }
 
-pub fn lshr(x: &Bits, s: &Bits) -> ExtAwi {
+pub fn lshr(x: &Bits, s: &Bits) -> Awi {
     assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     crossbar(&mut out, x, &signals, (x.bw() - 1, 2 * x.bw() - 1));
     out
 }
 
-pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
+pub fn ashr(x: &Bits, s: &Bits) -> Awi {
     assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     crossbar(&mut out, x, &signals, (x.bw() - 1, 2 * x.bw() - 1));
     // Not sure if there is a better way to do this. If we try to use the crossbar
     // signals in some way, we are guaranteed some kind of > O(1) time thing.
@@ -451,7 +445,7 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
         lb_num += 1;
     }
     if let Some(w) = NonZeroUsize::new(lb_num) {
-        let mut gated_s = ExtAwi::zero(w);
+        let mut gated_s = Awi::zero(w);
         let lut_and = inlawi!(1000);
         // `gated_s` will be zero if `x.msb()` is zero, in which case `tsmear_inx`
         // produces all zeros to be ORed
@@ -479,7 +473,7 @@ pub fn ashr(x: &Bits, s: &Bits) -> ExtAwi {
     out
 }
 
-pub fn rotl(x: &Bits, s: &Bits) -> ExtAwi {
+pub fn rotl(x: &Bits, s: &Bits) -> Awi {
     assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
     // we will use the whole cross bar, with every signal controlling two diagonals
@@ -491,12 +485,12 @@ pub fn rotl(x: &Bits, s: &Bits) -> ExtAwi {
         rolled_signals[i + x.bw()].copy_(&signals[i + 1]).unwrap();
     }
     rolled_signals.reverse();
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     crossbar(&mut out, x, &rolled_signals, (0, 2 * x.bw() - 1));
     out
 }
 
-pub fn rotr(x: &Bits, s: &Bits) -> ExtAwi {
+pub fn rotr(x: &Bits, s: &Bits) -> Awi {
     assert_eq!(s.bw(), USIZE_BITS);
     let signals = selector(s, Some(x.bw()));
     // we will use the whole cross bar, with every signal controlling two diagonals
@@ -507,13 +501,13 @@ pub fn rotr(x: &Bits, s: &Bits) -> ExtAwi {
         rolled_signals[i].copy_(&signals[i + 1]).unwrap();
         rolled_signals[i + x.bw()].copy_(&signals[i + 1]).unwrap();
     }
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     crossbar(&mut out, x, &rolled_signals, (0, 2 * x.bw() - 1));
     out
 }
 
-pub fn bitwise_not(x: &Bits) -> ExtAwi {
-    let mut out = ExtAwi::zero(x.nzbw());
+pub fn bitwise_not(x: &Bits) -> Awi {
+    let mut out = Awi::zero(x.nzbw());
     for i in 0..x.bw() {
         let mut tmp = inlawi!(0);
         let inx = InlAwi::from(x.get(i).unwrap());
@@ -523,9 +517,9 @@ pub fn bitwise_not(x: &Bits) -> ExtAwi {
     out
 }
 
-pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> ExtAwi {
+pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> Awi {
     assert_eq!(lhs.bw(), rhs.bw());
-    let mut out = ExtAwi::zero(lhs.nzbw());
+    let mut out = Awi::zero(lhs.nzbw());
     for i in 0..lhs.bw() {
         let mut tmp = inlawi!(0);
         let mut inx = inlawi!(00);
@@ -537,7 +531,7 @@ pub fn bitwise(lhs: &Bits, rhs: &Bits, lut: inlawi_ty!(4)) -> ExtAwi {
     out
 }
 
-pub fn incrementer(x: &Bits, cin: &Bits, dec: bool) -> (ExtAwi, inlawi_ty!(1)) {
+pub fn incrementer(x: &Bits, cin: &Bits, dec: bool) -> (Awi, inlawi_ty!(1)) {
     assert_eq!(cin.bw(), 1);
     // half adder or subtractor
     let lut = if dec {
@@ -545,7 +539,7 @@ pub fn incrementer(x: &Bits, cin: &Bits, dec: bool) -> (ExtAwi, inlawi_ty!(1)) {
     } else {
         inlawi!(1001_0100)
     };
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     let mut carry = InlAwi::from(cin.to_bool());
     for i in 0..x.bw() {
         let mut carry_sum = inlawi!(00);
@@ -577,13 +571,13 @@ for i in 0..lb {
     c1_i = c1_tmp;
 }
 */
-pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), inlawi_ty!(1)) {
+pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (Awi, inlawi_ty!(1), inlawi_ty!(1)) {
     assert_eq!(cin.bw(), 1);
     assert_eq!(lhs.bw(), rhs.bw());
     let w = lhs.bw();
     // full adder
     let lut = inlawi!(1110_1001_1001_0100);
-    let mut out = ExtAwi::zero(lhs.nzbw());
+    let mut out = Awi::zero(lhs.nzbw());
     let mut carry = InlAwi::from(cin.to_bool());
     for i in 0..w {
         let mut carry_sum = inlawi!(00);
@@ -604,11 +598,11 @@ pub fn cin_sum(cin: &Bits, lhs: &Bits, rhs: &Bits) -> (ExtAwi, inlawi_ty!(1), in
     (out, carry, signed_overflow)
 }
 
-pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
+pub fn negator(x: &Bits, neg: &Bits) -> Awi {
     assert_eq!(neg.bw(), 1);
     // half adder with input inversion control
     let lut = inlawi!(0100_1001_1001_0100);
-    let mut out = ExtAwi::zero(x.nzbw());
+    let mut out = Awi::zero(x.nzbw());
     let mut carry = InlAwi::from(neg.to_bool());
     for i in 0..x.bw() {
         let mut carry_sum = inlawi!(00);
@@ -625,7 +619,7 @@ pub fn negator(x: &Bits, neg: &Bits) -> ExtAwi {
 
 /// Setting `width` to 0 guarantees that nothing happens even with other
 /// arguments being invalid
-pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
+pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> Awi {
     assert_eq!(to.bw(), USIZE_BITS);
     assert_eq!(width.bw(), USIZE_BITS);
 
@@ -642,22 +636,22 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
         let mut signals = selector(to, Some(num));
         signals.reverse();
 
-        let mut rhs_to_lhs = ExtAwi::zero(lhs.nzbw());
+        let mut rhs_to_lhs = Awi::zero(lhs.nzbw());
         crossbar(&mut rhs_to_lhs, rhs, &signals, (0, lhs.bw()));
 
         // to + width
-        let mut tmp = ExtAwi::zero(w);
+        let mut tmp = Awi::zero(w);
         tmp.usize_(to.to_usize());
-        tmp.add_(&extawi!(width[..(w.get())]).unwrap()).unwrap();
+        tmp.add_(&awi!(width[..(w.get())]).unwrap()).unwrap();
         let tmask = tsmear_inx(&tmp, lhs.bw());
         // lhs.bw() - to
-        let mut tmp = ExtAwi::zero(w);
+        let mut tmp = Awi::zero(w);
         tmp.usize_(lhs.bw());
-        tmp.sub_(&extawi!(to[..(w.get())]).unwrap()).unwrap();
+        tmp.sub_(&awi!(to[..(w.get())]).unwrap()).unwrap();
         let mut lmask = tsmear_inx(&tmp, lhs.bw());
         lmask.reverse();
 
-        let mut out = ExtAwi::from_bits(lhs);
+        let mut out = Awi::from_bits(lhs);
         let lut = inlawi!(1011_1111_1000_0000);
         for i in 0..lhs.bw() {
             let mut tmp = inlawi!(0000);
@@ -672,7 +666,7 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
         out
     } else {
         let lut = inlawi!(rhs[0], lhs[0]).unwrap();
-        let mut out = extawi!(0);
+        let mut out = awi!(0);
         out.lut_(&lut, width).unwrap();
         out
     }
@@ -680,7 +674,7 @@ pub fn field_to(lhs: &Bits, to: &Bits, rhs: &Bits, width: &Bits) -> ExtAwi {
 
 /// Setting `width` to 0 guarantees that nothing happens even with other
 /// arguments being invalid
-pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> ExtAwi {
+pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Awi {
     assert_eq!(to.bw(), USIZE_BITS);
     assert_eq!(from.bw(), USIZE_BITS);
     assert_eq!(width.bw(), USIZE_BITS);
@@ -695,15 +689,15 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
     let num = lhs.bw() + rhs.bw();
     let lb_num = num.next_power_of_two().trailing_zeros() as usize;
     if let Some(w) = NonZeroUsize::new(lb_num) {
-        let mut shift = ExtAwi::zero(w);
+        let mut shift = Awi::zero(w);
         shift.usize_(rhs.bw());
-        shift.add_(&extawi!(to[..(w.get())]).unwrap()).unwrap();
-        shift.sub_(&extawi!(from[..(w.get())]).unwrap()).unwrap();
+        shift.add_(&awi!(to[..(w.get())]).unwrap()).unwrap();
+        shift.sub_(&awi!(from[..(w.get())]).unwrap()).unwrap();
 
         let mut signals = selector(&shift, Some(num));
         signals.reverse();
 
-        let mut rhs_to_lhs = ExtAwi::zero(lhs.nzbw());
+        let mut rhs_to_lhs = Awi::zero(lhs.nzbw());
         // really what `field` is is a well defined full crossbar, the masking part
         // after this is optimized to nothing if `rhs` is zero.
         crossbar(&mut rhs_to_lhs, rhs, &signals, (0, num));
@@ -713,18 +707,18 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
         // `width` window in the correct spot.
 
         // to + width
-        let mut tmp = ExtAwi::zero(w);
+        let mut tmp = Awi::zero(w);
         tmp.usize_(to.to_usize());
-        tmp.add_(&extawi!(width[..(w.get())]).unwrap()).unwrap();
+        tmp.add_(&awi!(width[..(w.get())]).unwrap()).unwrap();
         let tmask = tsmear_inx(&tmp, lhs.bw());
         // lhs.bw() - to
-        let mut tmp = ExtAwi::zero(w);
+        let mut tmp = Awi::zero(w);
         tmp.usize_(lhs.bw());
-        tmp.sub_(&extawi!(to[..(w.get())]).unwrap()).unwrap();
+        tmp.sub_(&awi!(to[..(w.get())]).unwrap()).unwrap();
         let mut lmask = tsmear_inx(&tmp, lhs.bw());
         lmask.reverse();
 
-        let mut out = ExtAwi::from_bits(lhs);
+        let mut out = Awi::from_bits(lhs);
         // when `tmask` and `lmask` are both set, mux_ in `rhs`
         let lut = inlawi!(1011_1111_1000_0000);
         for i in 0..lhs.bw() {
@@ -741,7 +735,7 @@ pub fn field(lhs: &Bits, to: &Bits, rhs: &Bits, from: &Bits, width: &Bits) -> Ex
     } else {
         // `lhs.bw() == 1`, `rhs.bw() == 1`, `width` is the only thing that matters
         let lut = inlawi!(rhs[0], lhs[0]).unwrap();
-        let mut out = extawi!(0);
+        let mut out = awi!(0);
         out.lut_(&lut, width).unwrap();
         out
     }
@@ -784,11 +778,11 @@ pub fn equal(lhs: &Bits, rhs: &Bits) -> inlawi_ty!(1) {
 
 /// Uses the minimum number of bits to handle all cases, you may need to call
 /// `to_usize` on the result
-pub fn count_ones(x: &Bits) -> ExtAwi {
+pub fn count_ones(x: &Bits) -> Awi {
     // a tuple of an intermediate sum and the max possible value of that sum
-    let mut ranks: Vec<Vec<(ExtAwi, awi::ExtAwi)>> = vec![vec![]];
+    let mut ranks: Vec<Vec<(Awi, awi::Awi)>> = vec![vec![]];
     for i in 0..x.bw() {
-        ranks[0].push((ExtAwi::from(x.get(i).unwrap()), awi::ExtAwi::from(true)));
+        ranks[0].push((Awi::from(x.get(i).unwrap()), awi::Awi::from(true)));
     }
     loop {
         let prev_rank = ranks.last().unwrap();
@@ -803,10 +797,10 @@ pub fn count_ones(x: &Bits) -> ExtAwi {
                 break
             }
             // each rank adds another bit, keep adding until overflow
-            let mut next_sum = extawi!(0, prev_rank[i].0);
+            let mut next_sum = awi!(0, prev_rank[i].0);
             let mut next_max = {
                 use awi::*;
-                extawi!(0, prev_rank[i].1)
+                awi!(0, prev_rank[i].1)
             };
             loop {
                 i += 1;
@@ -816,11 +810,11 @@ pub fn count_ones(x: &Bits) -> ExtAwi {
                 let w = next_max.bw();
                 {
                     use awi::*;
-                    let mut tmp = ExtAwi::zero(next_max.nzbw());
+                    let mut tmp = Awi::zero(next_max.nzbw());
                     if tmp
                         .cin_sum_(
                             false,
-                            &extawi!(zero: .., prev_rank[i].1; ..w).unwrap(),
+                            &awi!(zero: .., prev_rank[i].1; ..w).unwrap(),
                             &next_max,
                         )
                         .unwrap()
@@ -832,7 +826,7 @@ pub fn count_ones(x: &Bits) -> ExtAwi {
                     cc!(tmp; next_max).unwrap();
                 }
                 next_sum
-                    .add_(&extawi!(zero: .., prev_rank[i].0; ..w).unwrap())
+                    .add_(&awi!(zero: .., prev_rank[i].0; ..w).unwrap())
                     .unwrap();
             }
             next_rank.push((next_sum, next_max));
@@ -842,8 +836,8 @@ pub fn count_ones(x: &Bits) -> ExtAwi {
 }
 
 // If there is a set bit, it and the bits less significant than it will be set
-pub fn tsmear(x: &Bits) -> ExtAwi {
-    let mut tmp0 = ExtAwi::from(x);
+pub fn tsmear(x: &Bits) -> Awi {
+    let mut tmp0 = Awi::from(x);
     let mut lvl = 0;
     // exponentially OR cascade the smear
     loop {
@@ -858,29 +852,29 @@ pub fn tsmear(x: &Bits) -> ExtAwi {
     }
 }
 
-pub fn leading_zeros(x: &Bits) -> ExtAwi {
+pub fn leading_zeros(x: &Bits) -> Awi {
     let mut tmp = tsmear(x);
     tmp.not_();
     count_ones(&tmp)
 }
 
-pub fn trailing_zeros(x: &Bits) -> ExtAwi {
-    let mut tmp = ExtAwi::from_bits(x);
+pub fn trailing_zeros(x: &Bits) -> Awi {
+    let mut tmp = Awi::from_bits(x);
     tmp.rev_();
     let mut tmp = tsmear(&tmp);
     tmp.not_();
     count_ones(&tmp)
 }
 
-pub fn significant_bits(x: &Bits) -> ExtAwi {
+pub fn significant_bits(x: &Bits) -> Awi {
     count_ones(&tsmear(x))
 }
 
-pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
+pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> Awi {
     let num_entries = 1 << inx.bw();
     assert_eq!(table.bw(), entry.bw() * num_entries);
     let signals = selector(inx, Some(num_entries));
-    let mut out = ExtAwi::from_bits(table);
+    let mut out = Awi::from_bits(table);
     let lut_mux = inlawi!(1100_1010);
     for (j, signal) in signals.into_iter().enumerate() {
         for i in 0..entry.bw() {
@@ -898,7 +892,7 @@ pub fn lut_set(table: &Bits, entry: &Bits, inx: &Bits) -> ExtAwi {
     out
 }
 
-pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) -> ExtAwi {
+pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) -> Awi {
     // make `rhs` the smaller side, column size will be minimized
     let (lhs, rhs) = if lhs.bw() < rhs.bw() {
         (rhs, lhs)
@@ -951,7 +945,7 @@ pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) 
         }
         for i in 0..place_map0.len() {
             if let Some(w) = NonZeroUsize::new(place_map0[i].len()) {
-                let mut column = ExtAwi::zero(w);
+                let mut column = Awi::zero(w);
                 for (i, bit) in place_map0[i].drain(..).enumerate() {
                     column.set(i, bit.to_bool()).unwrap();
                 }
@@ -966,8 +960,8 @@ pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) 
         mem::swap(place_map0, place_map1);
     }
 
-    let mut out = ExtAwi::zero(out_w);
-    let mut tmp = ExtAwi::zero(out_w);
+    let mut out = Awi::zero(out_w);
+    let mut tmp = Awi::zero(out_w);
     for i in 0..out.bw() {
         for (j, bit) in place_map0[i].iter().enumerate() {
             if j == 0 {
@@ -989,7 +983,7 @@ pub fn mul_add(out_w: NonZeroUsize, add: Option<&Bits>, lhs: &Bits, rhs: &Bits) 
 /// enough divisions sharing the same divisor, use fixed point inverses and
 /// multiplication. TODO try out other algorithms in the `specialized-div-rem`
 /// crate for this implementation.
-pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
+pub fn division(duo: &Bits, div: &Bits) -> (Awi, Awi) {
     assert_eq!(duo.bw(), div.bw());
 
     // this uses the nonrestoring SWAR algorithm, with `duo` and `div` extended by
@@ -998,10 +992,10 @@ pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
 
     let original_w = duo.nzbw();
     let w = NonZeroUsize::new(original_w.get() + 1).unwrap();
-    let mut tmp = ExtAwi::zero(w);
+    let mut tmp = Awi::zero(w);
     tmp.zero_resize_(duo);
     let duo = tmp;
-    let mut tmp = ExtAwi::zero(w);
+    let mut tmp = Awi::zero(w);
     tmp.zero_resize_(div);
     let div = tmp;
 
@@ -1063,8 +1057,8 @@ pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
 
     // if there is a shortcut value it gets put in here and the `short`cut flag is
     // set to disable downstream shortcuts
-    let mut short_quo = ExtAwi::zero(w);
-    let mut short_rem = ExtAwi::zero(w);
+    let mut short_quo = Awi::zero(w);
+    let mut short_rem = Awi::zero(w);
     // leave `short_quo` as zero in both cases
     short_rem.mux_(&duo, duo_lt_div).unwrap();
     let mut short = duo_lt_div;
@@ -1072,7 +1066,7 @@ pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
     let mut shl = leading_zeros(&div);
     shl.sub_(&leading_zeros(&duo)).unwrap();
     // if duo < (div << shl)
-    let mut shifted_div = ExtAwi::from_bits(&div);
+    let mut shifted_div = Awi::from_bits(&div);
     shifted_div.shl_(shl.to_usize()).unwrap();
     let reshift = duo.ult(&shifted_div).unwrap();
     shl.dec_(!reshift);
@@ -1083,11 +1077,11 @@ pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
     let mut div = shifted_div;
     div.mux_(&reshifted, reshift).unwrap();
 
-    let mut duo = ExtAwi::from_bits(&duo);
+    let mut duo = Awi::from_bits(&duo);
     duo.sub_(&div).unwrap();
     // 1 << shl efficiently
     let tmp = selector_awi(&shl, Some(w.get()));
-    let mut quo = ExtAwi::zero(w);
+    let mut quo = Awi::zero(w);
     quo.zero_resize_(&tmp);
 
     // if duo < div_original
@@ -1115,7 +1109,7 @@ pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
         duo.mux_(&tmp1, !b).unwrap();
     }
     // final restore
-    let mut tmp = ExtAwi::zero(w);
+    let mut tmp = Awi::zero(w);
     tmp.mux_(&div, duo.msb()).unwrap();
     duo.add_(&tmp).unwrap();
 
@@ -1130,8 +1124,8 @@ pub fn division(duo: &Bits, div: &Bits) -> (ExtAwi, ExtAwi) {
     short_quo.mux_(&tmp_quo, !short).unwrap();
     short_rem.mux_(&tmp_rem, !short).unwrap();
 
-    let mut tmp0 = ExtAwi::zero(original_w);
-    let mut tmp1 = ExtAwi::zero(original_w);
+    let mut tmp0 = Awi::zero(original_w);
+    let mut tmp1 = Awi::zero(original_w);
     tmp0.zero_resize_(&short_quo);
     tmp1.zero_resize_(&short_rem);
     (tmp0, tmp1)

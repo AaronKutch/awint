@@ -9,7 +9,7 @@ use core::{
 
 use awint_core::{awint_internals::Digit, Bits};
 
-use crate::ExtAwi;
+use crate::Awi;
 
 /// Fixed-Point Type, containing signedness, bitwidth, and fixed point
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -34,7 +34,7 @@ impl FPType {
         if self.fp <= 0 {
             return Some(0)
         }
-        let mut test = ExtAwi::uone(NonZeroUsize::new(self.fp.unsigned_abs()).unwrap());
+        let mut test = Awi::uone(NonZeroUsize::new(self.fp.unsigned_abs()).unwrap());
         let mut digits = 0;
         loop {
             digits += 1;

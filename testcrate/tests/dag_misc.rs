@@ -378,15 +378,15 @@ fn dag_bits_functions() {
     {
         use awi::{assert_eq, *};
         // fix the opaques
-        graph.pnote_get_mut_node(x5).unwrap().op = Op::Literal(extawi!(zero: ..128));
-        graph.pnote_get_mut_node(x6).unwrap().op = Op::Literal(extawi!(umax: ..192));
-        graph.pnote_get_mut_node(x7).unwrap().op = Op::Literal(extawi!(imax: ..192));
-        graph.pnote_get_mut_node(x8).unwrap().op = Op::Literal(extawi!(imin: ..192));
-        graph.pnote_get_mut_node(x9).unwrap().op = Op::Literal(extawi!(uone: ..192));
+        graph.pnote_get_mut_node(x5).unwrap().op = Op::Literal(awi!(zero: ..128));
+        graph.pnote_get_mut_node(x6).unwrap().op = Op::Literal(awi!(umax: ..192));
+        graph.pnote_get_mut_node(x7).unwrap().op = Op::Literal(awi!(imax: ..192));
+        graph.pnote_get_mut_node(x8).unwrap().op = Op::Literal(awi!(imin: ..192));
+        graph.pnote_get_mut_node(x9).unwrap().op = Op::Literal(awi!(uone: ..192));
         graph.pnote_get_mut_node(s2).unwrap().op =
-            Op::Literal(ExtAwi::from_usize(extawi!(127u64).to_usize()));
+            Op::Literal(Awi::from_usize(awi!(127u64).to_usize()));
         graph.pnote_get_mut_node(s3).unwrap().op =
-            Op::Literal(ExtAwi::from_usize(extawi!(128u64).to_usize()));
+            Op::Literal(Awi::from_usize(awi!(128u64).to_usize()));
 
         assert_eq!(graph.assertions.len(), num_assertions);
         graph.eval_all().unwrap();
@@ -457,7 +457,7 @@ fn dag_try() {
         use awi::{assert, *};
         // fix the opaques
         graph.pnote_get_mut_node(s).unwrap().op =
-            Op::Literal(ExtAwi::from_usize(extawi!(8u64).to_usize()));
+            Op::Literal(Awi::from_usize(awi!(8u64).to_usize()));
 
         let res = graph.eval_all();
         assert!(matches!(res, Err(EvalError::AssertionFailure(_))));

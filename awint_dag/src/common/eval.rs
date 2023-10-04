@@ -4,22 +4,22 @@
 
 use std::num::NonZeroUsize;
 
-use awint_ext::{awint_internals::USIZE_BITS, Bits, ExtAwi};
+use awint_ext::{awint_internals::USIZE_BITS, Awi, Bits};
 use Op::*;
 
 use crate::{EvalError, Op};
 
-/// The result of an evaluation on an `Op<ExtAwi>`
+/// The result of an evaluation on an `Op<Awi>`
 ///
 /// In cases like `UQuo` where both invalid bitwidths and values at the same
 /// time are possible, `Noop` takes precedence
 #[derive(Debug, Clone)]
 pub enum EvalResult {
     /// A Valid result
-    Valid(ExtAwi),
+    Valid(Awi),
     /// Pass-through, usually because of an Awi operation that can fail from
     /// out-of-bounds values
-    Pass(ExtAwi),
+    Pass(Awi),
     /// No-operation, usually because of Awi operations with invalid bitwidths
     Noop,
     /// Some evaluation error because of something that is not an Awi operation.
@@ -37,7 +37,7 @@ fn cbool(x: &Bits) -> Result<bool, EvalError> {
         Ok(x.to_bool())
     } else {
         Err(EvalError::OtherStr(
-            "a literal in an `Op<ExtAwi>` was not a boolean as expected",
+            "a literal in an `Op<Awi>` was not a boolean as expected",
         ))
     }
 }
@@ -47,7 +47,7 @@ fn cusize(x: &Bits) -> Result<usize, EvalError> {
         Ok(x.to_usize())
     } else {
         Err(EvalError::OtherStr(
-            "a literal in an `Op<ExtAwi>` was not a usize as expected",
+            "a literal in an `Op<Awi>` was not a usize as expected",
         ))
     }
 }
@@ -108,11 +108,11 @@ macro_rules! ceq {
     };
 }
 
-impl Op<ExtAwi> {
-    /// Evaluates the result of an `Op<ExtAwi>`
+impl Op<Awi> {
+    /// Evaluates the result of an `Op<Awi>`
     pub fn eval(self, self_w: NonZeroUsize) -> EvalResult {
         let w = self_w;
-        let res: Option<ExtAwi> = match self {
+        let res: Option<Awi> = match self {
             Invalid => return Error(EvalError::Unevaluatable),
             Opaque(..) => return Error(EvalError::Unevaluatable),
             Literal(a) => {
@@ -122,7 +122,7 @@ impl Op<ExtAwi> {
                 Some(a)
             }
             StaticLut([a], lit) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 if r.lut_(&lit, &a).is_some() {
                     Some(r)
                 } else {
@@ -131,7 +131,7 @@ impl Op<ExtAwi> {
             }
             StaticGet([a], inx) => {
                 if let Some(b) = a.get(inx) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     return Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
                 }
@@ -144,23 +144,23 @@ impl Op<ExtAwi> {
                 }
             }
             Resize([a, b]) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 r.resize_(&a, cbool!(b));
                 Some(r)
             }
             ZeroResize([a]) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 r.zero_resize_(&a);
                 Some(r)
             }
             SignResize([a]) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 r.sign_resize_(&a);
                 Some(r)
             }
             Copy([a]) => Some(a),
             Lut([a, b]) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 if r.lut_(&a, &b).is_some() {
                     Some(r)
                 } else {
@@ -168,7 +168,7 @@ impl Op<ExtAwi> {
                 }
             }
             Funnel([a, b]) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 if r.funnel_(&a, &b).is_some() {
                     Some(r)
                 } else {
@@ -176,7 +176,7 @@ impl Op<ExtAwi> {
                 }
             }
             CinSum([a, b, c]) => {
-                let mut r = ExtAwi::zero(w);
+                let mut r = Awi::zero(w);
                 if r.cin_sum_(cbool!(a), &b, &c).is_some() {
                     Some(r)
                 } else {
@@ -195,17 +195,17 @@ impl Op<ExtAwi> {
                 a.abs_();
                 Some(a)
             }
-            IsZero([a]) => Some(ExtAwi::from_bool(a.is_zero())),
-            IsUmax([a]) => Some(ExtAwi::from_bool(a.is_umax())),
-            IsImax([a]) => Some(ExtAwi::from_bool(a.is_imax())),
-            IsImin([a]) => Some(ExtAwi::from_bool(a.is_imin())),
-            IsUone([a]) => Some(ExtAwi::from_bool(a.is_uone())),
-            Lsb([a]) => Some(ExtAwi::from_bool(a.lsb())),
-            Msb([a]) => Some(ExtAwi::from_bool(a.msb())),
-            Lz([a]) => Some(ExtAwi::from_usize(a.lz())),
-            Tz([a]) => Some(ExtAwi::from_usize(a.tz())),
-            Sig([a]) => Some(ExtAwi::from_usize(a.sig())),
-            CountOnes([a]) => Some(ExtAwi::from_usize(a.count_ones())),
+            IsZero([a]) => Some(Awi::from_bool(a.is_zero())),
+            IsUmax([a]) => Some(Awi::from_bool(a.is_umax())),
+            IsImax([a]) => Some(Awi::from_bool(a.is_imax())),
+            IsImin([a]) => Some(Awi::from_bool(a.is_imin())),
+            IsUone([a]) => Some(Awi::from_bool(a.is_uone())),
+            Lsb([a]) => Some(Awi::from_bool(a.lsb())),
+            Msb([a]) => Some(Awi::from_bool(a.msb())),
+            Lz([a]) => Some(Awi::from_usize(a.lz())),
+            Tz([a]) => Some(Awi::from_usize(a.tz())),
+            Sig([a]) => Some(Awi::from_usize(a.sig())),
+            CountOnes([a]) => Some(Awi::from_usize(a.count_ones())),
             Or([mut a, b]) => {
                 if a.or_(&b).is_some() {
                     Some(a)
@@ -290,42 +290,42 @@ impl Op<ExtAwi> {
             }
             Eq([a, b]) => {
                 if let Some(b) = a.const_eq(&b) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ne([a, b]) => {
                 if let Some(b) = a.const_ne(&b) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ult([a, b]) => {
                 if let Some(b) = a.ult(&b) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ule([a, b]) => {
                 if let Some(b) = a.ule(&b) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ilt([a, b]) => {
                 if let Some(b) = a.ilt(&b) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     None
                 }
             }
             Ile([a, b]) => {
                 if let Some(b) = a.ile(&b) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     None
                 }
@@ -343,16 +343,16 @@ impl Op<ExtAwi> {
                 Some(a)
             }
             ZeroResizeOverflow([a], w) => {
-                let mut tmp_awi = ExtAwi::zero(w);
-                Some(ExtAwi::from_bool(tmp_awi.zero_resize_(&a)))
+                let mut tmp_awi = Awi::zero(w);
+                Some(Awi::from_bool(tmp_awi.zero_resize_(&a)))
             }
             SignResizeOverflow([a], w) => {
-                let mut tmp_awi = ExtAwi::zero(w);
-                Some(ExtAwi::from_bool(tmp_awi.sign_resize_(&a)))
+                let mut tmp_awi = Awi::zero(w);
+                Some(Awi::from_bool(tmp_awi.sign_resize_(&a)))
             }
             Get([a, b]) => {
                 if let Some(b) = a.get(cusize!(b)) {
-                    Some(ExtAwi::from_bool(b))
+                    Some(Awi::from_bool(b))
                 } else {
                     return Pass(a)
                 }
@@ -425,23 +425,23 @@ impl Op<ExtAwi> {
             }
             UnsignedOverflow([a, b, c]) => {
                 // note that `self_w` and `self.get_bw(a)` are both 1
-                let mut t = ExtAwi::zero(b.nzbw());
+                let mut t = Awi::zero(b.nzbw());
                 if let Some((o, _)) = t.cin_sum_(cbool!(a), &b, &c) {
-                    Some(ExtAwi::from_bool(o))
+                    Some(Awi::from_bool(o))
                 } else {
                     None
                 }
             }
             SignedOverflow([a, b, c]) => {
-                let mut t = ExtAwi::zero(b.nzbw());
+                let mut t = Awi::zero(b.nzbw());
                 if let Some((_, o)) = t.cin_sum_(cbool!(a), &b, &c) {
-                    Some(ExtAwi::from_bool(o))
+                    Some(Awi::from_bool(o))
                 } else {
                     None
                 }
             }
-            IncCout([mut a, b]) => Some(ExtAwi::from_bool(a.inc_(cbool!(b)))),
-            DecCout([mut a, b]) => Some(ExtAwi::from_bool(a.dec_(cbool!(b)))),
+            IncCout([mut a, b]) => Some(Awi::from_bool(a.inc_(cbool!(b)))),
+            DecCout([mut a, b]) => Some(Awi::from_bool(a.dec_(cbool!(b)))),
             UQuo([a, b]) => {
                 // Noop needs to take precedence
                 if (w.get() != a.bw()) || (w.get() != b.bw()) {
@@ -449,8 +449,8 @@ impl Op<ExtAwi> {
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut r = ExtAwi::zero(w);
-                    let mut t = ExtAwi::zero(w);
+                    let mut r = Awi::zero(w);
+                    let mut t = Awi::zero(w);
                     Bits::udivide(&mut r, &mut t, &a, &b).unwrap();
                     Some(r)
                 }
@@ -461,8 +461,8 @@ impl Op<ExtAwi> {
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut r = ExtAwi::zero(w);
-                    let mut t = ExtAwi::zero(w);
+                    let mut r = Awi::zero(w);
+                    let mut t = Awi::zero(w);
                     Bits::udivide(&mut t, &mut r, &a, &b).unwrap();
                     Some(r)
                 }
@@ -473,8 +473,8 @@ impl Op<ExtAwi> {
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut r = ExtAwi::zero(w);
-                    let mut t = ExtAwi::zero(w);
+                    let mut r = Awi::zero(w);
+                    let mut t = Awi::zero(w);
                     Bits::idivide(&mut r, &mut t, &mut a, &mut b).unwrap();
                     Some(r)
                 }
@@ -485,8 +485,8 @@ impl Op<ExtAwi> {
                 } else if b.is_zero() {
                     return Pass(a)
                 } else {
-                    let mut r = ExtAwi::zero(w);
-                    let mut t = ExtAwi::zero(w);
+                    let mut r = Awi::zero(w);
+                    let mut t = Awi::zero(w);
                     Bits::idivide(&mut t, &mut r, &mut a, &mut b).unwrap();
                     Some(r)
                 }

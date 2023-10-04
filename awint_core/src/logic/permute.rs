@@ -323,7 +323,7 @@ impl Bits {
     /// let shift = 4;
     ///
     /// // temporary clone of the input
-    /// let mut tmp = ExtAwi::from(input);
+    /// let mut tmp = Awi::from(input);
     /// cc!(input; output).unwrap();
     /// if shift != 0 {
     ///     if shift >= input.bw() {
@@ -336,9 +336,9 @@ impl Bits {
     /// };
     ///
     /// assert_eq!(output, inlawi!(0x3214u16));
-    /// let mut using_rotate = ExtAwi::from(input);
+    /// let mut using_rotate = Awi::from(input);
     /// using_rotate.rotl_(shift).unwrap();
-    /// assert_eq!(using_rotate, extawi!(0x3214u16));
+    /// assert_eq!(using_rotate, awi!(0x3214u16));
     ///
     /// // Note that slices are typed in a little-endian order opposite of
     /// // how integers are typed, but they still visually rotate in the

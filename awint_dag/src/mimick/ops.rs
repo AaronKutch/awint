@@ -283,43 +283,28 @@ impl Bits {
     }
 
     pub fn zero_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::zero(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::zero(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn umax_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::umax(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::umax(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn imax_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::imax(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::imax(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn imin_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::imin(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::imin(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn uone_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::uone(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::uone(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     #[must_use]
@@ -576,8 +561,8 @@ impl Bits {
 
     #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn arb_imul_add_(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
-        let mut lhs = dag::ExtAwi::from_bits(lhs);
-        let mut rhs = dag::ExtAwi::from_bits(rhs);
+        let mut lhs = dag::Awi::from_bits(lhs);
+        let mut rhs = dag::Awi::from_bits(rhs);
         let lhs_msb = lhs.msb();
         let rhs_msb = rhs.msb();
         lhs.neg_(lhs_msb);

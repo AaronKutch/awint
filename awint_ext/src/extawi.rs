@@ -1,4 +1,4 @@
-mod extawi;
+mod awi;
 mod strings;
 
-pub use extawi::*;
+pub use awi::*;

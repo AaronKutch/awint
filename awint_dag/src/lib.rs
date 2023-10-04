@@ -122,11 +122,11 @@
 //!     drop(epoch0);
 //!
 //!     // replace that opaque with a literal
-//!     graph.pnote_get_mut_node(input).unwrap().op = Literal(extawi!(1010));
+//!     graph.pnote_get_mut_node(input).unwrap().op = Literal(awi!(1010));
 //!     graph.eval_all().unwrap();
 //!     graph.assert_assertions().unwrap();
 //!     if let Literal(ref lit) = graph.pnote_get_node(output).unwrap().op {
-//!         awi::assert_eq!(lit.as_ref(), extawi!(0u4).as_ref());
+//!         awi::assert_eq!(lit.as_ref(), awi!(0u4).as_ref());
 //!     } else {
 //!         panic!();
 //!     }
@@ -175,12 +175,11 @@
 //!
 //! - The mimicking types have an extra `opaque` constructor kind that has no
 //!   definitive bit pattern. This can be accessed through `Bits::opaque_`,
-//!   `ExtAwi::opaque(w)`, `InlAwi::opaque()`, and in macros like
-//!   `inlawi!(opaque: ..8)`. This is useful for placeholder values in
-//!   algorithms that prevents evaluation from doing anything with the sink tree
-//!   of these values.
-//! - The macros from `awint_dag` use whatever `usize`, `ExtAwi`, `InlAwi`, and
-//!   `Bits` structs are imported in their scope. If you are mixing regular and
+//!   `*Awi::opaque(w)`, and in macros like `inlawi!(opaque: ..8)`. This is
+//!   useful for placeholder values in algorithms that prevents evaluation from
+//!   doing anything with the sink tree of these values.
+//! - The macros from `awint_dag` use whatever `usize`, `*Awi`, and `Bits`
+//!   structs are imported in their scope. If you are mixing regular and
 //!   mimicking types and are getting name collisions in macros, you can glob
 //!   import `awint::awi::*` or `awint::dag::*` in the same scope as the macro
 //!   (or add an extra block scope around the macro to glob import in), which

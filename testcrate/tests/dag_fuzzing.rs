@@ -33,12 +33,12 @@ ptr_struct!(P0);
 
 #[derive(Debug, Clone)]
 struct Pair {
-    awi: awi::ExtAwi,
-    dag: dag::ExtAwi,
+    awi: awi::Awi,
+    dag: dag::Awi,
 }
 
 impl Pair {
-    pub fn new(lit: awi::ExtAwi) -> Self {
+    pub fn new(lit: awi::Awi) -> Self {
         Self {
             awi: lit.clone(),
             dag: lit.as_ref().into(),
@@ -89,7 +89,7 @@ impl Mem {
                 return p
             }
         }
-        let mut lit = awi::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+        let mut lit = awi::Awi::zero(NonZeroUsize::new(w).unwrap());
         lit.rand_(&mut self.rng).unwrap();
         let tmp = lit.to_usize() % cap;
         lit.usize_(tmp);
@@ -104,7 +104,7 @@ impl Mem {
         if try_query && (!self.v[w].is_empty()) {
             self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()]
         } else {
-            let mut lit = awi::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+            let mut lit = awi::Awi::zero(NonZeroUsize::new(w).unwrap());
             lit.rand_(&mut self.rng).unwrap();
             let p = self.a.insert(Pair::new(lit));
             self.v[w].push(p);
@@ -127,19 +127,19 @@ impl Mem {
     // of mixed internal mutability is too much. We can't get the signature of
     // `Index` to work in any case.
 
-    pub fn get_awi(&self, inx: P0) -> awi::ExtAwi {
+    pub fn get_awi(&self, inx: P0) -> awi::Awi {
         self.a[inx].awi.clone()
     }
 
-    pub fn get_dag(&self, inx: P0) -> dag::ExtAwi {
+    pub fn get_dag(&self, inx: P0) -> dag::Awi {
         self.a[inx].dag.clone()
     }
 
-    pub fn get_mut_awi(&mut self, inx: P0) -> &mut awi::ExtAwi {
+    pub fn get_mut_awi(&mut self, inx: P0) -> &mut awi::Awi {
         &mut self.a[inx].awi
     }
 
-    pub fn get_mut_dag(&mut self, inx: P0) -> &mut dag::ExtAwi {
+    pub fn get_mut_dag(&mut self, inx: P0) -> &mut dag::Awi {
         &mut self.a[inx].dag
     }
 

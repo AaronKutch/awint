@@ -35,7 +35,7 @@ use crate::Bits;
 ///
 /// This struct implements `Deref<Target = Bits>`, see the main documentation of
 /// [Bits](crate::Bits) for more. There are also some allocating functions that
-/// only `ExtAwi` implements.
+/// only `ExtAwi` and `Awi` implement.
 ///
 /// ```
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
