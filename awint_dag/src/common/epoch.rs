@@ -99,7 +99,11 @@ impl EpochCallback {
         EPOCH_STACK.with(|v| {
             v.borrow_mut().push((gen, self));
         });
-        CURRENT_CALLBACK.replace(self);
+        // TODO #25
+        //CURRENT_CALLBACK.replace(self);
+        CURRENT_CALLBACK.with(|x| {
+            x.replace(self);
+        });
         EpochKey {
             gen,
             _no_send_or_sync: PhantomData,
@@ -129,9 +133,17 @@ impl EpochKey {
                 );
             }
             if let Some((_, callback)) = epoch_stack.last() {
-                CURRENT_CALLBACK.replace(*callback);
+                // TODO #25
+                //CURRENT_CALLBACK.replace(*callback);
+                CURRENT_CALLBACK.with(|x| {
+                    x.replace(*callback);
+                });
             } else {
-                CURRENT_CALLBACK.replace(_unregistered_callback());
+                // TODO #25
+                //CURRENT_CALLBACK.replace(_unregistered_callback());
+                CURRENT_CALLBACK.with(|x| {
+                    x.replace(_unregistered_callback());
+                });
             }
         });
     }
@@ -199,7 +211,9 @@ pub fn get_op_from_current_epoch(p_state: PState) -> Op<PState> {
 // used in debugging and testing
 #[doc(hidden)]
 pub fn _get_epoch_gen() -> NonZeroU64 {
-    EPOCH_GEN.get()
+    // TODO #25
+    //EPOCH_GEN.get()
+    EPOCH_GEN.with(|x| x.get())
 }
 #[doc(hidden)]
 pub fn _get_epoch_stack() -> Vec<(NonZeroU64, EpochCallback)> {
@@ -207,5 +221,7 @@ pub fn _get_epoch_stack() -> Vec<(NonZeroU64, EpochCallback)> {
 }
 #[doc(hidden)]
 pub fn _get_epoch_callback() -> EpochCallback {
-    CURRENT_CALLBACK.get()
+    // TODO #25
+    //CURRENT_CALLBACK.get()
+    CURRENT_CALLBACK.with(|x| x.get())
 }
