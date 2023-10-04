@@ -32,8 +32,9 @@ union InlOrExt {
 /// that it has a capacity, meaning that its bitwidth can be changed without
 /// reallocation if the capacity is large enough.
 ///
-/// Small bitwidths can be stored inline by this struct without any allocation,
-/// which greatly helps cases where only a few of the `Awi`s are large.
+/// Small bitwidths (`usize::BITS` on most platforms) can be stored inline by
+/// this struct without any allocation, which greatly helps cases where only a
+/// few of the `Awi`s are large.
 ///
 /// This struct implements `Deref<Target = Bits>`, see the main documentation of
 /// [Bits](awint_core::Bits) for more. There are also some functions that

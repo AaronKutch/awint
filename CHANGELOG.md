@@ -2,7 +2,7 @@
 
 ## TODO
 ### Additions
-- Added the `Awi` struct
+- Added the `Awi` struct and corresponding `awi` macro
 - Added more `awi` to `dag` `From` impls
 
 ### Changes

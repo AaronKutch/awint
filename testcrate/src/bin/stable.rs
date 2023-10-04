@@ -137,4 +137,16 @@ fn main() {
     let _: () = cc!(imin: y);
     assert_eq!(y, inlawi!(0u8));
     let _: () = cc!(imin: ..r);
+
+    let mut sink0 = Awi::zero(bw(44));
+    let mut sink1 = Awi::zero(bw(44));
+    let b = awi!(0xbbu8);
+    let e = awi!(0xeeeu12);
+    let result = awi!(0xabbcffdeeefu44);
+    assert_eq!(
+        awi!(umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap(),
+        result
+    );
+    assert_eq!(sink0, result);
+    assert_eq!(sink1, result);
 }
