@@ -558,16 +558,19 @@ fn main() {
     // number of tests generated
     for test_i in 0..NUM_TESTS {
         writeln!(s, "// {test_i}").unwrap();
+        let mut is_cc = false;
+        let mut is_inlawi = false;
+        let mut is_extawi = false;
+        let mut is_awi = false;
         // make unbounded source fillers more common, where more edge cases are
-        let awi_type = match rng.next_u32() % 8 {
-            0..=5 => 0,
-            6 => 1,
-            // (7)
-            _ => 2,
-        };
-        let is_cc = awi_type == 0;
-        let is_inlawi = awi_type == 1;
-        let is_extawi = awi_type == 2;
+        match rng.next_u32() % 9 {
+            0..=5 => is_cc = true,
+            6 => is_inlawi = true,
+            7 => is_extawi = true,
+            8 => is_awi = true,
+            _ => unreachable!(),
+        }
+
         let specified_initialization = (rng.next_u32() & 1) == 0;
 
         // note: this is the suggested width, in the all unbounded case it may be less
@@ -588,7 +591,7 @@ fn main() {
             1 => Align::Ms,
             _ => Align::Any,
         };
-        let dynamic_width_i = if ((static_width_i != num_concats) && is_extawi) || align.is_any() {
+        let dynamic_width_i = if ((static_width_i != num_concats) && (is_extawi || is_awi)) || align.is_any() {
             (rng.next_u32() as usize) % num_concats
         } else {
             num_concats
@@ -684,8 +687,10 @@ fn main() {
                         )
                 ),
             )
-        } else {
+        } else if is_extawi {
             ("extawi".to_owned(), "eq_ext".to_owned())
+        } else {
+            ("awi".to_owned(), "eq_awi".to_owned())
         };
         let init = if specified_initialization {
             format!("{construct_fn}:")
