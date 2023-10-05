@@ -158,7 +158,7 @@ pub const fn digits(w: NonZeroUsize) -> usize {
     digits_u(w.get())
 }
 
-/// Returns the number of `usize` digits needed to represent `w`, including any
+/// Returns the number of `Digit`s needed to represent `w`, including any
 /// digit with unused bits
 #[inline]
 pub const fn total_digits(w: NonZeroUsize) -> NonZeroUsize {

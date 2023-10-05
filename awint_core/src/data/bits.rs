@@ -263,7 +263,7 @@ impl<'a> Bits {
         unsafe { &mut *self.as_mut_ptr().add(i) }
     }
 
-    /// Returns the exact number of `usize` digits needed to store all bits.
+    /// Returns the exact number of `Digit`s needed to store all bits.
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
@@ -285,7 +285,7 @@ impl<'a> Bits {
         }
     }
 
-    /// Returns the number of extra bits, or `usize::BITS - self.unused()`. If
+    /// Returns the number of extra bits, or `BITS - self.unused()`. If
     /// there are no unused bits, this is zero.
     #[doc(hidden)]
     #[inline]
@@ -623,7 +623,7 @@ impl<'a> Bits {
         }
     }
 
-    /// Gets two `usize` digits from `self` starting at the bit index `start`,
+    /// Gets two `Digit`s from `self` starting at the bit index `start`,
     /// and returns them in little endian order. Bits that extend beyond
     /// `self.bw()` are zeroed.
     #[doc(hidden)]

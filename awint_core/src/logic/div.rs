@@ -91,7 +91,7 @@ impl Bits {
         let i = duo.sig() - (BITS * 2);
         let duo_sig_dd = duo.get_double_digit(i);
         let div_sig_dd = div.get_double_digit(i);
-        // Because `lz_diff < BITS`, the quotient will fit in one `usize`
+        // Because `lz_diff < BITS`, the quotient will fit in one `Digit`
         let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
         // using `rem` as a temporary
         rem.copy_(div).unwrap();
@@ -302,7 +302,7 @@ impl Bits {
                 let i = w - duo_lz - (BITS * 2);
                 let duo_sig_dd = rem.get_double_digit(i);
                 let div_sig_dd = div.get_double_digit(i);
-                // Because `lz_diff < BITS`, the quotient will fit in one `usize`
+                // Because `lz_diff < BITS`, the quotient will fit in one `Digit`
                 let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
                 // subtract `div*small_quo` from `rem` inplace
                 let mut mul_carry = 0;

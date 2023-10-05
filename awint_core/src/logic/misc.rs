@@ -237,7 +237,7 @@ impl Bits {
                     let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
                     // mask
                     let mask1 = MAX << to_bits;
-                    // because the partial field is one `usize` long
+                    // because the partial field is one `Digit` long
                     let mask0 = !mask1;
                     *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask0) | tmp.0;
                     i += 1;
@@ -324,7 +324,7 @@ impl Bits {
                     let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
                     // mask
                     let mask1 = MAX << to_bits;
-                    // because the partial field is one `usize` long
+                    // because the partial field is one `Digit` long
                     let mask0 = !mask1;
                     *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask0) | tmp.0;
                     i += 1;
@@ -584,7 +584,7 @@ impl Bits {
                                 let tmp = (tmp << inx_bits, tmp >> (BITS - inx_bits));
                                 // mask
                                 let mask1 = MAX << inx_bits;
-                                // because the partial field is one `usize` long
+                                // because the partial field is one `Digit` long
                                 let mask0 = !mask1;
                                 *self.get_unchecked_mut(i + inx_digits) =
                                     (self.get_unchecked(i + inx_digits) & mask0) | tmp.0;

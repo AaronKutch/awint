@@ -155,7 +155,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         Self::const_bw()
     }
 
-    /// Returns the exact number of `usize` digits needed to store all bits.
+    /// Returns the exact number of `Digit`s needed to store all bits.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn len(&self) -> usize {
