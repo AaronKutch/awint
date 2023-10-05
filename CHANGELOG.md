@@ -2,7 +2,7 @@
 
 ## TODO
 ### Additions
-- Added the `Awi` struct and corresponding `awi` macro
+- Added the `Awi` struct and corresponding macro, this should replace many usages of `ExtAwi`
 - Added more `awi` to `dag` `From` impls
 
 ### Changes
