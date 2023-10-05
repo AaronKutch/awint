@@ -152,5 +152,5 @@ jobs:
         rustup set profile minimal
         rustup default nightly
         cargo install cross
-        cross test --target mips64-unknown-linux-gnuabi64 -Z build-std=core,alloc,proc_macro,std -p testcrate
-        cross test --target mips-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
+        cross test --target powerpc64-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
+        cross test --target powerpc-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
