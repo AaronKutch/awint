@@ -242,7 +242,6 @@ const fn bits_functions() {
         ;// functions with signature `fn({ , &, &mut} self) -> ...`
         nzbw
         bw
-        len
         unused
         extra
         first
