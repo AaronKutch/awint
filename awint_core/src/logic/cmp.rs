@@ -14,9 +14,7 @@ use crate::Bits;
 /// A wrapper implementing total ordering
 ///
 /// Implements `PartialEq`, `Eq`, `PartialOrd`, and `Ord` by using
-/// `Bits::total_cmp`. `Hash` also uses the `Bits`. This does not specify
-/// anything other than that it provides a total ordering over bit strings
-/// (including differentiating by the bit width). This is intended for fast
+/// `Bits::total_cmp`. `Hash` also uses the `Bits`. This is intended for fast
 /// comparisons in ordered structures.
 pub struct OrdBits<B: BorrowMut<Bits>>(pub B);
 
@@ -320,9 +318,9 @@ impl Bits {
         Some(true)
     }
 
-    /// Total ordering for `self` and `rhs`, including differentiation between
-    /// differing bitwidths of `self` and `rhs`. This is intended just to
-    /// provide some way of ordering over all possible bit strings.
+    /// Total ordering over bitstrings, including differentiation between
+    /// differing bitwidths of `self` and `rhs`. This orders first on bitwidth
+    /// and then on unsigned value.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn total_cmp(&self, rhs: &Self) -> Ordering {
