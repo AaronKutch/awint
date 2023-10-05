@@ -638,6 +638,64 @@ impl Awi {
         Self::new(w, Op::Literal(awi::Awi::uone(w)))
     }
 
+    pub fn from_bits_with_capacity(bits: &Bits, _min_capacity: NonZeroUsize) -> Awi {
+        Self::from_state(bits.state())
+    }
+
+    pub fn opaque_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
+        Self::new(w, Op::Opaque(smallvec![], None))
+    }
+
+    pub fn zero_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::Awi::zero(w)))
+    }
+
+    pub fn umax_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::Awi::umax(w)))
+    }
+
+    pub fn imax_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::Awi::imax(w)))
+    }
+
+    pub fn imin_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::Awi::imin(w)))
+    }
+
+    pub fn uone_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
+        Self::new(w, Op::Literal(awi::Awi::uone(w)))
+    }
+
+    pub fn reserve(&mut self, _additional: usize) {
+        let _ = self;
+    }
+
+    pub fn shrink_to(&mut self, _min_capacity: usize) {
+        let _ = self;
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        let _ = self;
+    }
+
+    pub fn resize(&mut self, new_bitwidth: NonZeroUsize, extension: impl Into<dag::bool>) {
+        let tmp = self.clone();
+        *self = Self::zero(new_bitwidth);
+        self.resize_(&tmp, extension)
+    }
+
+    pub fn zero_resize(&mut self, new_bitwidth: NonZeroUsize) {
+        let tmp = self.clone();
+        *self = Self::zero(new_bitwidth);
+        self.zero_resize_(&tmp);
+    }
+
+    pub fn sign_resize(&mut self, new_bitwidth: NonZeroUsize) {
+        let tmp = self.clone();
+        *self = Self::zero(new_bitwidth);
+        self.zero_resize_(&tmp);
+    }
+
     #[doc(hidden)]
     #[track_caller]
     pub fn panicking_opaque(w: impl Into<dag::usize>) -> Self {
