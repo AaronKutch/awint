@@ -10,27 +10,27 @@ impl Bits {
     /// Zero-assigns. Same as the Unsigned-minimum-value. All bits are set to 0.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn zero_(&mut self) {
-        unsafe { self.digit_set(false, 0..self.len(), false) }
+        unsafe { self.digit_set(false, 0..self.total_digits(), false) }
     }
 
     /// Unsigned-maximum-value-assigns. All bits are set to 1.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn umax_(&mut self) {
-        unsafe { self.digit_set(true, 0..self.len(), true) }
+        unsafe { self.digit_set(true, 0..self.total_digits(), true) }
     }
 
     /// Signed-maximum-value-assigns. All bits are set to 1, except for the most
     /// significant bit.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imax_(&mut self) {
-        unsafe { self.digit_set(true, 0..self.len(), false) }
+        unsafe { self.digit_set(true, 0..self.total_digits(), false) }
         *self.last_mut() = (MAX >> 1) >> self.unused();
     }
 
     /// Signed-minimum-value-assigns. Only the most significant bit is set.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imin_(&mut self) {
-        unsafe { self.digit_set(false, 0..self.len(), false) }
+        unsafe { self.digit_set(false, 0..self.total_digits(), false) }
         *self.last_mut() = (IDigit::MIN as Digit) >> self.unused();
     }
 
@@ -39,7 +39,7 @@ impl Bits {
     /// not exist for signed integers with a bitwidth of 1.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn uone_(&mut self) {
-        unsafe { self.digit_set(false, 0..self.len(), false) }
+        unsafe { self.digit_set(false, 0..self.total_digits(), false) }
         *self.first_mut() = 1;
     }
 
@@ -57,7 +57,7 @@ impl Bits {
             return None
         }
         unsafe {
-            ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), self.len());
+            ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), self.total_digits());
         }
         Some(())
     }
@@ -124,14 +124,14 @@ impl Bits {
                     // Avoid overshift from `(BITS - end_bits)`
                     *self.get_unchecked_mut(start) &= MAX << start_bits;
                     // zero the end
-                    if end < self.len() {
+                    if end < self.total_digits() {
                         *self.get_unchecked_mut(end) = 0;
                     }
                 }
             }
             // zero the rest of the digits
-            if (end + 1) < self.len() {
-                self.digit_set(false, (end + 1)..self.len(), false);
+            if (end + 1) < self.total_digits() {
+                self.digit_set(false, (end + 1)..self.total_digits(), false);
             }
         }
         Some(())
@@ -144,8 +144,8 @@ impl Bits {
         if shl >= self.bw() {
             return
         }
-        // Safety: `digits < self.len()` because of the above check. The `digits + 1`
-        // index is checked.
+        // Safety: `digits < self.total_digits()` because of the above check. The
+        // `digits + 1` index is checked.
         let bits = extra_u(shl);
         let digits = digits_u(shl);
         unsafe {
@@ -153,7 +153,7 @@ impl Bits {
                 *self.get_unchecked_mut(digits) |= rhs;
             } else {
                 *self.get_unchecked_mut(digits) |= rhs << bits;
-                if (digits + 1) < self.len() {
+                if (digits + 1) < self.total_digits() {
                     *self.get_unchecked_mut(digits + 1) |= rhs >> (BITS - bits);
                 }
             }

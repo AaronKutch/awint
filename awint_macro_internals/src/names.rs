@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 
-use awint_ext::ExtAwi;
+use awint_ext::Awi;
 
 /// Prefixes used for codegen names and functions. Most of these should be
 /// prefixed with two underscores and the crate name to prevent collisions.
@@ -97,8 +97,8 @@ pub struct CodeGen<
     'a,
     F0: FnMut(&str) -> String,
     // I run into weird lifetime issues trying to use &Bits
-    F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(ExtAwi) -> String,
+    F1: FnMut(Awi) -> String,
+    F2: FnMut(Awi) -> String,
     F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
     F4: FnMut(String, Option<NonZeroUsize>, bool) -> String,
 > {

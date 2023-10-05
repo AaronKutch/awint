@@ -5,16 +5,16 @@
 
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint_ext::bw;
+use awint_ext::{awi, bw};
 use awint_macro_internals::triple_arena::Advancer;
-use awint_macros::{extawi, inlawi};
+use awint_macros::{awi, inlawi};
 
 use crate::{
+    basic_state_epoch::StateEpoch,
     lowering::{meta::*, OpDag, PNode},
-    mimick::{Bits, ExtAwi, InlAwi},
+    mimick::{Awi, Bits, InlAwi},
     EvalError, Lineage,
     Op::{self, *},
-    StateEpoch,
 };
 
 impl OpDag {
@@ -37,12 +37,12 @@ impl OpDag {
             }
             Lut([lut, inx]) => {
                 if self[lut].op.is_literal() {
-                    self[ptr].op = StaticLut([inx], awint_ext::ExtAwi::from(self.lit(lut)));
+                    self[ptr].op = StaticLut([inx], awi::Awi::from(self.lit(lut)));
                     self.dec_rc(lut)?;
                 } else {
-                    let mut out = ExtAwi::zero(out_w);
-                    let lut = ExtAwi::opaque(self.get_bw(lut));
-                    let inx = ExtAwi::opaque(self.get_bw(inx));
+                    let mut out = Awi::zero(out_w);
+                    let lut = Awi::opaque(self.get_bw(lut));
+                    let inx = Awi::opaque(self.get_bw(inx));
                     dynamic_to_static_lut(&mut out, &lut, &inx);
                     self.graft(epoch, ptr, v, &[out.state(), lut.state(), inx.state()])?;
                 }
@@ -52,8 +52,8 @@ impl OpDag {
                     self[ptr].op = StaticGet([bits], self.usize(inx).unwrap());
                     self.dec_rc(inx)?;
                 } else {
-                    let bits = ExtAwi::opaque(self.get_bw(bits));
-                    let inx = ExtAwi::opaque(self.get_bw(inx));
+                    let bits = Awi::opaque(self.get_bw(bits));
+                    let inx = Awi::opaque(self.get_bw(inx));
                     let out = dynamic_to_static_get(&bits, &inx);
                     self.graft(epoch, ptr, v, &[out.state(), bits.state(), inx.state()])?;
                 }
@@ -63,9 +63,9 @@ impl OpDag {
                     self[ptr].op = StaticSet([bits, bit], self.usize(inx).unwrap());
                     self.dec_rc(inx)?;
                 } else {
-                    let bits = ExtAwi::opaque(self.get_bw(bits));
-                    let inx = ExtAwi::opaque(self.get_bw(inx));
-                    let bit = ExtAwi::opaque(self.get_bw(bit));
+                    let bits = Awi::opaque(self.get_bw(bits));
+                    let inx = Awi::opaque(self.get_bw(inx));
+                    let bit = Awi::opaque(self.get_bw(bit));
                     let out = dynamic_to_static_set(&bits, &inx, &bit);
                     self.graft(epoch, ptr, v, &[
                         out.state(),
@@ -76,11 +76,11 @@ impl OpDag {
                 }
             }
             FieldBit([lhs, to, rhs, from]) => {
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                let from = ExtAwi::opaque(self.get_bw(from));
+                let rhs = Awi::opaque(self.get_bw(rhs));
+                let from = Awi::opaque(self.get_bw(from));
                 let bit = rhs.get(from.to_usize()).unwrap();
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let to = ExtAwi::opaque(self.get_bw(to));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let to = Awi::opaque(self.get_bw(to));
                 // keep `lhs` the same, `out` has the set bit
                 let mut out = lhs.clone();
                 out.set(to.to_usize(), bit).unwrap();
@@ -93,28 +93,28 @@ impl OpDag {
                 ])?;
             }
             ZeroResize([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = resize(&x, out_w, false);
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             SignResize([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = resize(&x, out_w, true);
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Resize([x, b]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let b = ExtAwi::opaque(self.get_bw(b));
+                let x = Awi::opaque(self.get_bw(x));
+                let b = Awi::opaque(self.get_bw(b));
                 let out = resize_cond(&x, out_w, &b);
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), b.state()])?;
             }
             Lsb([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = x.get(0).unwrap();
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Msb([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = x.get(x.bw() - 1).unwrap();
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
@@ -122,19 +122,19 @@ impl OpDag {
                 let lhs_bw = self.get_bw(lhs);
                 let rhs_bw = self.get_bw(rhs);
                 if self[width].op.is_literal() {
-                    let lhs = ExtAwi::opaque(lhs_bw);
-                    let rhs = ExtAwi::opaque(rhs_bw);
+                    let lhs = Awi::opaque(lhs_bw);
+                    let rhs = Awi::opaque(rhs_bw);
                     let out = static_field(&lhs, 0, &rhs, 0, self.usize(width).unwrap()).0;
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
                         rhs.state(),
-                        ExtAwi::opaque(self.get_bw(width)).state(),
+                        Awi::opaque(self.get_bw(width)).state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(lhs_bw);
-                    let rhs = ExtAwi::opaque(rhs_bw);
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let lhs = Awi::opaque(lhs_bw);
+                    let rhs = Awi::opaque(rhs_bw);
+                    let width = Awi::opaque(self.get_bw(width));
                     let fail = width.ugt(&InlAwi::from_usize(lhs_bw.get())).unwrap()
                         | width.ugt(&InlAwi::from_usize(rhs_bw.get())).unwrap();
                     let mut tmp_width = width.clone();
@@ -149,8 +149,8 @@ impl OpDag {
                 }
             }
             Funnel([x, s]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let s = ExtAwi::opaque(self.get_bw(s));
+                let x = Awi::opaque(self.get_bw(x));
+                let s = Awi::opaque(self.get_bw(s));
                 let out = funnel_(&x, &s);
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
             }
@@ -158,12 +158,12 @@ impl OpDag {
                 let lhs_bw = self.get_bw(lhs);
                 let rhs_bw = self.get_bw(rhs);
                 if self[from].op.is_literal() {
-                    let lhs = ExtAwi::opaque(lhs_bw);
-                    let rhs = ExtAwi::opaque(rhs_bw);
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let lhs = Awi::opaque(lhs_bw);
+                    let rhs = Awi::opaque(rhs_bw);
+                    let width = Awi::opaque(self.get_bw(width));
                     let from_u = self.usize(from)?;
                     let out = if let Some(w) = NonZeroUsize::new(rhs.bw() - from_u) {
-                        let tmp0 = ExtAwi::zero(w);
+                        let tmp0 = Awi::zero(w);
                         let (tmp1, o) = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
                         let mut out = lhs.clone();
                         if o {
@@ -179,14 +179,14 @@ impl OpDag {
                         out.state(),
                         lhs.state(),
                         rhs.state(),
-                        ExtAwi::opaque(self.get_bw(from)).state(),
+                        Awi::opaque(self.get_bw(from)).state(),
                         width.state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(lhs_bw);
-                    let rhs = ExtAwi::opaque(rhs_bw);
-                    let from = ExtAwi::opaque(self.get_bw(from));
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let lhs = Awi::opaque(lhs_bw);
+                    let rhs = Awi::opaque(rhs_bw);
+                    let from = Awi::opaque(self.get_bw(from));
+                    let width = Awi::opaque(self.get_bw(width));
                     let mut tmp = InlAwi::from_usize(rhs_bw.get());
                     tmp.sub_(&width).unwrap();
                     // the other two fail conditions are in `field_width`
@@ -206,45 +206,45 @@ impl OpDag {
             }
             Shl([x, s]) => {
                 if self[s].op.is_literal() {
-                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let x = Awi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
-                    let tmp = ExtAwi::zero(x.nzbw());
+                    let tmp = Awi::zero(x.nzbw());
                     let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u).0;
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
-                        ExtAwi::opaque(self.get_bw(s)).state(),
+                        Awi::opaque(self.get_bw(s)).state(),
                     ])?;
                 } else {
-                    let x = ExtAwi::opaque(self.get_bw(x));
-                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let x = Awi::opaque(self.get_bw(x));
+                    let s = Awi::opaque(self.get_bw(s));
                     let out = shl(&x, &s);
                     self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Lshr([x, s]) => {
                 if self[s].op.is_literal() {
-                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let x = Awi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
-                    let tmp = ExtAwi::zero(x.nzbw());
+                    let tmp = Awi::zero(x.nzbw());
                     let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
-                        ExtAwi::opaque(self.get_bw(s)).state(),
+                        Awi::opaque(self.get_bw(s)).state(),
                     ])?;
                 } else {
-                    let x = ExtAwi::opaque(self.get_bw(x));
-                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let x = Awi::opaque(self.get_bw(x));
+                    let s = Awi::opaque(self.get_bw(s));
                     let out = lshr(&x, &s);
                     self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Ashr([x, s]) => {
                 if self[s].op.is_literal() {
-                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let x = Awi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
-                    let mut tmp = ExtAwi::zero(x.nzbw());
+                    let mut tmp = Awi::zero(x.nzbw());
                     for i in 0..x.bw() {
                         tmp.set(i, x.msb()).unwrap();
                     }
@@ -252,110 +252,110 @@ impl OpDag {
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
-                        ExtAwi::opaque(self.get_bw(s)).state(),
+                        Awi::opaque(self.get_bw(s)).state(),
                     ])?;
                 } else {
-                    let x = ExtAwi::opaque(self.get_bw(x));
-                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let x = Awi::opaque(self.get_bw(x));
+                    let s = Awi::opaque(self.get_bw(s));
                     let out = ashr(&x, &s);
                     self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Rotl([x, s]) => {
                 if self[s].op.is_literal() {
-                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let x = Awi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
                     let out = if s_u == 0 {
                         x.clone()
                     } else {
-                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u).0;
+                        let tmp = static_field(&Awi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u).0;
                         static_field(&tmp, 0, &x, x.bw() - s_u, s_u).0
                     };
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
-                        ExtAwi::opaque(self.get_bw(s)).state(),
+                        Awi::opaque(self.get_bw(s)).state(),
                     ])?;
                 } else {
-                    let x = ExtAwi::opaque(self.get_bw(x));
-                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let x = Awi::opaque(self.get_bw(x));
+                    let s = Awi::opaque(self.get_bw(s));
                     let out = rotl(&x, &s);
                     self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Rotr([x, s]) => {
                 if self[s].op.is_literal() {
-                    let x = ExtAwi::opaque(self.get_bw(x));
+                    let x = Awi::opaque(self.get_bw(x));
                     let s_u = self.usize(s)?;
                     let out = if s_u == 0 {
                         x.clone()
                     } else {
-                        let tmp = static_field(&ExtAwi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u).0;
+                        let tmp = static_field(&Awi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u).0;
                         static_field(&tmp, x.bw() - s_u, &x, 0, s_u).0
                     };
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         x.state(),
-                        ExtAwi::opaque(self.get_bw(s)).state(),
+                        Awi::opaque(self.get_bw(s)).state(),
                     ])?;
                 } else {
-                    let x = ExtAwi::opaque(self.get_bw(x));
-                    let s = ExtAwi::opaque(self.get_bw(s));
+                    let x = Awi::opaque(self.get_bw(x));
+                    let s = Awi::opaque(self.get_bw(s));
                     let out = rotr(&x, &s);
                     self.graft(epoch, ptr, v, &[out.state(), x.state(), s.state()])?;
                 }
             }
             Not([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = bitwise_not(&x);
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Or([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(1110));
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             And([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(1000));
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Xor([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = bitwise(&lhs, &rhs, inlawi!(0110));
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Inc([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let x = Awi::opaque(self.get_bw(x));
+                let cin = Awi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, false).0;
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             IncCout([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let x = Awi::opaque(self.get_bw(x));
+                let cin = Awi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, false).1;
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             Dec([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let x = Awi::opaque(self.get_bw(x));
+                let cin = Awi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, true).0;
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             DecCout([x, cin]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let cin = ExtAwi::opaque(self.get_bw(cin));
+                let x = Awi::opaque(self.get_bw(x));
+                let cin = Awi::opaque(self.get_bw(cin));
                 let out = incrementer(&x, &cin, true).1;
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), cin.state()])?;
             }
             CinSum([cin, lhs, rhs]) => {
-                let cin = ExtAwi::opaque(self.get_bw(cin));
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let cin = Awi::opaque(self.get_bw(cin));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).0;
                 self.graft(epoch, ptr, v, &[
                     out.state(),
@@ -365,9 +365,9 @@ impl OpDag {
                 ])?;
             }
             UnsignedOverflow([cin, lhs, rhs]) => {
-                let cin = ExtAwi::opaque(self.get_bw(cin));
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let cin = Awi::opaque(self.get_bw(cin));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).1;
                 self.graft(epoch, ptr, v, &[
                     out.state(),
@@ -377,9 +377,9 @@ impl OpDag {
                 ])?;
             }
             SignedOverflow([cin, lhs, rhs]) => {
-                let cin = ExtAwi::opaque(self.get_bw(cin));
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let cin = Awi::opaque(self.get_bw(cin));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&cin, &lhs, &rhs).2;
                 self.graft(epoch, ptr, v, &[
                     out.state(),
@@ -389,27 +389,27 @@ impl OpDag {
                 ])?;
             }
             Neg([x, neg]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let neg = ExtAwi::opaque(self.get_bw(neg));
+                let x = Awi::opaque(self.get_bw(x));
+                let neg = Awi::opaque(self.get_bw(neg));
                 assert_eq!(neg.bw(), 1);
                 let out = negator(&x, &neg);
                 self.graft(epoch, ptr, v, &[out.state(), x.state(), neg.state()])?;
             }
             Abs([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let mut out = x.clone();
                 out.neg_(x.msb());
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Add([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = cin_sum(&inlawi!(0), &lhs, &rhs).0;
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Sub([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut rhs_tmp = rhs.clone();
                 rhs_tmp.neg_(true);
                 let mut out = lhs.clone();
@@ -417,8 +417,8 @@ impl OpDag {
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Rsb([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut out = lhs.clone();
                 out.neg_(true);
                 out.add_(&rhs).unwrap();
@@ -426,14 +426,13 @@ impl OpDag {
             }
             FieldTo([lhs, to, rhs, width]) => {
                 if self[to].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
+                    let lhs = Awi::opaque(self.get_bw(lhs));
                     let to_u = self.usize(to)?;
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let rhs = Awi::opaque(self.get_bw(rhs));
+                    let width = Awi::opaque(self.get_bw(width));
 
                     let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
-                        let (mut lhs_hi, o) =
-                            static_field(&ExtAwi::zero(w), 0, &lhs, to_u, w.get());
+                        let (mut lhs_hi, o) = static_field(&Awi::zero(w), 0, &lhs, to_u, w.get());
                         lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
                         if o {
                             lhs.clone()
@@ -446,15 +445,15 @@ impl OpDag {
                     self.graft(epoch, ptr, v, &[
                         out.state(),
                         lhs.state(),
-                        ExtAwi::opaque(self.get_bw(to)).state(),
+                        Awi::opaque(self.get_bw(to)).state(),
                         rhs.state(),
                         width.state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let to = ExtAwi::opaque(self.get_bw(to));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let lhs = Awi::opaque(self.get_bw(lhs));
+                    let to = Awi::opaque(self.get_bw(to));
+                    let rhs = Awi::opaque(self.get_bw(rhs));
+                    let width = Awi::opaque(self.get_bw(width));
                     let out = field_to(&lhs, &to, &rhs, &width);
                     self.graft(epoch, ptr, v, &[
                         out.state(),
@@ -467,14 +466,14 @@ impl OpDag {
             }
             Field([lhs, to, rhs, from, width]) => {
                 if self[to].op.is_literal() || self[from].op.is_literal() {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let to = ExtAwi::opaque(self.get_bw(to));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let from = ExtAwi::opaque(self.get_bw(from));
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let lhs = Awi::opaque(self.get_bw(lhs));
+                    let to = Awi::opaque(self.get_bw(to));
+                    let rhs = Awi::opaque(self.get_bw(rhs));
+                    let from = Awi::opaque(self.get_bw(from));
+                    let width = Awi::opaque(self.get_bw(width));
 
                     let min_w = min(lhs.bw(), rhs.bw());
-                    let mut tmp = ExtAwi::zero(NonZeroUsize::new(min_w).unwrap());
+                    let mut tmp = Awi::zero(NonZeroUsize::new(min_w).unwrap());
                     tmp.field_from(&rhs, from.to_usize(), width.to_usize())
                         .unwrap();
                     let mut out = lhs.clone();
@@ -489,11 +488,11 @@ impl OpDag {
                         width.state(),
                     ])?;
                 } else {
-                    let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                    let to = ExtAwi::opaque(self.get_bw(to));
-                    let rhs = ExtAwi::opaque(self.get_bw(rhs));
-                    let from = ExtAwi::opaque(self.get_bw(from));
-                    let width = ExtAwi::opaque(self.get_bw(width));
+                    let lhs = Awi::opaque(self.get_bw(lhs));
+                    let to = Awi::opaque(self.get_bw(to));
+                    let rhs = Awi::opaque(self.get_bw(rhs));
+                    let from = Awi::opaque(self.get_bw(from));
+                    let width = Awi::opaque(self.get_bw(width));
                     let out = field(&lhs, &to, &rhs, &from, &width);
                     self.graft(epoch, ptr, v, &[
                         out.state(),
@@ -506,33 +505,33 @@ impl OpDag {
                 }
             }
             Rev([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let mut out = ExtAwi::zero(x.nzbw());
+                let x = Awi::opaque(self.get_bw(x));
+                let mut out = Awi::zero(x.nzbw());
                 for i in 0..x.bw() {
                     out.set(i, x.get(x.bw() - 1 - i).unwrap()).unwrap()
                 }
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Eq([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = equal(&lhs, &rhs);
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ne([lhs, rhs]) => {
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut out = equal(&lhs, &rhs);
                 out.not_();
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ult([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
-                let lhs = ExtAwi::opaque(w);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(w);
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut not_lhs = lhs.clone();
                 not_lhs.not_();
-                let mut tmp = ExtAwi::zero(w);
+                let mut tmp = Awi::zero(w);
                 // TODO should probably use some short termination circuit like what
                 // `tsmear_inx` uses
                 let (out, _) = tmp.cin_sum_(false, &not_lhs, &rhs).unwrap();
@@ -540,18 +539,18 @@ impl OpDag {
             }
             Ule([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
-                let lhs = ExtAwi::opaque(w);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(w);
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut not_lhs = lhs.clone();
                 not_lhs.not_();
-                let mut tmp = ExtAwi::zero(w);
+                let mut tmp = Awi::zero(w);
                 let (out, _) = tmp.cin_sum_(true, &not_lhs, &rhs).unwrap();
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             Ilt([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
-                let lhs = ExtAwi::opaque(w);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(w);
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut out = inlawi!(0);
                 if w.get() == 1 {
                     let mut tmp = inlawi!(00);
@@ -559,8 +558,8 @@ impl OpDag {
                     tmp.set(1, rhs.msb()).unwrap();
                     out.lut_(&inlawi!(0010), &tmp).unwrap();
                 } else {
-                    let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
-                    let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
+                    let lhs_lo = awi!(lhs[..(lhs.bw() - 1)]).unwrap();
+                    let rhs_lo = awi!(rhs[..(rhs.bw() - 1)]).unwrap();
                     let lo_lt = lhs_lo.ult(&rhs_lo).unwrap();
                     let mut tmp = inlawi!(000);
                     tmp.set(0, lo_lt).unwrap();
@@ -574,8 +573,8 @@ impl OpDag {
             }
             Ile([lhs, rhs]) => {
                 let w = self.get_bw(lhs);
-                let lhs = ExtAwi::opaque(w);
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let lhs = Awi::opaque(w);
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let mut out = inlawi!(0);
                 if w.get() == 1 {
                     let mut tmp = inlawi!(00);
@@ -583,8 +582,8 @@ impl OpDag {
                     tmp.set(1, rhs.msb()).unwrap();
                     out.lut_(&inlawi!(1011), &tmp).unwrap();
                 } else {
-                    let lhs_lo = extawi!(lhs[..(lhs.bw() - 1)]).unwrap();
-                    let rhs_lo = extawi!(rhs[..(rhs.bw() - 1)]).unwrap();
+                    let lhs_lo = awi!(lhs[..(lhs.bw() - 1)]).unwrap();
+                    let rhs_lo = awi!(rhs[..(rhs.bw() - 1)]).unwrap();
                     let lo_lt = lhs_lo.ule(&rhs_lo).unwrap();
                     let mut tmp = inlawi!(000);
                     tmp.set(0, lo_lt).unwrap();
@@ -595,42 +594,42 @@ impl OpDag {
                 self.graft(epoch, ptr, v, &[out.state(), lhs.state(), rhs.state()])?;
             }
             op @ (IsZero(_) | IsUmax(_) | IsImax(_) | IsImin(_) | IsUone(_)) => {
-                let x = ExtAwi::opaque(self.get_bw(op.operands()[0]));
+                let x = Awi::opaque(self.get_bw(op.operands()[0]));
                 let w = x.bw();
                 let out = InlAwi::from(match op {
-                    IsZero(_) => x.const_eq(&extawi!(zero: ..w).unwrap()).unwrap(),
-                    IsUmax(_) => x.const_eq(&extawi!(umax: ..w).unwrap()).unwrap(),
-                    IsImax(_) => x.const_eq(&extawi!(imax: ..w).unwrap()).unwrap(),
-                    IsImin(_) => x.const_eq(&extawi!(imin: ..w).unwrap()).unwrap(),
-                    IsUone(_) => x.const_eq(&extawi!(uone: ..w).unwrap()).unwrap(),
+                    IsZero(_) => x.const_eq(&awi!(zero: ..w).unwrap()).unwrap(),
+                    IsUmax(_) => x.const_eq(&awi!(umax: ..w).unwrap()).unwrap(),
+                    IsImax(_) => x.const_eq(&awi!(imax: ..w).unwrap()).unwrap(),
+                    IsImin(_) => x.const_eq(&awi!(imin: ..w).unwrap()).unwrap(),
+                    IsUone(_) => x.const_eq(&awi!(uone: ..w).unwrap()).unwrap(),
                     _ => unreachable!(),
                 });
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             CountOnes([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = count_ones(&x).to_usize();
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Lz([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = leading_zeros(&x).to_usize();
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Tz([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = trailing_zeros(&x).to_usize();
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             Sig([x]) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
+                let x = Awi::opaque(self.get_bw(x));
                 let out = significant_bits(&x).to_usize();
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             LutSet([table, entry, inx]) => {
-                let table = ExtAwi::opaque(self.get_bw(table));
-                let entry = ExtAwi::opaque(self.get_bw(entry));
-                let inx = ExtAwi::opaque(self.get_bw(inx));
+                let table = Awi::opaque(self.get_bw(table));
+                let entry = Awi::opaque(self.get_bw(entry));
+                let inx = Awi::opaque(self.get_bw(inx));
                 let out = lut_set(&table, &entry, &inx);
                 self.graft(epoch, ptr, v, &[
                     out.state(),
@@ -640,21 +639,21 @@ impl OpDag {
                 ])?;
             }
             ZeroResizeOverflow([x], w) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let mut out = ExtAwi::zero(bw(1));
+                let x = Awi::opaque(self.get_bw(x));
+                let mut out = Awi::zero(bw(1));
                 let w = w.get();
                 if w < x.bw() {
-                    out.bool_(!extawi!(x[w..]).unwrap().is_zero());
+                    out.bool_(!awi!(x[w..]).unwrap().is_zero());
                 }
                 self.graft(epoch, ptr, v, &[out.state(), x.state()])?;
             }
             SignResizeOverflow([x], w) => {
-                let x = ExtAwi::opaque(self.get_bw(x));
-                let mut out = ExtAwi::zero(bw(1));
+                let x = Awi::opaque(self.get_bw(x));
+                let mut out = Awi::zero(bw(1));
                 let w = w.get();
                 if w < x.bw() {
                     // the new msb and the bits above it should equal the old msb
-                    let critical = extawi!(x[(w - 1)..]).unwrap();
+                    let critical = awi!(x[(w - 1)..]).unwrap();
                     let mut tmp = inlawi!(00);
                     tmp.set(0, critical.is_zero()).unwrap();
                     tmp.set(1, critical.is_umax()).unwrap();
@@ -664,9 +663,9 @@ impl OpDag {
             }
             ArbMulAdd([add, lhs, rhs]) => {
                 let w = self.get_bw(add);
-                let add = ExtAwi::opaque(w);
-                let lhs = ExtAwi::opaque(self.get_bw(lhs));
-                let rhs = ExtAwi::opaque(self.get_bw(rhs));
+                let add = Awi::opaque(w);
+                let lhs = Awi::opaque(self.get_bw(lhs));
+                let rhs = Awi::opaque(self.get_bw(rhs));
                 let out = mul_add(w, Some(&add), &lhs, &rhs);
                 self.graft(epoch, ptr, v, &[
                     out.state(),
@@ -676,9 +675,9 @@ impl OpDag {
                 ])?;
             }
             Mux([x0, x1, inx]) => {
-                let x0 = ExtAwi::opaque(self.get_bw(x0));
-                let x1 = ExtAwi::opaque(self.get_bw(x1));
-                let inx_tmp = ExtAwi::opaque(self.get_bw(inx));
+                let x0 = Awi::opaque(self.get_bw(x0));
+                let x1 = Awi::opaque(self.get_bw(x1));
+                let inx_tmp = Awi::opaque(self.get_bw(inx));
                 let out = if self[inx].op.is_literal() {
                     let b = self.bool(inx)?;
                     if b {
@@ -699,20 +698,20 @@ impl OpDag {
             // TODO in the divisions especially and in other operations, we need to look at the
             // operand tree and combine multiple ops together in a single lowering operation
             UQuo([duo, div]) => {
-                let duo = ExtAwi::opaque(self.get_bw(duo));
-                let div = ExtAwi::opaque(self.get_bw(div));
+                let duo = Awi::opaque(self.get_bw(duo));
+                let div = Awi::opaque(self.get_bw(div));
                 let quo = division(&duo, &div).0;
                 self.graft(epoch, ptr, v, &[quo.state(), duo.state(), div.state()])?;
             }
             URem([duo, div]) => {
-                let duo = ExtAwi::opaque(self.get_bw(duo));
-                let div = ExtAwi::opaque(self.get_bw(div));
+                let duo = Awi::opaque(self.get_bw(duo));
+                let div = Awi::opaque(self.get_bw(div));
                 let rem = division(&duo, &div).1;
                 self.graft(epoch, ptr, v, &[rem.state(), duo.state(), div.state()])?;
             }
             IQuo([duo, div]) => {
-                let duo = ExtAwi::opaque(self.get_bw(duo));
-                let div = ExtAwi::opaque(self.get_bw(div));
+                let duo = Awi::opaque(self.get_bw(duo));
+                let div = Awi::opaque(self.get_bw(div));
                 let duo_msb = duo.msb();
                 let div_msb = div.msb();
                 // keeping arguments opaque
@@ -728,8 +727,8 @@ impl OpDag {
                 self.graft(epoch, ptr, v, &[quo.state(), duo.state(), div.state()])?;
             }
             IRem([duo, div]) => {
-                let duo = ExtAwi::opaque(self.get_bw(duo));
-                let div = ExtAwi::opaque(self.get_bw(div));
+                let duo = Awi::opaque(self.get_bw(duo));
+                let div = Awi::opaque(self.get_bw(div));
                 let duo_msb = duo.msb();
                 let div_msb = div.msb();
                 // keeping arguments opaque
@@ -849,8 +848,11 @@ impl OpDag {
 
     /// Calls `lower_node` on everything, also evaluates everything. This also
     /// checks assertions, but not as strictly as `assert_assertions` which
-    /// makes sure no assertions are unevaluated.
+    /// makes sure no assertions are unevaluated. Automatically calls
+    /// `delete_unused_nodes` before and after the lowering.
     pub fn lower_all(&mut self) -> Result<(), EvalError> {
+        // because I keep on forgetting this and end up with 64 bit `usize`s everywhere
+        self.delete_unused_nodes();
         self.visit_gen += 1;
         let lowered_visit = self.visit_gen;
         self.visit_gen += 1;
@@ -861,6 +863,7 @@ impl OpDag {
         }
         self.assert_assertions_weak()?;
         self.unnote_true_assertions();
+        self.delete_unused_nodes();
         Ok(())
     }
 }

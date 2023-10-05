@@ -238,7 +238,7 @@ fn fmt_strings() {
 fn all_hex_byte_combos() {
     // keep at least 4 digits for in the future if we use SWAR
     let mut s = [b'0'; 67];
-    let mut awi = inlawi!(0u268);
+    let mut val = inlawi!(0u268);
     let mut pad0 = inlawi!(0u268);
     let mut pad1 = inlawi!(0u268);
     let mut tmp = inlawi!(0u268);
@@ -247,33 +247,33 @@ fn all_hex_byte_combos() {
             s[s.len() - 1 - i] = b;
             match b {
                 b'0'..=b'9' => {
-                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
+                    val.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
                     tmp.u8_(b - b'0');
                     tmp.shl_(i * 4).unwrap();
-                    assert!(awi == tmp);
+                    assert!(val == tmp);
                 }
                 b'a'..=b'f' => {
-                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
+                    val.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
                     tmp.u8_(b - b'a' + 10);
                     tmp.shl_(i * 4).unwrap();
-                    assert!(awi == tmp);
+                    assert!(val == tmp);
                 }
                 b'A'..=b'F' => {
-                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
+                    val.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
                     tmp.u8_(b - b'A' + 10);
                     tmp.shl_(i * 4).unwrap();
-                    assert!(awi == tmp);
+                    assert!(val == tmp);
                 }
                 b'_' => {
-                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
+                    val.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap();
-                    assert!(awi.is_zero());
+                    assert!(val.is_zero());
                 }
                 _ => {
-                    awi.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
+                    val.bytes_radix_(None, &s, 16, &mut pad0, &mut pad1)
                         .unwrap_err();
                 }
             }
@@ -287,21 +287,21 @@ fn all_hex_byte_combos() {
 #[test]
 fn all_single_byte_combos() {
     let mut s = [b'0'; 1];
-    let mut awi = inlawi!(0u8);
+    let mut val = inlawi!(0u8);
     let mut pad0 = inlawi!(0u8);
     let mut pad1 = inlawi!(0u8);
     let mut tmp = inlawi!(0u8);
     for r in 2..=36 {
         for b in 0..=u8::MAX {
             s[0] = b;
-            let res = awi.bytes_radix_(None, &s, r, &mut pad0, &mut pad1);
+            let res = val.bytes_radix_(None, &s, r, &mut pad0, &mut pad1);
             match b {
                 b'0'..=b'9' => {
                     let v = b - b'0';
                     if v < r {
                         res.unwrap();
                         tmp.u8_(v);
-                        assert!(awi == tmp);
+                        assert!(val == tmp);
                     } else {
                         res.unwrap_err();
                     }
@@ -311,7 +311,7 @@ fn all_single_byte_combos() {
                     if v < r {
                         res.unwrap();
                         tmp.u8_(v);
-                        assert!(awi == tmp);
+                        assert!(val == tmp);
                     } else {
                         res.unwrap_err();
                     }
@@ -321,14 +321,14 @@ fn all_single_byte_combos() {
                     if v < r {
                         res.unwrap();
                         tmp.u8_(v);
-                        assert!(awi == tmp);
+                        assert!(val == tmp);
                     } else {
                         res.unwrap_err();
                     }
                 }
                 b'_' => {
                     res.unwrap();
-                    assert!(awi.is_zero());
+                    assert!(val.is_zero());
                 }
                 _ => {
                     res.unwrap_err();

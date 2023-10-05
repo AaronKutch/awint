@@ -6,7 +6,10 @@ use std::{
 use awint::{
     awi,
     awint_dag::{
-        lowering::OpDag, smallvec::smallvec, state::STATE_ARENA, EvalError, Lineage, Op, StateEpoch,
+        basic_state_epoch::{StateEpoch, _get_epoch_data_arena},
+        lowering::OpDag,
+        smallvec::smallvec,
+        EvalError, Lineage, Op,
     },
     awint_internals::USIZE_BITS,
     awint_macro_internals::triple_arena::{ptr_struct, Advancer, Arena},
@@ -30,12 +33,12 @@ ptr_struct!(P0);
 
 #[derive(Debug, Clone)]
 struct Pair {
-    awi: awi::ExtAwi,
-    dag: dag::ExtAwi,
+    awi: awi::Awi,
+    dag: dag::Awi,
 }
 
 impl Pair {
-    pub fn new(lit: awi::ExtAwi) -> Self {
+    pub fn new(lit: awi::Awi) -> Self {
         Self {
             awi: lit.clone(),
             dag: lit.as_ref().into(),
@@ -86,7 +89,7 @@ impl Mem {
                 return p
             }
         }
-        let mut lit = awi::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+        let mut lit = awi::Awi::zero(NonZeroUsize::new(w).unwrap());
         lit.rand_(&mut self.rng).unwrap();
         let tmp = lit.to_usize() % cap;
         lit.usize_(tmp);
@@ -101,7 +104,7 @@ impl Mem {
         if try_query && (!self.v[w].is_empty()) {
             self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()]
         } else {
-            let mut lit = awi::ExtAwi::zero(NonZeroUsize::new(w).unwrap());
+            let mut lit = awi::Awi::zero(NonZeroUsize::new(w).unwrap());
             lit.rand_(&mut self.rng).unwrap();
             let p = self.a.insert(Pair::new(lit));
             self.v[w].push(p);
@@ -124,19 +127,19 @@ impl Mem {
     // of mixed internal mutability is too much. We can't get the signature of
     // `Index` to work in any case.
 
-    pub fn get_awi(&self, inx: P0) -> awi::ExtAwi {
+    pub fn get_awi(&self, inx: P0) -> awi::Awi {
         self.a[inx].awi.clone()
     }
 
-    pub fn get_dag(&self, inx: P0) -> dag::ExtAwi {
+    pub fn get_dag(&self, inx: P0) -> dag::Awi {
         self.a[inx].dag.clone()
     }
 
-    pub fn get_mut_awi(&mut self, inx: P0) -> &mut awi::ExtAwi {
+    pub fn get_mut_awi(&mut self, inx: P0) -> &mut awi::Awi {
         &mut self.a[inx].awi
     }
 
-    pub fn get_mut_dag(&mut self, inx: P0) -> &mut dag::ExtAwi {
+    pub fn get_mut_dag(&mut self, inx: P0) -> &mut dag::Awi {
         &mut self.a[inx].dag
     }
 
@@ -145,14 +148,14 @@ impl Mem {
         let (mut op_dag, res) = OpDag::from_epoch(epoch);
         res?;
         for pair in self.a.vals() {
-            op_dag.note_pstate(pair.dag.state()).unwrap();
+            op_dag.note_pstate(epoch, pair.dag.state()).unwrap();
         }
         op_dag.verify_integrity().unwrap();
         op_dag.eval_all()?;
         op_dag.verify_integrity().unwrap();
         op_dag.assert_assertions().unwrap();
         for pair in self.a.vals() {
-            let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
+            let p = epoch.pstate_to_pnode(pair.dag.state());
             if let Op::Literal(ref lit) = op_dag[p].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
@@ -167,7 +170,7 @@ impl Mem {
         let (mut op_dag, res) = OpDag::from_epoch(epoch);
         res?;
         for pair in self.a.vals() {
-            op_dag.note_pstate(pair.dag.state()).unwrap();
+            op_dag.note_pstate(epoch, pair.dag.state()).unwrap();
         }
         // if all constants are known, the lowering will simply become an evaluation. We
         // convert half of the literals to opaques at random, lower the dag, and finally
@@ -217,7 +220,7 @@ impl Mem {
         op_dag.eval_all().unwrap();
         op_dag.assert_assertions().unwrap();
         for pair in self.a.vals() {
-            let p = op_dag.pstate_to_pnode(pair.dag.state()).unwrap();
+            let p = epoch.pstate_to_pnode(pair.dag.state());
             if let Op::Literal(ref lit) = op_dag[p].op {
                 if pair.awi != *lit {
                     return Err(EvalError::OtherStr("real and mimick mismatch"))
@@ -825,6 +828,6 @@ fn dag_fuzzing() {
         let res = m.lower_and_verify_equal(&epoch);
         res.unwrap();
         drop(epoch);
-        assert!(STATE_ARENA.with(|f| f.borrow().is_empty()));
+        _get_epoch_data_arena(|a| assert!(a.is_empty()));
     }
 }

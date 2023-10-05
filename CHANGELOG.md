@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.13.0] - 2023-10-04
+### Additions
+- Added the `Awi` struct and corresponding macro, this should replace many usages of `ExtAwi`
+- Added more `awi` to `dag` `From` impls
+
+### Changes
+- The `cc` macro now uses `Awi` for dynamic storage
+- Overhauled the epoch system for `awint_dag` and various related things
+- Renamed the hidden `len` functions to `total_digits` so that it isn't accidentally used instead of
+  `bw`
+
 ## [0.12.0] - 2023-08-29
 ### Crate
 - bumped MSRV to 1.70.0

@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use awint_ext::{awint_core::OrdBits, ExtAwi};
+use awint_ext::{awint_core::OrdBits, Awi};
 use triple_arena::{OrdArena, Ptr};
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Bind {
-    Literal(OrdBits<ExtAwi>),
+    Literal(OrdBits<Awi>),
     // text must be lowered by this point so that the set property works
     Txt(Vec<char>),
 }
@@ -674,7 +674,7 @@ impl<'a> Lower<'a> {
         s
     }
 
-    pub fn lower_bindings<F: FnMut(ExtAwi) -> String>(
+    pub fn lower_bindings<F: FnMut(Awi) -> String>(
         &mut self,
         mut static_construction_fn: F,
     ) -> String {
@@ -689,7 +689,7 @@ impl<'a> Lower<'a> {
                             self.names.bind,
                             p_b.inx(),
                             self.fn_names.bits_ref,
-                            (static_construction_fn)(ExtAwi::from_bits(awi))
+                            (static_construction_fn)(Awi::from_bits(awi))
                         )
                         .unwrap();
                     }

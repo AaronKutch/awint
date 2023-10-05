@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 
-use awint_ext::ExtAwi;
+use awint_ext::Awi;
 
 use crate::{
     i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PCWidth,
@@ -166,7 +166,7 @@ impl Concatenation {
                     let w1 = self.comps[i].range.static_width().unwrap();
                     let total_i128 = w0.checked_add(w1).unwrap();
                     let total = i128_to_nonzerousize(total_i128).unwrap();
-                    let mut combined = ExtAwi::zero(total);
+                    let mut combined = Awi::zero(total);
                     combined.zero_resize_(&lit0);
                     combined
                         .field_to(

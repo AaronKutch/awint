@@ -158,7 +158,7 @@ pub const fn digits(w: NonZeroUsize) -> usize {
     digits_u(w.get())
 }
 
-/// Returns the number of `usize` digits needed to represent `w`, including any
+/// Returns the number of `Digit`s needed to represent `w`, including any
 /// digit with unused bits
 #[inline]
 pub const fn total_digits(w: NonZeroUsize) -> NonZeroUsize {
@@ -166,7 +166,8 @@ pub const fn total_digits(w: NonZeroUsize) -> NonZeroUsize {
     unsafe { NonZeroUsize::new_unchecked(digits(w).wrapping_add((extra(w) != 0) as usize)) }
 }
 
-/// Location for an item in the source code
+/// Location for an item in the source code. This is essentially a
+/// `std::panic::Location<'static>` with all public fields.
 #[derive(Debug, Clone, Copy)]
 pub struct Location {
     pub file: &'static str,

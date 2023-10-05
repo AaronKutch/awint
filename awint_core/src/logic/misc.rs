@@ -68,13 +68,14 @@ impl Bits {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
         self.assert_cleared_unused_bits();
-        const_for!(i in {0..self.len()}.rev() {
+        const_for!(i in {0..self.total_digits()}.rev() {
             let x = unsafe{self.get_unchecked(i)};
             if x != 0 {
-                return ((self.len() - 1 - i) * BITS) + (x.leading_zeros() as usize) - self.unused();
+                return ((self.total_digits() - 1 - i) * BITS)
+                    + (x.leading_zeros() as usize) - self.unused();
             }
         });
-        (self.len() * BITS) - self.unused()
+        (self.total_digits() * BITS) - self.unused()
     }
 
     /// Returns the number of trailing zero bits
@@ -84,13 +85,13 @@ impl Bits {
         // If unused bits are set, then the caller is going to get unexpected behavior
         // somewhere, also prevent overflow
         self.assert_cleared_unused_bits();
-        const_for!(i in {0..self.len()} {
+        const_for!(i in {0..self.total_digits()} {
             let x = unsafe{self.get_unchecked(i)};
             if x != 0 {
                 return (i * BITS) + (x.trailing_zeros() as usize);
             }
         });
-        (self.len() * BITS) - self.unused()
+        (self.total_digits() * BITS) - self.unused()
     }
 
     /// Returns the number of significant bits, `self.bw() - self.lz()`
@@ -108,7 +109,7 @@ impl Bits {
         // somewhere, also prevent overflow
         self.assert_cleared_unused_bits();
         let mut ones = 0;
-        const_for!(i in {0..self.len()} {
+        const_for!(i in {0..self.total_digits()} {
             let x = unsafe{self.get_unchecked(i)};
             ones += x.count_ones() as usize;
         });
@@ -237,7 +238,7 @@ impl Bits {
                     let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
                     // mask
                     let mask1 = MAX << to_bits;
-                    // because the partial field is one `usize` long
+                    // because the partial field is one `Digit` long
                     let mask0 = !mask1;
                     *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask0) | tmp.0;
                     i += 1;
@@ -324,7 +325,7 @@ impl Bits {
                     let tmp = (tmp << to_bits, tmp >> (BITS - to_bits));
                     // mask
                     let mask1 = MAX << to_bits;
-                    // because the partial field is one `usize` long
+                    // because the partial field is one `Digit` long
                     let mask0 = !mask1;
                     *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask0) | tmp.0;
                     i += 1;
@@ -471,11 +472,11 @@ impl Bits {
                     // value of `inx` cannot index beyond the width of `lut`.
                     unsafe {
                         if bits == 0 {
-                            const_for!(i in {0..self.len()} {
+                            const_for!(i in {0..self.total_digits()} {
                                 *self.get_unchecked_mut(i) = lut.get_unchecked(digits + i);
                             });
                         } else {
-                            const_for!(i in {0..(self.len() - 1)} {
+                            const_for!(i in {0..(self.total_digits() - 1)} {
                                 *self.get_unchecked_mut(i) = (lut.get_unchecked(digits + i) >> bits)
                                 | (lut.get_unchecked(digits + i + 1) << (BITS - bits));
                             });
@@ -483,12 +484,13 @@ impl Bits {
                                 // this is tricky, because the extra bits from `self` and `index`
                                 // can combine to push the end of
                                 // the bitfield over a digit boundary
-                                *self.last_mut() = (lut.get_unchecked(digits + self.len() - 1)
-                                    >> bits)
-                                    | (lut.get_unchecked(digits + self.len()) << (BITS - bits));
+                                *self.last_mut() =
+                                    (lut.get_unchecked(digits + self.total_digits() - 1) >> bits)
+                                        | (lut.get_unchecked(digits + self.total_digits())
+                                            << (BITS - bits));
                             } else {
                                 *self.last_mut() =
-                                    lut.get_unchecked(digits + self.len() - 1) >> bits;
+                                    lut.get_unchecked(digits + self.total_digits() - 1) >> bits;
                             }
                         }
                     }
@@ -584,7 +586,7 @@ impl Bits {
                                 let tmp = (tmp << inx_bits, tmp >> (BITS - inx_bits));
                                 // mask
                                 let mask1 = MAX << inx_bits;
-                                // because the partial field is one `usize` long
+                                // because the partial field is one `Digit` long
                                 let mask0 = !mask1;
                                 *self.get_unchecked_mut(i + inx_digits) =
                                     (self.get_unchecked(i + inx_digits) & mask0) | tmp.0;

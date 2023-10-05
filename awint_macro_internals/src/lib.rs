@@ -80,6 +80,20 @@ pub fn awint_macro_extawi(input: &str) -> Result<String, String> {
     cc_macro(input, code_gen, AWINT_NAMES)
 }
 
+pub fn awint_macro_awi(input: &str) -> Result<String, String> {
+    let code_gen = CodeGen {
+        static_width: false,
+        return_type: Some("Awi"),
+        must_use: awint_must_use,
+        static_construction_fn: awint_static_construction_fn,
+        lit_construction_fn: awint_awi_lit_construction_fn,
+        construction_fn: awi_construction_fn,
+        const_wrapper: identity_const_wrapper,
+        fn_names: AWINT_FN_NAMES,
+    };
+    cc_macro(input, code_gen, AWINT_NAMES)
+}
+
 pub fn awint_macro_bits(input: &str) -> Result<String, String> {
     let code_gen = CodeGen {
         static_width: true,

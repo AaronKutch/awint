@@ -9,11 +9,11 @@ fn rand() {
     // note: mirror changes of this example to the doctest for the
     // `rand_` function
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    let mut awi = inlawi!(zero: ..100);
-    awi.const_as_mut().rand_(&mut rng).unwrap();
-    assert_eq!(awi, inlawi!(0x5ab77d3629a089d75dec9045du100));
-    awi.const_as_mut().rand_(&mut rng).unwrap();
-    assert_eq!(awi, inlawi!(0x4c25a514060dea0565c95a8dau100));
+    let mut val = inlawi!(zero: ..100);
+    val.const_as_mut().rand_(&mut rng).unwrap();
+    assert_eq!(val, inlawi!(0x5ab77d3629a089d75dec9045du100));
+    val.const_as_mut().rand_(&mut rng).unwrap();
+    assert_eq!(val, inlawi!(0x4c25a514060dea0565c95a8dau100));
 }
 
 struct Xoshiro {
@@ -22,14 +22,14 @@ struct Xoshiro {
 
 impl Xoshiro {
     pub fn from_seed(seed: [u8; 16]) -> Self {
-        let mut awi = inlawi!(0u128);
+        let mut val = inlawi!(0u128);
         let mut tmp_awi = inlawi!(0u8);
         let tmp = tmp_awi.const_as_mut();
         for (i, s) in seed.iter().enumerate() {
             tmp.u8_(*s);
-            cc!(tmp; awi[(i * 8)..((i + 1) * 8)]).unwrap();
+            cc!(tmp; val[(i * 8)..((i + 1) * 8)]).unwrap();
         }
-        Self { state: awi }
+        Self { state: val }
     }
 
     pub fn next_u32(&mut self) -> inlawi_ty!(32) {

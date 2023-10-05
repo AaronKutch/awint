@@ -38,8 +38,8 @@ const fn verify_for_bytes_(src: &[u8], radix: u8) -> Result<(), SerdeError> {
 /// # `const` string representation conversion
 ///
 /// Note: the `awint_ext` crate has higher level allocating functions
-/// `ExtAwi::bits_to_string_radix`, `ExtAwi::bits_to_vec_radix`, and
-/// `<ExtAwi as FromStr>::from_str`
+/// `Awi::bits_to_string_radix`, `Awi::bits_to_vec_radix`, and
+/// `<Awi as FromStr>::from_str`
 impl Bits {
     /// A version of [Bits::bytes_radix_] optimized for power of two
     /// radixes

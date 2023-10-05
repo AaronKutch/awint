@@ -8,25 +8,18 @@ use Op::*;
 
 use crate::{EvalError, Op};
 
-/// No problems were found in regards to statically known values
-///
-/// `Operational,`
-///
-/// No-operation, usually because of Awi operations with invalid bitwidths
-///
-/// `Noop,`
-///
-/// Some evaluation error because of something that is not an Awi operation.
-/// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
-/// static variants with bad inputs, and bad bitwidths on operations
-/// involving compile-time bitwidths (such as booleans and `usize`s in
-/// arguements)
-///
-/// `Error(EvalError),`
+/// The specific kind of a no-operation result
 #[derive(Debug, Clone)]
 pub enum NoopResult {
+    /// No problems were found in regards to statically known values
     Operational,
+    /// No-operation, usually because of Awi operations with invalid bitwidths
     Noop,
+    /// Some evaluation error because of something that is not an Awi operation.
+    /// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
+    /// static variants with bad inputs, and bad bitwidths on operations
+    /// involving compile-time bitwidths (such as booleans and `usize`s in
+    /// arguements)
     Error(EvalError),
 }
 
@@ -101,7 +94,7 @@ macro_rules! ceq {
 }
 
 impl Op<NonZeroUsize> {
-    /// This is just for checking bitwidths and other statically known things.
+    /// Perform static checks on bitwidths and index amounts
     ///
     /// If `debug_assertions` are active, this also checks for correct
     /// crate-side compile time sizes

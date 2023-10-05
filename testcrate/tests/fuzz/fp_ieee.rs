@@ -23,7 +23,7 @@ const MAX_BW_64: usize = 258;
 const MAX_FP_64: isize = 1100;
 
 fn fuzz_awi(rng: &mut Xoshiro128StarStar, w: NonZeroUsize) -> ExtAwi {
-    let mut awi = ExtAwi::zero(w);
+    let mut val = ExtAwi::zero(w);
     let mut mask = ExtAwi::umax(w);
     for _ in 0..8 {
         mask.umax_();
@@ -31,17 +31,17 @@ fn fuzz_awi(rng: &mut Xoshiro128StarStar, w: NonZeroUsize) -> ExtAwi {
             .unwrap();
         mask.rotl_((rng.next_u64() as usize) % w.get()).unwrap();
         match rng.next_u32() % 4 {
-            0 => awi.or_(&mask).unwrap(),
-            1 => awi.and_(&mask).unwrap(),
-            _ => awi.xor_(&mask).unwrap(),
+            0 => val.or_(&mask).unwrap(),
+            1 => val.and_(&mask).unwrap(),
+            _ => val.xor_(&mask).unwrap(),
         }
     }
-    awi
+    val
 }
 
 #[track_caller]
-fn check_f32(f: f32, awi: inlawi_ty!(25), fp: isize) {
-    let mut tmp = F32::new(true, awi, fp).unwrap();
+fn check_f32(f: f32, val: inlawi_ty!(25), fp: isize) {
+    let mut tmp = F32::new(true, val, fp).unwrap();
     assert_eq!(FP::from_f32(f), tmp);
     assert_eq!(
         FP::try_to_f32(&mut tmp).unwrap(),
@@ -89,10 +89,10 @@ fn fp_f32() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     for _ in 0..N {
         let w = NonZeroUsize::new((rng.next_u64() as usize) % MAX_BW_32 + 1).unwrap();
-        let awi = fuzz_awi(&mut rng, w);
+        let val = fuzz_awi(&mut rng, w);
         let mut fp0 = FP::new(
             (rng.next_u32() & 1) == 0,
-            awi,
+            val,
             (rng.next_u32() as i32 as isize) % MAX_FP_32,
         )
         .unwrap();
@@ -110,8 +110,8 @@ fn fp_f32() {
 }
 
 #[track_caller]
-fn check_f64(f: f64, awi: inlawi_ty!(54), fp: isize) {
-    let mut tmp = F64::new(true, awi, fp).unwrap();
+fn check_f64(f: f64, val: inlawi_ty!(54), fp: isize) {
+    let mut tmp = F64::new(true, val, fp).unwrap();
     assert_eq!(FP::from_f64(f), tmp);
     assert_eq!(
         FP::try_to_f64(&mut tmp).unwrap(),
@@ -158,10 +158,10 @@ fn fp_f64() {
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     for _ in 0..N {
         let w = NonZeroUsize::new((rng.next_u64() as usize) % MAX_BW_64 + 1).unwrap();
-        let awi = fuzz_awi(&mut rng, w);
+        let val = fuzz_awi(&mut rng, w);
         let mut fp0 = FP::new(
             (rng.next_u32() & 1) == 0,
-            awi,
+            val,
             (rng.next_u32() as i32 as isize) % MAX_FP_64,
         )
         .unwrap();

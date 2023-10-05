@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value)]
 
 use awint::{
-    awint_dag::{OpDag, StateEpoch},
+    awint_dag::{basic_state_epoch::StateEpoch, OpDag},
     dag::{assert, assert_eq, *},
 };
 
@@ -17,8 +17,8 @@ fn dag_macros() {
     assert_eq!(inlawi!(0xau4, 0x4321u32[8..12], 0x7u4), inlawi!(0xa37u12));
     // copy assign
     let a = inlawi!(0xau4);
-    let mut awi = ExtAwi::zero(bw(4));
-    let mut b = awi.const_as_mut();
+    let mut val = ExtAwi::zero(bw(4));
+    let mut b = val.const_as_mut();
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
@@ -26,9 +26,9 @@ fn dag_macros() {
     assert_eq!(a.as_ref(), c.as_ref());
     // dynamic ranges
     let x = 8;
-    let awi = ExtAwi::zero(bw(12));
+    let val = ExtAwi::zero(bw(12));
     assert_eq!(
-        extawi!(0x98765_u20[x..(x + awi.bw())]).unwrap(),
+        extawi!(0x98765_u20[x..(x + val.bw())]).unwrap(),
         extawi!(0x987u12)
     );
     // unbounded fillers
@@ -139,6 +139,18 @@ fn dag_macros() {
     let _: () = cc!(imin: y);
     assert_eq!(y, inlawi!(0u8));
     let _: () = cc!(imin: ..r);
+    let mut sink0 = Awi::zero(bw(44));
+    let mut sink1 = Awi::zero(bw(44));
+    let b = awi!(0xbbu8);
+    let e = awi!(0xeeeu12);
+    let result = awi!(0xabbcffdeeefu44);
+    assert_eq!(
+        awi!(umax: 0xau4, b, 0xcu4, .., 0xdu4, e, 0xfu4; sink0; sink1).unwrap(),
+        result.clone()
+    );
+    assert_eq!(sink0, result.clone());
+    assert_eq!(sink1, result);
+
     let (mut op_dag, res) = OpDag::from_epoch(&epoch0);
     res.unwrap();
     op_dag.eval_all().unwrap();

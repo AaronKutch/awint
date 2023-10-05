@@ -57,7 +57,7 @@
 
 use std::{fmt::Write, num::NonZeroUsize};
 
-use awint_ext::{awint_core::OrdBits, ExtAwi};
+use awint_ext::{awint_core::OrdBits, Awi};
 use triple_arena::Ptr;
 
 use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, Lower, Names};
@@ -65,8 +65,8 @@ use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, Lower, Names}
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<
     F0: FnMut(&str) -> String,
-    F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(ExtAwi) -> String,
+    F1: FnMut(Awi) -> String,
+    F2: FnMut(Awi) -> String,
     F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
     F4: FnMut(String, Option<NonZeroUsize>, bool) -> String,
 >(
@@ -82,7 +82,7 @@ pub fn cc_macro_code_gen<
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
-                return (code_gen.must_use)(&(code_gen.lit_construction_fn)(ExtAwi::from_bits(lit)))
+                return (code_gen.must_use)(&(code_gen.lit_construction_fn)(Awi::from_bits(lit)))
             }
         }
     }

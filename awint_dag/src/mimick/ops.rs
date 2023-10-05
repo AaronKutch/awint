@@ -1,5 +1,11 @@
 // Note: we use `impl Into<...>` heavily instead of `U: Into<...>` generics,
-// because it allows arguments to be different types
+// because it allows arguments to be different types.
+
+// Note: unfortunately, `impl Into<...>` can only be used for the totally
+// copyable types, and does not work for `impl Into<&'a Bits>` which causes
+// failures with `&mut Bits`, same goes for any `impl ...` strategy because the
+// mutable reference is moved into the function and can't be copied on the
+// outside
 
 use std::marker::PhantomData;
 
@@ -277,43 +283,28 @@ impl Bits {
     }
 
     pub fn zero_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::zero(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::zero(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn umax_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::umax(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::umax(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn imax_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::imax(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::imax(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn imin_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::imin(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::imin(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     pub fn uone_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Op::Literal(awi::ExtAwi::uone(self.nzbw())),
-        )
-        .unwrap_at_runtime();
+        self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::uone(self.nzbw())))
+            .unwrap_at_runtime();
     }
 
     #[must_use]
@@ -570,8 +561,8 @@ impl Bits {
 
     #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn arb_imul_add_(&mut self, lhs: &mut Bits, rhs: &mut Bits) {
-        let mut lhs = dag::ExtAwi::from_bits(lhs);
-        let mut rhs = dag::ExtAwi::from_bits(rhs);
+        let mut lhs = dag::Awi::from_bits(lhs);
+        let mut rhs = dag::Awi::from_bits(rhs);
         let lhs_msb = lhs.msb();
         let rhs_msb = rhs.msb();
         lhs.neg_(lhs_msb);
@@ -638,7 +629,7 @@ impl Bits {
 pub struct CCResult<T> {
     run_fielding: awi::bool,
     success: dag::bool,
-    _phantom_data: PhantomData<T>,
+    _phantom_data: PhantomData<fn() -> T>,
 }
 
 impl<T> CCResult<T> {
@@ -694,22 +685,28 @@ impl Bits {
         let x: Box<[_]> = Box::from(x);
         let mut x: Vec<_> = Vec::from(x);
         let last = x.pop().unwrap().into();
-        let mut max = if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
+        let mut max = if let Op::Literal(ref lit) = last.state().get_op() {
             assert_eq!(lit.bw(), USIZE_BITS);
             lit.to_usize()
         } else {
-            panic!();
+            panic!(
+                "statically known bitwidths are needed for certain concatenation macro usages \
+                 with mimicking types"
+            );
         };
         for _ in 1..N {
             let last = x.pop().unwrap().into();
-            if let Op::Literal(ref lit) = last.state().cloned_state().unwrap().op {
+            if let Op::Literal(ref lit) = last.state().get_op() {
                 assert_eq!(lit.bw(), USIZE_BITS);
                 let val = lit.to_usize();
                 if val > max {
                     max = val;
                 }
             } else {
-                panic!();
+                panic!(
+                    "statically known bitwidths are needed for certain concatenation macro usages \
+                     with mimicking types"
+                );
             }
         }
         max
@@ -751,7 +748,7 @@ impl Bits {
                 .unwrap();
         }
         if check_nonzero_cw {
-            if let Op::Literal(ref lit) = cw.state().cloned_state().unwrap().op {
+            if let Op::Literal(ref lit) = cw.state().get_op() {
                 assert_eq!(lit.bw(), USIZE_BITS);
                 if lit.to_usize() == 0 {
                     return CCResult {

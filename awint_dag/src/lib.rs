@@ -21,7 +21,8 @@
 //! different `Bits` operations are applied.
 //!
 //! ```
-//! use awint::{awi, dag};
+//! use awint::{awi, dag, awint_dag::basic_state_epoch::StateEpoch};
+//!
 //! // In the future we may have a macro that can duplicate the code into a
 //! // module that has `awint::awi` imported, and another module that has
 //! // `awint::dag` imported, so that you can have a normal running version
@@ -57,8 +58,9 @@
 //!     }
 //! }
 //!
-//! // first, create an epoch, this will live until this struct is dropped
-//! let epoch0 = awint::awint_dag::StateEpoch::new();
+//! // First, create an epoch, this will live until this struct is dropped. Note
+//! // that downstream crates may have their own epoch management structs.
+//! let epoch0 = StateEpoch::new();
 //!
 //! let mut m = StateMachine::new();
 //! let input = inlawi!(opaque: ..4);
@@ -88,8 +90,8 @@
 //!     // dynamic assertions are marked with a nonzero reference count, and
 //!     // thus can be freely invalidated. The `PNote`s can be used as stable
 //!     // references after epochs are dropped.
-//!     let input = graph.note_pstate(input.state()).unwrap();
-//!     let output = graph.note_pstate(output.state()).unwrap();
+//!     let input = graph.note_pstate(&epoch0, input.state()).unwrap();
+//!     let output = graph.note_pstate(&epoch0, output.state()).unwrap();
 //!
 //!     // will do basic evaluations on DAGs
 //!     graph.eval_all().unwrap();
@@ -120,11 +122,11 @@
 //!     drop(epoch0);
 //!
 //!     // replace that opaque with a literal
-//!     graph.pnote_get_mut_node(input).unwrap().op = Literal(extawi!(1010));
+//!     graph.pnote_get_mut_node(input).unwrap().op = Literal(awi!(1010));
 //!     graph.eval_all().unwrap();
 //!     graph.assert_assertions().unwrap();
 //!     if let Literal(ref lit) = graph.pnote_get_node(output).unwrap().op {
-//!         awi::assert_eq!(lit.as_ref(), extawi!(0u4).as_ref());
+//!         awi::assert_eq!(lit.as_ref(), awi!(0u4).as_ref());
 //!     } else {
 //!         panic!();
 //!     }
@@ -141,6 +143,8 @@
 //!   ```
 //!   //use awint::awi::*;
 //!   use awint::dag::*;
+//!
+//!   let epoch = awint::awint_dag::basic_state_epoch::StateEpoch::new();
 //!
 //!   let mut lhs = inlawi!(zero: ..8);
 //!   let rhs = inlawi!(umax: ..8);
@@ -171,12 +175,11 @@
 //!
 //! - The mimicking types have an extra `opaque` constructor kind that has no
 //!   definitive bit pattern. This can be accessed through `Bits::opaque_`,
-//!   `ExtAwi::opaque(w)`, `InlAwi::opaque()`, and in macros like
-//!   `inlawi!(opaque: ..8)`. This is useful for placeholder values in
-//!   algorithms that prevents evaluation from doing anything with the sink tree
-//!   of these values.
-//! - The macros from `awint_dag` use whatever `usize`, `ExtAwi`, `InlAwi`, and
-//!   `Bits` structs are imported in their scope. If you are mixing regular and
+//!   `*Awi::opaque(w)`, and in macros like `inlawi!(opaque: ..8)`. This is
+//!   useful for placeholder values in algorithms that prevents evaluation from
+//!   doing anything with the sink tree of these values.
+//! - The macros from `awint_dag` use whatever `usize`, `*Awi`, and `Bits`
+//!   structs are imported in their scope. If you are mixing regular and
 //!   mimicking types and are getting name collisions in macros, you can glob
 //!   import `awint::awi::*` or `awint::dag::*` in the same scope as the macro
 //!   (or add an extra block scope around the macro to glob import in), which
@@ -197,27 +200,21 @@
 mod common;
 pub mod lowering;
 pub mod mimick;
-pub use awint_ext::awint_internals::location;
+pub use awint_ext::awint_internals::{location, Location};
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{EvalError, EvalResult, Lineage, Op, PNode, PNote, PState, State, StateEpoch};
-pub use lowering::{OpDag, OpNode};
-pub use mimick::{
-    assertion::{internal_assert, internal_assert_eq, internal_assert_ne},
-    primitive,
+pub use common::{
+    epoch, DummyDefault, EvalError, EvalResult, Lineage, NoopResult, Op, PNode, PNote, PState,
 };
+pub use lowering::{OpDag, OpNode};
+// export needed by the macros
+#[doc(hidden)]
+pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne};
+pub use mimick::primitive;
 pub use smallvec;
 
-/// Raw access to thread-local `State` related things
-pub mod state {
-    pub use crate::common::{
-        clear_thread_local_state, next_state_visit_gen, StateEpoch, EPOCH_GEN, EPOCH_STACK,
-        STATE_ARENA, STATE_VISIT_GEN,
-    };
-}
-
-pub use crate::mimick::{Bits, ExtAwi, InlAwi};
+pub use crate::common::basic_state_epoch;
 
 /// All mimicking items
 pub mod dag {
@@ -225,7 +222,7 @@ pub mod dag {
 
     pub use crate::{
         mimick::{
-            assert, assert_eq, assert_ne, Bits, ExtAwi, InlAwi, Option,
+            assert, assert_eq, assert_ne, Awi, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
             Result,
             Result::{Err, Ok},

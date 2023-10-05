@@ -3,7 +3,7 @@
 use std::{
     borrow::Borrow,
     collections::{hash_map::Entry, HashMap},
-    num::NonZeroUsize,
+    num::{NonZeroU64, NonZeroUsize},
     ops::{Index, IndexMut},
     vec,
 };
@@ -12,11 +12,10 @@ use awint_ext::{awint_internals::USIZE_BITS, Bits};
 use Op::*;
 
 use crate::{
-    common::STATE_ARENA,
+    basic_state_epoch::StateEpoch,
     lowering::{OpNode, PNode},
-    state::next_state_visit_gen,
     triple_arena::Arena,
-    EvalError, Op, PNote, PState, StateEpoch,
+    EvalError, Op, PNote, PState,
 };
 
 /// An Operational Directed Acyclic Graph. Contains DAGs of mimicking struct
@@ -73,25 +72,13 @@ impl OpDag {
     /// tools like `render_to_svg_file` can be used.
     pub fn from_epoch(epoch: &StateEpoch) -> (Self, Result<(), EvalError>) {
         let mut res = Self::new();
-        let state_visit = next_state_visit_gen();
-        let err = res.add_chain(epoch.latest_state(), state_visit, 0, false);
+        let state_visit = epoch.next_visit_gen();
+        let err = res.add_chain(epoch, epoch.latest_state(), state_visit, 0, false);
         for assertion in epoch.assertions().states() {
-            let p_note = res.note_pstate(assertion).unwrap();
+            let p_note = res.note_pstate(epoch, assertion).unwrap();
             res.assertions.push(p_note);
         }
         (res, err)
-    }
-
-    /// Get a `PNode` that is the translation of `p_state`. Some transformations
-    /// may invalidate this unlike with `note_pstate`.
-    #[must_use]
-    pub fn pstate_to_pnode(&mut self, p_state: PState) -> Option<PNode> {
-        let node_map = p_state.get_node_map()?;
-        if self.a.contains(node_map) {
-            Some(node_map)
-        } else {
-            None
-        }
     }
 
     #[must_use]
@@ -117,8 +104,8 @@ impl OpDag {
     /// Get a `PNote` that will act as a stable reference to the `PNode` version
     /// of `p_state`. Returns `None` if the mapping cannot be found.
     #[must_use]
-    pub fn note_pstate(&mut self, p_state: PState) -> Option<PNote> {
-        self.note_pnode(p_state.get_node_map()?)
+    pub fn note_pstate(&mut self, epoch: &StateEpoch, p_state: PState) -> Option<PNote> {
+        self.note_pnode(epoch.pstate_to_pnode(p_state))
     }
 
     /// Marks existing node as noted
@@ -141,21 +128,20 @@ impl OpDag {
     /// nodes are pushed to `self.tmp_pnodes_added`
     pub fn add_chain(
         &mut self,
+        epoch: &StateEpoch,
         latest_state: Option<PState>,
-        state_visit: u64,
+        state_visit: NonZeroU64,
         node_visit: u64,
         record_added: bool,
     ) -> Result<(), EvalError> {
-        // this is done in a peculiar way to avoid cloning from the states as much as
-        // possible
         self.tmp_stack.clear();
         let mut loop_pstate = latest_state;
         while let Some(leaf_pstate) = loop_pstate {
-            let continue_loop = leaf_pstate.get_mut_state(|leaf| {
-                let leaf = leaf.expect("did not find state");
+            let mut continue_loop = false;
+            epoch.get_mut_state(leaf_pstate, |leaf| {
                 if leaf.visit == state_visit {
                     loop_pstate = leaf.prev_in_epoch;
-                    true
+                    continue_loop = true;
                 } else {
                     let p_leaf = self.a.insert(OpNode {
                         nzbw: leaf.nzbw,
@@ -165,14 +151,12 @@ impl OpDag {
                         location: leaf.location,
                         visit: node_visit,
                     });
-                    leaf.visit = state_visit;
                     leaf.node_map = p_leaf;
                     if record_added {
                         self.tmp_pnodes_added.push(p_leaf);
                     }
                     self.tmp_stack.push((0, p_leaf, leaf_pstate));
                     loop_pstate = leaf.prev_in_epoch;
-                    false
                 }
             });
             if continue_loop {
@@ -181,47 +165,56 @@ impl OpDag {
             // begin DFS proper
             loop {
                 let (current_i, current_p_node, current_p_state) = *self.tmp_stack.last().unwrap();
-                let break_dfs = STATE_ARENA.with(|arena| {
-                    let mut arena = arena.borrow_mut();
-                    if let Some(t) = Op::translate_root(&arena[current_p_state].op) {
+                let mut break_dfs = false;
+                let mut check_next_op = None;
+                let mut all_operands_ready = None;
+                epoch.get_mut_state(current_p_state, |state| {
+                    if let Some(t) = Op::translate_root(&state.op) {
                         // reached a root
                         self[current_p_node].op = t;
                         self.tmp_stack.pop().unwrap();
                         if let Some((i, ..)) = self.tmp_stack.last_mut() {
                             *i += 1;
-                            false
                         } else {
-                            true
+                            break_dfs = true;
                         }
-                    } else if current_i >= arena[current_p_state].op.operands_len() {
+                    } else if current_i >= state.op.operands_len() {
                         // all operands should be ready
-                        self[current_p_node].op = Op::translate(
-                            &arena[current_p_state].op,
-                            |lhs: &mut [PNode], rhs: &[PState]| {
-                                for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                                    *lhs = arena[rhs].node_map;
-                                }
-                            },
-                        );
-                        self.tmp_stack.pop().unwrap();
-                        if let Some((i, ..)) = self.tmp_stack.last_mut() {
-                            *i += 1;
-                            false
-                        } else {
-                            true
-                        }
+                        all_operands_ready = Some(state.op.clone());
                     } else {
                         // check next operand
-                        let p_next = arena[current_p_state].op.operands()[current_i];
-                        let next = &mut arena[p_next];
+                        check_next_op = Some(state.op.operands()[current_i]);
+                    }
+                });
+                if let Some(op) = all_operands_ready {
+                    // need this separate because `pstate_to_pnode` borrows the same thread local
+                    // data as `get_mut_state`
+                    self[current_p_node].op =
+                        Op::translate(&op, |lhs: &mut [PNode], rhs: &[PState]| {
+                            for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                                *lhs = epoch.pstate_to_pnode(*rhs);
+                            }
+                        });
+                    // TODO this is a hack for starlight `Loop`s
+                    if matches!(self[current_p_node].op, Op::Opaque(_, Some("LoopHandle"))) {
+                        self[current_p_node].rc += 1;
+                    }
+                    self.tmp_stack.pop().unwrap();
+                    if let Some((i, ..)) = self.tmp_stack.last_mut() {
+                        *i += 1;
+                    } else {
+                        break_dfs = true;
+                    }
+                }
+                if let Some(p_next) = check_next_op {
+                    epoch.get_mut_state(p_next, |next| {
                         if next.visit == state_visit {
                             // already explored
                             self[next.node_map].rc += 1;
                             if let Some((i, ..)) = self.tmp_stack.last_mut() {
                                 *i += 1;
-                                false
                             } else {
-                                true
+                                break_dfs = true;
                             }
                         } else {
                             let p = self.a.insert(OpNode {
@@ -237,15 +230,10 @@ impl OpDag {
                             if record_added {
                                 self.tmp_pnodes_added.push(p);
                             }
-                            self.tmp_stack.push((
-                                0,
-                                p,
-                                arena[current_p_state].op.operands()[current_i],
-                            ));
-                            false
+                            self.tmp_stack.push((0, p, p_next));
                         }
-                    }
-                });
+                    });
+                }
                 if break_dfs {
                     break
                 }
@@ -505,9 +493,8 @@ impl OpDag {
                 return Err(EvalError::WrongNumberOfOperands)
             }
             for (i, op) in self[ptr].op.operands().iter().enumerate() {
-                let (current_nzbw, current_is_opaque) = output_and_operands[i + 1]
-                    .get_state(|state| state.map(|x| (x.nzbw, x.op.is_opaque())))
-                    .unwrap();
+                let current_nzbw = output_and_operands[i + 1].get_nzbw();
+                let current_is_opaque = output_and_operands[i + 1].get_op().is_opaque();
                 if self[op].nzbw != current_nzbw {
                     return Err(EvalError::OtherString(format!(
                         "operand {}: a bitwidth of {:?} is trying to be grafted to a bitwidth of \
@@ -519,14 +506,15 @@ impl OpDag {
                     return Err(EvalError::ExpectedOpaque)
                 }
             }
-            if self[ptr].nzbw != output_and_operands[0].get_nzbw().unwrap() {
+            if self[ptr].nzbw != output_and_operands[0].get_nzbw() {
                 return Err(EvalError::WrongBitwidth)
             }
         }
         self.tmp_pnodes_added.clear();
         let err = self.add_chain(
+            &epoch,
             epoch.latest_state(),
-            next_state_visit_gen(),
+            epoch.next_visit_gen(),
             node_visit,
             true,
         );
@@ -539,7 +527,12 @@ impl OpDag {
 
         // graft inputs
         for i in 1..output_and_operands.len() {
-            let grafted = self.pstate_to_pnode(output_and_operands[i]);
+            let grafted = epoch.pstate_to_pnode(output_and_operands[i]);
+            let grafted = if self.a.contains(grafted) {
+                Some(grafted)
+            } else {
+                None
+            };
             let graftee = self[ptr].op.operands()[i - 1];
             if let Some(grafted) = grafted {
                 // change the grafted `Opaque` into a `Copy` that routes to the graftee instead
@@ -555,7 +548,7 @@ impl OpDag {
         }
 
         // graft output
-        let grafted = self.pstate_to_pnode(output_and_operands[0]).unwrap();
+        let grafted = epoch.pstate_to_pnode(output_and_operands[0]);
         self[ptr].op = Copy([grafted]);
         self[grafted].rc = self[grafted].rc.checked_add(1).unwrap();
         drop(epoch);

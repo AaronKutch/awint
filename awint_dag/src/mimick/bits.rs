@@ -10,7 +10,7 @@ use awint_ext::awi;
 
 use crate::{
     common::NoopResult,
-    mimick::{ExtAwi, InlAwi},
+    mimick::{Awi, ExtAwi, InlAwi},
     EvalError, EvalResult, Lineage, Op, PState,
 };
 
@@ -19,7 +19,7 @@ use crate::{
 /// Mimicking `awint_core::Bits`
 #[repr(C)] // needed for `internal_as_ref*`
 pub struct Bits {
-    _no_send_or_sync: PhantomData<Rc<()>>,
+    _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
     // use different names for the different raw `PState`s, or else Rust can think we are
     // trying to go through the `Deref` impls
     _state: PState,
@@ -41,6 +41,24 @@ impl<'a> ExtAwi {
 
     pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
         // Safety: `ExtAwi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts_mut(self as *mut Self, 0) as *mut Bits;
+        unsafe { &mut *bits }
+    }
+}
+
+impl<'a> Awi {
+    pub(in crate::mimick) fn internal_as_ref(&'a self) -> &'a Bits {
+        // Safety: `Awi` is a `#[repr(C)]` `PState`, and here we use a pointer from
+        // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
+        // make sure they do not become unbounded.
+        let bits = ptr::slice_from_raw_parts(self as *const Self, 0) as *const Bits;
+        unsafe { &*bits }
+    }
+
+    pub(in crate::mimick) fn internal_as_mut(&'a mut self) -> &'a mut Bits {
+        // Safety: `Awi` is a `#[repr(C)]` `PState`, and here we use a pointer from
         // `self` to create `Bits` with a zero length `_dst`. The explicit lifetimes
         // make sure they do not become unbounded.
         let bits = ptr::slice_from_raw_parts_mut(self as *mut Self, 0) as *mut Bits;
@@ -117,27 +135,20 @@ impl Bits {
         // early.
         let mut all_literals = true;
         for p_state in p_state_op.operands() {
-            if !p_state
-                .get_state(|state| state.map(|x| x.op.is_literal()))
-                .expect("failed to get state")
-            {
+            if !p_state.get_op().is_literal() {
                 all_literals = false;
                 break
             }
         }
         if all_literals {
-            let lit_op: Op<awi::ExtAwi> =
-                Op::translate(&p_state_op, |lhs: &mut [awi::ExtAwi], rhs: &[PState]| {
+            let lit_op: Op<awi::Awi> =
+                Op::translate(&p_state_op, |lhs: &mut [awi::Awi], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        rhs.get_state(|state| {
-                            if let Op::Literal(ref lit) = state?.op {
-                                *lhs = lit.clone();
-                                Some(())
-                            } else {
-                                None
-                            }
-                        })
-                        .expect("failed to get state, or it was not a literal")
+                        if let Op::Literal(ref lit) = rhs.get_op() {
+                            *lhs = lit.clone();
+                        } else {
+                            unreachable!()
+                        }
                     }
                 });
             match lit_op.eval(nzbw) {
@@ -167,7 +178,7 @@ impl Bits {
             let bw_op: Op<NonZeroUsize> =
                 Op::translate(&p_state_op, |lhs: &mut [NonZeroUsize], rhs: &[PState]| {
                     for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        *lhs = rhs.get_nzbw().expect("failed to get state");
+                        *lhs = rhs.get_nzbw();
                     }
                 });
             match bw_op.noop_check(nzbw) {

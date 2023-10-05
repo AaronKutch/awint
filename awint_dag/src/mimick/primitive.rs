@@ -108,7 +108,7 @@ macro_rules! prim {
 
             impl From<awi::$name> for $name {
                 fn from(x: awi::$name) -> Self {
-                    Self::new(Op::Literal(awi::ExtAwi::from(x)))
+                    Self::new(Op::Literal(awi::Awi::from(x)))
                 }
             }
 
@@ -170,7 +170,7 @@ impl bool {
 
 impl From<awi::bool> for bool {
     fn from(x: awi::bool) -> Self {
-        Self::new(Op::Literal(awi::ExtAwi::from(x)))
+        Self::new(Op::Literal(awi::Awi::from(x)))
     }
 }
 

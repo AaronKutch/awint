@@ -66,4 +66,19 @@ fn eq_ext(lhs: &dyn Any, rhs: ExtAwi) {
     }
 }
 
+#[track_caller]
+fn eq_awi(lhs: &dyn Any, rhs: Awi) {
+    if let Some(lhs) = lhs.downcast_ref::<Awi>() {
+        assert_eq!(*lhs, rhs);
+    } else if let Some(lhs) = lhs.downcast_ref::<Option<Awi>>() {
+        if let Some(lhs) = lhs.as_ref() {
+            assert_eq!(*lhs, rhs);
+        } else {
+            panic!("lhs (Option<Awi>) is `None`")
+        }
+    } else {
+        panic!("lhs is not a recognized type");
+    }
+}
+
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));

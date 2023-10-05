@@ -16,7 +16,7 @@ impl Bits {
         unsafe_for_each_mut!(
             self,
             x,
-            {0..(self.len() - 1)}
+            {0..(self.total_digits() - 1)}
             {
                 match x.overflowing_add(1) {
                     (v, false) => {
@@ -54,7 +54,7 @@ impl Bits {
         unsafe_for_each_mut!(
             self,
             x,
-            {0..(self.len() - 1)}
+            {0..(self.total_digits() - 1)}
             {
                 match x.overflowing_sub(1) {
                     (v, false) => {
@@ -182,7 +182,7 @@ impl Bits {
         }
         let mut carry = cin as Digit;
         unsafe {
-            const_for!(i in {0..(self.len() - 1)} {
+            const_for!(i in {0..(self.total_digits() - 1)} {
                 let tmp = widen_add(lhs.get_unchecked(i), rhs.get_unchecked(i), carry);
                 *self.get_unchecked_mut(i) = tmp.0;
                 carry = tmp.1;

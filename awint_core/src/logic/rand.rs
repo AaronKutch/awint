@@ -19,11 +19,11 @@ impl Bits {
     /// use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
     ///
     /// let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    /// let mut awi = inlawi!(0u100);
-    /// awi.rand_(&mut rng).unwrap();
-    /// assert_eq!(awi, inlawi!(0x5ab77d3629a089d75dec9045du100));
-    /// awi.rand_(&mut rng).unwrap();
-    /// assert_eq!(awi, inlawi!(0x4c25a514060dea0565c95a8dau100));
+    /// let mut val = inlawi!(0u100);
+    /// val.rand_(&mut rng).unwrap();
+    /// assert_eq!(val, inlawi!(0x5ab77d3629a089d75dec9045du100));
+    /// val.rand_(&mut rng).unwrap();
+    /// assert_eq!(val, inlawi!(0x4c25a514060dea0565c95a8dau100));
     /// ```
     pub fn rand_<R>(&mut self, rng: &mut R) -> Result<(), rand_core::Error>
     where
@@ -43,7 +43,7 @@ impl Bits {
         let result = rng.try_fill_bytes(bytes);
         // this is a no-op on little endian, but on big endian this fixes byte order in
         // regular digits and rotates out unused bytes
-        const_for!(i in {0..self.len()} {
+        const_for!(i in {0..self.total_digits()} {
             self.as_mut_slice()[i] = Digit::from_le(self.as_mut_slice()[i]);
         });
         // clean up unused bits in last byte

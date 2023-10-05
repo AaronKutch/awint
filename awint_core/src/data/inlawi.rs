@@ -35,7 +35,7 @@ use crate::Bits;
 ///
 /// This struct implements `Deref<Target = Bits>`, see the main documentation of
 /// [Bits](crate::Bits) for more. There are also some allocating functions that
-/// only `ExtAwi` implements.
+/// only `ExtAwi` and `Awi` implement.
 ///
 /// ```
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
@@ -47,14 +47,14 @@ use crate::Bits;
 ///     cc!(tmp; lhs).unwrap();
 /// }
 ///
-/// let awi: inlawi_ty!(100) = {
+/// let val: inlawi_ty!(100) = {
 ///     let mut x = inlawi!(123i100);
 ///     let y = inlawi!(2i100);
 ///     x.neg_(true);
 ///     example(&mut x, &y);
 ///     x
 /// };
-/// let x: &Bits = &awi;
+/// let x: &Bits = &val;
 ///
 /// assert_eq!(x, inlawi!(-246i100).as_ref());
 /// ```
@@ -155,10 +155,10 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         Self::const_bw()
     }
 
-    /// Returns the exact number of `usize` digits needed to store all bits.
+    /// Returns the exact number of `Digit`s needed to store all bits.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn len(&self) -> usize {
+    pub const fn total_digits(&self) -> usize {
         // TODO use `NonZeroUsize` in the `len` and `total_digits` returns?
         RawStackBits::<BW, LEN>::total_digits().get()
     }
@@ -170,11 +170,11 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     #[doc(hidden)]
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn unstable_from_u8_slice(buf: &[u8]) -> Self {
-        let mut awi = InlAwi {
+        let mut val = InlAwi {
             _raw_stack_bits: RawStackBits::zero(),
         };
 
-        // At this point, we would call `awi.u8_slice_(buf)` and could return that.
+        // At this point, we would call `val.u8_slice_(buf)` and could return that.
         // However, we run into a problem where the compiler has difficulty. For
         // example,
         //
@@ -193,7 +193,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         // like AVR, where we don't want to double stack reservations.
 
         // inline `u8_slice_`, but we can also eliminate the `digit_set`
-        let self_byte_width = awi.len() * DIGIT_BYTES;
+        let self_byte_width = val.total_digits() * DIGIT_BYTES;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
         } else {
@@ -204,30 +204,30 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         unsafe {
             // zero out first.
             // (skip because we initialized `raw` to all zeros)
-            //awi.digit_set(false, start..self.len(), false);
+            //val.digit_set(false, start..self.total_digits(), false);
             // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
             // for writes at least up to `min_width`, they are aligned, and are
             // nonoverlapping because `self` is a mutable reference.
             ptr::copy_nonoverlapping(
                 buf.as_ptr(),
                 // note that we marked this as `#[inline]`
-                awi.as_mut_bytes_full_width_nonportable().as_mut_ptr(),
+                val.as_mut_bytes_full_width_nonportable().as_mut_ptr(),
                 min_width,
             );
-            // `start` can be `self.len()`, so cap it
-            let cap = if start >= awi.len() {
-                awi.len()
+            // `start` can be `self.total_digits()`, so cap it
+            let cap = if start >= val.total_digits() {
+                val.total_digits()
             } else {
                 start + 1
             };
             const_for!(i in {0..cap} {
                 // correct for big endian, otherwise no-op
-                *awi.get_unchecked_mut(i) = Digit::from_le(awi.get_unchecked(i));
+                *val.get_unchecked_mut(i) = Digit::from_le(val.get_unchecked(i));
             });
         }
-        awi.clear_unused_bits();
+        val.clear_unused_bits();
 
-        awi
+        val
     }
 
     /// Zero-value construction with bitwidth `BW`
@@ -241,35 +241,35 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Unsigned-maximum-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn umax() -> Self {
-        let mut awi = Self {
+        let mut val = Self {
             _raw_stack_bits: RawStackBits::all_set(),
         };
-        awi.const_as_mut().clear_unused_bits();
-        awi
+        val.const_as_mut().clear_unused_bits();
+        val
     }
 
     /// Signed-maximum-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imax() -> Self {
-        let mut awi = Self::umax();
-        *awi.const_as_mut().last_mut() = (MAX >> 1) >> awi.unused();
-        awi
+        let mut val = Self::umax();
+        *val.const_as_mut().last_mut() = (MAX >> 1) >> val.unused();
+        val
     }
 
     /// Signed-minimum-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn imin() -> Self {
-        let mut awi = Self::zero();
-        *awi.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> awi.unused();
-        awi
+        let mut val = Self::zero();
+        *val.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> val.unused();
+        val
     }
 
     /// Unsigned-one-value construction with bitwidth `BW`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn uone() -> Self {
-        let mut awi = Self::zero();
-        *awi.const_as_mut().first_mut() = 1;
-        awi
+        let mut val = Self::zero();
+        *val.const_as_mut().first_mut() = 1;
+        val
     }
 
     /// Used for tests, Can't put in `awint_internals`
@@ -325,9 +325,9 @@ impl InlAwi<1, { Bits::unstable_raw_digits(1) }> {
     /// Creates an `InlAwi` with one bit set to this `bool`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_bool(x: bool) -> Self {
-        let mut awi = Self::zero();
-        awi.bool_(x);
-        awi
+        let mut val = Self::zero();
+        val.bool_(x);
+        val
     }
 }
 
@@ -339,17 +339,17 @@ macro_rules! inlawi_from {
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 #[const_fn(cfg(feature = "const_support"))]
                 pub const fn $from_u(x: $u) -> Self {
-                    let mut awi = Self::zero();
-                    awi.$u_(x);
-                    awi
+                    let mut val = Self::zero();
+                    val.$u_(x);
+                    val
                 }
 
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 #[const_fn(cfg(feature = "const_support"))]
                 pub const fn $from_i(x: $i) -> Self {
-                    let mut awi = Self::zero();
-                    awi.$i_(x);
-                    awi
+                    let mut val = Self::zero();
+                    val.$i_(x);
+                    val
                 }
             }
         )*
@@ -370,17 +370,17 @@ impl UsizeInlAwi {
     /// Creates an `InlAwi` with the same bitwidth and bits as the integer
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_usize(x: usize) -> Self {
-        let mut awi = Self::zero();
-        awi.usize_(x);
-        awi
+        let mut val = Self::zero();
+        val.usize_(x);
+        val
     }
 
     /// Creates an `InlAwi` with the same bitwidth and bits as the integer
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_isize(x: isize) -> Self {
-        let mut awi = Self::zero();
-        awi.isize_(x);
-        awi
+        let mut val = Self::zero();
+        val.isize_(x);
+        val
     }
 }
 
@@ -390,8 +390,8 @@ impl DigitInlAwi {
     /// Creates an `InlAwi` with the same bitwidth and bits as `Digit`
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn from_digit(x: Digit) -> Self {
-        let mut awi = Self::zero();
-        awi.digit_(x);
-        awi
+        let mut val = Self::zero();
+        val.digit_(x);
+        val
     }
 }

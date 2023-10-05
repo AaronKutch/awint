@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use awint_ext::ExtAwi;
+use awint_ext::Awi;
 use awint_macro_internals::triple_arena::Advancer;
 use Op::*;
 
@@ -14,16 +14,15 @@ impl OpDag {
     /// literals. Note: decrements dependents but does not remove dead nodes.
     pub fn eval_node(&mut self, node: PNode) -> Result<(), EvalError> {
         let self_w = self[node].nzbw;
-        let lit_op: Op<ExtAwi> =
-            Op::translate(&self[node].op, |lhs: &mut [ExtAwi], rhs: &[PNode]| {
-                for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                    if let Op::Literal(ref lit) = self[rhs].op {
-                        *lhs = lit.clone();
-                    } else {
-                        unreachable!()
-                    }
+        let lit_op: Op<Awi> = Op::translate(&self[node].op, |lhs: &mut [Awi], rhs: &[PNode]| {
+            for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                if let Op::Literal(ref lit) = self[rhs].op {
+                    *lhs = lit.clone();
+                } else {
+                    unreachable!()
                 }
-            });
+            }
+        });
         match lit_op.eval(self_w) {
             EvalResult::Valid(x) | EvalResult::Pass(x) => {
                 let len = self[node].op.operands_len();

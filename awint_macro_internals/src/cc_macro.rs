@@ -1,6 +1,6 @@
 use std::{num::NonZeroUsize, str::FromStr};
 
-use awint_ext::ExtAwi;
+use awint_ext::Awi;
 use proc_macro2::TokenStream;
 
 use crate::{
@@ -13,8 +13,8 @@ use crate::{
 pub fn cc_macro<
     F0: FnMut(&str) -> String,
     // we run into lifetime generalization issues when trying `&Bits`
-    F1: FnMut(ExtAwi) -> String,
-    F2: FnMut(ExtAwi) -> String,
+    F1: FnMut(Awi) -> String,
+    F2: FnMut(Awi) -> String,
     F3: FnMut(&str, Option<NonZeroUsize>, Option<&str>) -> String,
     F4: FnMut(String, Option<NonZeroUsize>, bool) -> String,
 >(

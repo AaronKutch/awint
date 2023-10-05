@@ -3,12 +3,13 @@ use std::{
     borrow::{Borrow, BorrowMut},
     fmt::Debug,
     ops::{Deref, DerefMut},
+    process::{ExitCode, Termination},
 };
 
 use awint_ext::{awi, awint_internals::Location};
 use StdResult::{Err as StdErr, Ok as StdOk};
 
-use crate::{common::register_assertion_bit, dag, mimick::*};
+use crate::{dag, epoch::register_assertion_bit_for_current_epoch, mimick::*};
 
 // the type itself must be public, but nothing else about it can
 #[derive(Debug, Clone, Copy)]
@@ -278,7 +279,7 @@ impl<T, E> Result<T, E> {
                     line: tmp.line(),
                     col: tmp.column(),
                 };
-                register_assertion_bit(z.is_ok, location);
+                register_assertion_bit_for_current_epoch(z.is_ok, location);
                 if let StdOk(t) = z.res {
                     t
                 } else {
@@ -303,7 +304,7 @@ impl<T, E> Result<T, E> {
                     line: tmp.line(),
                     col: tmp.column(),
                 };
-                register_assertion_bit(!z.is_ok, location);
+                register_assertion_bit_for_current_epoch(!z.is_ok, location);
                 if let StdErr(e) = z.res {
                     e
                 } else {
@@ -333,6 +334,19 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>, E> Result<T, E> {
                 StdErr(_) => {
                     panic!("called `Result::unwrap_or()` with error-type `Opaque`")
                 }
+            },
+        }
+    }
+}
+
+impl<T, E> Termination for Result<T, E> {
+    fn report(self) -> ExitCode {
+        match self {
+            Ok(_) => ExitCode::SUCCESS,
+            Err(_) => ExitCode::FAILURE,
+            Opaque(z) => match z.res {
+                StdOk(_) => ExitCode::SUCCESS,
+                StdErr(_) => ExitCode::FAILURE,
             },
         }
     }
@@ -376,7 +390,7 @@ impl<T, E> std::ops::Try for Result<T, E> {
                         line: tmp.line(),
                         col: tmp.column(),
                     };
-                    register_assertion_bit(z.is_ok, location);
+                    register_assertion_bit_for_current_epoch(z.is_ok, location);
                     ControlFlow::Continue(t)
                 }
                 StdErr(e) => {
@@ -386,7 +400,7 @@ impl<T, E> std::ops::Try for Result<T, E> {
                         line: tmp.line(),
                         col: tmp.column(),
                     };
-                    register_assertion_bit(!z.is_ok, location);
+                    register_assertion_bit_for_current_epoch(!z.is_ok, location);
                     ControlFlow::Break(Err(e))
                 }
             },

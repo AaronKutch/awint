@@ -1,10 +1,10 @@
 //! Externally allocated arbitrary width integers
 //!
-//! This crate contains another storage type called `ExtAwi` to go along with
-//! `InlAwi` in the `awint_core` crate. This crate is separate because it
-//! requires support for `alloc`. Also includes `FP` because it practically
-//! requires allocation to use. This crate is intended to be used through the
-//! main `awint` crate, available with the "alloc" feature.
+//! This crate contains storage types with external storage, `ExtAwi` and `Awi`,
+//! to go along with `InlAwi` in the `awint_core` crate. This crate is separate
+//! because it requires support for `alloc`. Also includes `FP` because it
+//! practically requires allocation to use. This crate is intended to be used
+//! through the main `awint` crate, available with the "alloc" feature.
 
 #![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]
@@ -22,21 +22,20 @@
 
 extern crate alloc;
 
-mod extawi;
-mod fp_core;
-mod fp_ieee;
-mod fp_logic;
-#[cfg(feature = "serde_support")]
-mod serde;
-mod strings;
-
 #[doc(hidden)]
 pub use awint_core;
 #[doc(hidden)]
 pub use awint_core::awint_internals;
+mod awi_struct;
+mod extawi;
+mod fp_struct;
+#[cfg(feature = "serde_support")]
+mod serde;
+pub(crate) mod string_internals;
+pub use awi_struct::Awi;
 pub use awint_core::{bw, Bits, InlAwi, OrdBits, SerdeError};
 pub use extawi::ExtAwi;
-pub use fp_core::{FPType, FP};
+pub use fp_struct::{FPType, FP};
 
 /// Subset of `awint::awi`
 pub mod awi {
@@ -44,11 +43,11 @@ pub mod awi {
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
 
-    pub use crate::{ExtAwi, FPType, FP};
+    pub use crate::{Awi, ExtAwi, FPType, FP};
 }
 
 /// Fixed point related items
 pub mod fp {
-    pub use super::fp_ieee::{F32, F64};
+    pub use super::fp_struct::{F32, F64};
     pub use crate::{FPType, FP};
 }

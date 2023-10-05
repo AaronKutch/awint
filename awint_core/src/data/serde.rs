@@ -16,7 +16,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// it serializes into a struct named "InlAwi" with two fields "bw" and
     /// "bits". "bw" is the bitwidth in decimal, and "bits" are an unsigned
     /// hexadecimal string equivalent to what would be generated from
-    /// `ExtAwi::bits_to_string_radix(&self, false, 16, false, 0)`
+    /// `Awi::bits_to_string_radix(&self, false, 16, false, 0)`
     /// from the `awint_ext` crate.
     ///
     /// Note that there is clever use of buffers to avoid allocation on
@@ -28,9 +28,8 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// use awint::{inlawi, Bits, InlAwi};
     /// use ron::to_string;
     ///
-    /// let awi = inlawi!(0xfedcba9876543210u100);
     /// assert_eq!(
-    ///     to_string(&awi).unwrap(),
+    ///     to_string(&inlawi!(0xfedcba9876543210u100)).unwrap(),
     ///     "(bw:100,bits:\"fedcba9876543210\")"
     /// );
     /// ```
@@ -161,15 +160,15 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut val = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 
     fn visit_seq<V>(self, mut seq: V) -> Result<InlAwi<BW, LEN>, V::Error>
@@ -192,15 +191,15 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut val = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 }
 
@@ -214,10 +213,9 @@ impl<'de, const BW: usize, const LEN: usize> Deserialize<'de> for InlAwi<BW, LEN
     /// use awint::{inlawi, inlawi_ty, Bits, InlAwi};
     /// use ron::from_str;
     ///
-    /// let awi0 = inlawi!(0xfedcba9876543210u100);
     /// // note: you will probably have to specify the type with `inlawi_ty`
-    /// let awi1: inlawi_ty!(100) = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
-    /// assert_eq!(awi0, awi1);
+    /// let val: inlawi_ty!(100) = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
+    /// assert_eq!(val, inlawi!(0xfedcba9876543210u100));
     /// ```
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

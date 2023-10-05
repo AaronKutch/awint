@@ -62,11 +62,11 @@ impl Bits {
             return None
         }
         unsafe {
-            const_for!(lhs_i in {0..self.len()} {
+            const_for!(lhs_i in {0..self.total_digits()} {
                 // carry from the short multiplication
                 let mut carry0 = 0;
                 let mut carry1 = 0;
-                const_for!(rhs_i in {0..(self.len() - lhs_i)} {
+                const_for!(rhs_i in {0..(self.total_digits() - lhs_i)} {
                     let tmp0 =
                         widen_mul_add(lhs.get_unchecked(lhs_i), rhs.get_unchecked(rhs_i), carry0);
                     carry0 = tmp0.1;
@@ -90,11 +90,11 @@ impl Bits {
         }
         pad.zero_();
         unsafe {
-            const_for!(self_i in {0..self.len()} {
+            const_for!(self_i in {0..self.total_digits()} {
                 // carry from the short multiplication
                 let mut carry0 = 0;
                 let mut carry1 = 0;
-                const_for!(rhs_i in {0..(self.len() - self_i)} {
+                const_for!(rhs_i in {0..(self.total_digits() - self_i)} {
                     let tmp0 =
                         widen_mul_add(self.get_unchecked(self_i), rhs.get_unchecked(rhs_i), carry0);
                     carry0 = tmp0.1;
@@ -115,11 +115,11 @@ impl Bits {
     /// use awint::awi::*;
     ///
     /// fn arb_umul_(add: &mut Bits, lhs: &Bits, rhs: &Bits) {
-    ///     let mut resized_lhs = ExtAwi::zero(add.nzbw());
+    ///     let mut resized_lhs = Awi::zero(add.nzbw());
     ///     // Note that this function is specified as unsigned,
     ///     // because we use `zero_resize_`
     ///     resized_lhs.zero_resize_(lhs);
-    ///     let mut resized_rhs = ExtAwi::zero(add.nzbw());
+    ///     let mut resized_rhs = Awi::zero(add.nzbw());
     ///     resized_rhs.zero_resize_(rhs);
     ///     add.mul_add_(&resized_lhs, &resized_rhs).unwrap();
     /// }
@@ -133,13 +133,13 @@ impl Bits {
         } else {
             (rhs, lhs)
         };
-        let x0_upper_bound = if self.len() < x0.len() {
-            self.len()
+        let x0_upper_bound = if self.total_digits() < x0.total_digits() {
+            self.total_digits()
         } else {
-            x0.len()
+            x0.total_digits()
         };
         // Safety: all the `get_unchecked_` are in bounds, since `x0_i < x0_upper_bound
-        // < x0.len()` and there are independent checks every loop for the
+        // < x0.total_digits()` and there are independent checks every loop for the
         // `x1_i` and `self_i` cases.
         unsafe {
             const_for!(x0_i in {0..x0_upper_bound} {
@@ -149,7 +149,7 @@ impl Bits {
                 let mut x1_i = 0;
                 let mut self_i = x0_i;
                 loop {
-                    if x1_i >= x1.len() || self_i >= self.len() {
+                    if x1_i >= x1.total_digits() || self_i >= self.total_digits() {
                         break
                     }
                     let tmp0 =
@@ -162,13 +162,13 @@ impl Bits {
                     self_i += 1;
                 }
                 // handle the last short multiplication carry if `self` continues
-                if self_i < self.len() {
+                if self_i < self.total_digits() {
                     let tmp = widen_add(self.get_unchecked(self_i), carry0, carry1);
                     *self.get_unchecked_mut(self_i) = tmp.0;
                     carry1 = tmp.1;
                     self_i += 1;
                     // handle arbitrarily many addition carries
-                    while self_i < self.len() && carry1 != 0 {
+                    while self_i < self.total_digits() && carry1 != 0 {
                         let tmp = widen_add(self.get_unchecked(self_i), carry1, 0);
                         *self.get_unchecked_mut(self_i) = tmp.0;
                         carry1 = tmp.1;

@@ -9,7 +9,7 @@ use crate::Bits;
 pub struct CCResult<T> {
     run_fielding: bool,
     success: bool,
-    _phantom_data: PhantomData<T>,
+    _phantom_data: PhantomData<fn() -> T>,
 }
 
 impl<T> CCResult<T> {

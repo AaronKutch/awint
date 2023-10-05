@@ -2,6 +2,7 @@
 
 use awint::{awint_internals::Digit, Bits};
 use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
+mod awi_struct;
 #[cfg(not(miri))]
 mod fp;
 #[cfg(not(miri))]

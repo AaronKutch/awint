@@ -14,8 +14,8 @@ macro_rules! bits_ {
                 const LEN: usize = BW / BITS;
                 if LEN <= 1 {
                     *self.first_mut() = x as Digit;
-                    if self.len() > 1 {
-                        unsafe {self.digit_set(false, 1..self.len(), false);}
+                    if self.total_digits() > 1 {
+                        unsafe {self.digit_set(false, 1..self.total_digits(), false);}
                     }
                 } else if self.bw() > BW {
                     // Safety: there are at least `LEN` digits in `self`
@@ -23,11 +23,11 @@ macro_rules! bits_ {
                         const_for!(i in {0..LEN} {
                             *self.get_unchecked_mut(i) = (x >> (i * BITS)) as Digit;
                         });
-                        self.digit_set(false, LEN..self.len(), false);
+                        self.digit_set(false, LEN..self.total_digits(), false);
                     }
                 } else {
                     unsafe {
-                        const_for!(i in {0..self.len()} {
+                        const_for!(i in {0..self.total_digits()} {
                             *self.get_unchecked_mut(i) = (x >> (i * BITS)) as Digit;
                         });
                     }
@@ -41,10 +41,10 @@ macro_rules! bits_ {
                 const LEN: usize = BW / BITS;
                 if LEN <= 1 {
                     *self.first_mut() = x as IDigit as Digit;
-                    if self.len() >= 1 {
+                    if self.total_digits() >= 1 {
                         // Safety: there is at least 1 digit in `self`
                         unsafe {
-                            self.digit_set(x < 0, 1..self.len(), true);
+                            self.digit_set(x < 0, 1..self.total_digits(), true);
                         }
                     }
                 } else if self.bw() >= BW {
@@ -54,11 +54,11 @@ macro_rules! bits_ {
                         const_for!(i in {0..LEN} {
                             *self.get_unchecked_mut(i) = (x >> (i * BITS)) as IDigit as Digit;
                         });
-                        self.digit_set(sign, LEN..self.len(), true);
+                        self.digit_set(sign, LEN..self.total_digits(), true);
                     }
                 } else {
                     unsafe {
-                        const_for!(i in {0..self.len()} {
+                        const_for!(i in {0..self.total_digits()} {
                             *self.get_unchecked_mut(i) = (x >> (i * BITS)) as IDigit as Digit;
                         });
                     }
@@ -121,7 +121,7 @@ macro_rules! bits_convert {
                 } else {
                     let mut tmp = 0;
                     unsafe {
-                        const_for!(i in {0..self.len()} {
+                        const_for!(i in {0..self.total_digits()} {
                             tmp |= (self.get_unchecked(i) as $uX) << (i * BITS);
                         });
                     }
@@ -134,7 +134,7 @@ macro_rules! bits_convert {
             pub const fn $signed_name(&self) -> $iX {
                 const BW: usize = $uX::BITS as usize;
                 const LEN: usize = BW / BITS;
-                if LEN <= 1 && self.len() == 1 {
+                if LEN <= 1 && self.total_digits() == 1 {
                     let sign_bit: Digit = 1 << (self.bw() - 1);
                     let extension = $uX::MIN.wrapping_sub((self.first() & sign_bit) as $uX);
                     ((self.first() as $uX) | extension) as $iX
