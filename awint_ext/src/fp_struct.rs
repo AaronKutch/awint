@@ -1,7 +1,7 @@
-mod core;
+mod fp_core;
 mod ieee;
 mod logic;
 
-pub use core::*;
+pub use fp_core::*;
 
 pub use ieee::*;

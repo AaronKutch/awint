@@ -22,8 +22,8 @@ fn main() -> ! {
     cc!(x1; x0).unwrap();
     let _ = inlawi!(umax: .., x0; ..100).unwrap();
 
-    // copied some macro tests here to make sure that `ExtAwi` or `Awi` is not brought in
-    // through future changes
+    // copied some macro tests here to make sure that `ExtAwi` or `Awi` is not
+    // brought in through future changes
 
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);
