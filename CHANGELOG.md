@@ -1,6 +1,6 @@
 # Changelog
 
-## TODO
+## [0.13.0] - 2023-10-04
 ### Additions
 - Added the `Awi` struct and corresponding macro, this should replace many usages of `ExtAwi`
 - Added more `awi` to `dag` `From` impls
