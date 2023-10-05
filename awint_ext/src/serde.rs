@@ -164,15 +164,15 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
         let w = bw(w);
-        let mut awi = ExtAwi::zero(w);
+        let mut val = ExtAwi::zero(w);
         let mut pad = Awi::zero(w);
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 
     fn visit_seq<V>(self, mut seq: V) -> Result<ExtAwi, V::Error>
@@ -189,15 +189,15 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
         let w = bw(w);
-        let mut awi = ExtAwi::zero(w);
+        let mut val = ExtAwi::zero(w);
         let mut pad = Awi::zero(w);
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 }
 
@@ -262,15 +262,15 @@ impl<'de> Visitor<'de> for AwiVisitor {
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
         let w = bw(w);
-        let mut awi = Awi::zero(w);
+        let mut val = Awi::zero(w);
         let mut pad = Awi::zero(w);
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 
     fn visit_seq<V>(self, mut seq: V) -> Result<Awi, V::Error>
@@ -287,15 +287,15 @@ impl<'de> Visitor<'de> for AwiVisitor {
             return Err(de::Error::custom("`bw` field should be nonzero"))
         }
         let w = bw(w);
-        let mut awi = Awi::zero(w);
+        let mut val = Awi::zero(w);
         let mut pad = Awi::zero(w);
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 }
 

@@ -209,23 +209,23 @@ impl<'a> ExtAwi {
 
     /// Signed-maximum-value construction with bitwidth `w`
     pub fn imax(w: NonZeroUsize) -> Self {
-        let mut awi = Self::umax(w);
-        *awi.const_as_mut().last_mut() = (MAX >> 1) >> awi.unused();
-        awi
+        let mut val = Self::umax(w);
+        *val.const_as_mut().last_mut() = (MAX >> 1) >> val.unused();
+        val
     }
 
     /// Signed-minimum-value construction with bitwidth `w`
     pub fn imin(w: NonZeroUsize) -> Self {
-        let mut awi = Self::zero(w);
-        *awi.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> awi.unused();
-        awi
+        let mut val = Self::zero(w);
+        *val.const_as_mut().last_mut() = (IDigit::MIN as Digit) >> val.unused();
+        val
     }
 
     /// Unsigned-one-value construction with bitwidth `w`
     pub fn uone(w: NonZeroUsize) -> Self {
-        let mut awi = Self::zero(w);
-        *awi.const_as_mut().first_mut() = 1;
-        awi
+        let mut val = Self::zero(w);
+        *val.const_as_mut().first_mut() = 1;
+        val
     }
 
     /// Used by `awint_macros` in avoiding a `NonZeroUsize` dependency

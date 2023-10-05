@@ -202,8 +202,8 @@
 //! // construction macro. This constructs an `InlAwi` out of a 4 bit signed
 //! // negative 1, a 16 bit binary string, and a 8 bit unsigned 42. The
 //! // total bitwidth is 4 + 16 + 8 = 28.
-//! let awi: inlawi_ty!(28) = inlawi!(-1i4, 0000_0101_0011_1001, 42u8);
-//! assert_eq!(awi, inlawi!(1111_0000010100111001_00101010));
+//! let val: inlawi_ty!(28) = inlawi!(-1i4, 0000_0101_0011_1001, 42u8);
+//! assert_eq!(val, inlawi!(1111_0000010100111001_00101010));
 //!
 //! // Literals can have static ranges applied to them, which might be useful
 //! // in some circumstances for readability. The macros automatically truncate
@@ -215,10 +215,10 @@
 //! // be applied. The macros will assume the range bounds to result in
 //! // `usize`, and the compiler will typecheck this.
 //! let x: usize = 8;
-//! let awi = ExtAwi::zero(bw(12));
-//! // At runtime, `x` evaluates to 8 and `x + awi.bw()` evaluates to 20
+//! let val = ExtAwi::zero(bw(12));
+//! // At runtime, `x` evaluates to 8 and `x + val.bw()` evaluates to 20
 //! assert_eq!(
-//!     extawi!(0x98765_u20[x..(x + awi.bw())]).unwrap(),
+//!     extawi!(0x98765_u20[x..(x + val.bw())]).unwrap(),
 //!     extawi!(0x987u12)
 //! );
 //! ```
@@ -256,8 +256,8 @@
 //! assert_eq!(d, awi!(0xc4di64));
 //! assert_eq!(e, FP::new(false, inlawi!(0xc4di64), 32).unwrap());
 //!
-//! let awi = inlawi!(0xau4);
-//! let a = awi.as_ref();
+//! let val = inlawi!(0xau4);
+//! let a = val.as_ref();
 //! let b = extawi!(0xbu4);
 //! let c = inlawi!(0xcu4);
 //!

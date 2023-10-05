@@ -90,11 +90,11 @@ pub(crate) fn internal_from_bytes_radix(
             .checked_add(bits_upper_bound(src.len(), radix)?)
             .ok_or(Overflow)?,
     );
-    let mut awi = Awi::zero(tmp_bw);
+    let mut val = Awi::zero(tmp_bw);
     let mut pad0 = Awi::zero(tmp_bw);
     let mut pad1 = Awi::zero(tmp_bw);
 
-    let tmp = awi.const_as_mut();
+    let tmp = val.const_as_mut();
     // note: do not unwrap in case of exhaustion
     tmp.bytes_radix_(sign, src, radix, pad0.const_as_mut(), pad1.const_as_mut())?;
 

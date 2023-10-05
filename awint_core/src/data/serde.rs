@@ -160,15 +160,15 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut val = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 
     fn visit_seq<V>(self, mut seq: V) -> Result<InlAwi<BW, LEN>, V::Error>
@@ -191,15 +191,15 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
                  happening on",
             ))
         }
-        let mut awi = InlAwi::<BW, LEN>::zero();
+        let mut val = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
         let result =
-            awi.const_as_mut()
+            val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
             return Err(de::Error::custom(e))
         }
-        Ok(awi)
+        Ok(val)
     }
 }
 
@@ -214,8 +214,8 @@ impl<'de, const BW: usize, const LEN: usize> Deserialize<'de> for InlAwi<BW, LEN
     /// use ron::from_str;
     ///
     /// // note: you will probably have to specify the type with `inlawi_ty`
-    /// let awi: inlawi_ty!(100) = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
-    /// assert_eq!(awi, inlawi!(0xfedcba9876543210u100));
+    /// let val: inlawi_ty!(100) = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
+    /// assert_eq!(val, inlawi!(0xfedcba9876543210u100));
     /// ```
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

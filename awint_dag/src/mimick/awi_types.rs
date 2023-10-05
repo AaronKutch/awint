@@ -182,9 +182,9 @@ forward_inlawi_fmt!(Display LowerHex UpperHex Octal Binary);
 
 impl InlAwi<1, { awi::Bits::unstable_raw_digits(1) }> {
     pub fn from_bool(x: impl Into<dag::bool>) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().bool_(x);
-        awi
+        let mut val = Self::zero();
+        val.const_as_mut().bool_(x);
+        val
     }
 }
 
@@ -206,15 +206,15 @@ macro_rules! inlawi_from {
         $(
             impl InlAwi<$w, {awi::Bits::unstable_raw_digits($w)}> {
                 pub fn $from_u(x: impl Into<dag::$u>) -> Self {
-                    let mut awi = Self::zero();
-                    awi.const_as_mut().$u_(x);
-                    awi
+                    let mut val = Self::zero();
+                    val.const_as_mut().$u_(x);
+                    val
                 }
 
                 pub fn $from_i(x: impl Into<dag::$i>) -> Self {
-                    let mut awi = Self::zero();
-                    awi.const_as_mut().$i_(x);
-                    awi
+                    let mut val = Self::zero();
+                    val.const_as_mut().$i_(x);
+                    val
                 }
             }
 
@@ -257,15 +257,15 @@ type UsizeInlAwi = InlAwi<{ USIZE_BITS }, { awi::Bits::unstable_raw_digits(USIZE
 
 impl UsizeInlAwi {
     pub fn from_usize(x: impl Into<dag::usize>) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().usize_(x);
-        awi
+        let mut val = Self::zero();
+        val.const_as_mut().usize_(x);
+        val
     }
 
     pub fn from_isize(x: impl Into<dag::isize>) -> Self {
-        let mut awi = Self::zero();
-        awi.const_as_mut().isize_(x);
-        awi
+        let mut val = Self::zero();
+        val.const_as_mut().isize_(x);
+        val
     }
 }
 
@@ -858,15 +858,15 @@ extawi_from!(
 // misc
 
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {
-    fn from(awi: awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
-        let awi = Awi::from(awi);
-        Self::from_state(awi.state())
+    fn from(val: awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
+        let val = Awi::from(val);
+        Self::from_state(val.state())
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for InlAwi<BW, LEN> {
-    fn from(awi: &awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
-        let awi = Awi::from(awi);
-        Self::from_state(awi.state())
+    fn from(val: &awi::InlAwi<BW, LEN>) -> InlAwi<BW, LEN> {
+        let val = Awi::from(val);
+        Self::from_state(val.state())
     }
 }

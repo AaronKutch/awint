@@ -17,8 +17,8 @@ fn dag_macros() {
     assert_eq!(inlawi!(0xau4, 0x4321u32[8..12], 0x7u4), inlawi!(0xa37u12));
     // copy assign
     let a = inlawi!(0xau4);
-    let mut awi = ExtAwi::zero(bw(4));
-    let mut b = awi.const_as_mut();
+    let mut val = ExtAwi::zero(bw(4));
+    let mut b = val.const_as_mut();
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
@@ -26,9 +26,9 @@ fn dag_macros() {
     assert_eq!(a.as_ref(), c.as_ref());
     // dynamic ranges
     let x = 8;
-    let awi = ExtAwi::zero(bw(12));
+    let val = ExtAwi::zero(bw(12));
     assert_eq!(
-        extawi!(0x98765_u20[x..(x + awi.bw())]).unwrap(),
+        extawi!(0x98765_u20[x..(x + val.bw())]).unwrap(),
         extawi!(0x987u12)
     );
     // unbounded fillers

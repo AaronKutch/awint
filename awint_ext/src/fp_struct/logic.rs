@@ -234,8 +234,8 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// // the notation they prefer.
     ///
     /// // This creates a fixed point value of -42.1234_i32f16 (see `Awi::from_str`)
-    /// let awi = Awi::from_str_general(Some(true), "42", "1234", 0, 10, bw(32), 16).unwrap();
-    /// let fp_awi = FP::new(true, awi, 16).unwrap();
+    /// let val = Awi::from_str_general(Some(true), "42", "1234", 0, 10, bw(32), 16).unwrap();
+    /// let fp_awi = FP::new(true, val, 16).unwrap();
     /// assert_eq!(
     ///     // note: in many situations users will want at least 1 zero for
     ///     // both parts so that zero parts result in "0" strings and not "",

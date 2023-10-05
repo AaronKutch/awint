@@ -436,23 +436,23 @@ impl<'a> Concat<'a> {
                     comp_type = 1;
                 }
 
-                let mut awi = ExtAwi::zero(bw(referenced_bw));
-                awi.rand_(self.rng).unwrap();
+                let mut val = ExtAwi::zero(bw(referenced_bw));
+                val.rand_(self.rng).unwrap();
 
                 // 0 is literal, 1 is variable
                 let mut range = if comp_type == 0 {
-                    self.gen_literal(bitwidth, referenced_bw, &awi)
+                    self.gen_literal(bitwidth, referenced_bw, &val)
                 } else {
                     // variable
-                    let tmp = self.gen_variable(bitwidth, referenced_bw, &awi, true);
+                    let tmp = self.gen_variable(bitwidth, referenced_bw, &val, true);
                     (tmp.0, tmp.1)
                 };
 
                 if let Some(ref mut start) = range.0 {
-                    let mut tmp = ExtAwi::zero(bw(awi.bw() - *start));
-                    awi.lshr_(*start).unwrap();
-                    tmp.zero_resize_(&awi);
-                    awi = tmp;
+                    let mut tmp = ExtAwi::zero(bw(val.bw() - *start));
+                    val.lshr_(*start).unwrap();
+                    tmp.zero_resize_(&val);
+                    val = tmp;
                     if let Some(ref mut end) = range.1 {
                         *end -= *start;
                     }
@@ -460,20 +460,20 @@ impl<'a> Concat<'a> {
                 }
                 if let Some(end) = range.1 {
                     let mut tmp = ExtAwi::zero(bw(end));
-                    tmp.zero_resize_(&awi);
-                    awi = tmp;
+                    tmp.zero_resize_(&val);
+                    val = tmp;
                 }
-                let nzbw = awi.nzbw();
+                let nzbw = val.nzbw();
                 self.non_unbounded_width += nzbw.get();
-                self.push_awi(awi, ExtAwi::zero(nzbw));
+                self.push_awi(val, ExtAwi::zero(nzbw));
             } else {
                 // 2 is filler
                 let (start, end) = self.gen_filler(bitwidth, self.only_one_concat, comp_i);
                 if let Some(end) = end {
-                    let awi = ExtAwi::zero(bw(end - start));
-                    self.non_unbounded_width += awi.bw();
-                    let mask = ExtAwi::umax(awi.nzbw());
-                    self.push_awi(awi, mask);
+                    let val = ExtAwi::zero(bw(end - start));
+                    self.non_unbounded_width += val.bw();
+                    let mask = ExtAwi::umax(val.nzbw());
+                    self.push_awi(val, mask);
                 } else {
                     self.align_side = true;
                     self.unbounded = true;
@@ -489,18 +489,18 @@ impl<'a> Concat<'a> {
             let (bitwidth, referenced_bw) = self.gen_comp_bitwidth(comp_i);
             if !matches!(self.rand_usize() % 8, 0..=5) {
                 // variable
-                let mut awi = ExtAwi::zero(bw(referenced_bw));
-                awi.rand_(self.rng).unwrap();
+                let mut val = ExtAwi::zero(bw(referenced_bw));
+                val.rand_(self.rng).unwrap();
 
-                let tmp = self.gen_variable(bitwidth, referenced_bw, &awi, false);
+                let tmp = self.gen_variable(bitwidth, referenced_bw, &val, false);
                 let start = tmp.0;
                 let end = tmp.1;
                 let ref_s = tmp.2;
 
                 // calculate resulting value
                 let sc = match (start, end) {
-                    (None, None) => awi.bw(),
-                    (Some(start), None) => awi.bw() - start,
+                    (None, None) => val.bw(),
+                    (Some(start), None) => val.bw() - start,
                     (None, Some(end)) => end,
                     (Some(start), Some(end)) => end - start,
                 };
@@ -516,7 +516,7 @@ impl<'a> Concat<'a> {
                 }
                 write!(
                     self.assertions,
-                    "let mut _result = inlawi!({awi:?});\n_result.field({start}, &_source, _shl, \
+                    "let mut _result = inlawi!({val:?});\n_result.field({start}, &_source, _shl, \
                      {sc}).unwrap();\nassert_eq!({ref_s}.const_as_ref(), \
                      _result.const_as_ref());\n"
                 )
