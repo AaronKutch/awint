@@ -32,7 +32,7 @@ macro_rules! unsafe_for_each {
     ($lhs:ident, $x:ident, $f:block) => {
         unsafe {
             // Safety: This accesses all regular digits within their bounds
-            const_for!(i in {0..$lhs.len()} {
+            const_for!(i in {0..$lhs.total_digits()} {
                 let $x = $lhs.get_unchecked(i);
                 $f;
             });
@@ -55,7 +55,7 @@ macro_rules! unsafe_for_each_mut {
     ($lhs:ident, $x:ident, $f:block, $clear_unused_bits:expr) => {
         unsafe {
             // Safety: This accesses all regular digits within their bounds
-            const_for!(i in {0..$lhs.len()} {
+            const_for!(i in {0..$lhs.total_digits()} {
                 let $x = $lhs.get_unchecked_mut(i);
                 $f;
             });
@@ -89,7 +89,7 @@ macro_rules! unsafe_binop_for_each {
             unsafe {
                 // Safety: This accesses all regular digits within their bounds. If the
                 // bitwidths are equal, then the slice lengths are also equal.
-                const_for!(i in {0..$lhs.len()} {
+                const_for!(i in {0..$lhs.total_digits()} {
                     let $x = $lhs.get_unchecked(i);
                     let $y = $rhs.get_unchecked(i);
                     $f;
@@ -144,7 +144,7 @@ macro_rules! unsafe_binop_for_each_mut {
             unsafe {
                 // Safety: This accesses all regular digits within their bounds. If the
                 // bitwidths are equal, then the slice lengths are also equal.
-                const_for!(i in {0..$lhs.len()} {
+                const_for!(i in {0..$lhs.total_digits()} {
                     let $x = $lhs.get_unchecked_mut(i);
                     let $y = $rhs.get_unchecked(i);
                     $f;
@@ -164,14 +164,14 @@ macro_rules! unsafe_binop_for_each_mut {
 /// # Safety
 ///
 /// `range` must satisfy `range.start <= range.end` and `range.end <=
-/// self.len()`
+/// self.total_digits()`
 #[macro_export]
 macro_rules! subdigits_mut {
     ($bits:ident, $range:expr, $subbits:ident, $f:block) => {
         // because this macro is especially unsafe, do not inlude
         // an `unsafe` block here and make the caller handle it.
         debug_assert!($range.start <= $range.end);
-        debug_assert!($range.end <= $bits.len());
+        debug_assert!($range.end <= $bits.total_digits());
         // prevent a zero bitwidth
         if $range.start != $range.end {
             // Safety: This maintains the invariants of `Bits`. This works even

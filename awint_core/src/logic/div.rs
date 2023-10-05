@@ -40,7 +40,7 @@ impl Bits {
         // overflow; `rem` needs to start as 0 and it would cause signature problems
         // anyway.
         let mut rem = 0;
-        const_for!(i in {0..self.len()}.rev() {
+        const_for!(i in {0..self.total_digits()}.rev() {
             // Safety: we checked that `self.bw() == duo.bw()`
             let y = unsafe {self.get_unchecked(i)};
             let tmp = dd_division((y, rem), (div, 0));
@@ -60,7 +60,7 @@ impl Bits {
             return None
         }
         let mut rem = 0;
-        const_for!(i in {0..self.len()}.rev() {
+        const_for!(i in {0..self.total_digits()}.rev() {
             // Safety: we checked that `self.bw() == duo.bw()`
             let y = unsafe {duo.get_unchecked(i)};
             let tmp = dd_division((y, rem), (div, 0));
@@ -123,7 +123,7 @@ impl Bits {
         // This is a version of the "trifecta" division algorithm adapted for bigints.
         // See https://github.com/AaronKutch/specialized-div-rem for better documentation.
 
-        let len = quo.len();
+        let len = quo.total_digits();
         let mut duo_lz = duo.lz();
         let div_lz = div.lz();
 

@@ -158,7 +158,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Returns the exact number of `Digit`s needed to store all bits.
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn len(&self) -> usize {
+    pub const fn total_digits(&self) -> usize {
         // TODO use `NonZeroUsize` in the `len` and `total_digits` returns?
         RawStackBits::<BW, LEN>::total_digits().get()
     }
@@ -193,7 +193,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         // like AVR, where we don't want to double stack reservations.
 
         // inline `u8_slice_`, but we can also eliminate the `digit_set`
-        let self_byte_width = val.len() * DIGIT_BYTES;
+        let self_byte_width = val.total_digits() * DIGIT_BYTES;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
         } else {
@@ -204,7 +204,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         unsafe {
             // zero out first.
             // (skip because we initialized `raw` to all zeros)
-            //val.digit_set(false, start..self.len(), false);
+            //val.digit_set(false, start..self.total_digits(), false);
             // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
             // for writes at least up to `min_width`, they are aligned, and are
             // nonoverlapping because `self` is a mutable reference.
@@ -214,9 +214,9 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
                 val.as_mut_bytes_full_width_nonportable().as_mut_ptr(),
                 min_width,
             );
-            // `start` can be `self.len()`, so cap it
-            let cap = if start >= val.len() {
-                val.len()
+            // `start` can be `self.total_digits()`, so cap it
+            let cap = if start >= val.total_digits() {
+                val.total_digits()
             } else {
                 start + 1
             };

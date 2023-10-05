@@ -43,7 +43,7 @@ impl Bits {
         let result = rng.try_fill_bytes(bytes);
         // this is a no-op on little endian, but on big endian this fixes byte order in
         // regular digits and rotates out unused bytes
-        const_for!(i in {0..self.len()} {
+        const_for!(i in {0..self.total_digits()} {
             self.as_mut_slice()[i] = Digit::from_le(self.as_mut_slice()[i]);
         });
         // clean up unused bits in last byte

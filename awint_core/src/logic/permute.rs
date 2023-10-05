@@ -129,20 +129,20 @@ impl Bits {
         }
         unsafe {
             // below performs this:
-            //const_for!(i in {s..self.len()}.rev() {
+            //const_for!(i in {s..self.total_digits()}.rev() {
             //    *self.get_unchecked_mut(i) = self.get_unchecked(i - s);
             //});
             // If this shift overflows, it does not result in UB because it falls back to
             // the more relaxed `ptr:copy`
-            if s.wrapping_shl(1) >= self.len() {
+            if s.wrapping_shl(1) >= self.total_digits() {
                 // We cannot call multiple `as_ptr` or `as_mut_ptr` at the same time, because
                 // they come from the same allocation. One would invalidate the other, and we
                 // would run into stacked borrow issues.
                 let ptr = self.as_mut_ptr();
-                ptr::copy_nonoverlapping(ptr, ptr.add(s), self.len() - s);
+                ptr::copy_nonoverlapping(ptr, ptr.add(s), self.total_digits() - s);
             } else {
                 let ptr = self.as_mut_ptr();
-                ptr::copy(ptr, ptr.add(s), self.len() - s);
+                ptr::copy(ptr, ptr.add(s), self.total_digits() - s);
             }
             self.digit_set(false, 0..s, false);
         }
@@ -155,7 +155,7 @@ impl Bits {
         let s = extra(s);
         if s != 0 {
             // TODO benchmark this strategy vs dual unroll
-            const_for!(i in {1..self.len()}.rev() {
+            const_for!(i in {1..self.total_digits()}.rev() {
                 unsafe {
                     *self.get_unchecked_mut(i) =
                         (self.get_unchecked(i - 1) >> (BITS - s)) | (self.get_unchecked(i) << s);
@@ -187,26 +187,31 @@ impl Bits {
         }
         unsafe {
             // below performs this:
-            //const_for!(i in {s..self.len()} {
+            //const_for!(i in {s..self.total_digits()} {
             //    *self.get_unchecked_mut(i - s) = self.get_unchecked(i);
             //});
             // If this shift overflows, it does not result in UB because it falls back to
             // the more relaxed `ptr:copy`
-            if s.wrapping_shl(1) >= self.len() {
+            if s.wrapping_shl(1) >= self.total_digits() {
                 // We cannot call multiple `as_ptr` or `as_mut_ptr` at the same time, because
                 // they come from the same allocation. One would invalidate the other, and we
                 // would run into stacked borrow issues.
                 let ptr = self.as_mut_ptr();
-                ptr::copy_nonoverlapping(ptr.add(s), ptr, self.len() - s);
+                ptr::copy_nonoverlapping(ptr.add(s), ptr, self.total_digits() - s);
             } else {
                 let ptr = self.as_mut_ptr();
-                ptr::copy(ptr.add(s), ptr, self.len() - s);
+                ptr::copy(ptr.add(s), ptr, self.total_digits() - s);
             }
             if extension && (self.unused() != 0) {
                 // Safety: There are fewer digit shifts than digits
-                *self.get_unchecked_mut(self.len() - 1 - s) |= MAX << (BITS - self.unused());
+                *self.get_unchecked_mut(self.total_digits() - 1 - s) |=
+                    MAX << (BITS - self.unused());
             }
-            self.digit_set(extension, (self.len() - s)..self.len(), clear_unused_bits);
+            self.digit_set(
+                extension,
+                (self.total_digits() - s)..self.total_digits(),
+                clear_unused_bits,
+            );
         }
     }
 
@@ -228,7 +233,7 @@ impl Bits {
         }
         unsafe {
             // TODO benchmark this strategy vs dual unroll
-            const_for!(i in {0..(self.len() - 1)} {
+            const_for!(i in {0..(self.total_digits() - 1)} {
                 *self.get_unchecked_mut(i) =
                     (self.get_unchecked(i) >> s) | (self.get_unchecked(i + 1) << (BITS - s));
             });
@@ -239,7 +244,7 @@ impl Bits {
                     // handle bits that get shifted into the next to last digit
                     // Safety: it is not possible to reach this unless there are enough bits for the
                     // shift which has to be less than the bitwidth
-                    *self.get_unchecked_mut(self.len() - 2) |=
+                    *self.get_unchecked_mut(self.total_digits() - 2) |=
                         MAX << ((2 * BITS) - s - self.unused());
                 } else {
                     *self.last_mut() |= MAX << (BITS - s - self.unused());
@@ -365,7 +370,7 @@ impl Bits {
             Some(s) if s.get() < self.bw() => {
                 let x = self;
                 // fast path and simplifies other code paths
-                if x.len() == 1 {
+                if x.total_digits() == 1 {
                     *x.last_mut() = ((x.last() >> (x.bw() - s.get())) | (x.last() << s.get()))
                         & (MAX >> (BITS - x.bw()));
                     return Some(())
@@ -377,7 +382,7 @@ impl Bits {
                 let s0 = extra(s);
                 let extra = x.extra();
 
-                let mid_digit = x.len() - digits;
+                let mid_digit = x.total_digits() - digits;
                 let p = x.as_mut_ptr();
                 // Safety: this satisfies the requirements of `usize_rotate`
                 unsafe {
@@ -403,10 +408,10 @@ impl Bits {
                         x.last() >> (extra - s0)
                     } else {
                         // bits from the second to last digit get rotated all the way through the
-                        // extra bits. We have already handled `x.len() == 1`.
+                        // extra bits. We have already handled `x.total_digits() == 1`.
                         unsafe {
                             (x.last() << (s0 - extra))
-                                | (x.get_unchecked(x.len() - 2) >> (BITS - s0 + extra))
+                                | (x.get_unchecked(x.total_digits() - 2) >> (BITS - s0 + extra))
                         }
                     };
                     x.subdigit_shl_(s, true);
@@ -440,7 +445,7 @@ impl Bits {
     /// second most significant bit, etc.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn rev_(&mut self) {
-        let len = self.len();
+        let len = self.total_digits();
         if len == 1 {
             *self.last_mut() = self.last().reverse_bits() >> self.unused();
             return
@@ -559,15 +564,19 @@ impl Bits {
             // Safety: there are two nonoverlapping `Bits`, and no out-of-bounds can occur
             // because of strict checks
             unsafe {
-                ptr::copy_nonoverlapping(rhs.as_ptr().add(digits), self.as_mut_ptr(), self.len());
+                ptr::copy_nonoverlapping(
+                    rhs.as_ptr().add(digits),
+                    self.as_mut_ptr(),
+                    self.total_digits(),
+                );
             }
         } else if self.bw() < BITS {
             *self.first_mut() = rhs.first() >> bits;
         } else {
             // Safety: When `self.bw() >= BITS`, `digits + i + 1` can be at most
-            // `self.len() + digits` which cannot reach `rhs.len()`.
+            // `self.total_digits() + digits` which cannot reach `rhs.total_digits()`.
             unsafe {
-                const_for!(i in {0..self.len()} {
+                const_for!(i in {0..self.total_digits()} {
                     *self.get_unchecked_mut(i) = (rhs.get_unchecked(digits + i) >> bits)
                         | (rhs.get_unchecked(digits + i + 1) << (BITS - bits));
                 });

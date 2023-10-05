@@ -626,7 +626,7 @@ impl<'a> Awi {
                 } else {
                     digits_u(original_bw)
                 };
-                let end = self.len();
+                let end = self.total_digits();
                 self.digit_set(extension, start..end, extension)
             }
         }
@@ -647,7 +647,7 @@ impl<'a> Awi {
                     true
                 } else {
                     let mut overflow = false;
-                    const_for!(i in {total_digits(new_bitwidth).get()..self.len()} {
+                    const_for!(i in {total_digits(new_bitwidth).get()..self.total_digits()} {
                         if self.get_unchecked(i) != 0 {
                             overflow = true;
                             break
@@ -668,7 +668,7 @@ impl<'a> Awi {
     /// `true` if the signed meaning of the integer is changed.
     pub fn sign_resize(&mut self, new_bitwidth: NonZeroUsize) -> bool {
         let old_msb = self.msb();
-        let old_len = self.len();
+        let old_len = self.total_digits();
         let old_extra = self.extra();
         let new_len = total_digits(new_bitwidth).get();
         let new_extra = extra(new_bitwidth);

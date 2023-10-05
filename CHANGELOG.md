@@ -8,6 +8,8 @@
 ### Changes
 - The `cc` macro now uses `Awi` for dynamic storage
 - Overhauled the epoch system for `awint_dag` and various related things
+- Renamed the hidden `len` functions to `total_digits` so that it isn't accidentally used instead of
+  `bw`
 
 ## [0.12.0] - 2023-08-29
 ### Crate

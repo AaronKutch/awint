@@ -239,26 +239,26 @@ impl<'a> Bits {
 
     /// # Safety
     ///
-    /// `i < self.len()` should hold true
+    /// `i < self.total_digits()` should hold true
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const unsafe fn get_unchecked(&self, i: usize) -> Digit {
-        debug_assert!(i < self.len());
-        // Safety: `i < self.len()` means the access is within the slice
+        debug_assert!(i < self.total_digits());
+        // Safety: `i < self.total_digits()` means the access is within the slice
         unsafe { *self.as_ptr().add(i) }
     }
 
     /// # Safety
     ///
-    /// `i < self.len()` should hold true
+    /// `i < self.total_digits()` should hold true
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const unsafe fn get_unchecked_mut(&'a mut self, i: usize) -> &'a mut Digit {
-        debug_assert!(i < self.len());
+        debug_assert!(i < self.total_digits());
         // Safety: The bounds of this are a subset of `raw_get_unchecked_mut`
         unsafe { &mut *self.as_mut_ptr().add(i) }
     }
@@ -268,7 +268,7 @@ impl<'a> Bits {
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
-    pub const fn len(&self) -> usize {
+    pub const fn total_digits(&self) -> usize {
         total_digits(self.nzbw()).get()
     }
 
@@ -322,7 +322,7 @@ impl<'a> Bits {
     #[must_use]
     pub const fn last(&self) -> Digit {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
-        unsafe { self.get_unchecked(self.len() - 1) }
+        unsafe { self.get_unchecked(self.total_digits() - 1) }
     }
 
     /// Returns a mutable reference to the last `Digit`
@@ -332,7 +332,7 @@ impl<'a> Bits {
     #[must_use]
     pub const fn last_mut(&'a mut self) -> &'a mut Digit {
         // Safety: There is at least one digit since bitwidth has a nonzero invariant
-        unsafe { self.get_unchecked_mut(self.len() - 1) }
+        unsafe { self.get_unchecked_mut(self.total_digits() - 1) }
     }
 
     /// Clears the unused bits. This is only needed if you are using certain
@@ -404,7 +404,7 @@ impl<'a> Bits {
     pub const fn as_slice(&'a self) -> &'a [Digit] {
         // Safety: `Bits` already follows standard slice initialization invariants. This
         // acquires a subslice that uses the total length instead of the bitwidth.
-        unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.len()) }
+        unsafe { &*ptr::slice_from_raw_parts(self.as_ptr(), self.total_digits()) }
     }
 
     /// Returns a mutable reference to all of the underlying bits of `self`,
@@ -422,7 +422,7 @@ impl<'a> Bits {
     #[must_use]
     pub const fn as_mut_slice(&'a mut self) -> &'a mut [Digit] {
         // Safety: The same as `as_slice`
-        unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len()) }
+        unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.total_digits()) }
     }
 
     /// Returns a reference to the underlying bits of `self`, including unused
@@ -447,7 +447,7 @@ impl<'a> Bits {
         // bits were only in the last byte, which at first glance is portable. However,
         // I completely forgot about big-endian systems. Not taking a full width of the
         // byte slice can result in significant bytes being completely disregarded.
-        let size_in_u8 = self.len() * DIGIT_BYTES;
+        let size_in_u8 = self.total_digits() * DIGIT_BYTES;
         // Safety: Adding on to what is satisfied in `as_slice`, [Digit] can always be
         // divided into [u8] and the correct length is calculated above. If the bitwidth
         // is not a multiple of eight, there must be at least enough unused bits to form
@@ -476,7 +476,7 @@ impl<'a> Bits {
     #[must_use]
     #[inline(always)] // this is needed for `unstable_from_u8_slice`
     pub const fn as_mut_bytes_full_width_nonportable(&'a mut self) -> &'a mut [u8] {
-        let size_in_u8 = self.len() * DIGIT_BYTES;
+        let size_in_u8 = self.total_digits() * DIGIT_BYTES;
         // Safety: Same reasoning as `as_bytes_full_width_nonportable`
         unsafe { &mut *ptr::slice_from_raw_parts_mut(self.as_mut_ptr() as *mut u8, size_in_u8) }
     }
@@ -488,7 +488,7 @@ impl<'a> Bits {
     /// sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn u8_slice_(&'a mut self, buf: &[u8]) {
-        let self_byte_width = self.len() * DIGIT_BYTES;
+        let self_byte_width = self.total_digits() * DIGIT_BYTES;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
         } else {
@@ -498,7 +498,7 @@ impl<'a> Bits {
         let start = min_width / DIGIT_BYTES;
         unsafe {
             // zero out first.
-            self.digit_set(false, start..self.len(), false);
+            self.digit_set(false, start..self.total_digits(), false);
             // Safety: `src` is valid for reads at least up to `min_width`, `dst` is valid
             // for writes at least up to `min_width`, they are aligned, and are
             // nonoverlapping because `self` is a mutable reference.
@@ -507,9 +507,9 @@ impl<'a> Bits {
                 self.as_mut_bytes_full_width_nonportable().as_mut_ptr(),
                 min_width,
             );
-            // `start` can be `self.len()`, so cap it
-            let cap = if start >= self.len() {
-                self.len()
+            // `start` can be `self.total_digits()`, so cap it
+            let cap = if start >= self.total_digits() {
+                self.total_digits()
             } else {
                 start + 1
             };
@@ -528,7 +528,7 @@ impl<'a> Bits {
     /// pointer sizes and endianness.
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn to_u8_slice(&'a self, buf: &mut [u8]) {
-        let self_byte_width = self.len() * DIGIT_BYTES;
+        let self_byte_width = self.total_digits() * DIGIT_BYTES;
         let min_width = if self_byte_width < buf.len() {
             self_byte_width
         } else {
@@ -549,7 +549,7 @@ impl<'a> Bits {
         }
         #[cfg(target_endian = "big")]
         {
-            const_for!(i in {0..self.len()} {
+            const_for!(i in {0..self.total_digits()} {
                 let x = self.as_slice()[i];
                 let start = i * DIGIT_BYTES;
                 let end = if (start + DIGIT_BYTES) > buf.len() {
@@ -574,7 +574,7 @@ impl<'a> Bits {
     /// # Safety
     ///
     /// `range` must satisfy `range.start <= range.end` and `range.end <=
-    /// self.len()`
+    /// self.total_digits()`
     #[doc(hidden)]
     #[inline]
     #[const_fn(cfg(feature = "const_support"))]
@@ -584,7 +584,7 @@ impl<'a> Bits {
         range: Range<usize>,
         clear_unused_bits: bool,
     ) {
-        debug_assert!(range.end <= self.len());
+        debug_assert!(range.end <= self.total_digits());
         debug_assert!(range.start <= range.end);
         //let byte = if val { u8::MAX } else { 0 };
         //ptr::write_bytes(
@@ -611,11 +611,11 @@ impl<'a> Bits {
         let digits = digits_u(start);
         let bits = extra_u(start);
         let mut tmp = 0;
-        // Safety: The checks avoid indexing beyond `self.len() - 1`
+        // Safety: The checks avoid indexing beyond `self.total_digits() - 1`
         unsafe {
-            if digits < self.len() {
+            if digits < self.total_digits() {
                 tmp = self.get_unchecked(digits) >> bits;
-                if bits != 0 && ((digits + 1) < self.len()) {
+                if bits != 0 && ((digits + 1) < self.total_digits()) {
                     tmp |= self.get_unchecked(digits + 1) << (BITS - bits);
                 }
             }
@@ -634,18 +634,18 @@ impl<'a> Bits {
         let bits = extra_u(start);
         let mut first = 0;
         let mut second = 0;
-        // Safety: The checks avoid indexing beyond `self.len() - 1`
+        // Safety: The checks avoid indexing beyond `self.total_digits() - 1`
         unsafe {
-            if digits < self.len() {
+            if digits < self.total_digits() {
                 first = self.get_unchecked(digits) >> bits;
-                if (digits + 1) < self.len() {
+                if (digits + 1) < self.total_digits() {
                     let mid = self.get_unchecked(digits + 1);
                     if bits == 0 {
                         second = mid;
                     } else {
                         first |= mid << (BITS - bits);
                         second = mid >> bits;
-                        if (digits + 2) < self.len() {
+                        if (digits + 2) < self.total_digits() {
                             second |= self.get_unchecked(digits + 2) << (BITS - bits);
                         }
                     };

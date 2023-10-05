@@ -16,14 +16,18 @@ impl Bits {
         unsafe {
             if self.bw() <= rhs.bw() {
                 // truncation
-                ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), self.len());
+                ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), self.total_digits());
                 self.clear_unused_bits();
             } else {
-                ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), rhs.len());
+                ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), rhs.total_digits());
                 if extension && (rhs.unused() != 0) {
-                    *self.get_unchecked_mut(rhs.len() - 1) |= MAX << rhs.extra();
+                    *self.get_unchecked_mut(rhs.total_digits() - 1) |= MAX << rhs.extra();
                 }
-                self.digit_set(extension, rhs.len()..self.len(), extension)
+                self.digit_set(
+                    extension,
+                    rhs.total_digits()..self.total_digits(),
+                    extension,
+                )
             }
         }
     }
@@ -35,14 +39,16 @@ impl Bits {
     pub const fn zero_resize_(&mut self, rhs: &Self) -> bool {
         self.resize_(rhs, false);
         if self.bw() < rhs.bw() {
-            // Safety: `self.len() <= rhs.len()` because of the above check
+            // Safety: `self.total_digits() <= rhs.total_digits()` because of the above
+            // check
             unsafe {
                 // check if there are set bits that would be truncated
-                if (self.extra() != 0) && ((rhs.get_unchecked(self.len() - 1) >> self.extra()) != 0)
+                if (self.extra() != 0)
+                    && ((rhs.get_unchecked(self.total_digits() - 1) >> self.extra()) != 0)
                 {
                     return true
                 }
-                const_for!(i in {self.len()..rhs.len()} {
+                const_for!(i in {self.total_digits()..rhs.total_digits()} {
                     if rhs.get_unchecked(i) != 0 {
                         return true
                     }
@@ -60,7 +66,8 @@ impl Bits {
         self.resize_(rhs, rhs.msb());
         // this function is far harder to implement than it would first seem
         if self.bw() < rhs.bw() {
-            // Safety: `self.len() <= rhs.len()` because of the above check
+            // Safety: `self.total_digits() <= rhs.total_digits()` because of the above
+            // check
             unsafe {
                 if rhs.msb() {
                     // check if the new most significant bit is unset (which would mean overflow
@@ -69,7 +76,7 @@ impl Bits {
                         return true
                     }
                     // check if there are unset bits that would be truncated
-                    if self.len() == rhs.len() {
+                    if self.total_digits() == rhs.total_digits() {
                         // first and only digit
                         if rhs.extra() != 0 {
                             //  rhs extra mask and lhs cutoff mask
@@ -89,12 +96,12 @@ impl Bits {
                     // first digit
                     if self.extra() != 0 {
                         let expected = MAX << self.extra();
-                        if (rhs.get_unchecked(self.len() - 1) & expected) != expected {
+                        if (rhs.get_unchecked(self.total_digits() - 1) & expected) != expected {
                             return true
                         }
                     }
                     // middle digits
-                    const_for!(i in {self.len()..(rhs.len() - 1)} {
+                    const_for!(i in {self.total_digits()..(rhs.total_digits() - 1)} {
                         if rhs.get_unchecked(i) != MAX {
                             return true
                         }
@@ -116,12 +123,13 @@ impl Bits {
                     }
                     // check if there are set bits that would be truncated
                     if (self.extra() != 0)
-                        && ((rhs.get_unchecked(self.len() - 1) >> self.extra()) != 0)
+                        && ((rhs.get_unchecked(self.total_digits() - 1) >> self.extra()) != 0)
                     {
                         return true
                     }
-                    // Safety: `self.len() <= rhs.len()` because of the above check
-                    const_for!(i in {self.len()..rhs.len()} {
+                    // Safety: `self.total_digits() <= rhs.total_digits()` because of the above
+                    // check
+                    const_for!(i in {self.total_digits()..rhs.total_digits()} {
                         if rhs.get_unchecked(i) != 0 {
                             return true
                         }
