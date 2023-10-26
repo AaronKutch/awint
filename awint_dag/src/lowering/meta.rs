@@ -195,7 +195,7 @@ pub fn mux_(x0: &Bits, x1: &Bits, inx: &Bits) -> Awi {
 
 /*
 Normalize. Table size explodes really fast if trying
-to keep as a single LUT, lets use a meta LUT.
+to keep as a single LUT, let's use a meta LUT.
 
 e.x.
 i_1 i_0
