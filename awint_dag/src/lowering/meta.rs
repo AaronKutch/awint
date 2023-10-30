@@ -1,4 +1,4 @@
-//! Using combined normal and mimick types to assist in lowering
+//! Using combined ordinary and mimick types to assist in lowering
 
 use std::{cmp::min, mem, num::NonZeroUsize};
 
