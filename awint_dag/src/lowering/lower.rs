@@ -18,7 +18,7 @@ use crate::{
     PState,
 };
 
-pub trait LowerManagment<P: Ptr + DummyDefault> {
+pub trait LowerManagement<P: Ptr + DummyDefault> {
     fn graft(&mut self, output_and_operands: &[PState]);
     fn get_nzbw(&self, p: P) -> NonZeroUsize;
     fn get_op(&self, p: P) -> &Op<P>;
@@ -33,7 +33,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
     ptr: P,
     start_op: Op<P>,
     out_w: NonZeroUsize,
-    mut m: impl LowerManagment<P>,
+    mut m: impl LowerManagement<P>,
 ) -> Result<bool, EvalError> {
     match start_op {
         Invalid => return Err(EvalError::OtherStr("encountered `Invalid` in lowering")),
@@ -707,7 +707,7 @@ impl OpDag {
             epoch: Option<StateEpoch>,
             op_dag: &'a mut OpDag,
         }
-        impl<'a> LowerManagment<PNode> for Tmp<'a> {
+        impl<'a> LowerManagement<PNode> for Tmp<'a> {
             fn graft(&mut self, output_and_operands: &[PState]) {
                 let ptr = self.ptr;
                 let visit = self.visit;
