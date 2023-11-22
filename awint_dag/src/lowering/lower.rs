@@ -21,16 +21,13 @@ use crate::{
 pub trait LowerManagement<P: Ptr + DummyDefault> {
     fn graft(&mut self, output_and_operands: &[PState]);
     fn get_nzbw(&self, p: P) -> NonZeroUsize;
-    fn get_op(&self, p: P) -> &Op<P>;
-    fn get_op_mut(&mut self, p: P) -> &mut Op<P>;
-    fn lit(&self, p: P) -> &awi::Bits;
+    fn is_literal(&self, p: P) -> bool;
     fn usize(&self, p: P) -> usize;
     fn bool(&self, p: P) -> bool;
     fn dec_rc(&mut self, p: P);
 }
 
 pub fn lower_state<P: Ptr + DummyDefault>(
-    ptr: P,
     start_op: Op<P>,
     out_w: NonZeroUsize,
     mut m: impl LowerManagement<P>,
@@ -41,9 +38,8 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             return Ok(true)
         }
         Lut([lut, inx]) => {
-            if m.get_op(lut).is_literal() {
-                *m.get_op_mut(ptr) = StaticLut([inx], awi::Awi::from(m.lit(lut)));
-                m.dec_rc(lut);
+            if m.is_literal(lut) {
+                panic!("this should be handled separately");
             } else {
                 let mut out = Awi::zero(out_w);
                 let lut = Awi::opaque(m.get_nzbw(lut));
@@ -53,9 +49,8 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Get([bits, inx]) => {
-            if m.get_op(inx).is_literal() {
-                *m.get_op_mut(ptr) = StaticGet([bits], m.usize(inx));
-                m.dec_rc(inx);
+            if m.is_literal(inx) {
+                panic!("this should be handled separately");
             } else {
                 let bits = Awi::opaque(m.get_nzbw(bits));
                 let inx = Awi::opaque(m.get_nzbw(inx));
@@ -64,9 +59,8 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Set([bits, inx, bit]) => {
-            if m.get_op(inx).is_literal() {
-                *m.get_op_mut(ptr) = StaticSet([bits, bit], m.usize(inx));
-                m.dec_rc(inx);
+            if m.is_literal(inx) {
+                panic!("this should be handled separately");
             } else {
                 let bits = Awi::opaque(m.get_nzbw(bits));
                 let inx = Awi::opaque(m.get_nzbw(inx));
@@ -121,7 +115,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
         FieldWidth([lhs, rhs, width]) => {
             let lhs_bw = m.get_nzbw(lhs);
             let rhs_bw = m.get_nzbw(rhs);
-            if m.get_op(width).is_literal() {
+            if m.is_literal(width) {
                 let lhs = Awi::opaque(lhs_bw);
                 let rhs = Awi::opaque(rhs_bw);
                 let out = static_field(&lhs, 0, &rhs, 0, m.usize(width)).0;
@@ -152,7 +146,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
         FieldFrom([lhs, rhs, from, width]) => {
             let lhs_bw = m.get_nzbw(lhs);
             let rhs_bw = m.get_nzbw(rhs);
-            if m.get_op(from).is_literal() {
+            if m.is_literal(from) {
                 let lhs = Awi::opaque(lhs_bw);
                 let rhs = Awi::opaque(rhs_bw);
                 let width = Awi::opaque(m.get_nzbw(width));
@@ -200,7 +194,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Shl([x, s]) => {
-            if m.get_op(s).is_literal() {
+            if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
                 let tmp = Awi::zero(x.nzbw());
@@ -214,7 +208,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Lshr([x, s]) => {
-            if m.get_op(s).is_literal() {
+            if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
                 let tmp = Awi::zero(x.nzbw());
@@ -228,7 +222,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Ashr([x, s]) => {
-            if m.get_op(s).is_literal() {
+            if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
                 let mut tmp = Awi::zero(x.nzbw());
@@ -245,7 +239,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Rotl([x, s]) => {
-            if m.get_op(s).is_literal() {
+            if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
                 let out = if s_u == 0 {
@@ -263,7 +257,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Rotr([x, s]) => {
-            if m.get_op(s).is_literal() {
+            if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
                 let out = if s_u == 0 {
@@ -385,7 +379,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             m.graft(&[out.state(), lhs.state(), rhs.state()]);
         }
         FieldTo([lhs, to, rhs, width]) => {
-            if m.get_op(to).is_literal() {
+            if m.is_literal(to) {
                 let lhs = Awi::opaque(m.get_nzbw(lhs));
                 let to_u = m.usize(to);
                 let rhs = Awi::opaque(m.get_nzbw(rhs));
@@ -425,7 +419,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Field([lhs, to, rhs, from, width]) => {
-            if m.get_op(to).is_literal() || m.get_op(from).is_literal() {
+            if m.is_literal(to) || m.is_literal(from) {
                 let lhs = Awi::opaque(m.get_nzbw(lhs));
                 let to = Awi::opaque(m.get_nzbw(to));
                 let rhs = Awi::opaque(m.get_nzbw(rhs));
@@ -628,7 +622,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             let x0 = Awi::opaque(m.get_nzbw(x0));
             let x1 = Awi::opaque(m.get_nzbw(x1));
             let inx_tmp = Awi::opaque(m.get_nzbw(inx));
-            let out = if m.get_op(inx).is_literal() {
+            let out = if m.is_literal(inx) {
                 let b = m.bool(inx);
                 if b {
                     x1.clone()
@@ -694,13 +688,40 @@ impl OpDag {
     /// `StaticSet`, and `StaticLut`. Nodes that get lowered are
     /// colored with `visit`. Returns `true` if the node is already lowered.
     pub fn lower_node(&mut self, ptr: PNode, visit: u64) -> Result<bool, EvalError> {
-        // create a temporary epoch for the grafting in this function
-        let epoch = StateEpoch::new();
         if !self.a.contains(ptr) {
             return Err(EvalError::InvalidPtr)
         }
         let start_op = self[ptr].op.clone();
         let out_w = self.get_bw(ptr);
+        match &start_op {
+            Opaque(..) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
+                return Ok(true)
+            }
+            Lut([lut, inx]) => {
+                if self[lut].op.is_literal() {
+                    self[ptr].op = StaticLut([*inx], awi::Awi::from(self.lit(*lut)));
+                    self.dec_rc(*lut).unwrap();
+                    return Ok(true)
+                }
+            }
+            Get([bits, inx]) => {
+                if self[inx].op.is_literal() {
+                    self[ptr].op = StaticGet([*bits], self.usize(*inx).unwrap());
+                    self.dec_rc(*inx).unwrap();
+                    return Ok(true)
+                }
+            }
+            Set([bits, inx, bit]) => {
+                if self[inx].op.is_literal() {
+                    self[ptr].op = StaticSet([*bits, *bit], self.usize(*inx).unwrap());
+                    self.dec_rc(*inx).unwrap();
+                    return Ok(true)
+                }
+            }
+            _ => (),
+        }
+        // create a temporary epoch for the grafting in this function
+        let epoch = StateEpoch::new();
         struct Tmp<'a> {
             ptr: PNode,
             visit: u64,
@@ -721,16 +742,8 @@ impl OpDag {
                 self.op_dag.get_bw(p)
             }
 
-            fn get_op(&self, p: PNode) -> &Op<PNode> {
-                &self.op_dag[p].op
-            }
-
-            fn get_op_mut(&mut self, p: PNode) -> &mut Op<PNode> {
-                &mut self.op_dag[p].op
-            }
-
-            fn lit(&self, p: PNode) -> &awi::Bits {
-                self.op_dag.lit(p)
+            fn is_literal(&self, p: PNode) -> bool {
+                self.op_dag[p].op.is_literal()
             }
 
             fn usize(&self, p: PNode) -> usize {
@@ -745,7 +758,7 @@ impl OpDag {
                 self.op_dag.dec_rc(p).unwrap();
             }
         }
-        lower_state(ptr, start_op, out_w, Tmp {
+        lower_state(start_op, out_w, Tmp {
             ptr,
             visit,
             epoch: Some(epoch),
