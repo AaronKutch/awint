@@ -99,8 +99,6 @@
 //!     // If everything should be transparent with no opaques
 //!     //graph.assert_assertions().unwrap();
 //!
-//!     dbg!(&graph);
-//!
 //!     // lower into purely static copies, gets, sets, and lookup tables.
 //!     // You will want to design algorithms on the resulting `OpDag` or
 //!     // further translate into another form.
