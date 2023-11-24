@@ -27,6 +27,7 @@ pub trait LowerManagement<P: Ptr + DummyDefault> {
     fn dec_rc(&mut self, p: P);
 }
 
+/// Returns if the lowering is done
 pub fn lower_state<P: Ptr + DummyDefault>(
     start_op: Op<P>,
     out_w: NonZeroUsize,
@@ -39,7 +40,9 @@ pub fn lower_state<P: Ptr + DummyDefault>(
         }
         Lut([lut, inx]) => {
             if m.is_literal(lut) {
-                panic!("this should be handled separately");
+                return Err(EvalError::OtherStr(
+                    "this needs to be handled before this function",
+                ));
             } else {
                 let mut out = Awi::zero(out_w);
                 let lut = Awi::opaque(m.get_nzbw(lut));
@@ -50,7 +53,9 @@ pub fn lower_state<P: Ptr + DummyDefault>(
         }
         Get([bits, inx]) => {
             if m.is_literal(inx) {
-                panic!("this should be handled separately");
+                return Err(EvalError::OtherStr(
+                    "this needs to be handled before this function",
+                ));
             } else {
                 let bits = Awi::opaque(m.get_nzbw(bits));
                 let inx = Awi::opaque(m.get_nzbw(inx));
@@ -60,7 +65,9 @@ pub fn lower_state<P: Ptr + DummyDefault>(
         }
         Set([bits, inx, bit]) => {
             if m.is_literal(inx) {
-                panic!("this should be handled separately");
+                return Err(EvalError::OtherStr(
+                    "this needs to be handled before this function",
+                ));
             } else {
                 let bits = Awi::opaque(m.get_nzbw(bits));
                 let inx = Awi::opaque(m.get_nzbw(inx));
@@ -686,7 +693,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
 impl OpDag {
     /// Lowers everything down to `Invalid`, `Opaque`, `Copy`, `StaticGet`,
     /// `StaticSet`, and `StaticLut`. Nodes that get lowered are
-    /// colored with `visit`. Returns `true` if the node is already lowered.
+    /// colored with `visit`. Returns `true` if the node is done being lowered
     pub fn lower_node(&mut self, ptr: PNode, visit: u64) -> Result<bool, EvalError> {
         if !self.a.contains(ptr) {
             return Err(EvalError::InvalidPtr)
@@ -817,7 +824,7 @@ impl OpDag {
                 } else {
                     // newly lowered nodes will be set to `lowered_visit` which is less than
                     // `tree_visit` so that the DFS reexplores
-                    let lowered = match self.lower_node(p, lowered_visit) {
+                    let lowering_done = match self.lower_node(p, lowered_visit) {
                         Ok(lowered) => lowered,
                         Err(EvalError::Unimplemented) => {
                             // we lower as much as possible
@@ -829,7 +836,7 @@ impl OpDag {
                             return Err(e)
                         }
                     };
-                    if lowered {
+                    if lowering_done {
                         path.pop().unwrap();
                         if path.is_empty() {
                             break
