@@ -120,24 +120,28 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             m.graft(&[out.state(), x.state()]);
         }
         FieldWidth([lhs, rhs, width]) => {
-            let lhs_bw = m.get_nzbw(lhs);
-            let rhs_bw = m.get_nzbw(rhs);
+            let lhs_w = m.get_nzbw(lhs);
+            let rhs_w = m.get_nzbw(rhs);
+            let width_w = m.get_nzbw(width);
             if m.is_literal(width) {
-                let lhs = Awi::opaque(lhs_bw);
-                let rhs = Awi::opaque(rhs_bw);
-                let out = static_field(&lhs, 0, &rhs, 0, m.usize(width)).0;
+                let width_u = m.usize(width);
+                let lhs = Awi::opaque(lhs_w);
+                let rhs = Awi::opaque(rhs_w);
+                // If `width_u` is out of bounds `out` is created as a no-op of `lhs` as
+                // expected
+                let out = static_field(&lhs, 0, &rhs, 0, width_u).0;
                 m.graft(&[
                     out.state(),
                     lhs.state(),
                     rhs.state(),
-                    Awi::opaque(m.get_nzbw(width)).state(),
+                    Awi::opaque(width_w).state(),
                 ]);
             } else {
-                let lhs = Awi::opaque(lhs_bw);
-                let rhs = Awi::opaque(rhs_bw);
-                let width = Awi::opaque(m.get_nzbw(width));
-                let fail = width.ugt(&InlAwi::from_usize(lhs_bw.get())).unwrap()
-                    | width.ugt(&InlAwi::from_usize(rhs_bw.get())).unwrap();
+                let lhs = Awi::opaque(lhs_w);
+                let rhs = Awi::opaque(rhs_w);
+                let width = Awi::opaque(width_w);
+                let fail = width.ugt(&InlAwi::from_usize(lhs_w.get())).unwrap()
+                    | width.ugt(&InlAwi::from_usize(rhs_w.get())).unwrap();
                 let mut tmp_width = width.clone();
                 tmp_width.mux_(&InlAwi::from_usize(0), fail).unwrap();
                 let out = field_width(&lhs, &rhs, &tmp_width);
@@ -151,25 +155,32 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             m.graft(&[out.state(), x.state(), s.state()]);
         }
         FieldFrom([lhs, rhs, from, width]) => {
-            let lhs_bw = m.get_nzbw(lhs);
-            let rhs_bw = m.get_nzbw(rhs);
+            let lhs_w = m.get_nzbw(lhs);
+            let rhs_w = m.get_nzbw(rhs);
+            let width_w = m.get_nzbw(width);
             if m.is_literal(from) {
-                let lhs = Awi::opaque(lhs_bw);
-                let rhs = Awi::opaque(rhs_bw);
+                let lhs = Awi::opaque(lhs_w);
+                let rhs = Awi::opaque(rhs_w);
                 let width = Awi::opaque(m.get_nzbw(width));
                 let from_u = m.usize(from);
-                let out = if let Some(w) = NonZeroUsize::new(rhs.bw() - from_u) {
-                    let tmp0 = Awi::zero(w);
-                    let (tmp1, o) = static_field(&tmp0, 0, &rhs, from_u, rhs.bw() - from_u);
-                    let mut out = lhs.clone();
-                    if o {
-                        out
-                    } else {
-                        out.field_width(&tmp1, width.to_usize()).unwrap();
-                        out
-                    }
-                } else {
+                let out = if rhs.bw() <= from_u {
                     lhs.clone()
+                } else {
+                    // since `from_u` is known the less significant part of `rhs` can be disregarded
+                    let sub_rhs_w = rhs.bw() - from_u;
+                    if let Some(w) = NonZeroUsize::new(sub_rhs_w) {
+                        let tmp0 = Awi::zero(w);
+                        let (tmp1, o) = static_field(&tmp0, 0, &rhs, from_u, sub_rhs_w);
+                        let mut out = lhs.clone();
+                        if o {
+                            out
+                        } else {
+                            out.field_width(&tmp1, width.to_usize()).unwrap();
+                            out
+                        }
+                    } else {
+                        lhs.clone()
+                    }
                 };
                 m.graft(&[
                     out.state(),
@@ -179,11 +190,11 @@ pub fn lower_state<P: Ptr + DummyDefault>(
                     width.state(),
                 ]);
             } else {
-                let lhs = Awi::opaque(lhs_bw);
-                let rhs = Awi::opaque(rhs_bw);
+                let lhs = Awi::opaque(lhs_w);
+                let rhs = Awi::opaque(rhs_w);
                 let from = Awi::opaque(m.get_nzbw(from));
-                let width = Awi::opaque(m.get_nzbw(width));
-                let mut tmp = InlAwi::from_usize(rhs_bw.get());
+                let width = Awi::opaque(width_w);
+                let mut tmp = InlAwi::from_usize(rhs_w.get());
                 tmp.sub_(&width).unwrap();
                 // the other two fail conditions are in `field_width`
                 let fail = from.ugt(&tmp).unwrap();
@@ -204,8 +215,12 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
-                let tmp = Awi::zero(x.nzbw());
-                let out = static_field(&tmp, s_u, &x, 0, x.bw() - s_u).0;
+                let out = if (s_u == 0) || (x.bw() <= s_u) {
+                    x.clone()
+                } else {
+                    let tmp = Awi::zero(x.nzbw());
+                    static_field(&tmp, s_u, &x, 0, x.bw() - s_u).0
+                };
                 m.graft(&[out.state(), x.state(), Awi::opaque(m.get_nzbw(s)).state()]);
             } else {
                 let x = Awi::opaque(m.get_nzbw(x));
@@ -218,8 +233,12 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
-                let tmp = Awi::zero(x.nzbw());
-                let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
+                let out = if (s_u == 0) || (x.bw() <= s_u) {
+                    x.clone()
+                } else {
+                    let tmp = Awi::zero(x.nzbw());
+                    static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0
+                };
                 m.graft(&[out.state(), x.state(), Awi::opaque(m.get_nzbw(s)).state()]);
             } else {
                 let x = Awi::opaque(m.get_nzbw(x));
@@ -232,11 +251,15 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
-                let mut tmp = Awi::zero(x.nzbw());
-                for i in 0..x.bw() {
-                    tmp.set(i, x.msb()).unwrap();
-                }
-                let out = static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0;
+                let out = if (s_u == 0) || (x.bw() <= s_u) {
+                    x.clone()
+                } else {
+                    let mut tmp = Awi::zero(x.nzbw());
+                    for i in 0..x.bw() {
+                        tmp.set(i, x.msb()).unwrap();
+                    }
+                    static_field(&tmp, 0, &x, s_u, x.bw() - s_u).0
+                };
                 m.graft(&[out.state(), x.state(), Awi::opaque(m.get_nzbw(s)).state()]);
             } else {
                 let x = Awi::opaque(m.get_nzbw(x));
@@ -249,7 +272,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
-                let out = if s_u == 0 {
+                let out = if (s_u == 0) || (x.bw() <= s_u) {
                     x.clone()
                 } else {
                     let tmp = static_field(&Awi::zero(x.nzbw()), s_u, &x, 0, x.bw() - s_u).0;
@@ -267,7 +290,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             if m.is_literal(s) {
                 let x = Awi::opaque(m.get_nzbw(x));
                 let s_u = m.usize(s);
-                let out = if s_u == 0 {
+                let out = if (s_u == 0) || (x.bw() <= s_u) {
                     x.clone()
                 } else {
                     let tmp = static_field(&Awi::zero(x.nzbw()), 0, &x, s_u, x.bw() - s_u).0;
@@ -386,13 +409,15 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             m.graft(&[out.state(), lhs.state(), rhs.state()]);
         }
         FieldTo([lhs, to, rhs, width]) => {
+            let lhs = Awi::opaque(m.get_nzbw(lhs));
+            let rhs = Awi::opaque(m.get_nzbw(rhs));
+            let width = Awi::opaque(m.get_nzbw(width));
             if m.is_literal(to) {
-                let lhs = Awi::opaque(m.get_nzbw(lhs));
                 let to_u = m.usize(to);
-                let rhs = Awi::opaque(m.get_nzbw(rhs));
-                let width = Awi::opaque(m.get_nzbw(width));
 
-                let out = if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
+                let out = if lhs.bw() < to_u {
+                    lhs.clone()
+                } else if let Some(w) = NonZeroUsize::new(lhs.bw() - to_u) {
                     let (mut lhs_hi, o) = static_field(&Awi::zero(w), 0, &lhs, to_u, w.get());
                     lhs_hi.field_width(&rhs, width.to_usize()).unwrap();
                     if o {
@@ -411,10 +436,7 @@ pub fn lower_state<P: Ptr + DummyDefault>(
                     width.state(),
                 ]);
             } else {
-                let lhs = Awi::opaque(m.get_nzbw(lhs));
                 let to = Awi::opaque(m.get_nzbw(to));
-                let rhs = Awi::opaque(m.get_nzbw(rhs));
-                let width = Awi::opaque(m.get_nzbw(width));
                 let out = field_to(&lhs, &to, &rhs, &width);
                 m.graft(&[
                     out.state(),
@@ -426,13 +448,12 @@ pub fn lower_state<P: Ptr + DummyDefault>(
             }
         }
         Field([lhs, to, rhs, from, width]) => {
+            let lhs = Awi::opaque(m.get_nzbw(lhs));
+            let rhs = Awi::opaque(m.get_nzbw(rhs));
+            let width = Awi::opaque(m.get_nzbw(width));
             if m.is_literal(to) || m.is_literal(from) {
-                let lhs = Awi::opaque(m.get_nzbw(lhs));
                 let to = Awi::opaque(m.get_nzbw(to));
-                let rhs = Awi::opaque(m.get_nzbw(rhs));
                 let from = Awi::opaque(m.get_nzbw(from));
-                let width = Awi::opaque(m.get_nzbw(width));
-
                 let min_w = min(lhs.bw(), rhs.bw());
                 let mut tmp = Awi::zero(NonZeroUsize::new(min_w).unwrap());
                 tmp.field_from(&rhs, from.to_usize(), width.to_usize())
@@ -449,11 +470,8 @@ pub fn lower_state<P: Ptr + DummyDefault>(
                     width.state(),
                 ]);
             } else {
-                let lhs = Awi::opaque(m.get_nzbw(lhs));
                 let to = Awi::opaque(m.get_nzbw(to));
-                let rhs = Awi::opaque(m.get_nzbw(rhs));
                 let from = Awi::opaque(m.get_nzbw(from));
-                let width = Awi::opaque(m.get_nzbw(width));
                 let out = field(&lhs, &to, &rhs, &from, &width);
                 m.graft(&[
                     out.state(),

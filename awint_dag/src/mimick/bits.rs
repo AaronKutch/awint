@@ -140,6 +140,7 @@ impl Bits {
                 break
             }
         }
+        // FIXME need partial literals version
         if all_literals {
             let lit_op: Op<awi::Awi> =
                 Op::translate(&p_state_op, |lhs: &mut [awi::Awi], rhs: &[PState]| {
