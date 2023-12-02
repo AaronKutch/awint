@@ -1,10 +1,10 @@
 use std::fmt::Write;
 
-use awint_ext::Awi;
 use awint_macro_internals::triple_arena::Advancer;
 use Op::*;
 
 use crate::{
+    common::EAwi,
     lowering::{OpDag, PNode},
     EvalError, EvalResult, Op,
 };
@@ -14,10 +14,10 @@ impl OpDag {
     /// literals. Note: decrements dependents but does not remove dead nodes.
     pub fn eval_node(&mut self, node: PNode) -> Result<(), EvalError> {
         let self_w = self[node].nzbw;
-        let lit_op: Op<Awi> = Op::translate(&self[node].op, |lhs: &mut [Awi], rhs: &[PNode]| {
+        let lit_op: Op<EAwi> = Op::translate(&self[node].op, |lhs: &mut [EAwi], rhs: &[PNode]| {
             for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
                 if let Op::Literal(ref lit) = self[rhs].op {
-                    *lhs = lit.clone();
+                    *lhs = EAwi::KnownAwi(lit.to_owned());
                 } else {
                     unreachable!()
                 }
@@ -44,20 +44,19 @@ impl OpDag {
                     node, self[node].op, s
                 )))
             }
+            EvalResult::Unevaluatable | EvalResult::PassUnevaluatable => {
+                Err(EvalError::Unevaluatable)
+            }
             EvalResult::Error(e) => {
-                if matches!(e, EvalError::Unevaluatable) {
-                    Err(e)
-                } else {
-                    let operands = self[node].op.operands();
-                    let mut s = String::new();
-                    for op in operands {
-                        write!(s, "{:?}, ", self[op]).unwrap();
-                    }
-                    Err(EvalError::OtherString(format!(
-                        "`EvalResult::Error` failure (\n{:?}\n) on operation node {} {:?} (\n{}\n)",
-                        e, node, self[node].op, s
-                    )))
+                let operands = self[node].op.operands();
+                let mut s = String::new();
+                for op in operands {
+                    write!(s, "{:?}, ", self[op]).unwrap();
                 }
+                Err(EvalError::OtherString(format!(
+                    "`EvalResult::Error` failure (\n{:?}\n) on operation node {} {:?} (\n{}\n)",
+                    e, node, self[node].op, s
+                )))
             }
         }
     }

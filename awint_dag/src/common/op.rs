@@ -20,6 +20,13 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // literal assign
     Literal(Awi),
 
+    // FIXME a list of inputs (same one can appear multiple times) with starts and widths
+    // Concat(SmallVec<[(T, usize, usize); 1]>)
+    // Concat(ConcatType)
+
+    // FIXME assertions should be their own Op?
+    // Assert([T; 1]),
+
     // Static versions of `Lut`, `Get`, and `Set`
     StaticLut([T; 1], Awi),
     StaticGet([T; 1], usize),

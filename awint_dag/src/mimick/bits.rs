@@ -6,12 +6,10 @@ use std::{
     rc::Rc,
 };
 
-use awint_ext::awi;
-
 use crate::{
-    common::NoopResult,
+    common::EAwi,
     mimick::{Awi, ExtAwi, InlAwi},
-    EvalError, EvalResult, Lineage, Op, PState,
+    EvalResult, Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
@@ -133,69 +131,38 @@ impl Bits {
         // the bitwidths at that time. Also, it turns out we may want eager evaluation
         // also because of early `Noop` and `Pass` evaluation results that can be caught
         // early.
-        let mut all_literals = true;
-        for p_state in p_state_op.operands() {
-            if !p_state.get_op().is_literal() {
-                all_literals = false;
-                break
-            }
-        }
-        // FIXME need partial literals version
-        if all_literals {
-            let lit_op: Op<awi::Awi> =
-                Op::translate(&p_state_op, |lhs: &mut [awi::Awi], rhs: &[PState]| {
-                    for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        if let Op::Literal(ref lit) = rhs.get_op() {
-                            *lhs = lit.clone();
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                });
-            match lit_op.eval(nzbw) {
-                EvalResult::Valid(x) => {
-                    self.set_state(PState::new(x.nzbw(), Op::Literal(x), None));
-                    crate::mimick::Option::Some(())
-                }
-                EvalResult::Pass(x) => {
-                    self.set_state(PState::new(x.nzbw(), Op::Literal(x), None));
-                    crate::mimick::Option::None
-                }
-                EvalResult::Noop => {
-                    // do not update state
-                    crate::mimick::Option::None
-                }
-                EvalResult::Error(e) => {
-                    if matches!(e, EvalError::Unevaluatable) {
-                        self.set_state(PState::new(nzbw, p_state_op, None));
-                        crate::mimick::Option::Some(())
-                    } else {
-                        panic!("{e:?}");
-                    }
+        let lit_op: Op<EAwi> = Op::translate(&p_state_op, |lhs: &mut [EAwi], rhs: &[PState]| {
+            for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
+                if let Op::Literal(ref lit) = rhs.get_op() {
+                    *lhs = EAwi::KnownAwi(lit.clone());
+                } else {
+                    *lhs = EAwi::Bitwidth(rhs.get_nzbw())
                 }
             }
-        } else {
-            // we can't evaluate but we can check for some things
-            let bw_op: Op<NonZeroUsize> =
-                Op::translate(&p_state_op, |lhs: &mut [NonZeroUsize], rhs: &[PState]| {
-                    for (lhs, rhs) in lhs.iter_mut().zip(rhs.iter()) {
-                        *lhs = rhs.get_nzbw();
-                    }
-                });
-            match bw_op.noop_check(nzbw) {
-                NoopResult::Operational => {
-                    self.set_state(PState::new(nzbw, p_state_op, None));
-                    crate::mimick::Option::Some(())
-                }
-                NoopResult::Noop => crate::mimick::Option::None,
-                NoopResult::Error(e) => {
-                    if matches!(e, EvalError::Unevaluatable) {
-                        self.set_state(PState::new(nzbw, p_state_op, None));
-                        crate::mimick::Option::Some(())
-                    } else {
-                        panic!("{e:?}")
-                    }
-                }
+        });
+        match lit_op.eval(nzbw) {
+            EvalResult::Valid(x) => {
+                self.set_state(PState::new(x.nzbw(), Op::Literal(x), None));
+                crate::mimick::Option::Some(())
+            }
+            EvalResult::Pass(x) => {
+                self.set_state(PState::new(x.nzbw(), Op::Literal(x), None));
+                crate::mimick::Option::None
+            }
+            EvalResult::PassUnevaluatable => {
+                self.set_state(PState::new(nzbw, p_state_op, None));
+                crate::mimick::Option::None
+            }
+            EvalResult::Noop => {
+                // do not update state
+                crate::mimick::Option::None
+            }
+            EvalResult::Unevaluatable => {
+                self.set_state(PState::new(nzbw, p_state_op, None));
+                crate::mimick::Option::Some(())
+            }
+            EvalResult::Error(e) => {
+                panic!("{e:?}");
             }
         }
     }
