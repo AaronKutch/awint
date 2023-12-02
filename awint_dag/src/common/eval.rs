@@ -25,6 +25,8 @@ pub enum EvalResult {
     /// No-operation, usually because of Awi operations with invalid bitwidths
     Noop,
     Unevaluatable,
+    AssertionSuccess,
+    AssertionFailure,
     /// Some evaluation error because of something that is not an Awi operation.
     /// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
     /// static variants with bad inputs, and bad bitwidths on operations
@@ -296,6 +298,28 @@ impl Op<EAwi> {
             Literal(a) => {
                 ceq_strict!(w, a.nzbw());
                 Valid(a)
+            }
+            Assert([a]) => {
+                // more manual because it is more likely that there will be issues involving
+                // `Assert`s
+                cases!(a,
+                    a => {
+                        if a.bw() != 1 {
+                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
+                        } else if a.to_bool() {
+                            AssertionSuccess
+                        } else {
+                            AssertionFailure
+                        }
+                    },
+                    a_w => {
+                        if a_w.get() != 1 {
+                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
+                        } else {
+                            Unevaluatable
+                        }
+                    },
+                )
             }
             StaticLut([a], lit) => {
                 cases!(a,

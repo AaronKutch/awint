@@ -102,11 +102,24 @@ pub fn _callback() -> EpochCallback {
         })
     }
     fn register_assertion_bit(bit: dag::bool, location: Location) {
-        // need a new bit to attach location data to
-        let new_bit =
-            dag::bool::from_state(PState::new(bw(1), Op::Copy([bit.state()]), Some(location)));
         EPOCH_DATA_TOP.with(|top| {
-            top.borrow_mut().data.assertions.bits.push(new_bit);
+            let mut top = top.borrow_mut();
+            let visit = top.visit;
+            let prev_in_epoch = top.data.prev_in_epoch;
+            let mut outer_p_this = None;
+            top.arena.insert_with(|p_this| {
+                outer_p_this = Some(p_this);
+                State {
+                    nzbw: bw(1),
+                    op: Op::Assert([bit.state()]),
+                    location: Some(location),
+                    node_map: Ptr::invalid(),
+                    visit,
+                    prev_in_epoch,
+                }
+            });
+            top.data.prev_in_epoch = outer_p_this;
+            top.data.assertions.bits.push(bit);
         });
     }
     fn get_nzbw(p_state: PState) -> NonZeroUsize {

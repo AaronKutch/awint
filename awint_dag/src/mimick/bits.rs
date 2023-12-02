@@ -161,6 +161,16 @@ impl Bits {
                 self.set_state(PState::new(nzbw, p_state_op, None));
                 crate::mimick::Option::Some(())
             }
+            EvalResult::AssertionSuccess => {
+                self.set_state(PState::new(nzbw, p_state_op, None));
+                crate::mimick::Option::Some(())
+            }
+            EvalResult::AssertionFailure => {
+                panic!(
+                    "assertion failure from `awint_dag` mimicking type eager evaluation {nzbw} \
+                     {self:?} {p_state_op:?}"
+                );
+            }
             EvalResult::Error(e) => {
                 panic!("{e:?}");
             }

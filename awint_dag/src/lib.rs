@@ -206,7 +206,7 @@ pub use common::{epoch, DummyDefault, EvalError, EvalResult, Lineage, Op, PNode,
 pub use lowering::{OpDag, OpNode};
 // export needed by the macros
 #[doc(hidden)]
-pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne};
+pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne, stringify};
 pub use mimick::primitive;
 pub use smallvec;
 

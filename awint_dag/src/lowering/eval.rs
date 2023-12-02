@@ -47,6 +47,18 @@ impl OpDag {
             EvalResult::Unevaluatable | EvalResult::PassUnevaluatable => {
                 Err(EvalError::Unevaluatable)
             }
+            EvalResult::AssertionSuccess => {
+                if let Assert([a]) = self[node].op {
+                    self.dec_rc(a).unwrap();
+                    Ok(())
+                } else {
+                    unreachable!()
+                }
+            }
+            EvalResult::AssertionFailure => Err(EvalError::OtherString(format!(
+                "`EvalResult::AssertionFailure` (\n{:?}\n) on operation node {:?}",
+                node, self[node].op
+            ))),
             EvalResult::Error(e) => {
                 let operands = self[node].op.operands();
                 let mut s = String::new();

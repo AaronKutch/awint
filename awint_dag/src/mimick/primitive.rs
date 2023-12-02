@@ -1,6 +1,7 @@
 use std::{fmt, num::NonZeroUsize, ops::*};
 
-use awint_ext::{awi, awint_internals::*};
+use awint_ext::{awi, awint_internals::*, Awi};
+use awint_macro_internals::triple_arena::Ptr;
 
 use crate::{dag, mimick::InlAwi, Lineage, Op, PState};
 
@@ -87,8 +88,22 @@ macro_rules! prim {
                     Self(InlAwi::from_state(state))
                 }
 
-                pub(crate) fn new(op: Op<PState>) -> Self {
-                    Self(InlAwi::new(op))
+                pub(crate) fn new_lit(lit: Awi) -> Self {
+                    core::debug_assert_eq!(lit.bw(), $w);
+                    Self::from_state(PState::new(
+                        NonZeroUsize::new($w).unwrap(),
+                        Op::Literal(lit),
+                        None
+                    ))
+                }
+
+                pub(crate) fn new_eager_eval(op: Op<PState>) -> crate::mimick::Option<Self> {
+                    let mut r = Self::from_state(PState::invalid());
+                    match r.0.update_state(bw($w), op) {
+                        dag::Option::None => dag::Option::None,
+                        dag::Option::Some(()) => dag::Option::Some(r),
+                        dag::Option::Opaque(_) => unreachable!(),
+                    }
                 }
 
                 pub(crate) fn get_nzbw() -> NonZeroUsize {
@@ -108,7 +123,7 @@ macro_rules! prim {
 
             impl From<awi::$name> for $name {
                 fn from(x: awi::$name) -> Self {
-                    Self::new(Op::Literal(awi::Awi::from(x)))
+                    Self::new_lit(awi::Awi::from(x))
                 }
             }
 
@@ -159,8 +174,21 @@ impl bool {
         Self(InlAwi::from_state(state))
     }
 
-    pub(crate) fn new(op: Op<PState>) -> Self {
-        Self(InlAwi::new(op))
+    pub(crate) fn new_lit(lit: awi::bool) -> Self {
+        Self::from_state(PState::new(
+            NonZeroUsize::new(1).unwrap(),
+            Op::Literal(Awi::from_bool(lit)),
+            None,
+        ))
+    }
+
+    pub(crate) fn new_eager_eval(op: Op<PState>) -> crate::mimick::Option<Self> {
+        let mut r = Self::from_state(PState::invalid());
+        match r.0.update_state(bw(1), op) {
+            dag::Option::None => dag::Option::None,
+            dag::Option::Some(()) => dag::Option::Some(r),
+            dag::Option::Opaque(_) => unreachable!(),
+        }
     }
 
     pub(crate) fn get_nzbw() -> NonZeroUsize {
@@ -170,7 +198,7 @@ impl bool {
 
 impl From<awi::bool> for bool {
     fn from(x: awi::bool) -> Self {
-        Self::new(Op::Literal(awi::Awi::from(x)))
+        Self::new_lit(x)
     }
 }
 

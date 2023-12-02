@@ -35,9 +35,8 @@ pub fn lower_state<P: Ptr + DummyDefault>(
 ) -> Result<bool, EvalError> {
     match start_op {
         Invalid => return Err(EvalError::OtherStr("encountered `Invalid` in lowering")),
-        Opaque(..) | Literal(_) | Copy(_) | StaticLut(..) | StaticGet(..) | StaticSet(..) => {
-            return Ok(true)
-        }
+        Opaque(..) | Literal(_) | Assert(_) | Copy(_) | StaticLut(..) | StaticGet(..)
+        | StaticSet(..) => return Ok(true),
         Lut([lut, inx]) => {
             if m.is_literal(lut) {
                 return Err(EvalError::OtherStr(

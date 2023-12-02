@@ -96,6 +96,50 @@ fn state_epoch_fail() {
 }
 
 #[test]
+#[should_panic]
+fn dag_assert_eq_fail() {
+    use awint::dag::*;
+    let epoch0 = Epoch::new();
+    let x = extawi!(opaque: ..7);
+    let y = extawi!(opaque: ..8);
+    dag::assert_eq!(x, y);
+    drop(epoch0);
+}
+
+#[test]
+#[should_panic]
+fn dag_assert_ne_fail() {
+    use awint::dag::*;
+    let epoch0 = Epoch::new();
+    let x = extawi!(opaque: ..7);
+    let y = extawi!(opaque: ..8);
+    dag::assert_ne!(x, y);
+    drop(epoch0);
+}
+
+#[test]
+#[should_panic]
+fn dag_assert_eq_fail2() {
+    use awint::dag::*;
+    let epoch0 = Epoch::new();
+    let x = extawi!(13u8);
+    let y = extawi!(99u8);
+    dag::assert_eq!(x, y);
+    drop(epoch0);
+}
+
+#[test]
+#[should_panic]
+fn dag_assert_ne_fail2() {
+    use awint::dag::*;
+    let epoch0 = Epoch::new();
+    let x = extawi!(13u8);
+    let y = extawi!(13u8);
+    dag::assert_ne!(x, y);
+    drop(epoch0);
+}
+
+#[test]
 fn dag_assertions() {
     use awint::dag::*;
     use dag::{assert, assert_eq, assert_ne};
@@ -108,8 +152,26 @@ fn dag_assertions() {
     assert!(is_true);
     assert_eq!(x, y);
     assert_ne!(x, z);
-    core::assert_eq!(epoch0.assertions().bits.len(), 4);
-    epoch0.assert_assertions().unwrap();
+    // check that optimizing away is working
+    core::assert_eq!(epoch0.assertions().bits.len(), 0);
+    let mut lazy_x = LazyAwi::opaque(bw(8));
+    let mut lazy_y = LazyAwi::opaque(bw(8));
+    let mut lazy_z = LazyAwi::opaque(bw(8));
+    let x = &lazy_x;
+    let y = &lazy_y;
+    let z = &lazy_z;
+    let is_true = x.lsb();
+    assert!(is_true);
+    assert_eq!(x, y);
+    assert_ne!(x, z);
+    core::assert_eq!(epoch0.assertions().bits.len(), 3);
+    {
+        use awi::*;
+        lazy_x.retro_(&awi!(13u8)).unwrap();
+        lazy_y.retro_(&awi!(13u8)).unwrap();
+        lazy_z.retro_(&awi!(99u8)).unwrap();
+        epoch0.assert_assertions().unwrap();
+    }
 }
 
 macro_rules! test_nonequal_bw {
@@ -355,6 +417,8 @@ fn dag_bits_functions() {
     let s1 = inlawi!(128u64).to_usize();
     dag_bits_functions_internal([y0, y1, y2, y3, y4], s0, s1, &epoch0);
 
+    awi::assert!(epoch0.assertions().bits.is_empty());
+
     let mut x5 = LazyAwi::opaque(bw(128));
     let mut x6 = LazyAwi::opaque(bw(192));
     let mut x7 = LazyAwi::opaque(bw(192));
@@ -374,7 +438,7 @@ fn dag_bits_functions() {
         &epoch0,
     );
 
-    let num_assertions = 170;
+    let num_assertions = 15;
     let eq = epoch0.assertions().bits.len() == num_assertions;
     if !eq {
         panic!(
