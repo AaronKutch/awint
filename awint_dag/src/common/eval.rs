@@ -578,8 +578,8 @@ impl Op<EAwi> {
                                     Noop
                                 }
                             },
-                            _a_w => {
-                                if b >= w.get() {
+                            a_w => {
+                                if b >= a_w.get() {
                                     Noop
                                 } else {
                                     Unevaluatable
