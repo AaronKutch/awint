@@ -335,7 +335,7 @@ impl Op<EAwi> {
                         if a_w.get() < USIZE_BITS {
                             if let Some(lut_len) = (1usize << a_w.get()).checked_mul(w.get()) {
                                 if lut_len == lit.bw() {
-                                    return Noop
+                                    return Unevaluatable
                                 }
                             }
                         }
