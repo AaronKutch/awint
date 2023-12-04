@@ -154,9 +154,9 @@ fn dag_assertions() {
     assert_ne!(x, z);
     // check that optimizing away is working
     core::assert_eq!(epoch0.assertions().bits.len(), 0);
-    let mut lazy_x = LazyAwi::opaque(bw(8));
-    let mut lazy_y = LazyAwi::opaque(bw(8));
-    let mut lazy_z = LazyAwi::opaque(bw(8));
+    let lazy_x = LazyAwi::opaque(bw(8));
+    let lazy_y = LazyAwi::opaque(bw(8));
+    let lazy_z = LazyAwi::opaque(bw(8));
     let x = &lazy_x;
     let y = &lazy_y;
     let z = &lazy_z;
@@ -419,18 +419,18 @@ fn dag_bits_functions() {
 
     awi::assert!(epoch0.assertions().bits.is_empty());
 
-    let mut x5 = LazyAwi::opaque(bw(128));
-    let mut x6 = LazyAwi::opaque(bw(192));
-    let mut x7 = LazyAwi::opaque(bw(192));
-    let mut x8 = LazyAwi::opaque(bw(192));
-    let mut x9 = LazyAwi::opaque(bw(192));
+    let x5 = LazyAwi::opaque(bw(128));
+    let x6 = LazyAwi::opaque(bw(192));
+    let x7 = LazyAwi::opaque(bw(192));
+    let x8 = LazyAwi::opaque(bw(192));
+    let x9 = LazyAwi::opaque(bw(192));
     let mut y5 = awi!(x5);
     let mut y6 = awi!(x6);
     let mut y7 = awi!(x7);
     let mut y8 = awi!(x8);
     let mut y9 = awi!(x9);
-    let mut s2 = LazyAwi::opaque(bw(64));
-    let mut s3 = LazyAwi::opaque(bw(64));
+    let s2 = LazyAwi::opaque(bw(64));
+    let s3 = LazyAwi::opaque(bw(64));
     dag_bits_functions_internal(
         [&mut y5, &mut y6, &mut y7, &mut y8, &mut y9],
         s2.to_usize(),
@@ -506,7 +506,7 @@ fn dag_try() {
     drop(epoch1);
 
     let epoch0 = Epoch::new();
-    let mut s = LazyAwi::opaque(bw(64));
+    let s = LazyAwi::opaque(bw(64));
 
     let _ = stuff::test_option_try(s.to_usize());
     let _ = stuff::test_result_try(s.to_usize());
