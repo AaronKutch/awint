@@ -968,7 +968,7 @@ impl Op<EAwi> {
                         })
                     },
                     a_w => {
-                        cusize_w!(a_w);
+                        cbool_w!(a_w);
                         ceq!(b.nzbw(), c.nzbw());
                         Unevaluatable
                     },
@@ -989,7 +989,7 @@ impl Op<EAwi> {
                         })
                     },
                     a_w => {
-                        cusize_w!(a_w);
+                        cbool_w!(a_w);
                         ceq!(b.nzbw(), c.nzbw());
                         Unevaluatable
                     },

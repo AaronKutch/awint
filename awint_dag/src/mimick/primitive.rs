@@ -182,6 +182,7 @@ impl bool {
         ))
     }
 
+    #[track_caller]
     pub(crate) fn new_eager_eval(op: Op<PState>) -> crate::mimick::Option<Self> {
         let mut r = Self::from_state(PState::invalid());
         match r.0.update_state(bw(1), op) {

@@ -230,13 +230,13 @@ impl Epoch {
     pub fn _render_to_svg_file(&self, out_file: std::path::PathBuf) -> Result<(), EvalError> {
         self.get_states(|states| {
             let out_file = out_file.clone();
-            triple_arena_render::render_to_svg_file(&states, false, out_file).unwrap();
+            triple_arena_render::render_to_svg_file(states, false, out_file).unwrap();
         });
         Ok(())
     }
 }
 
-fn get_thread_local_state_mut<F: FnMut(&mut State)>(p_state: PState, mut f: F) {
+fn get_thread_local_state_mut<O, F: FnMut(&mut State) -> O>(p_state: PState, mut f: F) -> O {
     EPOCH_DATA.with(|stack| {
         let mut stack = stack.borrow_mut();
         let top = stack.last_mut().unwrap();
@@ -396,13 +396,15 @@ impl LazyAwi {
         }
         let p_lhs = self.state();
         get_thread_local_state_mut(p_lhs, |state| {
-            assert!(
-                state.op.is_opaque(),
-                "this testing `LazyAwi` struct cannot be assigned to more than once"
-            );
-            state.op = Op::Literal(awi::Awi::from(rhs));
-        });
-        Ok(())
+            if state.op.is_opaque() {
+                state.op = Op::Literal(awi::Awi::from(rhs));
+                Ok(())
+            } else {
+                Err(EvalError::OtherStr(
+                    "this testing `LazyAwi` struct cannot be assigned to more than once",
+                ))
+            }
+        })
     }
 }
 
@@ -429,5 +431,39 @@ impl AsRef<dag::Bits> for LazyAwi {
 impl fmt::Debug for LazyAwi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "LazyAwi({:?})", self.state())
+    }
+}
+pub struct EvalAwi {
+    p_state: PState,
+}
+
+impl Lineage for EvalAwi {
+    fn state(&self) -> PState {
+        self.p_state
+    }
+}
+
+impl EvalAwi {
+    pub fn from_bits(bits: &dag::Bits) -> Self {
+        Self {
+            p_state: bits.state(),
+        }
+    }
+
+    pub fn eval(&self) -> Result<awi::Awi, EvalError> {
+        let p_state = self.state();
+        eval_thread_local_state(p_state)
+    }
+}
+
+impl fmt::Debug for EvalAwi {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "EvalAwi({:?})", self.state())
+    }
+}
+
+impl<B: AsRef<dag::Bits>> From<B> for EvalAwi {
+    fn from(b: B) -> Self {
+        Self::from_bits(b.as_ref())
     }
 }
