@@ -20,6 +20,13 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // literal assign
     Literal(Awi),
 
+    // Assertion that a single bit is true
+    Assert([T; 1]),
+
+    // FIXME a list of inputs (same one can appear multiple times) with starts and widths
+    // Concat(SmallVec<[(T, usize, usize); 1]>)
+    // Concat(ConcatType)
+
     // Static versions of `Lut`, `Get`, and `Set`
     StaticLut([T; 1], Awi),
     StaticGet([T; 1], usize),
@@ -178,6 +185,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Invalid => "invalid",
             Opaque(_, name) => name.unwrap_or("opaque"),
             Literal(_) => "literal",
+            Assert(_) => "assert",
             StaticLut(..) => "static_lut",
             StaticGet(..) => "static_get",
             StaticSet(..) => "static_set",
@@ -251,6 +259,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         // add common "lhs"
         match *self {
             Invalid | Opaque(..) | Literal(_) => (),
+            Assert(_) => v.push("b"),
             StaticLut(..) => v.push("inx"),
             StaticGet(..) => v.push("x"),
             StaticSet(..) => {
@@ -361,6 +370,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Invalid => &[],
             Opaque(v, _) => v,
             Literal(_) => &[],
+            Assert(v) => v,
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
             StaticSet(v, _) => v,
@@ -434,6 +444,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Invalid => &mut [],
             Opaque(v, _) => v,
             Literal(_) => &mut [],
+            Assert(v) => v,
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
             StaticSet(v, _) => v,
@@ -541,6 +552,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
                 res
             }
             Literal(lit) => Literal(lit.clone()),
+            Assert(v) => Assert(map1!(m, v)),
             StaticLut(v, table) => StaticLut(map1!(m, v), table.clone()),
             StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
             StaticSet(v, inx) => StaticSet(map2!(m, v), *inx),

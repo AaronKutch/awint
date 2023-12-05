@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.0] - 2023-12-05
+### Changes
+- Removed all the old basic epoch structs from `awint_dag` now that they have been implemented in
+  `starlight` which will publish a new version. `awint_dag` is now basically just a backend for
+  `starlight` and potentially other crates.
+
 ## [0.13.0] - 2023-10-04
 ### Additions
 - Added the `Awi` struct and corresponding macro, this should replace many usages of `ExtAwi`

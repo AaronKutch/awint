@@ -1,50 +1,125 @@
 // note: have this module not be named "assert" to avoid clashes
 
+pub use core::stringify;
+
 use awint_ext::awint_internals::Location;
 
-use crate::{dag, epoch::register_assertion_bit_for_current_epoch};
+use crate::{dag, epoch::register_assertion_bit_for_current_epoch, Lineage, Op};
+
+/// Creates an assertion, returning `None` if eager evaluation can determine
+/// that it is false
+pub fn create_assertion(assert_true: dag::bool, location: Location) -> Option<()> {
+    let p_state = assert_true.state();
+    if let Op::Literal(ref lit) = p_state.get_op() {
+        assert_eq!(lit.bw(), 1);
+        if lit.to_bool() {
+            Some(())
+        } else {
+            None
+        }
+    } else {
+        register_assertion_bit_for_current_epoch(assert_true, location);
+        Some(())
+    }
+}
 
 #[doc(hidden)]
-pub fn internal_assert(assert_true: impl Into<dag::bool>, location: Location) {
-    register_assertion_bit_for_current_epoch(assert_true.into(), location)
+#[track_caller]
+pub fn internal_assert(stringified: &str, assert_true: impl Into<dag::bool>, location: Location) {
+    if create_assertion(assert_true.into(), location).is_none() {
+        panic!(
+            "`awint_dag::assert({stringified})` failed because eager evaluation determined that \
+             the value is false"
+        )
+    }
 }
 
 #[doc(hidden)]
 #[track_caller]
 pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(
+    lhs_stringified: &str,
+    rhs_stringified: &str,
     lhs: AsRefBitsType,
     rhs: AsRefBitsType,
     location: Location,
 ) {
-    let eq = if let dag::Some(eq) = lhs.as_ref().const_eq(rhs.as_ref()) {
-        eq
+    let lhs = lhs.as_ref();
+    let rhs = rhs.as_ref();
+    if let dag::Some(eq) = lhs.const_eq(rhs) {
+        if create_assertion(eq, location).is_none() {
+            if let (Op::Literal(lhs_lit), Op::Literal(rhs_lit)) =
+                (lhs.state().get_op(), rhs.state().get_op())
+            {
+                panic!(
+                    "`awint_dag::assert_eq(\n {lhs_stringified},\n {rhs_stringified}\n)` failed \
+                     because eager evaluation determined that these are unequal:\n lhs: \
+                     {lhs_lit}\n rhs: {rhs_lit}"
+                )
+            } else {
+                panic!(
+                    "`awint_dag::assert_eq(\n {lhs_stringified},\n {rhs_stringified}\n)` failed \
+                     because eager evaluation determined that these are unequal"
+                )
+            }
+        }
     } else {
-        panic!("`assert_eq` failed for `lhs` and `rhs` because they have different bitwidths")
-    };
-    register_assertion_bit_for_current_epoch(eq, location)
+        panic!(
+            "`awint_dag::assert_eq` failed because of unequal bitwidths\n lhs.bw(): {}\n \
+             rhs.bw(): {}",
+            lhs.bw(),
+            rhs.bw()
+        )
+    }
 }
 
 #[doc(hidden)]
 #[track_caller]
 pub fn internal_assert_ne<AsRefBitsType: AsRef<dag::Bits>>(
+    lhs_stringified: &str,
+    rhs_stringified: &str,
     lhs: AsRefBitsType,
     rhs: AsRefBitsType,
     location: Location,
 ) {
-    let ne = if let dag::Some(ne) = lhs.as_ref().const_ne(rhs.as_ref()) {
-        ne
+    let lhs = lhs.as_ref();
+    let rhs = rhs.as_ref();
+    if let dag::Some(ne) = lhs.const_ne(rhs) {
+        if create_assertion(ne, location).is_none() {
+            if let (Op::Literal(lhs_lit), Op::Literal(rhs_lit)) =
+                (lhs.state().get_op(), rhs.state().get_op())
+            {
+                panic!(
+                    "`awint_dag::assert_ne(\n {lhs_stringified},\n {rhs_stringified}\n)` failed \
+                     because eager evaluation determined that these are equal:\n lhs: {lhs_lit}\n \
+                     rhs: {rhs_lit}"
+                )
+            } else {
+                panic!(
+                    "`awint_dag::assert_ne(\n {lhs_stringified},\n {rhs_stringified}\n)` failed \
+                     because eager evaluation determined that these are equal"
+                )
+            }
+        }
     } else {
-        panic!("`assert_ne` failed for `lhs` and `rhs` because they have different bitwidths")
-    };
-
-    register_assertion_bit_for_current_epoch(ne, location)
+        // this is deliberate
+        panic!(
+            "`awint_dag::assert_ne` failed because of unequal bitwidths\n lhs.bw(): {}\n \
+             rhs.bw(): {}",
+            lhs.bw(),
+            rhs.bw()
+        )
+    }
 }
 
 /// Mimicking `assert` that takes `awi::bool` or `dag::bool`
 #[macro_export]
 macro_rules! assert {
     ($assert_true:expr) => {
-        $crate::internal_assert($assert_true, $crate::location!())
+        $crate::internal_assert(
+            $crate::stringify!($assert_true),
+            $assert_true,
+            $crate::location!(),
+        )
     };
 }
 
@@ -52,14 +127,27 @@ macro_rules! assert {
 #[macro_export]
 macro_rules! assert_eq {
     ($lhs:expr, $rhs:expr) => {
-        $crate::internal_assert_eq($lhs, $rhs, $crate::location!())
+        $crate::internal_assert_eq(
+            $crate::stringify!($lhs),
+            $crate::stringify!($rhs),
+            $lhs,
+            $rhs,
+            $crate::location!(),
+        )
     };
 }
 
-/// Mimicking `assert_ne` that takes inputs of `AsRef<dag::Bits>`
+/// Mimicking `assert_ne` that takes inputs of `AsRef<dag::Bits>`. This checks
+/// for bitwidth equality.
 #[macro_export]
 macro_rules! assert_ne {
     ($lhs:expr, $rhs:expr) => {
-        $crate::internal_assert_ne($lhs, $rhs, $crate::location!())
+        $crate::internal_assert_ne(
+            $crate::stringify!($lhs),
+            $crate::stringify!($rhs),
+            $lhs,
+            $rhs,
+            $crate::location!(),
+        )
     };
 }

@@ -610,7 +610,7 @@ impl Awi {
         self.nzbw().get()
     }
 
-    pub fn from_bits(bits: &Bits) -> Awi {
+    pub fn from_bits(bits: &Bits) -> Self {
         Self::from_state(bits.state())
     }
 

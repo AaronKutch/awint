@@ -22,9 +22,9 @@
 //! Numerical values such as 42 or -1337 must be translated into a form
 //! representable on computers, and only some integer types with some minimum
 //! bitwidth are capable of representing them. If an integer type can represent
-//! them, then we can prefix the values to the type, e.x. 42u8 is an unsigned 8
-//! bit integer with numerical value 42. -1337i64 is a signed 64 bit integer
-//! with numerical value -1337. -1337i8 however is something that does not
+//! them, then we can prefix the values to the type, e.x. `42u8` is an unsigned 8
+//! bit integer with numerical value 42. `-1337i64` is a signed 64 bit integer
+//! with numerical value -1337. `-1337i8`, however, is something that does not
 //! exist, because -1337 surpasses the numerical limits of signed 8 bit integers
 //!
 //! |Numerical limits of an `N` bit integer|unsigned|signed|
@@ -43,11 +43,11 @@
 //! around, so it necessitates that for every signed integer type, there is one
 //! representable numerical value that does not have a corresponding
 //! representable negative numerical value. Because of how two's complement
-//! works, the negative side gets the corner case value that I denote `MINiN`.
-//! It is important to remember that `MINiN != -MAXiN`, and under wrapping
-//! arithmetic we get `-MINiN == MINiN`.
+//! works, the negative side gets the corner case value that I denote `MIN_iN`.
+//! It is important to remember that `MIN_iN != -MAX_iN`, and under wrapping
+//! arithmetic we get `-MIN_iN == MIN_iN`.
 //!
-//! For example, here are all the possible values of a 3 bit unsigned integer,
+//! For example, here are all the possible values of a 4 bit unsigned integer,
 //! with the literal binary string on the left and the numerical value in
 //! decimal on the right
 //!
@@ -97,7 +97,10 @@
 //! The magic of two's complement is that the same underlying operation on bits
 //! results in both signed and unsigned addition. For example, `4 + -7 == -3`
 //! corresponds to `0100 + 1001 == 1101` which also corresponds to `4 + 9 == 13`
-//! on the unsigned side.
+//! on the unsigned side. When `1101` is added to `1110`, we would get `11011`,
+//! but under 4 bit wrapping arithmetic it gets truncated to `1011`, which is
+//! overflow for the unsigned case but is the correct `-3 + -2 = -5` for the
+//! signed case.
 //!
 //! ## Overflow Conditions
 //!
@@ -182,15 +185,15 @@ formatting the rest of this document
 //! needed, but you need to do bounds calculations manually using the numerical
 //! bounds presented at the start.
 //!
-//! For example, lets say a type representable in i16 is being multiplied with
-//! another i16, an i1 is added to it, and one final i15 is divided. Our
+//! For example, let's say a type representable in `i16` is being multiplied with
+//! another `i16`, an `i1` is added to it, and one final `i15` is divided. Our
 //! heuristics say that the first step needs 16 + 16 = 32 bits, the next needs
 //! max(32, 1) + 1 == 33 bits, and the last needs max(33, 15) + 1 == 34 bits
 //! plus a check that the divisor is not zero. If we have only power-of-two
-//! sized primitives, we need to cast all the inputs to i64 (although the first
-//! intermediate could be done in an i32 before being cast to i64).
+//! sized primitives, we need to cast all the inputs to `i64` (although the
+//! first intermediate could be done in an `i32` before being cast to `i64`).
 //!
-//! Alternatively, we could be given an iN as our output type and work
+//! Alternatively, we could be given an `iN` as our output type and work
 //! backwards to determine the largest inputs we could have without possibility
 //! of overflow.
 //!
@@ -199,19 +202,26 @@ formatting the rest of this document
 //!
 //! When making the bounds checks for a signed value to be virtually represented
 //! as `iN`, the bounds check is `-2^(N-1) <= x && x < 2^(N-1)`.  An efficient
-//! way of doing it that also handles the MIN_iN case (which only invalidates
+//! way of doing it that also handles the `MIN_iN` case (which only invalidates
 //! one input state and in turn removes the need to add an extra bit for some
-//! operations), is to: 1. take the wrapping absolute value of the input (the
-//! overflowing absolute value of MIN_iN is MIN_iN) 2. cast it to a `uN` type so
+//! operations), is to:
+//!
+//! 1. take the wrapping absolute value of the input (the
+//! overflowing absolute value of `MIN_iN` is `MIN_iN`)
+//!
+//! 2. cast it to a `uN` type so
 //! we can use unsigned-less-than (e.x. in Rust primitives it is simply `i64 as
-//! u64`, in `awint` we reinterpret) 3. Accept the original input if the cast
-//! value is `< 2^(N-1)` (the cast MIN_iN value exceeds this as well as the
+//! u64`, in `awint` we reinterpret)
+//!
+//! 3. Accept the original input if the cast
+//! value is `< 2^(N-1)` (the cast `MIN_iN` value exceeds this as well as the
 //! normally unrepresentable values). `Bits::sig` quickly calculates the number
 //! of significant bits, such that if `x.sig() == 100` then it means that the
 //! unsigned value would fit in 100 bits.
 //!
 //! `awint::Bits` has several casting operations from the concatenation macros,
-//! to `Bits::resize_`, `sign_resize_`, and `zero_resize_`.
+//! to `Bits::resize_`, `sign_resize_`, and `zero_resize_`. `awint::Awi` has
+//! functions to resize inplace.
 //!
 //! ## Numerical errors
 //!
@@ -224,8 +234,8 @@ formatting the rest of this document
 //! 333.3333... . When using integer division, the divisor was 3, the quotient
 //! is 333, and the remainder is 1. The real value can be recovered by
 //! converting to reals, dividing the remainder by the divisor, and adding it to
-//! the quotient: `quotient + remainder/divisor  == 333 + 1/3 == (reals domain)
-//! 333.333`.
+//! the quotient: `quotient + remainder/divisor  == 333 + 1/3 == (in the reals
+//! domain) 333.333...`.
 //!
 //! The remainder can be interpreted as the error for an instance of a division.
 //! The remainder is bounded by the divisor. In one extreme, a divisor of 1
@@ -239,8 +249,8 @@ formatting the rest of this document
 //! minimum numerator value (as real numbers). For example, if the minimum value
 //! the numerator can take is 42 and the maximum value the divisor can take is
 //! 7, our upper bound is 7/42 = 0.1666... = 16.67%. Because 7 happens to
-//! exactly divide 42, the actual error was zero, but we are getting the bound
-//! for a other possible errors.
+//! exactly divide 42, the actual error was zero, but we are getting the upper
+//! bound for all possible errors.
 //!
 //! ## Fixed point representations
 //!
@@ -250,7 +260,7 @@ formatting the rest of this document
 //!
 //! If you tried the overflow prevention heuristics above on an algorithm with
 //! several multiplications, you may notice that the bitwidth required quickly
-//! grows to unmanageable levels, even if you are using u256. There comes a
+//! grows to unmanageable levels, even if you are using `u256`. There comes a
 //! point where less significant bits must eventually be cut off. There are also
 //! algorithms where you will want to multiply or divide by a noninteger number,
 //! e.x. multiply 100 by 3 and divide by 7 to emulate multiplication by 3/7, but
@@ -317,9 +327,9 @@ formatting the rest of this document
 //! error upper bound is 7 / (1 * 3 * 2^32) = 5.43*10^-10, and this gets better
 //! with larger fixed multiplier or minimum `x`.
 //!
-//! Lets say that we want to use this output in another function, without
-//! dividing out the fixed point factor so that we can keep it around to keep
-//! precision or as a kind of "leverage" against more division errors. Lets say
+//! Let's say that we want to use this output in another function, without
+//! dividing out the fixed point factor. We can keep it around to keep
+//! precision or as a kind of "leverage" against more division errors. Let's say
 //! we are adding two fixed point values together. If they both have the same
 //! fixed multiplier, then it is a simple direct addition:
 //!
@@ -342,7 +352,7 @@ formatting the rest of this document
 //!
 //! To go full circle regarding the bitwidth growing to unmaneagable levels, we
 //! can periodically do divisions to bring down the multiplier without impacting
-//! the fraction too much. For example, lets say we have two inputs that have a
+//! the fraction too much. For example, let's say we have two inputs that have a
 //! common multiplier of 2^32 and integer values 530239482 (virtually
 //! 530239482/2^32 approx. = 0.123456) and 3287505407 (virtually 0.765432), and
 //! we multiply them. They will result in the integer 1743165164079879174
@@ -359,7 +369,7 @@ formatting the rest of this document
 //! Bonus point: reciprocals like `x^-1` can be independently processed by
 //! treating the implicit 1 as something to attach a fixed multiplier to, e.x. `(1*2^62)
 //! / x`. If we are dividing by `x` a lot for instance, we could use one
-//! division to calculate a reciprocal, and as long as `x` is small compared to
+//! division to calculate a reciprocal. As long as `x` is small compared to
 //! the multiplier, we can use multiplications by this reciprocal to do as many
 //! quick and accurate divisions as we like. We just need to keep track of the
 //! multipliers for post processing, which if powers of two can be done mostly

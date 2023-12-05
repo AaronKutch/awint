@@ -1,3 +1,5 @@
+//! Mimicking structs used to record a DAG of operations on `awint` types
+
 pub(crate) mod assertion;
 mod awi_types;
 mod bits;

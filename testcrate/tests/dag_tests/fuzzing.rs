@@ -5,20 +5,17 @@ use std::{
 
 use awint::{
     awi,
-    awint_dag::{
-        basic_state_epoch::{StateEpoch, _get_epoch_data_arena},
-        lowering::OpDag,
-        smallvec::smallvec,
-        EvalError, Lineage, Op,
-    },
+    awint_dag::EvalError,
     awint_internals::USIZE_BITS,
-    awint_macro_internals::triple_arena::{ptr_struct, Advancer, Arena},
+    awint_macro_internals::triple_arena::{ptr_struct, Arena},
     dag,
 };
 use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
 };
+
+use crate::dag_tests::{Epoch, EvalAwi, LazyAwi};
 
 // miri is just here to check that the unsized deref hacks are working
 const N: (u32, u32) = if cfg!(miri) {
@@ -31,24 +28,18 @@ const N: (u32, u32) = if cfg!(miri) {
 
 ptr_struct!(P0);
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Pair {
     awi: awi::Awi,
     dag: dag::Awi,
-}
-
-impl Pair {
-    pub fn new(lit: awi::Awi) -> Self {
-        Self {
-            awi: lit.clone(),
-            dag: lit.as_ref().into(),
-        }
-    }
+    eval: Option<EvalAwi>,
 }
 
 #[derive(Debug)]
 struct Mem {
     a: Arena<P0, Pair>,
+    // `LazyAwi`s that get need to be retro assigned
+    roots: Vec<(LazyAwi, awi::Awi)>,
     // The outer Vec has `v_len` Vecs for all the supported bitwidths (there is a dummy 0
     // bitwidth Vec and one for each of 1..=(v_len - 1)), the inner Vecs are unsorted and used for
     // random querying
@@ -66,6 +57,7 @@ impl Mem {
         }
         Self {
             a: Arena::<P0, Pair>::new(),
+            roots: vec![],
             v,
             v_len,
             rng: Xoshiro128StarStar::seed_from_u64(0),
@@ -75,6 +67,7 @@ impl Mem {
     pub fn clear(&mut self) {
         self.a.clear();
         self.v.clear();
+        self.roots.clear();
         for _ in 0..self.v_len {
             self.v.push(vec![]);
         }
@@ -89,11 +82,18 @@ impl Mem {
                 return p
             }
         }
-        let mut lit = awi::Awi::zero(NonZeroUsize::new(w).unwrap());
+        let nzbw = NonZeroUsize::new(w).unwrap();
+        let lazy = LazyAwi::opaque(nzbw);
+        let mut lit = awi::Awi::zero(nzbw);
         lit.rand_(&mut self.rng).unwrap();
         let tmp = lit.to_usize() % cap;
         lit.usize_(tmp);
-        let p = self.a.insert(Pair::new(lit));
+        let p = self.a.insert(Pair {
+            awi: lit.clone(),
+            dag: dag::Awi::from(lazy.as_ref()),
+            eval: None,
+        });
+        self.roots.push((lazy, lit));
         self.v[w].push(p);
         p
     }
@@ -104,9 +104,16 @@ impl Mem {
         if try_query && (!self.v[w].is_empty()) {
             self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()]
         } else {
-            let mut lit = awi::Awi::zero(NonZeroUsize::new(w).unwrap());
+            let nzbw = NonZeroUsize::new(w).unwrap();
+            let lazy = LazyAwi::opaque(nzbw);
+            let mut lit = awi::Awi::zero(nzbw);
             lit.rand_(&mut self.rng).unwrap();
-            let p = self.a.insert(Pair::new(lit));
+            let p = self.a.insert(Pair {
+                awi: lit.clone(),
+                dag: dag::Awi::from(lazy.as_ref()),
+                eval: None,
+            });
+            self.roots.push((lazy, lit));
             self.v[w].push(p);
             p
         }
@@ -143,91 +150,20 @@ impl Mem {
         &mut self.a[inx].dag
     }
 
-    /// Makes sure that plain evaluation works
-    pub fn eval_and_verify_equal(&mut self, epoch: &StateEpoch) -> Result<(), EvalError> {
-        let (mut op_dag, res) = OpDag::from_epoch(epoch);
-        res?;
-        for pair in self.a.vals() {
-            op_dag.note_pstate(epoch, pair.dag.state()).unwrap();
+    pub fn finish(&mut self, _epoch: &Epoch) {
+        for pair in self.a.vals_mut() {
+            pair.eval = Some(EvalAwi::from(&pair.dag))
         }
-        op_dag.verify_integrity().unwrap();
-        op_dag.eval_all()?;
-        op_dag.verify_integrity().unwrap();
-        op_dag.assert_assertions().unwrap();
-        for pair in self.a.vals() {
-            let p = epoch.pstate_to_pnode(pair.dag.state());
-            if let Op::Literal(ref lit) = op_dag[p].op {
-                if pair.awi != *lit {
-                    return Err(EvalError::OtherStr("real and mimick mismatch"))
-                }
-            }
-        }
-        Ok(())
     }
 
-    /// Makes sure that lowering works
-    pub fn lower_and_verify_equal(&mut self, epoch: &StateEpoch) -> Result<(), EvalError> {
-        let (mut op_dag, res) = OpDag::from_epoch(epoch);
-        res?;
+    pub fn eval_and_verify_equal(&mut self, _epoch: &Epoch) -> Result<(), EvalError> {
+        // set all lazy roots
+        for (lazy, lit) in &mut self.roots {
+            lazy.retro_(lit).unwrap();
+        }
+        // evaluate all
         for pair in self.a.vals() {
-            op_dag.note_pstate(epoch, pair.dag.state()).unwrap();
-        }
-        // if all constants are known, the lowering will simply become an evaluation. We
-        // convert half of the literals to opaques at random, lower the dag, and finally
-        // convert back and evaluate to check that the lowering did not break the DAG
-        // function.
-        let mut literals = vec![];
-        let mut adv = op_dag.a.advancer();
-        while let Some(p) = adv.advance(&op_dag.a) {
-            if op_dag[p].op.is_literal() && ((self.rng.next_u32() & 1) == 0) {
-                op_dag.note_pnode(p).unwrap();
-                if let Op::Literal(lit) = op_dag[p].op.take() {
-                    literals.push((p, lit));
-                    op_dag[p].op = Op::Opaque(smallvec![], None);
-                } else {
-                    unreachable!()
-                }
-            }
-        }
-        // op_dag.render_to_svg_file(std::path::PathBuf::from("rendered.svg"))
-        //    .unwrap();
-        op_dag.verify_integrity().unwrap();
-        let res = op_dag.lower_all();
-        res?;
-        op_dag.verify_integrity().unwrap();
-        op_dag.assert_assertions_weak().unwrap();
-        for node in op_dag.a.vals() {
-            if !matches!(
-                node.op,
-                Op::Opaque(_, _)
-                    | Op::Literal(_)
-                    | Op::Copy(_)
-                    | Op::StaticGet(_, _)
-                    | Op::StaticSet(_, _)
-                    | Op::StaticLut(_, _)
-            ) {
-                panic!("did not lower all the way: {node:?}");
-            }
-        }
-        for (p, lit) in literals {
-            if let Some(op) = op_dag.a.get_mut(p) {
-                // we are not respecting gen counters in release mode so we need this check
-                if op.op.is_opaque() {
-                    op.op = Op::Literal(lit);
-                }
-            } // else the literal was culled
-        }
-        op_dag.eval_all().unwrap();
-        op_dag.assert_assertions().unwrap();
-        for pair in self.a.vals() {
-            let p = epoch.pstate_to_pnode(pair.dag.state());
-            if let Op::Literal(ref lit) = op_dag[p].op {
-                if pair.awi != *lit {
-                    return Err(EvalError::OtherStr("real and mimick mismatch"))
-                }
-            } else {
-                panic!("did not eval to literal")
-            }
+            assert_eq!(pair.eval.as_ref().unwrap().eval().unwrap(), pair.awi);
         }
         Ok(())
     }
@@ -819,15 +755,13 @@ fn dag_fuzzing() {
     let mut m = Mem::new();
 
     for _ in 0..N.1 {
-        let epoch = StateEpoch::new();
+        let epoch = Epoch::new();
         m.clear();
         for _ in 0..N.0 {
             num_dag_duo(&mut rng, &mut m)
         }
+        m.finish(&epoch);
         m.eval_and_verify_equal(&epoch).unwrap();
-        let res = m.lower_and_verify_equal(&epoch);
-        res.unwrap();
         drop(epoch);
-        _get_epoch_data_arena(|a| assert!(a.is_empty()));
     }
 }

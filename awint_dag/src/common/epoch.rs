@@ -1,6 +1,6 @@
 //! Access to special epoch structs and functions. Most users should instead use
-//! a [crate::basic_state_epoch::StateEpoch] or similar downstream epoch
-//! management construct.
+//! a downstream epoch management construct such as the `Epoch` from the
+//! `starlight` crate.
 
 use std::{
     cell::{Cell, RefCell},

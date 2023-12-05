@@ -97,7 +97,7 @@ impl Concatenation {
                         if !matches!(self.filler_alignment, FillerAlign::None) {
                             // filler already set
                             return Err(CCMacroError {
-                                // lets point to one
+                                // let's point to one
                                 red_text: vec![comp.txt],
                                 // be explicit
                                 error: "there is more than one unbounded filler in this \

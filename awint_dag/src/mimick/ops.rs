@@ -76,9 +76,9 @@ macro_rules! zero_cast {
                         self.state(),
                     )
                 } else {
-                    dag::$prim::new(
+                    dag::$prim::new_eager_eval(
                         ZeroResize([self.state()]),
-                    )
+                    ).unwrap()
                 }
             }
         )*
@@ -107,9 +107,9 @@ macro_rules! sign_cast {
                         self.state(),
                     )
                 } else {
-                    dag::$prim::new(
+                    dag::$prim::new_eager_eval(
                         SignResize([self.state()]),
-                    )
+                    ).unwrap()
                 }
             }
         )*
@@ -121,7 +121,7 @@ macro_rules! ref_self_output_bool {
         $(
             #[must_use]
             pub fn $fn_name(&self) -> dag::bool {
-                dag::bool::new($enum_var([self.state()]))
+                dag::bool::new_eager_eval($enum_var([self.state()])).unwrap()
             }
         )*
     };
@@ -133,7 +133,7 @@ macro_rules! compare {
             #[must_use]
             pub fn $fn_name(&self, rhs: &Bits) -> Option<dag::bool> {
                 if self.bw() == rhs.bw() {
-                    Some(dag::bool::new($enum_var([self.state(), rhs.state()])))
+                    dag::bool::new_eager_eval($enum_var([self.state(), rhs.state()]))
                 } else {
                     None
                 }
@@ -148,7 +148,7 @@ macro_rules! compare_reversed {
             #[must_use]
             pub fn $fn_name(&self, rhs: &Bits) -> Option<dag::bool> {
                 if self.bw() == rhs.bw() {
-                    Some(dag::bool::new($enum_var([rhs.state(), self.state()])))
+                    dag::bool::new_eager_eval($enum_var([rhs.state(), self.state()]))
                 } else {
                     None
                 }
@@ -179,7 +179,7 @@ macro_rules! ref_self_output_usize {
         $(
             #[must_use]
             pub fn $fn_name(&self) -> dag::usize {
-                dag::usize::new($enum_var([self.state()]))
+                dag::usize::new_eager_eval($enum_var([self.state()])).unwrap()
             }
         )*
     };
@@ -336,13 +336,20 @@ impl Bits {
             if inx >= self.bw() {
                 None
             } else {
-                Some(dag::bool::new(StaticGet([self.state()], inx)))
+                dag::bool::new_eager_eval(StaticGet([self.state()], inx))
             }
         } else {
-            let ok = InlAwi::from_usize(inx)
-                .ult(&InlAwi::from_usize(self.bw()))
-                .unwrap();
-            Option::some_at_dagtime(dag::bool::new(Get([self.state(), inx.state()])), ok)
+            let b = dag::bool::new_eager_eval(Get([self.state(), inx.state()]));
+            match b {
+                None => None,
+                Some(b) => {
+                    let ok = InlAwi::from_usize(inx)
+                        .ult(&InlAwi::from_usize(self.bw()))
+                        .unwrap();
+                    Option::some_at_dagtime(b, ok)
+                }
+                _ => unreachable!(),
+            }
         }
     }
 
@@ -498,14 +505,14 @@ impl Bits {
     }
 
     pub fn zero_resize_(&mut self, rhs: &Self) -> dag::bool {
-        let b = dag::bool::new(ZeroResizeOverflow([rhs.state()], self.nzbw()));
+        let b = dag::bool::new_eager_eval(ZeroResizeOverflow([rhs.state()], self.nzbw())).unwrap();
         self.update_state(self.state_nzbw(), ZeroResize([rhs.state()]))
             .unwrap_at_runtime();
         b
     }
 
     pub fn sign_resize_(&mut self, rhs: &Self) -> dag::bool {
-        let b = dag::bool::new(SignResizeOverflow([rhs.state()], self.nzbw()));
+        let b = dag::bool::new_eager_eval(SignResizeOverflow([rhs.state()], self.nzbw())).unwrap();
         self.update_state(self.state_nzbw(), SignResize([rhs.state()]))
             .unwrap_at_runtime();
         b
@@ -580,7 +587,7 @@ impl Bits {
 
     pub fn inc_(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
-        let out = dag::bool::new(IncCout([self.state(), b.state()]));
+        let out = dag::bool::new_eager_eval(IncCout([self.state(), b.state()])).unwrap();
         self.update_state(self.state_nzbw(), Inc([self.state(), b.state()]))
             .unwrap_at_runtime();
         out
@@ -588,7 +595,7 @@ impl Bits {
 
     pub fn dec_(&mut self, cin: impl Into<dag::bool>) -> dag::bool {
         let b = cin.into();
-        let out = dag::bool::new(DecCout([self.state(), b.state()]));
+        let out = dag::bool::new_eager_eval(DecCout([self.state(), b.state()])).unwrap();
         self.update_state(self.state_nzbw(), Dec([self.state(), b.state()]))
             .unwrap_at_runtime();
         out
@@ -610,8 +617,10 @@ impl Bits {
         if (self.bw() == lhs.bw()) && (self.bw() == rhs.bw()) {
             let b = cin.into();
             let out = Some((
-                dag::bool::new(UnsignedOverflow([b.state(), lhs.state(), rhs.state()])),
-                dag::bool::new(SignedOverflow([b.state(), lhs.state(), rhs.state()])),
+                dag::bool::new_eager_eval(UnsignedOverflow([b.state(), lhs.state(), rhs.state()]))
+                    .unwrap(),
+                dag::bool::new_eager_eval(SignedOverflow([b.state(), lhs.state(), rhs.state()]))
+                    .unwrap(),
             ));
             self.update_state(
                 self.state_nzbw(),
