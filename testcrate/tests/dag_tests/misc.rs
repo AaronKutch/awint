@@ -2,11 +2,13 @@ use awint::{
     awi,
     awint_dag::{
         epoch::{_get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback},
-        Op,
+        EvalError, Op,
     },
     dag, inlawi_ty,
 };
-use starlight::{Epoch, LazyAwi};
+
+use super::{Epoch, LazyAwi};
+use crate::dag_tests::_test_callback;
 
 // FIXME we ultimately need to move any thing that isn't directly mimicking
 // types to `starlight`, including the meta lowering since that will have
@@ -15,71 +17,60 @@ use starlight::{Epoch, LazyAwi};
 // these tests do not involve the share feature of `starlight` `Epoch`s
 
 #[test]
-fn state_epochs() {
+fn dag_epochs() {
     use awint::dag::u8;
     assert_eq!(_get_epoch_gen().get(), 2);
     assert!(_get_epoch_stack().is_empty());
     assert_eq!(_get_epoch_callback(), _unregistered_callback());
     {
-        let _epoch0 = Epoch::new();
+        let epoch0 = Epoch::new();
         assert_eq!(_get_epoch_gen().get(), 3);
         assert_eq!(_get_epoch_stack().len(), 1);
-        assert_eq!(_get_epoch_callback(), starlight::epoch::_callback());
+        assert_eq!(_get_epoch_callback(), _test_callback());
         let x: &u8 = &7.into();
         // test `Copy` trait
         let _y: u8 = *x;
-        starlight::epoch::no_recursive_current_epoch(|a| {
-            assert_eq!(a.epoch_data.borrow().ensemble.stator.states.len(), 1)
-        });
+        epoch0.get_states(|states| assert_eq!(states.len(), 1));
         {
-            let _epoch1 = Epoch::new();
+            let epoch1 = Epoch::new();
             assert_eq!(_get_epoch_gen().get(), 4);
             assert_eq!(_get_epoch_stack().len(), 2);
             let mut _z: u8 = 7.into();
-            starlight::epoch::no_recursive_current_epoch(|a| {
-                assert_eq!(a.epoch_data.borrow().ensemble.stator.states.len(), 1)
-            });
+            epoch1.get_states(|states| assert_eq!(states.len(), 1));
         }
         assert_eq!(_get_epoch_stack().len(), 1);
-        starlight::epoch::no_recursive_current_epoch(|a| {
-            assert_eq!(a.epoch_data.borrow().ensemble.stator.states.len(), 1)
-        });
+        epoch0.get_states(|states| assert_eq!(states.len(), 1));
         {
-            let _epoch2 = Epoch::new();
+            let epoch2 = Epoch::new();
             assert_eq!(_get_epoch_gen().get(), 5);
             assert_eq!(_get_epoch_stack().len(), 2);
             let mut _w: u8 = 7.into();
-            starlight::epoch::no_recursive_current_epoch(|a| {
-                assert_eq!(a.epoch_data.borrow().ensemble.stator.states.len(), 1)
-            });
+            epoch2.get_states(|states| assert_eq!(states.len(), 1));
         }
         assert_eq!(_get_epoch_stack().len(), 1);
-        starlight::epoch::no_recursive_current_epoch(|a| {
-            assert_eq!(a.epoch_data.borrow().ensemble.stator.states.len(), 1)
-        });
+        epoch0.get_states(|states| assert_eq!(states.len(), 1));
     };
     assert!(_get_epoch_stack().is_empty());
     assert_eq!(_get_epoch_callback(), _unregistered_callback());
-    assert!(starlight::epoch::get_current_epoch().is_none());
 }
 
 #[test]
 #[should_panic]
-fn state_epoch_unregistered0() {
+fn dag_epoch_unregistered0() {
     use dag::*;
     let _x = ExtAwi::zero(bw(1));
 }
 
 #[test]
 #[should_panic]
-fn state_epoch_unregistered1() {
+fn dag_epoch_unregistered1() {
     use dag::*;
     let _x: u8 = 7.into();
 }
 
 #[test]
 #[should_panic]
-fn state_epoch_unregistered2() {
+fn dag_epoch_unregistered2() {
     use dag::*;
     let epoch0 = Epoch::new();
     drop(epoch0);
@@ -88,7 +79,7 @@ fn state_epoch_unregistered2() {
 
 #[test]
 #[should_panic]
-fn state_epoch_fail() {
+fn dag_epoch_fail() {
     let epoch0 = Epoch::new();
     let epoch1 = Epoch::new();
     drop(epoch0);
@@ -153,7 +144,7 @@ fn dag_assertions() {
     assert_eq!(x, y);
     assert_ne!(x, z);
     // check that optimizing away is working
-    core::assert_eq!(epoch0.assertions().bits.len(), 0);
+    core::assert_eq!(epoch0.assertions().len(), 0);
     let lazy_x = LazyAwi::opaque(bw(8));
     let lazy_y = LazyAwi::opaque(bw(8));
     let lazy_z = LazyAwi::opaque(bw(8));
@@ -164,7 +155,7 @@ fn dag_assertions() {
     assert!(is_true);
     assert_eq!(x, y);
     assert_ne!(x, z);
-    core::assert_eq!(epoch0.assertions().bits.len(), 3);
+    core::assert_eq!(epoch0.assertions().len(), 3);
     {
         use awi::*;
         lazy_x.retro_(&awi!(13u8)).unwrap();
@@ -417,7 +408,7 @@ fn dag_bits_functions() {
     let s1 = inlawi!(128u64).to_usize();
     dag_bits_functions_internal([y0, y1, y2, y3, y4], s0, s1, &epoch0);
 
-    awi::assert!(epoch0.assertions().bits.is_empty());
+    awi::assert!(epoch0.assertions().is_empty());
 
     let x5 = LazyAwi::opaque(bw(128));
     let x6 = LazyAwi::opaque(bw(192));
@@ -439,16 +430,16 @@ fn dag_bits_functions() {
     );
 
     let num_assertions = 15;
-    let eq = epoch0.assertions().bits.len() == num_assertions;
+    let eq = epoch0.assertions().len() == num_assertions;
     if !eq {
         panic!(
             "number of assertions ({}) is not as expected",
-            epoch0.assertions().bits.len()
+            epoch0.assertions().len()
         );
     }
 
     {
-        use awi::{assert, *};
+        use awi::*;
 
         x5.retro_(&awi!(zero: ..128)).unwrap();
         x6.retro_(&awi!(umax: ..192)).unwrap();
@@ -458,10 +449,6 @@ fn dag_bits_functions() {
         s2.retro_(&Awi::from_usize(127)).unwrap();
         s3.retro_(&Awi::from_usize(128)).unwrap();
 
-        // FIXME
-        //epoch0.lower().unwrap();
-        //assert!(epoch0.assertions().bits.is_empty());
-        //epoch0.assert_assertions().unwrap();
         if !eq {
             panic!();
         }
@@ -511,24 +498,24 @@ fn dag_try() {
     let _ = stuff::test_option_try(s.to_usize());
     let _ = stuff::test_result_try(s.to_usize());
     // make sure it is happening at the `Try` point
-    std::assert_eq!(epoch0.assertions().bits.len(), 2);
+    std::assert_eq!(epoch0.assertions().len(), 2);
     Option::some_at_dagtime((), false.into()).unwrap();
     Option::<()>::none_at_dagtime(false.into())
         .ok_or(())
         .unwrap_err();
     Result::<(), &str>::ok_at_dagtime((), false.into()).unwrap();
     Result::<&str, ()>::err_at_dagtime((), false.into()).unwrap_err();
-    std::assert_eq!(epoch0.assertions().bits.len(), 6);
+    std::assert_eq!(epoch0.assertions().len(), 6);
 
     {
         use awi::*;
 
         s.retro_(&awi!(8u64)).unwrap();
 
-        // TODO
-        //assert!(matches!(epoch0.assert_assertions(),
-        // Err(EvalError::AssertionFailure(_))));
-        epoch0.assert_assertions().unwrap_err();
+        awi::assert!(matches!(
+            epoch0.assert_assertions(),
+            Err(EvalError::AssertionFailure(_))
+        ));
     }
 }
 
