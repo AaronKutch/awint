@@ -64,6 +64,8 @@ pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert
 pub use mimick::primitive;
 pub use smallvec;
 
+// FIXME TODO there is an issue with the evaluation somewhere on bigendian
+
 /// All mimicking items
 pub mod dag {
     pub use awint_ext::bw;
