@@ -53,23 +53,17 @@
 #![cfg_attr(feature = "try_support", feature(never_type))]
 
 mod common;
-pub mod lowering;
 pub mod mimick;
 pub use awint_ext::awint_internals::{location, Location};
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{
-    epoch, DummyDefault, EAwi, EvalError, EvalResult, Lineage, Op, PNode, PNote, PState,
-};
-pub use lowering::{OpDag, OpNode};
+pub use common::{epoch, DummyDefault, EAwi, EvalError, EvalResult, Lineage, Op, PState};
 // export needed by the macros
 #[doc(hidden)]
 pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne, stringify};
 pub use mimick::primitive;
 pub use smallvec;
-
-pub use crate::common::basic_state_epoch;
 
 /// All mimicking items
 pub mod dag {

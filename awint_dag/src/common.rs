@@ -1,4 +1,3 @@
-pub mod basic_state_epoch;
 pub mod epoch;
 mod error;
 mod eval;

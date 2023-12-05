@@ -12,18 +12,10 @@ use crate::{
 };
 
 #[cfg(debug_assertions)]
-ptr_struct!(PState; PNode);
+ptr_struct!(PState);
 
 #[cfg(not(debug_assertions))]
-ptr_struct!(PState(); PNode());
-
-ptr_struct!(PNote);
-
-impl DummyDefault for PNode {
-    fn default() -> Self {
-        Default::default()
-    }
-}
+ptr_struct!(PState());
 
 impl PState {
     /// Enters a new `State` from the given components into the thread local
@@ -84,26 +76,5 @@ impl DummyDefault for Awi {
 impl DummyDefault for PState {
     fn default() -> Self {
         Default::default()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Assertions {
-    pub bits: Vec<crate::dag::bool>,
-}
-
-impl Assertions {
-    pub fn new() -> Self {
-        Self { bits: vec![] }
-    }
-
-    pub fn states(&self) -> impl Iterator<Item = PState> + '_ {
-        self.bits.iter().map(|bit| bit.state())
-    }
-}
-
-impl Default for Assertions {
-    fn default() -> Self {
-        Self::new()
     }
 }
