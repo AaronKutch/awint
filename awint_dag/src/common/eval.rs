@@ -17,15 +17,18 @@ use crate::{DummyDefault, EvalError, Op};
 pub enum EvalResult {
     /// A Valid result
     Valid(Awi),
-    /// Pass-through, usually because of an Awi operation that can fail from
-    /// out-of-bounds values
+    /// Pass-through of the first argument, usually because of an Awi operation
+    /// that can fail from out-of-bounds values
     Pass(Awi),
     /// Pass-through but it is dependent on a value that is unknown
     PassUnevaluatable,
     /// No-operation, usually because of Awi operations with invalid bitwidths
     Noop,
+    /// Unevaluatable because some inputs have unknown bitpatterns
     Unevaluatable,
+    /// An `Op::Assert` evaluated to be successful
     AssertionSuccess,
+    /// An `Op::Assert` evaluated to be a failure
     AssertionFailure,
     /// Some evaluation error because of something that is not an Awi operation.
     /// This includes `Invalid`, `Opaque`, `Literal` with bitwidth mismatch, the
@@ -37,13 +40,16 @@ pub enum EvalResult {
 
 use EvalResult::*;
 
-/// This struct is just used for the `eval` function. In earlier versions we
-/// implemented `eval` for `Op<Awi>`, but there were cases where only some
-/// inputs were unknown and something could still be inferred from the partially
-/// known values or bitwidths.
+/// This struct is just used for the `eval` function.
+///
+/// In earlier versions we implemented `eval` for `Op<Awi>`, but there were
+/// cases where only some inputs were unknown and something could still be
+/// inferred from the partially known values or bitwidths.
 #[derive(Debug, Clone)]
 pub enum EAwi {
+    /// The whole bit pattern is known
     KnownAwi(Awi),
+    /// Only the bitwidth is known
     Bitwidth(NonZeroUsize),
 }
 

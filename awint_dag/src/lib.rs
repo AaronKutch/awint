@@ -1,8 +1,7 @@
 //! # DAG functionality for `awint`
 //!
-//! **NOTE**: this crate is usable but design choices are still in flux. The
-//! current main goal is for this crate to act as the backend for the WIP
-//! starlight crate, but others may use it for their own projects as well.
+//! **NOTE**: This crate acts as the backend for the `starlight` crate, but
+//! others may use it for their own projects as well.
 //!
 //! **NOTE**: there is one significant wart, being that the concatenation macros
 //! in `dag::*` mode may not be no-ops if a `None` is returned. Use `unwrap`s
