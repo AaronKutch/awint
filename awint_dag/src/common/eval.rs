@@ -438,36 +438,6 @@ impl Op<EAwi> {
                     },
                 )
             }
-            StaticGet([a], inx) => {
-                cbool_w!(w);
-                cases!(a,
-                    a => {
-                        if let Some(b) = a.get(inx) {
-                            Valid(Awi::from_bool(b))
-                        } else {
-                            Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
-                        }
-                    },
-                    a_w => {
-                        if inx < a_w.get() {
-                            Unevaluatable
-                        } else {
-                            Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
-                        }
-                    },
-                )
-            }
-            StaticSet([a, b], inx) => {
-                ceq_strict!(w, a.nzbw());
-                cbool_w!(b.nzbw());
-                if inx >= a.bw() {
-                    return Error(EvalError::OtherStr("`StaticSet` with `inx` out of bounds"))
-                }
-                awi2!(a, b, {
-                    a.set(inx, cbool!(&b)).unwrap();
-                    Valid(a)
-                })
-            }
             Resize([a, b]) => {
                 awi2!(a, b, {
                     let mut r = Awi::zero(w);

@@ -110,10 +110,8 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     Concat(ConcatType<T>),
     ConcatFields(ConcatFieldsType<T>),
 
-    // Static versions of `Lut`, `Get`, and `Set`
+    // Static version of `Lut`
     StaticLut([T; 1], Awi),
-    StaticGet([T; 1], usize),
-    StaticSet([T; 2], usize),
 
     // in the future we may try to do some kind of dynamic bitwidth
     //Bw,
@@ -272,8 +270,6 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Concat(_) => "concat",
             ConcatFields(_) => "concat_fields",
             StaticLut(..) => "static_lut",
-            StaticGet(..) => "static_get",
-            StaticSet(..) => "static_set",
             Resize(..) => "resize",
             ZeroResize(..) => "zero_resize",
             ZeroResizeOverflow(..) => "zero_reisze_overflow",
@@ -352,11 +348,6 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
                 v = vec!["c"; concat.len()];
             }
             StaticLut(..) => v.push("inx"),
-            StaticGet(..) => v.push("x"),
-            StaticSet(..) => {
-                v.push("x");
-                v.push("b")
-            }
 
             Resize(..) => {
                 v.push("x");
@@ -465,8 +456,6 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Concat(concat) => concat.as_slice(),
             ConcatFields(concat) => concat.t_as_slice(),
             StaticLut(v, _) => v,
-            StaticGet(v, _) => v,
-            StaticSet(v, _) => v,
             Resize(v) => v,
             ZeroResize(v) => v,
             SignResize(v) => v,
@@ -541,8 +530,6 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Concat(concat) => concat.as_mut_slice(),
             ConcatFields(concat) => concat.t_as_mut_slice(),
             StaticLut(v, _) => v,
-            StaticGet(v, _) => v,
-            StaticSet(v, _) => v,
             Resize(v) => v,
             ZeroResize(v) => v,
             SignResize(v) => v,
@@ -666,8 +653,6 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
                 ConcatFields(res_concat)
             }
             StaticLut(v, table) => StaticLut(map1!(m, v), table.clone()),
-            StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
-            StaticSet(v, inx) => StaticSet(map2!(m, v), *inx),
             Resize(v) => Resize(map2!(m, v)),
             ZeroResize(v) => ZeroResize(map1!(m, v)),
             SignResize(v) => SignResize(map1!(m, v)),

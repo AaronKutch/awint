@@ -66,8 +66,6 @@ impl DebugNodeTrait<PState> for State {
                 Op::Opaque(..) => vec![format!("{} {}", this.op.operation_name(), this.nzbw)],
                 Op::Literal(ref awi) => vec![format!("{awi}")],
                 Op::StaticLut(_, ref awi) => vec![format!("lut {awi}")],
-                Op::StaticGet(_, inx) => vec![format!("get {inx}")],
-                Op::StaticSet(_, inx) => vec![format!("set {inx}")],
                 _ => vec![this.op.operation_name().to_owned()],
             },
             sinks: vec![],
