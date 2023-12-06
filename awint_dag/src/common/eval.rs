@@ -305,6 +305,95 @@ impl Op<EAwi> {
                 ceq_strict!(w, a.nzbw());
                 Valid(a)
             }
+            Concat(concat) => {
+                let mut total_width = 0usize;
+                let mut known = true;
+                for t in concat.as_slice() {
+                    match t {
+                        EAwi::KnownAwi(t) => {
+                            total_width = total_width.checked_add(t.bw()).unwrap();
+                        }
+                        EAwi::Bitwidth(t_w) => {
+                            total_width = total_width.checked_add(t_w.get()).unwrap();
+                            known = false;
+                        }
+                    }
+                }
+                // should be impossible to be zero because the constructors require nonzero len
+                // and bitwidth
+                let total_width = NonZeroUsize::new(total_width).unwrap();
+                if w != total_width {
+                    return Error(EvalError::OtherStr("`Concat` with bad concatenation"));
+                }
+                if known {
+                    let mut r = Awi::zero(total_width);
+                    let mut to = 0;
+                    for t in concat.as_slice() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                let width = t.bw();
+                                r.field_to(to, t, width).unwrap();
+                                to += width;
+                            }
+                            EAwi::Bitwidth(_t_w) => {
+                                unreachable!()
+                            }
+                        }
+                    }
+                    Valid(r)
+                } else {
+                    Unevaluatable
+                }
+            }
+            ConcatFields(concat) => {
+                let mut total_width = 0usize;
+                let mut known = true;
+                for (t, (from, width)) in concat.iter() {
+                    match t {
+                        EAwi::KnownAwi(t) => {
+                            if (*width > t.nzbw()) || (*from > (t.bw() - width.get())) {
+                                return Error(EvalError::OtherStr(
+                                    "`ConcatFields` with bad concatenation",
+                                ));
+                            }
+                            total_width = total_width.checked_add(width.get()).unwrap();
+                        }
+                        EAwi::Bitwidth(t_w) => {
+                            if (*width > *t_w) || (*from > (t_w.get() - width.get())) {
+                                return Error(EvalError::OtherStr(
+                                    "`ConcatFields` with bad concatenation",
+                                ));
+                            }
+                            total_width = total_width.checked_add(width.get()).unwrap();
+                            known = false;
+                        }
+                    }
+                }
+                // should be impossible to be zero because the constructors require nonzero len
+                // and bitwidth
+                let total_width = NonZeroUsize::new(total_width).unwrap();
+                if w != total_width {
+                    return Error(EvalError::OtherStr("`ConcatFields` with bad concatenation"));
+                }
+                if known {
+                    let mut r = Awi::zero(total_width);
+                    let mut to = 0;
+                    for (t, (from, width)) in concat.iter() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                r.field(to, t, *from, width.get()).unwrap();
+                                to += width.get();
+                            }
+                            EAwi::Bitwidth(_t_w) => {
+                                unreachable!()
+                            }
+                        }
+                    }
+                    Valid(r)
+                } else {
+                    Unevaluatable
+                }
+            }
             Assert([a]) => {
                 // more manual because it is more likely that there will be issues involving
                 // `Assert`s

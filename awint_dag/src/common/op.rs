@@ -6,6 +6,87 @@ use Op::*;
 
 use crate::DummyDefault;
 
+#[derive(Debug, Default, Clone)]
+pub struct ConcatType<T: Debug + DummyDefault + Clone> {
+    v: SmallVec<[T; 3]>,
+}
+
+impl<T: Debug + DummyDefault + Clone> ConcatType<T> {
+    /// Use only `smallvec![...]` to construct the argument for this. Panics if
+    /// `v.is_empty()`.
+    pub fn from_smallvec(v: SmallVec<[T; 3]>) -> Self {
+        assert!(!v.is_empty());
+        Self { v }
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        self.v.as_slice()
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self.v.as_mut_slice()
+    }
+
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.v.len()
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ConcatFieldsType<T: Debug + DummyDefault + Clone> {
+    // needs to be separate because of the function requiring `&[T]` references
+    v_t: Vec<T>,
+    v_i: Vec<(usize, NonZeroUsize)>,
+}
+
+impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
+    /// Panics if `v.is_empty()` or the third element is zero.
+    pub fn from_iter<I: IntoIterator<Item = (T, usize, NonZeroUsize)>>(
+        capacity: usize,
+        i: I,
+    ) -> Self {
+        let mut res = Self {
+            v_t: Vec::with_capacity(capacity),
+            v_i: Vec::with_capacity(capacity),
+        };
+        for item in i.into_iter() {
+            res.v_t.push(item.0);
+            res.v_i.push((item.1, item.2));
+        }
+        assert!(!res.v_t.is_empty());
+        res
+    }
+
+    /// Adds another field for `self`
+    pub fn push(&mut self, t: T, from: usize, width: NonZeroUsize) {
+        self.v_t.push(t);
+        self.v_i.push((from, width));
+    }
+
+    /// This is in order of source `T`, `from`, then `width`
+    pub fn t_as_slice(&self) -> &[T] {
+        self.v_t.as_slice()
+    }
+
+    pub fn t_as_mut_slice(&mut self) -> &mut [T] {
+        self.v_t.as_mut_slice()
+    }
+
+    pub fn field_as_slice(&self) -> &[(usize, NonZeroUsize)] {
+        self.v_i.as_slice()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&T, &(usize, NonZeroUsize))> {
+        self.v_t.iter().zip(self.v_i.iter())
+    }
+
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.v_t.len()
+    }
+}
+
 /// A mimicking `Op`eration
 #[derive(Debug, Default, Clone)]
 pub enum Op<T: Debug + DummyDefault + Clone> {
@@ -23,9 +104,11 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // Assertion that a single bit is true
     Assert([T; 1]),
 
-    // FIXME a list of inputs (same one can appear multiple times) with starts and widths
-    // Concat(SmallVec<[(T, usize, usize); 1]>)
-    // Concat(ConcatType)
+    // In previous versions of `awint_dag` we used to use networks of get and set operations which
+    // turned out to be horribly inefficient. `Concat` just concats wholesale, and `ConcatFields`
+    // concats fields from several sources together.
+    Concat(ConcatType<T>),
+    ConcatFields(ConcatFieldsType<T>),
 
     // Static versions of `Lut`, `Get`, and `Set`
     StaticLut([T; 1], Awi),
@@ -186,6 +269,8 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(_, name) => name.unwrap_or("opaque"),
             Literal(_) => "literal",
             Assert(_) => "assert",
+            Concat(_) => "concat",
+            ConcatFields(_) => "concat_fields",
             StaticLut(..) => "static_lut",
             StaticGet(..) => "static_get",
             StaticSet(..) => "static_set",
@@ -260,6 +345,12 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match *self {
             Invalid | Opaque(..) | Literal(_) => (),
             Assert(_) => v.push("b"),
+            Concat(ref concat) => {
+                v = vec!["c"; concat.len()];
+            }
+            ConcatFields(ref concat) => {
+                v = vec!["c"; concat.len()];
+            }
             StaticLut(..) => v.push("inx"),
             StaticGet(..) => v.push("x"),
             StaticSet(..) => {
@@ -371,6 +462,8 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(v, _) => v,
             Literal(_) => &[],
             Assert(v) => v,
+            Concat(concat) => concat.as_slice(),
+            ConcatFields(concat) => concat.t_as_slice(),
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
             StaticSet(v, _) => v,
@@ -445,6 +538,8 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(v, _) => v,
             Literal(_) => &mut [],
             Assert(v) => v,
+            Concat(concat) => concat.as_mut_slice(),
+            ConcatFields(concat) => concat.t_as_mut_slice(),
             StaticLut(v, _) => v,
             StaticGet(v, _) => v,
             StaticSet(v, _) => v,
@@ -547,12 +642,29 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match this {
             Invalid => Invalid,
             Opaque(v, name) => {
-                let mut res = Opaque(smallvec![DummyDefault::default(); v.len()], *name);
-                m(res.operands_mut(), this.operands());
-                res
+                let mut res_v = smallvec![DummyDefault::default(); v.len()];
+                m(res_v.as_mut_slice(), this.operands());
+                Opaque(res_v, *name)
             }
             Literal(lit) => Literal(lit.clone()),
             Assert(v) => Assert(map1!(m, v)),
+            Concat(ref concat) => {
+                let mut res_concat =
+                    ConcatType::from_smallvec(smallvec![DummyDefault::default(); concat.len()]);
+                m(res_concat.as_mut_slice(), this.operands());
+                Concat(res_concat)
+            }
+            ConcatFields(ref concat) => {
+                let mut res_concat = ConcatFieldsType {
+                    v_t: Vec::with_capacity(concat.len()),
+                    v_i: Vec::with_capacity(concat.len()),
+                };
+                for (from, width) in concat.field_as_slice() {
+                    res_concat.push(DummyDefault::default(), *from, *width);
+                }
+                m(res_concat.t_as_mut_slice(), this.operands());
+                ConcatFields(res_concat)
+            }
             StaticLut(v, table) => StaticLut(map1!(m, v), table.clone()),
             StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
             StaticSet(v, inx) => StaticSet(map2!(m, v), *inx),
