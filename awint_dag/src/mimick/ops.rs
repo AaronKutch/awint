@@ -317,7 +317,26 @@ impl Bits {
 
     #[must_use]
     pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
-        self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
+        let mut res = false;
+        let lhs_w = self.state_nzbw();
+        let inx_w = inx.state_nzbw();
+        let lut_w = lut.state_nzbw();
+        if inx_w.get() < USIZE_BITS {
+            if let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get()) {
+                if lut_len == lut_w.get() {
+                    res = true;
+                }
+            }
+        }
+        if !res {
+            return None
+        }
+        if let awi::Some(lut) = lut.state().try_get_as_awi() {
+            // optimization for meta lowering
+            self.update_state(lhs_w, StaticLut([inx.state()], lut))
+        } else {
+            self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
+        }
     }
 
     #[must_use]
