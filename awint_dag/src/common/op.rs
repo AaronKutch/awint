@@ -12,6 +12,12 @@ pub struct ConcatType<T: Debug + DummyDefault + Clone> {
 }
 
 impl<T: Debug + DummyDefault + Clone> ConcatType<T> {
+    /// Panics if `v.is_empty()`.
+    pub fn from_smallvec(v: SmallVec<[T; 4]>) -> Self {
+        assert!(!v.is_empty());
+        Self { v }
+    }
+
     pub fn as_slice(&self) -> &[T] {
         self.v.as_slice()
     }
@@ -48,25 +54,6 @@ pub struct ConcatFieldsType<T: Debug + DummyDefault + Clone> {
     v_i: SmallVec<[(usize, NonZeroUsize); 2]>,
 }
 
-impl<T: Debug + DummyDefault + Clone> FromIterator<(T, usize, NonZeroUsize)>
-    for ConcatFieldsType<T>
-{
-    /// Panics if `v.is_empty()` or the third element is zero.
-    fn from_iter<I: IntoIterator<Item = (T, usize, NonZeroUsize)>>(iter: I) -> Self {
-        let iter = iter.into_iter();
-        let mut res = Self {
-            v_t: SmallVec::with_capacity(iter.size_hint().0),
-            v_i: SmallVec::with_capacity(iter.size_hint().0),
-        };
-        for item in iter {
-            res.v_t.push(item.0);
-            res.v_i.push((item.1, item.2));
-        }
-        assert!(!res.v_t.is_empty());
-        res
-    }
-}
-
 impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
     /// Adds another field for `self`
     pub fn push(&mut self, t: T, from: usize, width: NonZeroUsize) {
@@ -97,6 +84,25 @@ impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
     }
 }
 
+impl<T: Debug + DummyDefault + Clone> FromIterator<(T, usize, NonZeroUsize)>
+    for ConcatFieldsType<T>
+{
+    /// Panics if `v.is_empty()` or the third element is zero.
+    fn from_iter<I: IntoIterator<Item = (T, usize, NonZeroUsize)>>(iter: I) -> Self {
+        let iter = iter.into_iter();
+        let mut res = Self {
+            v_t: SmallVec::with_capacity(iter.size_hint().0),
+            v_i: SmallVec::with_capacity(iter.size_hint().0),
+        };
+        for item in iter {
+            res.v_t.push(item.0);
+            res.v_i.push((item.1, item.2));
+        }
+        assert!(!res.v_t.is_empty());
+        res
+    }
+}
+
 /// A mimicking `Op`eration
 #[derive(Debug, Default, Clone)]
 pub enum Op<T: Debug + DummyDefault + Clone> {
@@ -114,6 +120,9 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // Assertion that a single bit is true. The value of this should never be used by another op.
     Assert([T; 1]),
 
+    // Copy, always equivalent to just reusing the state, but there are cases where this is used
+    Copy([T; 1]),
+
     // Static version of `Get`. `ConcatFields` has an allocation requirement which is why we keep
     // this for the common bet get cases.
     StaticGet([T; 1], usize),
@@ -123,6 +132,10 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // concats fields from several sources together.
     Concat(ConcatType<T>),
     ConcatFields(ConcatFieldsType<T>),
+
+    // Repeats the input to the output width
+    // TODO should probably include in core functions as optimized bitshift version
+    Repeat([T; 1]),
 
     // Static version of `Lut`. The `ConcatType<T>` is concatenated together to make the index, an
     // optimization that handles most cases.
@@ -146,7 +159,6 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // these are special because although they take `&mut self`, the value of `self` is completely
     // overridden, so there is no dependency on `self.op()`.
     // I'm not sure what to do about dynamic `None` cases which would depend on `self`
-    Copy([T; 1]),
     Funnel([T; 2]),
     UQuo([T; 2]),
     URem([T; 2]),
@@ -285,6 +297,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             StaticGet(..) => "static_get",
             Concat(_) => "concat",
             ConcatFields(_) => "concat_fields",
+            Repeat(_) => "fanout",
             StaticLut(..) => "static_lut",
             Resize(..) => "resize",
             ZeroResize(..) => "zero_resize",
@@ -357,6 +370,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match *self {
             Invalid | Opaque(..) | Literal(_) => (),
             Assert(_) => v.push("b"),
+            Repeat(_) => v.push("x"),
             StaticGet(..) => v.push("x"),
             Concat(ref concat) => {
                 v = vec!["c"; concat.len()];
@@ -470,6 +484,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(v, _) => v,
             Literal(_) => &[],
             Assert(v) => v,
+            Repeat(v) => v,
             StaticGet(v, _) => v,
             Concat(concat) => concat.as_slice(),
             ConcatFields(concat) => concat.t_as_slice(),
@@ -545,6 +560,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(v, _) => v,
             Literal(_) => &mut [],
             Assert(v) => v,
+            Repeat(v) => v,
             StaticGet(v, _) => v,
             Concat(concat) => concat.as_mut_slice(),
             ConcatFields(concat) => concat.t_as_mut_slice(),
@@ -654,6 +670,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             }
             Literal(lit) => Literal(lit.clone()),
             Assert(v) => Assert(map1!(m, v)),
+            Repeat(v) => Repeat(map1!(m, v)),
             StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
             Concat(ref concat) => {
                 let mut res_concat =
