@@ -305,6 +305,47 @@ impl Op<EAwi> {
                 ceq_strict!(w, a.nzbw());
                 Valid(a)
             }
+            Assert([a]) => {
+                // more manual because it is more likely that there will be issues involving
+                // `Assert`s
+                cases!(a,
+                    a => {
+                        if a.bw() != 1 {
+                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
+                        } else if a.to_bool() {
+                            AssertionSuccess
+                        } else {
+                            AssertionFailure
+                        }
+                    },
+                    a_w => {
+                        if a_w.get() != 1 {
+                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
+                        } else {
+                            Unevaluatable
+                        }
+                    },
+                )
+            }
+            StaticGet([a], inx) => {
+                cbool_w!(w);
+                cases!(a,
+                    a => {
+                        if let Some(b) = a.get(inx) {
+                            Valid(Awi::from_bool(b))
+                        } else {
+                            Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
+                        }
+                    },
+                    a_w => {
+                        if inx < a_w.get() {
+                            Unevaluatable
+                        } else {
+                            Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
+                        }
+                    },
+                )
+            }
             Concat(concat) => {
                 let mut total_width = 0usize;
                 let mut known = true;
@@ -394,49 +435,60 @@ impl Op<EAwi> {
                     Unevaluatable
                 }
             }
-            Assert([a]) => {
-                // more manual because it is more likely that there will be issues involving
-                // `Assert`s
-                cases!(a,
-                    a => {
-                        if a.bw() != 1 {
-                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
-                        } else if a.to_bool() {
-                            AssertionSuccess
-                        } else {
-                            AssertionFailure
+            StaticLut(concat, lit) => {
+                let mut total_width = 0usize;
+                let mut known = true;
+                for t in concat.as_slice() {
+                    match t {
+                        EAwi::KnownAwi(t) => {
+                            total_width = total_width.checked_add(t.bw()).unwrap();
                         }
-                    },
-                    a_w => {
-                        if a_w.get() != 1 {
-                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
-                        } else {
-                            Unevaluatable
+                        EAwi::Bitwidth(t_w) => {
+                            total_width = total_width.checked_add(t_w.get()).unwrap();
+                            known = false;
                         }
-                    },
-                )
-            }
-            StaticLut([a], lit) => {
-                cases!(a,
-                    a => {
-                        let mut r = Awi::zero(w);
-                        if r.lut_(&lit, &a).is_some() {
-                            Valid(r)
-                        } else {
-                            Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
+                    }
+                }
+                // should be impossible to be zero because the constructors require nonzero len
+                // and bitwidth
+                let total_width = NonZeroUsize::new(total_width).unwrap();
+                let mut good = false;
+                if total_width.get() < USIZE_BITS {
+                    if let Some(lut_len) = (1usize << total_width.get()).checked_mul(w.get()) {
+                        if lut_len == lit.bw() {
+                            good = true;
                         }
-                    },
-                    a_w => {
-                        if a_w.get() < USIZE_BITS {
-                            if let Some(lut_len) = (1usize << a_w.get()).checked_mul(w.get()) {
-                                if lut_len == lit.bw() {
-                                    return Unevaluatable
-                                }
+                    }
+                }
+                if !good {
+                    return Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"));
+                }
+                let inx = if known {
+                    let mut r = Awi::zero(total_width);
+                    let mut to = 0;
+                    for t in concat.as_slice() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                let width = t.bw();
+                                r.field_to(to, t, width).unwrap();
+                                to += width;
+                            }
+                            EAwi::Bitwidth(_t_w) => {
+                                unreachable!()
                             }
                         }
-                        Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
-                    },
-                )
+                    }
+                    r
+                } else {
+                    return Unevaluatable
+                };
+                // FIXME LUT OPT
+                let mut r = Awi::zero(w);
+                if r.lut_(&lit, &inx).is_some() {
+                    Valid(r)
+                } else {
+                    Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
+                }
             }
             Resize([a, b]) => {
                 awi2!(a, b, {

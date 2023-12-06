@@ -1,8 +1,7 @@
-use std::{fmt::Debug, mem, num::NonZeroUsize};
+use std::{fmt::Debug, iter, mem, num::NonZeroUsize};
 
 use awint_ext::Awi;
 use smallvec::{smallvec, SmallVec};
-use thin_vec::ThinVec;
 use Op::*;
 
 use crate::DummyDefault;
@@ -13,13 +12,6 @@ pub struct ConcatType<T: Debug + DummyDefault + Clone> {
 }
 
 impl<T: Debug + DummyDefault + Clone> ConcatType<T> {
-    /// Use only `smallvec![...]` to construct the argument for this. Panics if
-    /// `v.is_empty()`.
-    pub fn from_smallvec(v: SmallVec<[T; 4]>) -> Self {
-        assert!(!v.is_empty());
-        Self { v }
-    }
-
     pub fn as_slice(&self) -> &[T] {
         self.v.as_slice()
     }
@@ -34,11 +26,26 @@ impl<T: Debug + DummyDefault + Clone> ConcatType<T> {
     }
 }
 
+impl<T: Debug + DummyDefault + Clone> FromIterator<T> for ConcatType<T> {
+    /// Panics if `v.is_empty()`.
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let iter = iter.into_iter();
+        let mut res = Self {
+            v: SmallVec::with_capacity(iter.size_hint().0),
+        };
+        for item in iter {
+            res.v.push(item);
+        }
+        assert!(!res.v.is_empty());
+        res
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct ConcatFieldsType<T: Debug + DummyDefault + Clone> {
     // needs to be separate because of the function requiring `&[T]` references
-    v_t: ThinVec<T>,
-    v_i: ThinVec<(usize, NonZeroUsize)>,
+    v_t: SmallVec<[T; 2]>,
+    v_i: SmallVec<[(usize, NonZeroUsize); 2]>,
 }
 
 impl<T: Debug + DummyDefault + Clone> FromIterator<(T, usize, NonZeroUsize)>
@@ -48,8 +55,8 @@ impl<T: Debug + DummyDefault + Clone> FromIterator<(T, usize, NonZeroUsize)>
     fn from_iter<I: IntoIterator<Item = (T, usize, NonZeroUsize)>>(iter: I) -> Self {
         let iter = iter.into_iter();
         let mut res = Self {
-            v_t: ThinVec::with_capacity(iter.size_hint().0),
-            v_i: ThinVec::with_capacity(iter.size_hint().0),
+            v_t: SmallVec::with_capacity(iter.size_hint().0),
+            v_i: SmallVec::with_capacity(iter.size_hint().0),
         };
         for item in iter {
             res.v_t.push(item.0);
@@ -104,8 +111,12 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // literal assign
     Literal(Awi),
 
-    // Assertion that a single bit is true
+    // Assertion that a single bit is true. The value of this should never be used by another op.
     Assert([T; 1]),
+
+    // Static version of `Get`. `ConcatFields` has an allocation requirement which is why we keep
+    // this for the common bet get cases.
+    StaticGet([T; 1], usize),
 
     // In previous versions of `awint_dag` we used to use networks of get and set operations which
     // turned out to be horribly inefficient. `Concat` just concats wholesale, and `ConcatFields`
@@ -113,8 +124,9 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     Concat(ConcatType<T>),
     ConcatFields(ConcatFieldsType<T>),
 
-    // Static version of `Lut`
-    StaticLut([T; 1], Awi),
+    // Static version of `Lut`. The `ConcatType<T>` is concatenated together to make the index, an
+    // optimization that handles most cases.
+    StaticLut(ConcatType<T>, Awi),
 
     // in the future we may try to do some kind of dynamic bitwidth
     //Bw,
@@ -270,6 +282,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(_, name) => name.unwrap_or("opaque"),
             Literal(_) => "literal",
             Assert(_) => "assert",
+            StaticGet(..) => "static_get",
             Concat(_) => "concat",
             ConcatFields(_) => "concat_fields",
             StaticLut(..) => "static_lut",
@@ -344,6 +357,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match *self {
             Invalid | Opaque(..) | Literal(_) => (),
             Assert(_) => v.push("b"),
+            StaticGet(..) => v.push("x"),
             Concat(ref concat) => {
                 v = vec!["c"; concat.len()];
             }
@@ -456,9 +470,10 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(v, _) => v,
             Literal(_) => &[],
             Assert(v) => v,
+            StaticGet(v, _) => v,
             Concat(concat) => concat.as_slice(),
             ConcatFields(concat) => concat.t_as_slice(),
-            StaticLut(v, _) => v,
+            StaticLut(v, _) => v.as_slice(),
             Resize(v) => v,
             ZeroResize(v) => v,
             SignResize(v) => v,
@@ -530,9 +545,10 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Opaque(v, _) => v,
             Literal(_) => &mut [],
             Assert(v) => v,
+            StaticGet(v, _) => v,
             Concat(concat) => concat.as_mut_slice(),
             ConcatFields(concat) => concat.t_as_mut_slice(),
-            StaticLut(v, _) => v,
+            StaticLut(v, _) => v.as_mut_slice(),
             Resize(v) => v,
             ZeroResize(v) => v,
             SignResize(v) => v,
@@ -638,24 +654,29 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             }
             Literal(lit) => Literal(lit.clone()),
             Assert(v) => Assert(map1!(m, v)),
+            StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
             Concat(ref concat) => {
                 let mut res_concat =
-                    ConcatType::from_smallvec(smallvec![DummyDefault::default(); concat.len()]);
+                    ConcatType::from_iter(iter::repeat(DummyDefault::default()).take(concat.len()));
                 m(res_concat.as_mut_slice(), this.operands());
                 Concat(res_concat)
             }
             ConcatFields(ref concat) => {
-                let mut res_concat = ConcatFieldsType {
-                    v_t: ThinVec::with_capacity(concat.len()),
-                    v_i: ThinVec::with_capacity(concat.len()),
-                };
-                for (from, width) in concat.field_as_slice() {
-                    res_concat.push(DummyDefault::default(), *from, *width);
-                }
+                let mut res_concat = ConcatFieldsType::from_iter(
+                    concat
+                        .field_as_slice()
+                        .iter()
+                        .map(|(from, width)| (DummyDefault::default(), *from, *width)),
+                );
                 m(res_concat.t_as_mut_slice(), this.operands());
                 ConcatFields(res_concat)
             }
-            StaticLut(v, table) => StaticLut(map1!(m, v), table.clone()),
+            StaticLut(ref concat, table) => {
+                let mut res_concat =
+                    ConcatType::from_iter(iter::repeat(DummyDefault::default()).take(concat.len()));
+                m(res_concat.as_mut_slice(), this.operands());
+                StaticLut(res_concat, table.clone())
+            }
             Resize(v) => Resize(map2!(m, v)),
             ZeroResize(v) => ZeroResize(map1!(m, v)),
             SignResize(v) => SignResize(map1!(m, v)),

@@ -16,7 +16,7 @@ use Op::*;
 use crate::{
     dag,
     mimick::{Bits, InlAwi, None, Option, Some},
-    ConcatFieldsType, Lineage, Op,
+    ConcatFieldsType, ConcatType, Lineage, Op,
 };
 
 // TODO there's no telling how long Try will be unstable
@@ -333,7 +333,7 @@ impl Bits {
         }
         if let awi::Some(lut) = lut.state().try_get_as_awi() {
             // optimization for meta lowering
-            self.update_state(lhs_w, StaticLut([inx.state()], lut))
+            self.update_state(lhs_w, StaticLut(ConcatType::from_iter([inx.state()]), lut))
         } else {
             self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
         }
@@ -355,11 +355,7 @@ impl Bits {
             if inx >= self.bw() {
                 None
             } else {
-                dag::bool::new_eager_eval(ConcatFields(ConcatFieldsType::from_iter([(
-                    self.state(),
-                    inx,
-                    bw(1),
-                )])))
+                dag::bool::new_eager_eval(StaticGet([self.state()], inx))
             }
         } else {
             let b = dag::bool::new_eager_eval(Get([self.state(), inx.state()]));

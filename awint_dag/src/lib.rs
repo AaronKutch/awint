@@ -66,7 +66,6 @@ pub use common::{
 pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne, stringify};
 pub use mimick::primitive;
 pub use smallvec;
-pub use thin_vec;
 
 // FIXME TODO there is an issue with the evaluation somewhere on bigendian
 
