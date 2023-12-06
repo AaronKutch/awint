@@ -355,7 +355,7 @@ impl Bits {
             if inx >= self.bw() {
                 None
             } else {
-                dag::bool::new_eager_eval(ConcatFields(ConcatFieldsType::from_iter(1, [(
+                dag::bool::new_eager_eval(ConcatFields(ConcatFieldsType::from_iter([(
                     self.state(),
                     inx,
                     bw(1),
@@ -389,7 +389,7 @@ impl Bits {
                 if let awi::Some(hi_rem) = NonZeroUsize::new(bits_w.get() - 1 - inx) {
                     self.update_state(
                         bits_w,
-                        ConcatFields(ConcatFieldsType::from_iter(3, [
+                        ConcatFields(ConcatFieldsType::from_iter([
                             (self.state(), 0, lo_rem),
                             (bit.state(), 0, bw(1)),
                             (self.state(), inx + 1, hi_rem),
@@ -400,7 +400,7 @@ impl Bits {
                     // setting the last bit
                     self.update_state(
                         bits_w,
-                        ConcatFields(ConcatFieldsType::from_iter(2, [
+                        ConcatFields(ConcatFieldsType::from_iter([
                             (self.state(), 0, lo_rem),
                             (bit.state(), 0, bw(1)),
                         ])),
@@ -412,7 +412,7 @@ impl Bits {
                 // setting the first bit
                 self.update_state(
                     bits_w,
-                    ConcatFields(ConcatFieldsType::from_iter(2, [
+                    ConcatFields(ConcatFieldsType::from_iter([
                         (bit.state(), 0, bw(1)),
                         (self.state(), 1, rem),
                     ])),

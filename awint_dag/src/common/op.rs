@@ -41,24 +41,26 @@ pub struct ConcatFieldsType<T: Debug + DummyDefault + Clone> {
     v_i: ThinVec<(usize, NonZeroUsize)>,
 }
 
-impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
+impl<T: Debug + DummyDefault + Clone> FromIterator<(T, usize, NonZeroUsize)>
+    for ConcatFieldsType<T>
+{
     /// Panics if `v.is_empty()` or the third element is zero.
-    pub fn from_iter<I: IntoIterator<Item = (T, usize, NonZeroUsize)>>(
-        capacity: usize,
-        i: I,
-    ) -> Self {
+    fn from_iter<I: IntoIterator<Item = (T, usize, NonZeroUsize)>>(iter: I) -> Self {
+        let iter = iter.into_iter();
         let mut res = Self {
-            v_t: ThinVec::with_capacity(capacity),
-            v_i: ThinVec::with_capacity(capacity),
+            v_t: ThinVec::with_capacity(iter.size_hint().0),
+            v_i: ThinVec::with_capacity(iter.size_hint().0),
         };
-        for item in i.into_iter() {
+        for item in iter {
             res.v_t.push(item.0);
             res.v_i.push((item.1, item.2));
         }
         assert!(!res.v_t.is_empty());
         res
     }
+}
 
+impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
     /// Adds another field for `self`
     pub fn push(&mut self, t: T, from: usize, width: NonZeroUsize) {
         self.v_t.push(t);
