@@ -2,19 +2,20 @@ use std::{fmt::Debug, mem, num::NonZeroUsize};
 
 use awint_ext::Awi;
 use smallvec::{smallvec, SmallVec};
+use thin_vec::ThinVec;
 use Op::*;
 
 use crate::DummyDefault;
 
 #[derive(Debug, Default, Clone)]
 pub struct ConcatType<T: Debug + DummyDefault + Clone> {
-    v: SmallVec<[T; 3]>,
+    v: SmallVec<[T; 4]>,
 }
 
 impl<T: Debug + DummyDefault + Clone> ConcatType<T> {
     /// Use only `smallvec![...]` to construct the argument for this. Panics if
     /// `v.is_empty()`.
-    pub fn from_smallvec(v: SmallVec<[T; 3]>) -> Self {
+    pub fn from_smallvec(v: SmallVec<[T; 4]>) -> Self {
         assert!(!v.is_empty());
         Self { v }
     }
@@ -36,8 +37,8 @@ impl<T: Debug + DummyDefault + Clone> ConcatType<T> {
 #[derive(Debug, Default, Clone)]
 pub struct ConcatFieldsType<T: Debug + DummyDefault + Clone> {
     // needs to be separate because of the function requiring `&[T]` references
-    v_t: Vec<T>,
-    v_i: Vec<(usize, NonZeroUsize)>,
+    v_t: ThinVec<T>,
+    v_i: ThinVec<(usize, NonZeroUsize)>,
 }
 
 impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
@@ -47,8 +48,8 @@ impl<T: Debug + DummyDefault + Clone> ConcatFieldsType<T> {
         i: I,
     ) -> Self {
         let mut res = Self {
-            v_t: Vec::with_capacity(capacity),
-            v_i: Vec::with_capacity(capacity),
+            v_t: ThinVec::with_capacity(capacity),
+            v_i: ThinVec::with_capacity(capacity),
         };
         for item in i.into_iter() {
             res.v_t.push(item.0);
@@ -643,8 +644,8 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             }
             ConcatFields(ref concat) => {
                 let mut res_concat = ConcatFieldsType {
-                    v_t: Vec::with_capacity(concat.len()),
-                    v_i: Vec::with_capacity(concat.len()),
+                    v_t: ThinVec::with_capacity(concat.len()),
+                    v_i: ThinVec::with_capacity(concat.len()),
                 };
                 for (from, width) in concat.field_as_slice() {
                     res_concat.push(DummyDefault::default(), *from, *width);
