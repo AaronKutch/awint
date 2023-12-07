@@ -467,7 +467,7 @@ impl Op<EAwi> {
             }
             StaticLut(concat, lit) => {
                 let mut total_width = 0usize;
-                let mut known = true;
+                let mut all_known = true;
                 for t in concat.as_slice() {
                     match t {
                         EAwi::KnownAwi(t) => {
@@ -475,7 +475,7 @@ impl Op<EAwi> {
                         }
                         EAwi::Bitwidth(t_w) => {
                             total_width = total_width.checked_add(t_w.get()).unwrap();
-                            known = false;
+                            all_known = false;
                         }
                     }
                 }
@@ -493,14 +493,14 @@ impl Op<EAwi> {
                 if !good {
                     return Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"));
                 }
-                let inx = if known {
-                    let mut r = Awi::zero(total_width);
+                if all_known {
+                    let mut inx = Awi::zero(total_width);
                     let mut to = 0;
                     for t in concat.as_slice() {
                         match t {
                             EAwi::KnownAwi(t) => {
                                 let width = t.bw();
-                                r.field_to(to, t, width).unwrap();
+                                inx.field_to(to, t, width).unwrap();
                                 to += width;
                             }
                             EAwi::Bitwidth(_t_w) => {
@@ -508,16 +508,16 @@ impl Op<EAwi> {
                             }
                         }
                     }
-                    r
+                    let mut r = Awi::zero(w);
+                    if r.lut_(&lit, &inx).is_some() {
+                        Valid(r)
+                    } else {
+                        Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
+                    }
                 } else {
-                    return Unevaluatable
-                };
-                // FIXME LUT OPT
-                let mut r = Awi::zero(w);
-                if r.lut_(&lit, &inx).is_some() {
-                    Valid(r)
-                } else {
-                    Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
+                    // Check if the evaluation is the same when known bits are set to their values
+                    // and all possible unknown bits are iterated through
+                    Unevaluatable
                 }
             }
             Resize([a, b]) => {
