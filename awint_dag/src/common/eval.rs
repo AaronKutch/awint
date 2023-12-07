@@ -467,11 +467,13 @@ impl Op<EAwi> {
             }
             StaticLut(concat, lit) => {
                 let mut total_width = 0usize;
+                let mut all_unknown = true;
                 let mut all_known = true;
                 for t in concat.as_slice() {
                     match t {
                         EAwi::KnownAwi(t) => {
                             total_width = total_width.checked_add(t.bw()).unwrap();
+                            all_unknown = false;
                         }
                         EAwi::Bitwidth(t_w) => {
                             total_width = total_width.checked_add(t_w.get()).unwrap();
@@ -509,11 +511,10 @@ impl Op<EAwi> {
                         }
                     }
                     let mut r = Awi::zero(w);
-                    if r.lut_(&lit, &inx).is_some() {
-                        Valid(r)
-                    } else {
-                        Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
-                    }
+                    r.lut_(&lit, &inx).unwrap();
+                    Valid(r)
+                } else if all_unknown {
+                    Unevaluatable
                 } else {
                     // Check if the evaluation is the same when known bits are set to their values
                     // and all possible unknown bits are iterated through
