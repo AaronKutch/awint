@@ -517,7 +517,41 @@ impl Op<EAwi> {
                 } else {
                     // Check if the evaluation is the same when known bits are set to their values
                     // and all possible unknown bits are iterated through
-                    Unevaluatable
+                    let mut inx = Awi::zero(total_width);
+                    let mut inx_known = Awi::zero(total_width);
+                    let mut to = 0;
+                    for t in concat.as_slice() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                let width = t.bw();
+                                inx.field_to(to, t, width).unwrap();
+                                inx_known.field_to(to, &Awi::umax(t.nzbw()), width).unwrap();
+                                to += width;
+                            }
+                            EAwi::Bitwidth(t_w) => {
+                                to += t_w.get();
+                            }
+                        }
+                    }
+                    let inx = inx.to_usize();
+                    let inx_known = inx_known.to_usize();
+                    let mut test_inx = Awi::zero(total_width);
+                    let mut common_eval = None;
+                    let mut r = Awi::zero(w);
+                    for i in 0..(1usize << total_width.get()) {
+                        if (inx & inx_known) == (i & inx_known) {
+                            test_inx.usize_(i);
+                            r.lut_(&lit, &test_inx).unwrap();
+                            if let Some(ref common_eval) = common_eval {
+                                if *common_eval != r {
+                                    return Unevaluatable
+                                }
+                            } else {
+                                common_eval = Some(r.clone());
+                            }
+                        }
+                    }
+                    Valid(r)
                 }
             }
             Resize([a, b]) => {
