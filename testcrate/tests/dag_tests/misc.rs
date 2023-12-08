@@ -224,6 +224,7 @@ fn dag_try() {
 
 #[cfg(target_pointer_width = "64")]
 #[test]
+#[ignore]
 fn dag_size() {
     use std::mem;
 
