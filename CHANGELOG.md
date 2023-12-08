@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.0] - 2023-12-08
+### Changes
+- Various improvements to `awint_dag` for `starlight`
+
 ## [0.14.0] - 2023-12-05
 ### Changes
 - Removed all the old basic epoch structs from `awint_dag` now that they have been implemented in
