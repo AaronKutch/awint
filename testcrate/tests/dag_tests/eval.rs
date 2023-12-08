@@ -1,3 +1,5 @@
+use std::num::NonZeroUsize;
+
 use awint::{
     awi,
     awint_dag::{ConcatType, Lineage, Op},
@@ -260,8 +262,9 @@ fn dag_bits_functions() {
     let mut y7 = awi!(x7);
     let mut y8 = awi!(x8);
     let mut y9 = awi!(x9);
-    let s2 = LazyAwi::opaque(bw(64));
-    let s3 = LazyAwi::opaque(bw(64));
+    let usize_bits = NonZeroUsize::new(awi::usize::BITS as awi::usize).unwrap();
+    let s2 = LazyAwi::opaque(usize_bits);
+    let s3 = LazyAwi::opaque(usize_bits);
     dag_bits_functions_internal(
         [&mut y5, &mut y6, &mut y7, &mut y8, &mut y9],
         s2.to_usize(),
