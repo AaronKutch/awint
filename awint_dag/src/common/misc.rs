@@ -11,17 +11,15 @@ use crate::{
     triple_arena::ptr_struct,
 };
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "gen_counter_for_pstate"))]
 ptr_struct!(PState);
 
-#[cfg(not(debug_assertions))]
+#[cfg(not(any(debug_assertions, feature = "gen_counter_for_pstate")))]
 ptr_struct!(PState());
 
 impl PState {
     /// Enters a new `State` from the given components into the thread local
-    /// arena and registers it for the current `StateEpoch`. Returns a `PState`
-    /// `Ptr` to it that will only be invalidated when the current `StateEpoch`
-    /// is dropped.
+    /// arena and registers it for the current `EpochCallback`.
     pub fn new(nzbw: NonZeroUsize, op: Op<PState>, location: Option<Location>) -> Self {
         new_pstate_for_current_epoch(nzbw, op, location)
     }

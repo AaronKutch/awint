@@ -26,3 +26,5 @@ awint = { path = "../awint" }
 default = ["try_support"]
 try_support = []
 debug = ["awint_macro_internals/debug"]
+# forces `PState` to always have a generation counter
+gen_counter_for_pstate = []
