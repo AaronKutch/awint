@@ -5,6 +5,7 @@
 use std::num::NonZeroUsize;
 
 use awint_ext::{awint_internals::USIZE_BITS, Awi, Bits};
+use awint_macros::cc;
 use Op::*;
 
 use crate::{DummyDefault, EvalError, Op};
@@ -327,25 +328,32 @@ impl Op<EAwi> {
                     },
                 )
             }
-            StaticLut([a], lit) => {
+            Repeat([a]) => {
                 cases!(a,
                     a => {
-                        let mut r = Awi::zero(w);
-                        if r.lut_(&lit, &a).is_some() {
-                            Valid(r)
+                        if a.bw() == 1 {
+                            if a.to_bool() {
+                                Valid(Awi::umax(w))
+                            } else {
+                                Valid(Awi::zero(w))
+                            }
                         } else {
-                            Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
+                            let mut r = Awi::zero(w);
+                            let mut to = 0;
+                            loop {
+                                if to >= w.get() {
+                                    break
+                                }
+                                cc!(
+                                    .., a;
+                                    .., r[to..];
+                                ).unwrap();
+                            }
+                            Valid(r)
                         }
                     },
-                    a_w => {
-                        if a_w.get() < USIZE_BITS {
-                            if let Some(lut_len) = (1usize << a_w.get()).checked_mul(w.get()) {
-                                if lut_len == lit.bw() {
-                                    return Unevaluatable
-                                }
-                            }
-                        }
-                        Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"))
+                    _a_w => {
+                        Unevaluatable
                     },
                 )
             }
@@ -368,16 +376,184 @@ impl Op<EAwi> {
                     },
                 )
             }
-            StaticSet([a, b], inx) => {
-                ceq_strict!(w, a.nzbw());
-                cbool_w!(b.nzbw());
-                if inx >= a.bw() {
-                    return Error(EvalError::OtherStr("`StaticSet` with `inx` out of bounds"))
+            Concat(concat) => {
+                let mut total_width = 0usize;
+                let mut known = true;
+                for t in concat.as_slice() {
+                    match t {
+                        EAwi::KnownAwi(t) => {
+                            total_width = total_width.checked_add(t.bw()).unwrap();
+                        }
+                        EAwi::Bitwidth(t_w) => {
+                            total_width = total_width.checked_add(t_w.get()).unwrap();
+                            known = false;
+                        }
+                    }
                 }
-                awi2!(a, b, {
-                    a.set(inx, cbool!(&b)).unwrap();
-                    Valid(a)
-                })
+                // should be impossible to be zero because the constructors require nonzero len
+                // and bitwidth
+                let total_width = NonZeroUsize::new(total_width).unwrap();
+                if w != total_width {
+                    return Error(EvalError::OtherStr("`Concat` with bad concatenation"));
+                }
+                if known {
+                    let mut r = Awi::zero(total_width);
+                    let mut to = 0;
+                    for t in concat.as_slice() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                let width = t.bw();
+                                r.field_to(to, t, width).unwrap();
+                                to += width;
+                            }
+                            EAwi::Bitwidth(_t_w) => {
+                                unreachable!()
+                            }
+                        }
+                    }
+                    Valid(r)
+                } else {
+                    Unevaluatable
+                }
+            }
+            ConcatFields(concat) => {
+                let mut total_width = 0usize;
+                let mut known = true;
+                for (t, (from, width)) in concat.iter() {
+                    match t {
+                        EAwi::KnownAwi(t) => {
+                            if (*width > t.nzbw()) || (*from > (t.bw() - width.get())) {
+                                return Error(EvalError::OtherStr(
+                                    "`ConcatFields` with bad concatenation",
+                                ));
+                            }
+                            total_width = total_width.checked_add(width.get()).unwrap();
+                        }
+                        EAwi::Bitwidth(t_w) => {
+                            if (*width > *t_w) || (*from > (t_w.get() - width.get())) {
+                                return Error(EvalError::OtherStr(
+                                    "`ConcatFields` with bad concatenation",
+                                ));
+                            }
+                            total_width = total_width.checked_add(width.get()).unwrap();
+                            known = false;
+                        }
+                    }
+                }
+                // should be impossible to be zero because the constructors require nonzero len
+                // and bitwidth
+                let total_width = NonZeroUsize::new(total_width).unwrap();
+                if w != total_width {
+                    return Error(EvalError::OtherStr("`ConcatFields` with bad concatenation"));
+                }
+                if known {
+                    let mut r = Awi::zero(total_width);
+                    let mut to = 0;
+                    for (t, (from, width)) in concat.iter() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                r.field(to, t, *from, width.get()).unwrap();
+                                to += width.get();
+                            }
+                            EAwi::Bitwidth(_t_w) => {
+                                unreachable!()
+                            }
+                        }
+                    }
+                    Valid(r)
+                } else {
+                    Unevaluatable
+                }
+            }
+            StaticLut(concat, lit) => {
+                let mut total_width = 0usize;
+                let mut all_unknown = true;
+                let mut all_known = true;
+                for t in concat.as_slice() {
+                    match t {
+                        EAwi::KnownAwi(t) => {
+                            total_width = total_width.checked_add(t.bw()).unwrap();
+                            all_unknown = false;
+                        }
+                        EAwi::Bitwidth(t_w) => {
+                            total_width = total_width.checked_add(t_w.get()).unwrap();
+                            all_known = false;
+                        }
+                    }
+                }
+                // should be impossible to be zero because the constructors require nonzero len
+                // and bitwidth
+                let total_width = NonZeroUsize::new(total_width).unwrap();
+                let mut good = false;
+                if total_width.get() < USIZE_BITS {
+                    if let Some(lut_len) = (1usize << total_width.get()).checked_mul(w.get()) {
+                        if lut_len == lit.bw() {
+                            good = true;
+                        }
+                    }
+                }
+                if !good {
+                    return Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"));
+                }
+                if all_known {
+                    let mut inx = Awi::zero(total_width);
+                    let mut to = 0;
+                    for t in concat.as_slice() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                let width = t.bw();
+                                inx.field_to(to, t, width).unwrap();
+                                to += width;
+                            }
+                            EAwi::Bitwidth(_t_w) => {
+                                unreachable!()
+                            }
+                        }
+                    }
+                    let mut r = Awi::zero(w);
+                    r.lut_(&lit, &inx).unwrap();
+                    Valid(r)
+                } else if all_unknown {
+                    Unevaluatable
+                } else {
+                    // Check if the evaluation is the same when known bits are set to their values
+                    // and all possible unknown bits are iterated through
+                    let mut inx = Awi::zero(total_width);
+                    let mut inx_known = Awi::zero(total_width);
+                    let mut to = 0;
+                    for t in concat.as_slice() {
+                        match t {
+                            EAwi::KnownAwi(t) => {
+                                let width = t.bw();
+                                inx.field_to(to, t, width).unwrap();
+                                inx_known.field_to(to, &Awi::umax(t.nzbw()), width).unwrap();
+                                to += width;
+                            }
+                            EAwi::Bitwidth(t_w) => {
+                                to += t_w.get();
+                            }
+                        }
+                    }
+                    let inx = inx.to_usize();
+                    let inx_known = inx_known.to_usize();
+                    let mut test_inx = Awi::zero(total_width);
+                    let mut common_eval = None;
+                    let mut r = Awi::zero(w);
+                    for i in 0..(1usize << total_width.get()) {
+                        if (inx & inx_known) == (i & inx_known) {
+                            test_inx.usize_(i);
+                            r.lut_(&lit, &test_inx).unwrap();
+                            if let Some(ref common_eval) = common_eval {
+                                if *common_eval != r {
+                                    return Unevaluatable
+                                }
+                            } else {
+                                common_eval = Some(r.clone());
+                            }
+                        }
+                    }
+                    Valid(r)
+                }
             }
             Resize([a, b]) => {
                 awi2!(a, b, {

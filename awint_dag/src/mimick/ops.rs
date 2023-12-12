@@ -7,16 +7,16 @@
 // mutable reference is moved into the function and can't be copied on the
 // outside
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, num::NonZeroUsize};
 
-use awint_ext::{awi, awint_internals::USIZE_BITS};
+use awint_ext::{awi, awint_internals::USIZE_BITS, bw};
 use smallvec::smallvec;
 use Op::*;
 
 use crate::{
     dag,
     mimick::{Bits, InlAwi, None, Option, Some},
-    Lineage, Op,
+    ConcatFieldsType, ConcatType, Lineage, Op,
 };
 
 // TODO there's no telling how long Try will be unstable
@@ -317,7 +317,26 @@ impl Bits {
 
     #[must_use]
     pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
-        self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
+        let mut res = false;
+        let lhs_w = self.state_nzbw();
+        let inx_w = inx.state_nzbw();
+        let lut_w = lut.state_nzbw();
+        if inx_w.get() < USIZE_BITS {
+            if let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get()) {
+                if lut_len == lut_w.get() {
+                    res = true;
+                }
+            }
+        }
+        if !res {
+            return None
+        }
+        if let awi::Some(lut) = lut.state().try_get_as_awi() {
+            // optimization for meta lowering
+            self.update_state(lhs_w, StaticLut(ConcatType::from_iter([inx.state()]), lut))
+        } else {
+            self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
+        }
     }
 
     #[must_use]
@@ -357,24 +376,54 @@ impl Bits {
     pub fn set(&mut self, inx: impl Into<dag::usize>, bit: impl Into<dag::bool>) -> Option<()> {
         let inx = inx.into();
         let bit = bit.into();
+        let bits_w = self.state_nzbw();
         if let awi::Some(inx) = inx.state().try_get_as_usize() {
             // optimization for the meta lowering
             if inx >= self.bw() {
                 None
-            } else {
+            } else if let awi::Some(lo_rem) = NonZeroUsize::new(inx) {
+                if let awi::Some(hi_rem) = NonZeroUsize::new(bits_w.get() - 1 - inx) {
+                    self.update_state(
+                        bits_w,
+                        ConcatFields(ConcatFieldsType::from_iter([
+                            (self.state(), 0, lo_rem),
+                            (bit.state(), 0, bw(1)),
+                            (self.state(), inx + 1, hi_rem),
+                        ])),
+                    )
+                    .unwrap_at_runtime();
+                } else {
+                    // setting the last bit
+                    self.update_state(
+                        bits_w,
+                        ConcatFields(ConcatFieldsType::from_iter([
+                            (self.state(), 0, lo_rem),
+                            (bit.state(), 0, bw(1)),
+                        ])),
+                    )
+                    .unwrap_at_runtime();
+                }
+                Some(())
+            } else if let awi::Some(rem) = NonZeroUsize::new(bits_w.get() - 1) {
+                // setting the first bit
                 self.update_state(
-                    self.state_nzbw(),
-                    StaticSet([self.state(), bit.state()], inx),
+                    bits_w,
+                    ConcatFields(ConcatFieldsType::from_iter([
+                        (bit.state(), 0, bw(1)),
+                        (self.state(), 1, rem),
+                    ])),
                 )
                 .unwrap_at_runtime();
                 Some(())
+            } else {
+                // setting a single bit
+                self.update_state(bits_w, Copy([bit.state()]))
+                    .unwrap_at_runtime();
+                Some(())
             }
         } else {
-            self.update_state(
-                self.state_nzbw(),
-                Set([self.state(), inx.state(), bit.state()]),
-            )
-            .unwrap_at_runtime();
+            self.update_state(bits_w, Set([self.state(), inx.state(), bit.state()]))
+                .unwrap_at_runtime();
             let ok = InlAwi::from_usize(inx)
                 .ult(&InlAwi::from_usize(self.bw()))
                 .unwrap();

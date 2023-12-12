@@ -57,12 +57,17 @@ pub use awint_ext::awint_internals::{location, Location};
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
-pub use common::{epoch, DummyDefault, EAwi, EvalError, EvalResult, Lineage, Op, PState};
+pub use common::{
+    epoch, ConcatFieldsType, ConcatType, DummyDefault, EAwi, EvalError, EvalResult, Lineage, Op,
+    PState,
+};
 // export needed by the macros
 #[doc(hidden)]
 pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert_ne, stringify};
 pub use mimick::primitive;
 pub use smallvec;
+
+// FIXME TODO there is an issue with the evaluation somewhere on bigendian
 
 /// All mimicking items
 pub mod dag {

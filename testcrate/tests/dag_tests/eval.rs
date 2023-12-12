@@ -1,6 +1,12 @@
-use awint::{awi, dag};
+use std::num::NonZeroUsize;
 
-use crate::dag_tests::{Epoch, LazyAwi};
+use awint::{
+    awi,
+    awint_dag::{ConcatType, Lineage, Op},
+    dag,
+};
+
+use crate::dag_tests::{Epoch, EvalAwi, LazyAwi};
 
 macro_rules! test_nonequal_bw {
     (
@@ -256,8 +262,9 @@ fn dag_bits_functions() {
     let mut y7 = awi!(x7);
     let mut y8 = awi!(x8);
     let mut y9 = awi!(x9);
-    let s2 = LazyAwi::opaque(bw(64));
-    let s3 = LazyAwi::opaque(bw(64));
+    let usize_bits = NonZeroUsize::new(awi::usize::BITS as awi::usize).unwrap();
+    let s2 = LazyAwi::opaque(usize_bits);
+    let s3 = LazyAwi::opaque(usize_bits);
     dag_bits_functions_internal(
         [&mut y5, &mut y6, &mut y7, &mut y8, &mut y9],
         s2.to_usize(),
@@ -289,4 +296,47 @@ fn dag_bits_functions() {
             panic!();
         }
     }
+}
+
+// makes sure the LUT eval is working correctly
+#[test]
+fn dag_lut_eval() {
+    use dag::*;
+    let epoch0 = Epoch::new();
+
+    let mut y = awi!(0);
+    let a = Awi::opaque(bw(1));
+    let b = awi!(0);
+    y.update_state(
+        bw(1),
+        Op::StaticLut(ConcatType::from_iter([a.state(), b.state()]), {
+            use awi::*;
+            awi!(1000)
+        }),
+    )
+    .unwrap_at_runtime();
+    let e = EvalAwi::from(&y);
+    {
+        use awi::*;
+        awi::assert_eq!(e.eval().unwrap(), awi!(0));
+    }
+
+    let mut y = awi!(0);
+    let a = Awi::opaque(bw(1));
+    let b = awi!(1);
+    let c = awi!(1);
+    y.update_state(
+        bw(1),
+        Op::StaticLut(ConcatType::from_iter([a.state(), b.state(), c.state()]), {
+            use awi::*;
+            awi!(1100_1010)
+        }),
+    )
+    .unwrap_at_runtime();
+    let e = EvalAwi::from(&y);
+    {
+        use awi::*;
+        awi::assert_eq!(e.eval().unwrap(), awi!(1));
+    }
+    drop(epoch0);
 }

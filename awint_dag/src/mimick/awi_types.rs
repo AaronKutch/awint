@@ -42,7 +42,9 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         }
     }
 
-    pub(crate) fn new(op: Op<PState>) -> Self {
+    /// Special mimick-only function, most users should be using other
+    /// construction methods
+    pub fn new(op: Op<PState>) -> Self {
         Self::from_state(PState::new(NonZeroUsize::new(BW).unwrap(), op, None))
     }
 
@@ -317,7 +319,9 @@ impl ExtAwi {
         }
     }
 
-    pub(crate) fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
+    /// Special mimick-only function, most users should be using other
+    /// construction methods
+    pub fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         Self::from_state(PState::new(nzbw, op, None))
     }
 
@@ -598,7 +602,9 @@ impl Awi {
         }
     }
 
-    pub(crate) fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
+    /// Special mimick-only function, most users should be using other
+    /// construction methods
+    pub fn new(nzbw: NonZeroUsize, op: Op<PState>) -> Self {
         Self::from_state(PState::new(nzbw, op, None))
     }
 

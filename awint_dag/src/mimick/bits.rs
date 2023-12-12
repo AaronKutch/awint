@@ -117,11 +117,13 @@ impl Bits {
         self._state = state;
     }
 
+    /// Not intended for most users.
+    ///
     /// This function is guaranteed to not return `Option::Opaque`, and may
     /// return `Option::Some` in cases that need external checking
     #[track_caller]
     #[must_use]
-    pub(crate) fn update_state(
+    pub fn update_state(
         &mut self,
         nzbw: NonZeroUsize,
         p_state_op: Op<PState>,

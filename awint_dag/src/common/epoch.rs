@@ -37,7 +37,7 @@ pub fn _unregistered_callback() -> EpochCallback {
         panic!(
             "attempted to use mimicking types from `awint_dag` when no `EpochCallback` is \
              registered (there should be an active epoch management struct such as \
-             `awint_dag::basic_state_epoch::StateEpoch`)"
+             `starlight::Epoch`)"
         );
     }
     fn panic1(_: NonZeroUsize, _: Op<PState>, _: Option<Location>) -> PState {
