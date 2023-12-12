@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.1] - 2023-12-11
+### Fixes
+- Fixed outdated messages, added the `gen_counter_for_pstate` flag
+
 ## [0.15.0] - 2023-12-08
 ### Changes
 - Various improvements to `awint_dag` for `starlight`

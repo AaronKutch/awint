@@ -1,6 +1,6 @@
 [package]
 name = "awint_dag"
-version = "0.15.0"
+version = "0.15.1"
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"

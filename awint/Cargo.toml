@@ -2,7 +2,7 @@
 name = "awint"
 # note: when bumping versions, update `rust-version` in `awint_internals/Cargo.toml` and in
 # `ci.yml`, and add date to changelog
-version = "0.15.0" # no 1.0 at least until `const_support` is all stabilized
+version = "0.15.1" # no 1.0 at least until `const_support` is all stabilized
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
