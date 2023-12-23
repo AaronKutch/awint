@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.16.0] - TODO
+### Changes
+- made `EpochKey::pop_off_epoch_stack` return an error rather than panic
+
 ## [0.15.1] - 2023-12-11
 ### Fixes
 - Fixed outdated messages, added the `gen_counter_for_pstate` flag

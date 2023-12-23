@@ -116,22 +116,21 @@ impl EpochKey {
     /// deregistering it. The new last epoch callback is reregistered in its
     /// place (or a panicking callback is registered if the stack is empty).
     ///
-    /// # Panics
+    /// # Errors
     ///
     /// If an epoch was pushed on after the one referred to by `self` was, and
     /// if that epoch has not been popped off and deregistered, then the stack
-    /// invariant is violated and this function panics.
-    pub fn pop_off_epoch_stack(self) {
+    /// invariant is violated and this function returns a tuple of the `self`
+    /// generation and the generation that has not been dropped yet. Users
+    /// should probably use this to panic.
+    pub fn pop_off_epoch_stack(self) -> Result<(), (NonZeroU64, NonZeroU64)> {
         EPOCH_STACK.with(|v| {
             let mut epoch_stack = v.borrow_mut();
-            let (top_gen, _) = epoch_stack.pop().unwrap();
-            if top_gen != self.gen {
-                panic!(
-                    "when calling `pop_off_epoch_stack` on a `EpochKey` with generation {}, found \
-                     that the `EpochKey` with generation {} has not been dropped yet",
-                    self.gen, top_gen
-                );
+            let (top_gen, _) = epoch_stack.last().unwrap();
+            if self.gen != *top_gen {
+                return Err((self.gen, *top_gen));
             }
+            epoch_stack.pop().unwrap();
             if let Some((_, callback)) = epoch_stack.last() {
                 // TODO #25
                 //CURRENT_CALLBACK.replace(*callback);
@@ -145,7 +144,8 @@ impl EpochKey {
                     x.replace(_unregistered_callback());
                 });
             }
-        });
+            Ok(())
+        })
     }
 
     /// Returns an `EpochKey` that is always invalid

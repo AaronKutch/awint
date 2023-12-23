@@ -164,7 +164,7 @@ impl Drop for Epoch {
                 );
             });
             // unregister callback
-            self.key.pop_off_epoch_stack();
+            self.key.pop_off_epoch_stack().unwrap();
         }
     }
 }
