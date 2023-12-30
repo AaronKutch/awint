@@ -354,6 +354,9 @@ impl Bits {
             // optimization for the meta lowering
             if inx >= self.bw() {
                 None
+            } else if self.bw() == 1 {
+                // single bit copy
+                Some(dag::bool::from_state(self.state()))
             } else {
                 dag::bool::new_eager_eval(StaticGet([self.state()], inx))
             }
