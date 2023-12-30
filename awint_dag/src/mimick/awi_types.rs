@@ -34,7 +34,9 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
 }
 
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
-    pub(crate) fn from_state(state: PState) -> Self {
+    /// Special mimick-only function, most users should be using other
+    /// construction methods
+    pub fn from_state(state: PState) -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
         Self {
             _no_send_or_sync: PhantomData,
@@ -312,7 +314,9 @@ impl Lineage for ExtAwi {
 }
 
 impl ExtAwi {
-    pub(crate) fn from_state(state: PState) -> Self {
+    /// Special mimick-only function, most users should be using other
+    /// construction methods
+    pub fn from_state(state: PState) -> Self {
         Self {
             _no_send_or_sync: PhantomData,
             _state: state,
@@ -595,7 +599,9 @@ impl Lineage for Awi {
 }
 
 impl Awi {
-    pub(crate) fn from_state(state: PState) -> Self {
+    /// Special mimick-only function, most users should be using other
+    /// construction methods
+    pub fn from_state(state: PState) -> Self {
         Self {
             _no_send_or_sync: PhantomData,
             _state: state,

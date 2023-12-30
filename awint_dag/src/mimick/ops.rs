@@ -420,8 +420,7 @@ impl Bits {
                 Some(())
             } else {
                 // setting a single bit
-                self.update_state(bits_w, Copy([bit.state()]))
-                    .unwrap_at_runtime();
+                self.set_state(bit.state());
                 Some(())
             }
         } else {

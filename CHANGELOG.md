@@ -3,6 +3,7 @@
 ## [0.16.0] - TODO
 ### Changes
 - made `EpochKey::pop_off_epoch_stack` return an error rather than panic
+- made some `from_state` functions public
 
 ## [0.15.1] - 2023-12-11
 ### Fixes
