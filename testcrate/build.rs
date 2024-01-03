@@ -715,7 +715,6 @@ fn main() {
 
     <fs::File as io::Write>::write_all(
         &mut OpenOptions::new()
-            .write(true)
             .append(true)
             .create(true)
             .open(out_file)

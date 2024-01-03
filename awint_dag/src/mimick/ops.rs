@@ -7,7 +7,7 @@
 // mutable reference is moved into the function and can't be copied on the
 // outside
 
-use std::{marker::PhantomData, num::NonZeroUsize};
+use std::{cmp::min, marker::PhantomData, num::NonZeroUsize};
 
 use awint_ext::{awi, awint_internals::USIZE_BITS, bw};
 use smallvec::smallvec;
@@ -433,6 +433,117 @@ impl Bits {
         }
     }
 
+    /// Static fielding given `awi::usize`s
+    #[doc(hidden)]
+    pub fn static_field(
+        lhs: &Bits,
+        to: usize,
+        rhs: &Bits,
+        from: usize,
+        width: usize,
+    ) -> awi::Option<dag::Awi> {
+        use awi::*;
+        if (width > lhs.bw())
+            || (width > rhs.bw())
+            || (to > (lhs.bw() - width))
+            || (from > (rhs.bw() - width))
+        {
+            return None;
+        }
+        let res = if let Some(width) = NonZeroUsize::new(width) {
+            if let Some(lhs_rem_lo) = NonZeroUsize::new(to) {
+                if let Some(lhs_rem_hi) = NonZeroUsize::new(from) {
+                    dag::Awi::new(
+                        lhs.nzbw(),
+                        Op::ConcatFields(ConcatFieldsType::from_iter([
+                            (lhs.state(), 0usize, lhs_rem_lo),
+                            (rhs.state(), from, width),
+                            (lhs.state(), to + width.get(), lhs_rem_hi),
+                        ])),
+                    )
+                } else {
+                    dag::Awi::new(
+                        lhs.nzbw(),
+                        Op::ConcatFields(ConcatFieldsType::from_iter([
+                            (lhs.state(), 0usize, lhs_rem_lo),
+                            (rhs.state(), from, width),
+                        ])),
+                    )
+                }
+            } else if let Some(lhs_rem_hi) = NonZeroUsize::new(lhs.bw() - width.get()) {
+                dag::Awi::new(
+                    lhs.nzbw(),
+                    Op::ConcatFields(ConcatFieldsType::from_iter([
+                        (rhs.state(), from, width),
+                        (lhs.state(), width.get(), lhs_rem_hi),
+                    ])),
+                )
+            } else {
+                dag::Awi::new(
+                    lhs.nzbw(),
+                    Op::ConcatFields(ConcatFieldsType::from_iter([(rhs.state(), from, width)])),
+                )
+            }
+        } else {
+            dag::Awi::from_bits(lhs)
+        };
+        Some(res)
+    }
+
+    /// Given a value `s` that should not be greater than `max`, this will
+    /// efficiently return `None` if it is.
+    #[doc(hidden)]
+    pub fn efficient_ule(s: dag::usize, max: usize) -> Option<()> {
+        if let awi::Some(s) = s.state().try_get_as_usize() {
+            if s <= max {
+                Some(())
+            } else {
+                None
+            }
+        } else if max == 0 {
+            let s_awi = dag::Awi::from_usize(s);
+            let success = s_awi.is_zero();
+            Option::some_at_dagtime((), success)
+        } else if max >= (isize::MAX as usize) {
+            let s_awi = dag::Awi::from_usize(s);
+            let max_awi = dag::Awi::from_usize(max);
+            let success = s_awi.ule(&max_awi).unwrap();
+            Option::some_at_dagtime((), success)
+        } else {
+            // break up into two parts, one that should always be zero and one that either
+            // doesn't need any checks or needs a small `ule` check
+            let max_width_w = if max == 1 {
+                bw(1)
+            } else {
+                NonZeroUsize::new(max.next_power_of_two().trailing_zeros() as usize).unwrap()
+            };
+            let should_be_zero_w = NonZeroUsize::new(USIZE_BITS - max_width_w.get()).unwrap();
+            let should_be_zero = dag::Awi::new(
+                should_be_zero_w,
+                Op::ConcatFields(ConcatFieldsType::from_iter([(
+                    s.state(),
+                    max_width_w.get(),
+                    should_be_zero_w,
+                )])),
+            );
+
+            let success = if max.checked_add(1).unwrap().is_power_of_two() {
+                // the bits can be whatever they want
+                should_be_zero.is_zero()
+            } else {
+                // avoid a `USIZE_BITS` comparison
+                let s_small = dag::Awi::new(
+                    max_width_w,
+                    Op::ConcatFields(ConcatFieldsType::from_iter([(s.state(), 0, max_width_w)])),
+                );
+                let mut max_small = dag::Awi::zero(max_width_w);
+                max_small.usize_(max);
+                should_be_zero.is_zero() & s_small.ule(&max_small).unwrap()
+            };
+            Option::some_at_dagtime((), success)
+        }
+    }
+
     #[must_use]
     pub fn field(
         &mut self,
@@ -454,6 +565,15 @@ impl Bits {
                 width.state(),
             ]),
         ));
+        /*let s0 = to + width;
+        let s1 = from + width;
+        Option::some_at_dagtime(
+            (),
+            Bits::efficient_ule(width, self.bw()).is_some()
+                & Bits::efficient_ule(width, rhs.bw()).is_some()
+                & Bits::efficient_ule(s0, self.bw()).is_some()
+                & Bits::efficient_ule(s1, rhs.bw()).is_some()
+        )*/
         let to = InlAwi::from_usize(to);
         let from = InlAwi::from_usize(from);
         let width = InlAwi::from_usize(width);
@@ -481,6 +601,13 @@ impl Bits {
             self.state_nzbw(),
             FieldTo([self.state(), to.state(), rhs.state(), width.state()]),
         ));
+        /*let s = to + width;
+        Option::some_at_dagtime(
+            (),
+            Bits::efficient_ule(width, self.bw()).is_some()
+                & Bits::efficient_ule(width, rhs.bw()).is_some()
+                & Bits::efficient_ule(s, self.bw()).is_some()
+        )*/
         let to = InlAwi::from_usize(to);
         let width = InlAwi::from_usize(width);
         let mut tmp = InlAwi::from_usize(self.bw());
@@ -504,6 +631,13 @@ impl Bits {
             self.state_nzbw(),
             FieldFrom([self.state(), rhs.state(), from.state(), width.state()]),
         ));
+        /*let s = from + width;
+        Option::some_at_dagtime(
+            (),
+            Bits::efficient_ule(width, self.bw()).is_some()
+                & Bits::efficient_ule(width, rhs.bw()).is_some()
+                & Bits::efficient_ule(s, rhs.bw()).is_some()
+        )*/
         let from = InlAwi::from_usize(from);
         let width = InlAwi::from_usize(width);
         let mut tmp = InlAwi::from_usize(rhs.bw());
@@ -521,6 +655,7 @@ impl Bits {
             self.state_nzbw(),
             FieldWidth([self.state(), rhs.state(), width.state()]),
         ));
+        //Bits::efficient_ule(width, min(self.bw(), rhs.bw()))
         let width = InlAwi::from_usize(width);
         let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
             & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap();
@@ -540,6 +675,13 @@ impl Bits {
             self.state_nzbw(),
             FieldBit([self.state(), to.state(), rhs.state(), from.state()]),
         ));
+        /*
+        Option::some_at_dagtime(
+            (),
+            Bits::efficient_ule(to, self.bw().wrapping_sub(1)).is_some()
+                & Bits::efficient_ule(from, rhs.bw().wrapping_sub(1)).is_some(),
+        )
+        */
         let to = InlAwi::from_usize(to);
         let from = InlAwi::from_usize(from);
         let ok = to.ult(&InlAwi::from_usize(self.bw())).unwrap()
