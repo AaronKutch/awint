@@ -546,6 +546,32 @@ impl Bits {
         }
     }
 
+    /// Given a values `a` and `b` whose sum should not be greater than `max`, this will
+    /// efficiently return `None` if it is.
+    #[doc(hidden)]
+    pub fn efficient_add_then_ule(a: dag::usize, b: dag::usize, max: usize) -> Option<()> {
+        if let awi::Some(a) = a.state().try_get_as_usize() {
+            if a > max {
+                return None
+            }
+            Bits::efficient_ule(b, max - a)
+        } else if let awi::Some(b) = b.state().try_get_as_usize() {
+            if b > max {
+                return None
+            }
+            Bits::efficient_ule(a, max - b)
+        } else if max == 0 {
+            let a_awi = dag::Awi::from_usize(a);
+            let b_awi = dag::Awi::from_usize(b);
+            let success = a_awi.is_zero() & b_awi.is_zero();
+            Option::some_at_dagtime((), success)
+        } else if max >= (isize::MAX as usize) {
+            todo!()
+        } else {
+            Bits::efficient_ule(a + b, max)
+        }
+    }
+
     #[must_use]
     pub fn field(
         &mut self,
@@ -567,14 +593,10 @@ impl Bits {
                 width.state(),
             ]),
         ));
-        let s0 = to + width;
-        let s1 = from + width;
         Option::some_at_dagtime(
             (),
-            Bits::efficient_ule(width, self.bw()).is_some()
-                & Bits::efficient_ule(width, rhs.bw()).is_some()
-                & Bits::efficient_ule(s0, self.bw()).is_some()
-                & Bits::efficient_ule(s1, rhs.bw()).is_some(),
+            Bits::efficient_add_then_ule(to, width, self.bw()).is_some()
+                & Bits::efficient_add_then_ule(from, width, rhs.bw()).is_some()
         )
     }
 
@@ -591,12 +613,10 @@ impl Bits {
             self.state_nzbw(),
             FieldTo([self.state(), to.state(), rhs.state(), width.state()]),
         ));
-        let s = to + width;
         Option::some_at_dagtime(
             (),
-            Bits::efficient_ule(width, self.bw()).is_some()
+            Bits::efficient_add_then_ule(to, width, self.bw()).is_some()
                 & Bits::efficient_ule(width, rhs.bw()).is_some()
-                & Bits::efficient_ule(s, self.bw()).is_some(),
         )
     }
 
@@ -613,12 +633,10 @@ impl Bits {
             self.state_nzbw(),
             FieldFrom([self.state(), rhs.state(), from.state(), width.state()]),
         ));
-        let s = from + width;
         Option::some_at_dagtime(
             (),
             Bits::efficient_ule(width, self.bw()).is_some()
-                & Bits::efficient_ule(width, rhs.bw()).is_some()
-                & Bits::efficient_ule(s, rhs.bw()).is_some(),
+                & Bits::efficient_add_then_ule(from, width, rhs.bw()).is_some()
         )
     }
 
