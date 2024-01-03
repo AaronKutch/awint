@@ -512,11 +512,13 @@ impl Bits {
         } else {
             // break up into two parts, one that should always be zero and one that either
             // doesn't need any checks or needs a small `ule` check
-            let max_width_w = if max == 1 {
-                bw(1)
-            } else {
-                NonZeroUsize::new(max.next_power_of_two().trailing_zeros() as usize).unwrap()
-            };
+            let max_width_w = NonZeroUsize::new(
+                usize::try_from(max.next_power_of_two().trailing_zeros())
+                    .unwrap()
+                    .checked_add(if max.is_power_of_two() { 1 } else { 0 })
+                    .unwrap(),
+            )
+            .unwrap();
             let should_be_zero_w = NonZeroUsize::new(USIZE_BITS - max_width_w.get()).unwrap();
             let should_be_zero = dag::Awi::new(
                 should_be_zero_w,
@@ -565,27 +567,15 @@ impl Bits {
                 width.state(),
             ]),
         ));
-        /*let s0 = to + width;
+        let s0 = to + width;
         let s1 = from + width;
         Option::some_at_dagtime(
             (),
             Bits::efficient_ule(width, self.bw()).is_some()
                 & Bits::efficient_ule(width, rhs.bw()).is_some()
                 & Bits::efficient_ule(s0, self.bw()).is_some()
-                & Bits::efficient_ule(s1, rhs.bw()).is_some()
-        )*/
-        let to = InlAwi::from_usize(to);
-        let from = InlAwi::from_usize(from);
-        let width = InlAwi::from_usize(width);
-        let mut tmp0 = InlAwi::from_usize(self.bw());
-        tmp0.sub_(&width).unwrap();
-        let mut tmp1 = InlAwi::from_usize(rhs.bw());
-        tmp1.sub_(&width).unwrap();
-        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
-            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
-            & to.ule(&tmp0).unwrap()
-            & from.ule(&tmp1).unwrap();
-        Option::some_at_dagtime((), ok)
+                & Bits::efficient_ule(s1, rhs.bw()).is_some(),
+        )
     }
 
     #[must_use]
@@ -601,21 +591,13 @@ impl Bits {
             self.state_nzbw(),
             FieldTo([self.state(), to.state(), rhs.state(), width.state()]),
         ));
-        /*let s = to + width;
+        let s = to + width;
         Option::some_at_dagtime(
             (),
             Bits::efficient_ule(width, self.bw()).is_some()
                 & Bits::efficient_ule(width, rhs.bw()).is_some()
-                & Bits::efficient_ule(s, self.bw()).is_some()
-        )*/
-        let to = InlAwi::from_usize(to);
-        let width = InlAwi::from_usize(width);
-        let mut tmp = InlAwi::from_usize(self.bw());
-        tmp.sub_(&width).unwrap();
-        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
-            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
-            & to.ule(&tmp).unwrap();
-        Option::some_at_dagtime((), ok)
+                & Bits::efficient_ule(s, self.bw()).is_some(),
+        )
     }
 
     #[must_use]
@@ -631,21 +613,13 @@ impl Bits {
             self.state_nzbw(),
             FieldFrom([self.state(), rhs.state(), from.state(), width.state()]),
         ));
-        /*let s = from + width;
+        let s = from + width;
         Option::some_at_dagtime(
             (),
             Bits::efficient_ule(width, self.bw()).is_some()
                 & Bits::efficient_ule(width, rhs.bw()).is_some()
-                & Bits::efficient_ule(s, rhs.bw()).is_some()
-        )*/
-        let from = InlAwi::from_usize(from);
-        let width = InlAwi::from_usize(width);
-        let mut tmp = InlAwi::from_usize(rhs.bw());
-        tmp.sub_(&width).unwrap();
-        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
-            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap()
-            & from.ule(&tmp).unwrap();
-        Option::some_at_dagtime((), ok)
+                & Bits::efficient_ule(s, rhs.bw()).is_some(),
+        )
     }
 
     #[must_use]
@@ -655,11 +629,7 @@ impl Bits {
             self.state_nzbw(),
             FieldWidth([self.state(), rhs.state(), width.state()]),
         ));
-        //Bits::efficient_ule(width, min(self.bw(), rhs.bw()))
-        let width = InlAwi::from_usize(width);
-        let ok = width.ule(&InlAwi::from_usize(self.bw())).unwrap()
-            & width.ule(&InlAwi::from_usize(rhs.bw())).unwrap();
-        Option::some_at_dagtime((), ok)
+        Bits::efficient_ule(width, min(self.bw(), rhs.bw()))
     }
 
     #[must_use]
@@ -675,18 +645,11 @@ impl Bits {
             self.state_nzbw(),
             FieldBit([self.state(), to.state(), rhs.state(), from.state()]),
         ));
-        /*
         Option::some_at_dagtime(
             (),
             Bits::efficient_ule(to, self.bw().wrapping_sub(1)).is_some()
                 & Bits::efficient_ule(from, rhs.bw().wrapping_sub(1)).is_some(),
         )
-        */
-        let to = InlAwi::from_usize(to);
-        let from = InlAwi::from_usize(from);
-        let ok = to.ult(&InlAwi::from_usize(self.bw())).unwrap()
-            & from.ult(&InlAwi::from_usize(rhs.bw())).unwrap();
-        Option::some_at_dagtime((), ok)
     }
 
     pub fn resize_(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
