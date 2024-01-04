@@ -363,6 +363,18 @@ impl Bits {
         Some(res)
     }
 
+    /// Given a value `max`, this returns the number of nontrivial bits that may
+    /// not be zero when the value is at most `max`
+    #[doc(hidden)]
+    pub fn nontrivial_bits(max: usize) -> awi::Option<NonZeroUsize> {
+        NonZeroUsize::new(
+            usize::try_from(max.next_power_of_two().trailing_zeros())
+                .unwrap()
+                .checked_add(if max.is_power_of_two() { 1 } else { 0 })
+                .unwrap(),
+        )
+    }
+
     /// Given a value `s` that should not be greater than `max`, this will
     /// efficiently return `None` if it is.
     #[doc(hidden)]
@@ -385,13 +397,7 @@ impl Bits {
         } else {
             // break up into two parts, one that should always be zero and one that either
             // doesn't need any checks or needs a small `ule` check
-            let max_width_w = NonZeroUsize::new(
-                usize::try_from(max.next_power_of_two().trailing_zeros())
-                    .unwrap()
-                    .checked_add(if max.is_power_of_two() { 1 } else { 0 })
-                    .unwrap(),
-            )
-            .unwrap();
+            let max_width_w = Bits::nontrivial_bits(max).unwrap();
             let should_be_zero_w = NonZeroUsize::new(USIZE_BITS - max_width_w.get()).unwrap();
             let should_be_zero = dag::Awi::new(
                 should_be_zero_w,
@@ -441,13 +447,7 @@ impl Bits {
         } else if max >= (isize::MAX as usize) {
             panic!()
         } else {
-            let max_width_w = NonZeroUsize::new(
-                usize::try_from(max.next_power_of_two().trailing_zeros())
-                    .unwrap()
-                    .checked_add(if max.is_power_of_two() { 1 } else { 0 })
-                    .unwrap(),
-            )
-            .unwrap();
+            let max_width_w = Bits::nontrivial_bits(max).unwrap();
             let should_be_zero_w = NonZeroUsize::new(USIZE_BITS - max_width_w.get()).unwrap();
             let should_be_zero_a = dag::Awi::new(
                 should_be_zero_w,
