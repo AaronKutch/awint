@@ -167,8 +167,7 @@ macro_rules! shift {
                     self.state_nzbw(),
                     $enum_var([self.state(), s.state()])
                 ));
-                let ok = InlAwi::from_usize(s).ult(&InlAwi::from_usize(self.bw())).unwrap();
-                Option::some_at_dagtime((), ok)
+                Bits::efficient_ule(s, self.bw() - 1)
             }
         )*
     };
@@ -305,132 +304,6 @@ impl Bits {
     pub fn uone_(&mut self) {
         self.update_state(self.state_nzbw(), Op::Literal(awi::Awi::uone(self.nzbw())))
             .unwrap_at_runtime();
-    }
-
-    #[must_use]
-    pub fn mux_(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
-        self.update_state(
-            self.state_nzbw(),
-            Mux([self.state(), rhs.state(), b.into().state()]),
-        )
-    }
-
-    #[must_use]
-    pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
-        let mut res = false;
-        let lhs_w = self.state_nzbw();
-        let inx_w = inx.state_nzbw();
-        let lut_w = lut.state_nzbw();
-        if inx_w.get() < USIZE_BITS {
-            if let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get()) {
-                if lut_len == lut_w.get() {
-                    res = true;
-                }
-            }
-        }
-        if !res {
-            return None
-        }
-        if let awi::Some(lut) = lut.state().try_get_as_awi() {
-            // optimization for meta lowering
-            self.update_state(lhs_w, StaticLut(ConcatType::from_iter([inx.state()]), lut))
-        } else {
-            self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
-        }
-    }
-
-    #[must_use]
-    pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
-        self.update_state(
-            self.state_nzbw(),
-            LutSet([self.state(), entry.state(), inx.state()]),
-        )
-    }
-
-    #[must_use]
-    pub fn get(&self, inx: impl Into<dag::usize>) -> Option<dag::bool> {
-        let inx = inx.into();
-        if let awi::Some(inx) = inx.state().try_get_as_usize() {
-            // optimization for the meta lowering
-            if inx >= self.bw() {
-                None
-            } else if self.bw() == 1 {
-                // single bit copy
-                Some(dag::bool::from_state(self.state()))
-            } else {
-                dag::bool::new_eager_eval(StaticGet([self.state()], inx))
-            }
-        } else {
-            let b = dag::bool::new_eager_eval(Get([self.state(), inx.state()]));
-            match b {
-                None => None,
-                Some(b) => {
-                    let ok = InlAwi::from_usize(inx)
-                        .ult(&InlAwi::from_usize(self.bw()))
-                        .unwrap();
-                    Option::some_at_dagtime(b, ok)
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn set(&mut self, inx: impl Into<dag::usize>, bit: impl Into<dag::bool>) -> Option<()> {
-        let inx = inx.into();
-        let bit = bit.into();
-        let bits_w = self.state_nzbw();
-        if let awi::Some(inx) = inx.state().try_get_as_usize() {
-            // optimization for the meta lowering
-            if inx >= self.bw() {
-                None
-            } else if let awi::Some(lo_rem) = NonZeroUsize::new(inx) {
-                if let awi::Some(hi_rem) = NonZeroUsize::new(bits_w.get() - 1 - inx) {
-                    self.update_state(
-                        bits_w,
-                        ConcatFields(ConcatFieldsType::from_iter([
-                            (self.state(), 0, lo_rem),
-                            (bit.state(), 0, bw(1)),
-                            (self.state(), inx + 1, hi_rem),
-                        ])),
-                    )
-                    .unwrap_at_runtime();
-                } else {
-                    // setting the last bit
-                    self.update_state(
-                        bits_w,
-                        ConcatFields(ConcatFieldsType::from_iter([
-                            (self.state(), 0, lo_rem),
-                            (bit.state(), 0, bw(1)),
-                        ])),
-                    )
-                    .unwrap_at_runtime();
-                }
-                Some(())
-            } else if let awi::Some(rem) = NonZeroUsize::new(bits_w.get() - 1) {
-                // setting the first bit
-                self.update_state(
-                    bits_w,
-                    ConcatFields(ConcatFieldsType::from_iter([
-                        (bit.state(), 0, bw(1)),
-                        (self.state(), 1, rem),
-                    ])),
-                )
-                .unwrap_at_runtime();
-                Some(())
-            } else {
-                // setting a single bit
-                self.set_state(bit.state());
-                Some(())
-            }
-        } else {
-            self.update_state(bits_w, Set([self.state(), inx.state(), bit.state()]))
-                .unwrap_at_runtime();
-            let ok = InlAwi::from_usize(inx)
-                .ult(&InlAwi::from_usize(self.bw()))
-                .unwrap();
-            Option::some_at_dagtime((), ok)
-        }
     }
 
     /// Static fielding given `awi::usize`s
@@ -616,6 +489,126 @@ impl Bits {
                     & (!o)
             };
             Option::some_at_dagtime((), success)
+        }
+    }
+
+    #[must_use]
+    pub fn mux_(&mut self, rhs: &Self, b: impl Into<dag::bool>) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            Mux([self.state(), rhs.state(), b.into().state()]),
+        )
+    }
+
+    #[must_use]
+    pub fn lut_(&mut self, lut: &Self, inx: &Self) -> Option<()> {
+        let mut res = false;
+        let lhs_w = self.state_nzbw();
+        let inx_w = inx.state_nzbw();
+        let lut_w = lut.state_nzbw();
+        if inx_w.get() < USIZE_BITS {
+            if let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get()) {
+                if lut_len == lut_w.get() {
+                    res = true;
+                }
+            }
+        }
+        if !res {
+            return None
+        }
+        if let awi::Some(lut) = lut.state().try_get_as_awi() {
+            // optimization for meta lowering
+            self.update_state(lhs_w, StaticLut(ConcatType::from_iter([inx.state()]), lut))
+        } else {
+            self.update_state(self.state_nzbw(), Lut([lut.state(), inx.state()]))
+        }
+    }
+
+    #[must_use]
+    pub fn lut_set(&mut self, entry: &Self, inx: &Self) -> Option<()> {
+        self.update_state(
+            self.state_nzbw(),
+            LutSet([self.state(), entry.state(), inx.state()]),
+        )
+    }
+
+    #[must_use]
+    pub fn get(&self, inx: impl Into<dag::usize>) -> Option<dag::bool> {
+        let inx = inx.into();
+        if let awi::Some(inx) = inx.state().try_get_as_usize() {
+            // optimization for the meta lowering
+            if inx >= self.bw() {
+                None
+            } else if self.bw() == 1 {
+                // single bit copy
+                Some(dag::bool::from_state(self.state()))
+            } else {
+                dag::bool::new_eager_eval(StaticGet([self.state()], inx))
+            }
+        } else {
+            let b = dag::bool::new_eager_eval(Get([self.state(), inx.state()]));
+            match b {
+                None => None,
+                Some(b) => {
+                    Option::some_at_dagtime(b, Bits::efficient_ule(inx, self.bw() - 1).is_some())
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn set(&mut self, inx: impl Into<dag::usize>, bit: impl Into<dag::bool>) -> Option<()> {
+        let inx = inx.into();
+        let bit = bit.into();
+        let bits_w = self.state_nzbw();
+        if let awi::Some(inx) = inx.state().try_get_as_usize() {
+            // optimization for the meta lowering
+            if inx >= self.bw() {
+                None
+            } else if let awi::Some(lo_rem) = NonZeroUsize::new(inx) {
+                if let awi::Some(hi_rem) = NonZeroUsize::new(bits_w.get() - 1 - inx) {
+                    self.update_state(
+                        bits_w,
+                        ConcatFields(ConcatFieldsType::from_iter([
+                            (self.state(), 0, lo_rem),
+                            (bit.state(), 0, bw(1)),
+                            (self.state(), inx + 1, hi_rem),
+                        ])),
+                    )
+                    .unwrap_at_runtime();
+                } else {
+                    // setting the last bit
+                    self.update_state(
+                        bits_w,
+                        ConcatFields(ConcatFieldsType::from_iter([
+                            (self.state(), 0, lo_rem),
+                            (bit.state(), 0, bw(1)),
+                        ])),
+                    )
+                    .unwrap_at_runtime();
+                }
+                Some(())
+            } else if let awi::Some(rem) = NonZeroUsize::new(bits_w.get() - 1) {
+                // setting the first bit
+                self.update_state(
+                    bits_w,
+                    ConcatFields(ConcatFieldsType::from_iter([
+                        (bit.state(), 0, bw(1)),
+                        (self.state(), 1, rem),
+                    ])),
+                )
+                .unwrap_at_runtime();
+                Some(())
+            } else {
+                // setting a single bit
+                self.set_state(bit.state());
+                Some(())
+            }
+        } else {
+            self.update_state(bits_w, Set([self.state(), inx.state(), bit.state()]))
+                .unwrap_at_runtime();
+            Bits::efficient_ule(inx, self.bw() - 1)
         }
     }
 
