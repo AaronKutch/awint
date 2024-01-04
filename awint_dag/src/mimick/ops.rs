@@ -546,8 +546,8 @@ impl Bits {
         }
     }
 
-    /// Given a values `a` and `b` whose sum should not be greater than `max`, this will
-    /// efficiently return `None` if it is.
+    /// Given a values `a` and `b` whose sum should not be greater than `max`,
+    /// this will efficiently return `None` if it is.
     #[doc(hidden)]
     pub fn efficient_add_then_ule(a: dag::usize, b: dag::usize, max: usize) -> Option<()> {
         if let awi::Some(a) = a.state().try_get_as_usize() {
@@ -566,9 +566,56 @@ impl Bits {
             let success = a_awi.is_zero() & b_awi.is_zero();
             Option::some_at_dagtime((), success)
         } else if max >= (isize::MAX as usize) {
-            todo!()
+            panic!()
         } else {
-            Bits::efficient_ule(a + b, max)
+            let max_width_w = NonZeroUsize::new(
+                usize::try_from(max.next_power_of_two().trailing_zeros())
+                    .unwrap()
+                    .checked_add(if max.is_power_of_two() { 1 } else { 0 })
+                    .unwrap(),
+            )
+            .unwrap();
+            let should_be_zero_w = NonZeroUsize::new(USIZE_BITS - max_width_w.get()).unwrap();
+            let should_be_zero_a = dag::Awi::new(
+                should_be_zero_w,
+                Op::ConcatFields(ConcatFieldsType::from_iter([(
+                    a.state(),
+                    max_width_w.get(),
+                    should_be_zero_w,
+                )])),
+            );
+            let should_be_zero_b = dag::Awi::new(
+                should_be_zero_w,
+                Op::ConcatFields(ConcatFieldsType::from_iter([(
+                    b.state(),
+                    max_width_w.get(),
+                    should_be_zero_w,
+                )])),
+            );
+            let small_a = dag::Awi::new(
+                max_width_w,
+                Op::ConcatFields(ConcatFieldsType::from_iter([(a.state(), 0, max_width_w)])),
+            );
+            let small_b = dag::Awi::new(
+                max_width_w,
+                Op::ConcatFields(ConcatFieldsType::from_iter([(b.state(), 0, max_width_w)])),
+            );
+            // avoid a `USIZE_BITS` addition and comparison
+            let mut sum = dag::Awi::zero(max_width_w);
+            let o = sum.cin_sum_(false, &small_a, &small_b).unwrap().0;
+
+            let success = if max.checked_add(1).unwrap().is_power_of_two() {
+                // the bits can be whatever they want
+                should_be_zero_a.is_zero() & should_be_zero_b.is_zero() & (!o)
+            } else {
+                let mut max_small = dag::Awi::zero(max_width_w);
+                max_small.usize_(max);
+                should_be_zero_a.is_zero()
+                    & should_be_zero_b.is_zero()
+                    & sum.ule(&max_small).unwrap()
+                    & (!o)
+            };
+            Option::some_at_dagtime((), success)
         }
     }
 
@@ -596,7 +643,7 @@ impl Bits {
         Option::some_at_dagtime(
             (),
             Bits::efficient_add_then_ule(to, width, self.bw()).is_some()
-                & Bits::efficient_add_then_ule(from, width, rhs.bw()).is_some()
+                & Bits::efficient_add_then_ule(from, width, rhs.bw()).is_some(),
         )
     }
 
@@ -616,7 +663,7 @@ impl Bits {
         Option::some_at_dagtime(
             (),
             Bits::efficient_add_then_ule(to, width, self.bw()).is_some()
-                & Bits::efficient_ule(width, rhs.bw()).is_some()
+                & Bits::efficient_ule(width, rhs.bw()).is_some(),
         )
     }
 
@@ -636,7 +683,7 @@ impl Bits {
         Option::some_at_dagtime(
             (),
             Bits::efficient_ule(width, self.bw()).is_some()
-                & Bits::efficient_add_then_ule(from, width, rhs.bw()).is_some()
+                & Bits::efficient_add_then_ule(from, width, rhs.bw()).is_some(),
         )
     }
 
