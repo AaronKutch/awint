@@ -881,6 +881,9 @@ impl CCResult<()> {
     }
 }
 
+const PANIC_MSG: &str = "statically known bitwidths are needed for certain concatenation macro \
+                         usages with mimicking types from `awint_dag`";
+
 #[doc(hidden)]
 impl Bits {
     #[must_use]
@@ -912,10 +915,7 @@ impl Bits {
             assert_eq!(lit.bw(), USIZE_BITS);
             lit.to_usize()
         } else {
-            panic!(
-                "statically known bitwidths are needed for certain concatenation macro usages \
-                 with mimicking types"
-            );
+            panic!("{}", PANIC_MSG);
         };
         for _ in 1..N {
             let last = x.pop().unwrap().into();
@@ -926,15 +926,15 @@ impl Bits {
                     max = val;
                 }
             } else {
-                panic!(
-                    "statically known bitwidths are needed for certain concatenation macro usages \
-                     with mimicking types"
-                );
+                panic!("{}", PANIC_MSG);
             }
         }
         max
     }
 
+    // TODO use specializations like `Bits::efficient_*` for known `cw`, but we
+    // definitely need better tests for this, probably need to redo the macro test
+    // generator and allow `starlight` to use it
     pub fn unstable_cc_checks<const LE: usize, const GE: usize, const EQ: usize, T>(
         le0: [impl Into<dag::usize>; LE],
         le1: [impl Into<dag::usize>; LE],

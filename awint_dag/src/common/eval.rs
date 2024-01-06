@@ -668,8 +668,79 @@ impl Op<EAwi> {
             Tz([a]) => unary_usize!(w, a, tz),
             Sig([a]) => unary_usize!(w, a, sig),
             CountOnes([a]) => unary_usize!(w, a, count_ones),
-            Or([a, b]) => binary!(w, a, b, or_),
-            And([a, b]) => binary!(w, a, b, and_),
+            // `Or` and `And` are common enough that we want to use specialization to detect if one
+            // or the other argument is all ones or zeros. This is particularly advantageous in bit
+            // lines.
+            Or([a, b]) => {
+                ceq_strict!(w, a.nzbw());
+                ceq!(w, b.nzbw());
+                cases!(a,
+                    a => {
+                        cases!(b,
+                            b => {
+                                a.or_(&b).unwrap();
+                                Valid(a)
+                            },
+                            _b_w => {
+                                if a.is_umax() {
+                                    Valid(a)
+                                } else {
+                                    Unevaluatable
+                                }
+                            },
+                        )
+                    },
+                    _a_w => {
+                        cases!(b,
+                            b => {
+                                if b.is_umax() {
+                                    Valid(b)
+                                } else {
+                                    Unevaluatable
+                                }
+                            },
+                            _b_w => {
+                                Unevaluatable
+                            },
+                        )
+                    },
+                )
+            }
+            And([a, b]) => {
+                ceq_strict!(w, a.nzbw());
+                ceq!(w, b.nzbw());
+                cases!(a,
+                    a => {
+                        cases!(b,
+                            b => {
+                                a.and_(&b).unwrap();
+                                Valid(a)
+                            },
+                            _b_w => {
+                                if a.is_zero() {
+                                    Valid(a)
+                                } else {
+                                    Unevaluatable
+                                }
+                            },
+                        )
+                    },
+                    _a_w => {
+                        cases!(b,
+                            b => {
+                                if b.is_zero() {
+                                    Valid(b)
+                                } else {
+                                    Unevaluatable
+                                }
+                            },
+                            _b_w => {
+                                Unevaluatable
+                            },
+                        )
+                    },
+                )
+            }
             Xor([a, b]) => binary!(w, a, b, xor_),
             Shl([a, b]) => shift!(w, a, b, shl_),
             Lshr([a, b]) => shift!(w, a, b, lshr_),
