@@ -5,7 +5,6 @@ use std::{
 
 use awint::{
     awi,
-    awint_dag::EvalError,
     awint_internals::USIZE_BITS,
     awint_macro_internals::triple_arena::{ptr_struct, Arena},
     dag,
@@ -156,7 +155,7 @@ impl Mem {
         }
     }
 
-    pub fn eval_and_verify_equal(&mut self, _epoch: &Epoch) -> Result<(), EvalError> {
+    pub fn eval_and_verify_equal(&mut self, _epoch: &Epoch) {
         // set all lazy roots
         for (lazy, lit) in &mut self.roots {
             lazy.retro_(lit).unwrap();
@@ -165,7 +164,6 @@ impl Mem {
         for pair in self.a.vals() {
             assert_eq!(pair.eval.as_ref().unwrap().eval().unwrap(), pair.awi);
         }
-        Ok(())
     }
 }
 
@@ -761,7 +759,7 @@ fn dag_fuzzing() {
             num_dag_duo(&mut rng, &mut m)
         }
         m.finish(&epoch);
-        m.eval_and_verify_equal(&epoch).unwrap();
+        m.eval_and_verify_equal(&epoch);
         drop(epoch);
     }
 }

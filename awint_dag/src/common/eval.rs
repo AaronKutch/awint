@@ -8,7 +8,7 @@ use awint_ext::{awint_internals::USIZE_BITS, Awi, Bits};
 use awint_macros::cc;
 use Op::*;
 
-use crate::{DummyDefault, EvalError, Op};
+use crate::{DummyDefault, Op};
 
 /// The result of an evaluation on an `Op<Awi>`
 ///
@@ -36,7 +36,7 @@ pub enum EvalResult {
     /// static variants with bad inputs, and bad bitwidths on operations
     /// involving compile-time bitwidths (such as booleans and `usize`s in
     /// arguements)
-    Error(EvalError),
+    Error(&'static str),
 }
 
 use EvalResult::*;
@@ -146,7 +146,7 @@ macro_rules! ceq_strict {
         #[cfg(debug_assertions)]
         {
             if !ceq($x, $y) {
-                return EvalResult::Error(EvalError::OtherStr(BUG_MESSAGE))
+                return EvalResult::Error(BUG_MESSAGE)
             }
         }
     };
@@ -171,7 +171,7 @@ macro_rules! cbool {
             if let Some(b) = cbool($expr) {
                 b
             } else {
-                return EvalResult::Error(EvalError::OtherStr(BUG_MESSAGE))
+                return EvalResult::Error(BUG_MESSAGE)
             }
         }
         #[cfg(not(debug_assertions))]
@@ -197,7 +197,7 @@ macro_rules! cusize {
             if let Some(b) = cusize(&$expr) {
                 b
             } else {
-                return EvalResult::Error(EvalError::OtherStr(BUG_MESSAGE))
+                return EvalResult::Error(BUG_MESSAGE)
             }
         }
         #[cfg(not(debug_assertions))]
@@ -212,7 +212,7 @@ macro_rules! cbool_w {
         #[cfg(debug_assertions)]
         {
             if $expr.get() != 1 {
-                return EvalResult::Error(EvalError::OtherStr(BUG_MESSAGE))
+                return EvalResult::Error(BUG_MESSAGE)
             }
         }
     }};
@@ -223,7 +223,7 @@ macro_rules! cusize_w {
         #[cfg(debug_assertions)]
         {
             if $expr.get() != USIZE_BITS {
-                return EvalResult::Error(EvalError::OtherStr(BUG_MESSAGE))
+                return EvalResult::Error(BUG_MESSAGE)
             }
         }
     }};
@@ -312,7 +312,7 @@ impl Op<EAwi> {
                 cases!(a,
                     a => {
                         if a.bw() != 1 {
-                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
+                            Error("`Assert` with bad bitwidths")
                         } else if a.to_bool() {
                             AssertionSuccess
                         } else {
@@ -321,7 +321,7 @@ impl Op<EAwi> {
                     },
                     a_w => {
                         if a_w.get() != 1 {
-                            Error(EvalError::OtherStr("`Assert` with bad bitwidths"))
+                            Error("`Assert` with bad bitwidths")
                         } else {
                             Unevaluatable
                         }
@@ -364,14 +364,14 @@ impl Op<EAwi> {
                         if let Some(b) = a.get(inx) {
                             Valid(Awi::from_bool(b))
                         } else {
-                            Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
+                            Error("`StaticGet` with `inx` out of bounds")
                         }
                     },
                     a_w => {
                         if inx < a_w.get() {
                             Unevaluatable
                         } else {
-                            Error(EvalError::OtherStr("`StaticGet` with `inx` out of bounds"))
+                            Error("`StaticGet` with `inx` out of bounds")
                         }
                     },
                 )
@@ -394,7 +394,7 @@ impl Op<EAwi> {
                 // and bitwidth
                 let total_width = NonZeroUsize::new(total_width).unwrap();
                 if w != total_width {
-                    return Error(EvalError::OtherStr("`Concat` with bad concatenation"));
+                    return Error("`Concat` with bad concatenation");
                 }
                 if known {
                     let mut r = Awi::zero(total_width);
@@ -423,17 +423,13 @@ impl Op<EAwi> {
                     match t {
                         EAwi::KnownAwi(t) => {
                             if (*width > t.nzbw()) || (*from > (t.bw() - width.get())) {
-                                return Error(EvalError::OtherStr(
-                                    "`ConcatFields` with bad concatenation",
-                                ));
+                                return Error("`ConcatFields` with bad concatenation");
                             }
                             total_width = total_width.checked_add(width.get()).unwrap();
                         }
                         EAwi::Bitwidth(t_w) => {
                             if (*width > *t_w) || (*from > (t_w.get() - width.get())) {
-                                return Error(EvalError::OtherStr(
-                                    "`ConcatFields` with bad concatenation",
-                                ));
+                                return Error("`ConcatFields` with bad concatenation");
                             }
                             total_width = total_width.checked_add(width.get()).unwrap();
                             known = false;
@@ -444,7 +440,7 @@ impl Op<EAwi> {
                 // and bitwidth
                 let total_width = NonZeroUsize::new(total_width).unwrap();
                 if w != total_width {
-                    return Error(EvalError::OtherStr("`ConcatFields` with bad concatenation"));
+                    return Error("`ConcatFields` with bad concatenation");
                 }
                 if known {
                     let mut r = Awi::zero(total_width);
@@ -493,7 +489,7 @@ impl Op<EAwi> {
                     }
                 }
                 if !good {
-                    return Error(EvalError::OtherStr("`StaticLut` with bad bitwidths"));
+                    return Error("`StaticLut` with bad bitwidths");
                 }
                 if all_known {
                     let mut inx = Awi::zero(total_width);

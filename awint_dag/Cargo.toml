@@ -17,7 +17,6 @@ awint_macro_internals = { version = "0.14.0", path = "../awint_macro_internals",
 awint_macros = { version = "0.14.0", path = "../awint_macros", default-features = false }
 # our minimum version is above the 1.51 required for some of these features
 smallvec = { version = "1.11", default-features = false, features = ["const_generics", "const_new", "union"] }
-thiserror = "1.0"
 
 [dev-dependencies]
 awint = { path = "../awint" }
