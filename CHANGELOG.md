@@ -5,6 +5,9 @@
 - made `EpochKey::pop_off_epoch_stack` return an error rather than panic
 - made some `from_state` functions public
 
+### Additions
+- added `Bits::range_or` and `Bits::range_xor`
+
 ## [0.15.1] - 2023-12-11
 ### Fixes
 - Fixed outdated messages, added the `gen_counter_for_pstate` flag

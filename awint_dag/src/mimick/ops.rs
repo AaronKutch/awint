@@ -7,7 +7,7 @@
 // mutable reference is moved into the function and can't be copied on the
 // outside
 
-use std::{cmp::min, marker::PhantomData, num::NonZeroUsize};
+use std::{cmp::min, marker::PhantomData, num::NonZeroUsize, ops::Range};
 
 use awint_ext::{awi, awint_internals::USIZE_BITS, bw};
 use smallvec::smallvec;
@@ -735,6 +735,36 @@ impl Bits {
     #[must_use]
     pub fn funnel_(&mut self, rhs: &Self, s: &Self) -> Option<()> {
         self.update_state(self.state_nzbw(), Funnel([rhs.state(), s.state()]))
+    }
+
+    #[must_use]
+    pub fn range_or_(&mut self, range: Range<impl Into<dag::usize>>) -> Option<()> {
+        let start = range.start.into();
+        let end = range.end.into();
+        self.update_state(
+            self.state_nzbw(),
+            RangeOr([self.state(), start.state(), end.state()]),
+        )
+    }
+
+    #[must_use]
+    pub fn range_and_(&mut self, range: Range<impl Into<dag::usize>>) -> Option<()> {
+        let start = range.start.into();
+        let end = range.end.into();
+        self.update_state(
+            self.state_nzbw(),
+            RangeAnd([self.state(), start.state(), end.state()]),
+        )
+    }
+
+    #[must_use]
+    pub fn range_xor_(&mut self, range: Range<impl Into<dag::usize>>) -> Option<()> {
+        let start = range.start.into();
+        let end = range.end.into();
+        self.update_state(
+            self.state_nzbw(),
+            RangeXor([self.state(), start.state(), end.state()]),
+        )
     }
 
     #[must_use]

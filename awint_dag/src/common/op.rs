@@ -169,6 +169,11 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     UnsignedOverflow([T; 3]),
     SignedOverflow([T; 3]),
 
+    // (&mut self, range: Range<impl Into<dag::usize>>)
+    RangeOr([T; 3]),
+    RangeAnd([T; 3]),
+    RangeXor([T; 3]),
+
     // (&mut self)
     Not([T; 1]),
     Rev([T; 1]),
@@ -304,6 +309,9 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             ZeroResizeOverflow(..) => "zero_reisze_overflow",
             SignResize(..) => "sign_resize",
             SignResizeOverflow(..) => "sign_resize_overflow",
+            RangeOr(..) => "range_or",
+            RangeAnd(..) => "range_and",
+            RangeXor(..) => "range_xor",
             Lut(..) => "lut",
             Copy(_) => "copy",
             Funnel(_) => "funnel_",
@@ -390,6 +398,11 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             | ZeroResizeOverflow(..)
             | SignResizeOverflow(..) => {
                 v.push("x");
+            }
+            RangeOr(..) | RangeAnd(..) | RangeXor(..) => {
+                v.push("x");
+                v.push("start");
+                v.push("end");
             }
             Lut(..) => {
                 v.push("lut");
@@ -494,6 +507,9 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             SignResize(v) => v,
             ZeroResizeOverflow(v, _) => v,
             SignResizeOverflow(v, _) => v,
+            RangeOr(v) => v,
+            RangeAnd(v) => v,
+            RangeXor(v) => v,
             Lut(v) => v,
             Copy(v) => v,
             Funnel(v) => v,
@@ -570,6 +586,9 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             SignResize(v) => v,
             ZeroResizeOverflow(v, _) => v,
             SignResizeOverflow(v, _) => v,
+            RangeOr(v) => v,
+            RangeAnd(v) => v,
+            RangeXor(v) => v,
             Lut(v) => v,
             Copy(v) => v,
             Funnel(v) => v,
@@ -699,6 +718,9 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             SignResize(v) => SignResize(map1!(m, v)),
             ZeroResizeOverflow(v, w) => ZeroResizeOverflow(map1!(m, v), *w),
             SignResizeOverflow(v, w) => SignResizeOverflow(map1!(m, v), *w),
+            RangeOr(v) => RangeOr(map3!(m, v)),
+            RangeAnd(v) => RangeAnd(map3!(m, v)),
+            RangeXor(v) => RangeXor(map3!(m, v)),
             Lut(v) => Lut(map2!(m, v)),
             Copy(v) => Copy(map1!(m, v)),
             Funnel(v) => Funnel(map2!(m, v)),

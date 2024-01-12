@@ -1,3 +1,5 @@
+#![allow(clippy::reversed_empty_ranges)]
+
 use std::num::NonZeroUsize;
 
 use awint::{
@@ -63,13 +65,25 @@ fn dag_bits_functions_internal(
 
     // miscellanious functions that won't work with the macro
 
-    // assert!(x0.range_and_(0..128).is_some());
-    // assert!(x0.range_and_(127..0).is_some());
-    // assert!(x0.range_and_(128..128).is_some());
-    // assert!(x0.range_and_(129..129).is_none());
-    // // we want to test this reversed range specifically
-    // assert!(x0.range_and_(129..128).is_none());
-    // assert!(x0.range_and_(0..129).is_none());
+    assert!(x0.range_or_(0..128).is_some());
+    assert!(x0.range_or_(127..0).is_some());
+    assert!(x0.range_or_(128..128).is_some());
+    assert!(x0.range_or_(129..129).is_none());
+    // we want to test this reversed range specifically
+    assert!(x0.range_or_(129..128).is_none());
+    assert!(x0.range_or_(0..129).is_none());
+    assert!(x0.range_and_(0..128).is_some());
+    assert!(x0.range_and_(127..0).is_some());
+    assert!(x0.range_and_(128..128).is_some());
+    assert!(x0.range_and_(129..129).is_none());
+    assert!(x0.range_and_(129..128).is_none());
+    assert!(x0.range_and_(0..129).is_none());
+    assert!(x0.range_xor_(0..128).is_some());
+    assert!(x0.range_xor_(127..0).is_some());
+    assert!(x0.range_xor_(128..128).is_some());
+    assert!(x0.range_xor_(129..129).is_none());
+    assert!(x0.range_xor_(129..128).is_none());
+    assert!(x0.range_xor_(0..129).is_none());
 
     assert!(x0.field(0, x1, 0, 128).is_some());
     assert!(x0.field(0, x1, 64, 128).is_some());

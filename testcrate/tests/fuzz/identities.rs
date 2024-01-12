@@ -169,7 +169,7 @@ fn identities_inner(
     x4.rotr_(s0).unwrap();
     eq(x0, x4);
 
-    // masking
+    // range_and_
     x2.umax_();
     x2.shl_(s0).unwrap();
     if s1 != 0 {
@@ -184,6 +184,36 @@ fn identities_inner(
     x2.and_(x0)?;
     x4.copy_(x0)?;
     x4.range_and_(s0..s1).unwrap();
+    eq(x2, x4);
+
+    // range_or_
+    x2.umax_();
+    x2.shl_(s0).unwrap();
+    if s1 != 0 {
+        x3.umax_();
+        x3.lshr_(w - s1).unwrap();
+    } else {
+        x3.zero_();
+    }
+    x2.and_(x3)?;
+    x2.or_(x0)?;
+    x4.copy_(x0)?;
+    x4.range_or_(s0..s1).unwrap();
+    eq(x2, x4);
+
+    // range_xor_
+    x2.umax_();
+    x2.shl_(s0).unwrap();
+    if s1 != 0 {
+        x3.umax_();
+        x3.lshr_(w - s1).unwrap();
+    } else {
+        x3.zero_();
+    }
+    x2.and_(x3)?;
+    x2.xor_(x0)?;
+    x4.copy_(x0)?;
+    x4.range_xor_(s0..s1).unwrap();
     eq(x2, x4);
 
     // digit or assign

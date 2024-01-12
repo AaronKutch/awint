@@ -295,6 +295,34 @@ macro_rules! cmp {
     }}
 }
 
+macro_rules! range_op {
+    ($w:ident, $a:ident, $b:ident, $c:ident, $range_op_fn:ident) => {{
+        ceq_strict!($w, $a.nzbw());
+        // need to check separately incase the `awi3` fails but some are constants
+        if let EAwi::KnownAwi(ref b) = $b {
+            let b = cusize!(&b);
+            if b > $a.bw() {
+                return Noop
+            }
+        }
+        if let EAwi::KnownAwi(ref c) = $c {
+            let c = cusize!(&c);
+            if c > $a.bw() {
+                return Noop
+            }
+        }
+        awi3!($a, $b, $c, {
+            let b = cusize!($b);
+            let c = cusize!($c);
+            if $a.$range_op_fn(b..c).is_some() {
+                Valid($a)
+            } else {
+                Noop
+            }
+        })
+    }}
+}
+
 impl Op<EAwi> {
     /// Evaluates the result of an `Op<Awi>`
     pub fn eval(self, self_w: NonZeroUsize) -> EvalResult {
@@ -752,6 +780,9 @@ impl Op<EAwi> {
             Ule([a, b]) => cmp!(w, a, b, ule),
             Ilt([a, b]) => cmp!(w, a, b, ilt),
             Ile([a, b]) => cmp!(w, a, b, ile),
+            RangeOr([a, b, c]) => range_op!(w, a, b, c, range_or_),
+            RangeAnd([a, b, c]) => range_op!(w, a, b, c, range_and_),
+            RangeXor([a, b, c]) => range_op!(w, a, b, c, range_xor_),
             Inc([a, b]) => {
                 ceq_strict!(w, a.nzbw());
                 cases!(b,
