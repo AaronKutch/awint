@@ -245,6 +245,8 @@ const fn bits_functions() {
     assert!(x0.mux_(x1, false).is_none());
     assert!(x0.mux_(x1, true).is_none());
 
+    x0.repeat_(x1);
+
     let _ = x0.total_cmp(x1);
 
     // TODO test all const serialization

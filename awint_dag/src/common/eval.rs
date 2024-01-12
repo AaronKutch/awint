@@ -5,7 +5,6 @@
 use std::num::NonZeroUsize;
 
 use awint_ext::{awint_internals::USIZE_BITS, Awi, Bits};
-use awint_macros::cc;
 use Op::*;
 
 use crate::{DummyDefault, Op};
@@ -359,26 +358,9 @@ impl Op<EAwi> {
             Repeat([a]) => {
                 cases!(a,
                     a => {
-                        if a.bw() == 1 {
-                            if a.to_bool() {
-                                Valid(Awi::umax(w))
-                            } else {
-                                Valid(Awi::zero(w))
-                            }
-                        } else {
-                            let mut r = Awi::zero(w);
-                            let mut to = 0;
-                            loop {
-                                if to >= w.get() {
-                                    break
-                                }
-                                cc!(
-                                    .., a;
-                                    .., r[to..];
-                                ).unwrap();
-                            }
-                            Valid(r)
-                        }
+                        let mut r = Awi::zero(w);
+                        r.repeat_(&a);
+                        Valid(r)
                     },
                     _a_w => {
                         Unevaluatable

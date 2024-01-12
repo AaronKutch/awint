@@ -619,4 +619,66 @@ impl Bits {
             None
         }
     }
+
+    /// Repeat-assigns `self` by `rhs`. This is logically equivalent to
+    /// concatenating an infinite number of `rhs` bit strings together, then
+    /// resize-assigning to `self`.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn repeat_(&mut self, rhs: &Bits) {
+        let w = rhs.bw();
+        if w == 1 {
+            // repeat a single bit
+            if rhs.lsb() {
+                self.umax_();
+            } else {
+                self.zero_();
+            }
+        } else if self.bw() <= w {
+            // just resize
+            self.resize_(rhs, false);
+        } else if w == BITS {
+            // digit repeating
+            let x = rhs.to_digit();
+            // Safety: the indexes are in bounds
+            unsafe {
+                const_for!(i in {0..self.total_digits()} {
+                    *self.get_unchecked_mut(i) = x;
+                });
+            }
+            self.clear_unused_bits();
+        } else if w < BITS {
+            // exponentially expand to more than half a digit
+            let mut x = rhs.to_digit();
+            let mut s = w;
+            loop {
+                if s > (BITS / 2) {
+                    break
+                }
+                x |= x << s;
+                s <<= 1;
+            }
+            // then `digit_or` in a loop onto a zeroed `self`
+            self.zero_();
+            let mut to = 0;
+            loop {
+                if to > self.bw() {
+                    break
+                }
+                self.digit_or_(x, to);
+                to += s;
+            }
+            self.clear_unused_bits();
+        } else {
+            // general case
+            let mut to = 0;
+            loop {
+                if to > self.bw() {
+                    break
+                }
+                self.field_to(to, rhs, core::cmp::min(w, self.bw() - to))
+                    .unwrap();
+                to += w;
+            }
+        }
+    }
 }

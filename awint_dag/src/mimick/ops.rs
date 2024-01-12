@@ -710,6 +710,11 @@ impl Bits {
         )
     }
 
+    pub fn repeat_(&mut self, rhs: &Self) {
+        self.update_state(self.state_nzbw(), Repeat([rhs.state()]))
+            .unwrap_at_runtime();
+    }
+
     pub fn resize_(&mut self, rhs: &Self, extension: impl Into<dag::bool>) {
         self.update_state(
             self.state_nzbw(),

@@ -133,8 +133,7 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     Concat(ConcatType<T>),
     ConcatFields(ConcatFieldsType<T>),
 
-    // Repeats the input to the output width
-    // TODO should probably include in core functions as optimized bitshift version
+    // corresponds to `repeat_`
     Repeat([T; 1]),
 
     // Static version of `Lut`. The `ConcatType<T>` is concatenated together to make the index, an
@@ -302,7 +301,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             StaticGet(..) => "static_get",
             Concat(_) => "concat",
             ConcatFields(_) => "concat_fields",
-            Repeat(_) => "fanout",
+            Repeat(_) => "repeat",
             StaticLut(..) => "static_lut",
             Resize(..) => "resize",
             ZeroResize(..) => "zero_resize",

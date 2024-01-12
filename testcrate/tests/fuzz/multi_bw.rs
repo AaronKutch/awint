@@ -1,4 +1,5 @@
 use core::cmp;
+use std::cmp::min;
 
 use awint::{bw, cc, Bits, ExtAwi, InlAwi};
 use rand_xoshiro::{
@@ -109,6 +110,18 @@ fn multi_bw_inner(
     eq(x1bw1, x2bw1);
     x1bw1.field(to, x0bw0, from, 1).unwrap();
     x2bw1.field_bit(to, x0bw0, from).unwrap();
+    eq(x1bw1, x2bw1);
+
+    // repeat_
+    let mut to = 0;
+    loop {
+        if to > bw1 {
+            break
+        }
+        x1bw1.field_to(to, x0bw0, min(bw0, bw1 - to)).unwrap();
+        to += bw0;
+    }
+    x2bw1.repeat_(x0bw0);
     eq(x1bw1, x2bw1);
 
     // arbitrary width multiplication

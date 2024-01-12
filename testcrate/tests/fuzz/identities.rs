@@ -574,7 +574,8 @@ macro_rules! edge_cases {
         for i0 in 0..$fuzz_lengths.len() {
             for i1 in i0..$fuzz_lengths.len() {
                 $x.zero_();
-                $x.range_or_($fuzz_lengths[i0]..($fuzz_lengths[i1] + 1)).unwrap();
+                $x.range_or_($fuzz_lengths[i0]..($fuzz_lengths[i1] + 1))
+                    .unwrap();
                 $inner;
             }
         }

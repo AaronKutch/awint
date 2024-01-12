@@ -6,7 +6,7 @@
 - made some `from_state` functions public
 
 ### Additions
-- added `Bits::range_or` and `Bits::range_xor`
+- added `Bits::range_or`, `Bits::range_xor`, and `Bits::repeat`
 
 ## [0.15.1] - 2023-12-11
 ### Fixes

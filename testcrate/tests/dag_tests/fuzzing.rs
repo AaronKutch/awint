@@ -780,6 +780,15 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             m.get_mut_dag(out0).copy_(&quo_b).unwrap();
             m.get_mut_dag(out1).copy_(&rem_b).unwrap();
         }
+        // Repeat
+        30 => {
+            let lhs = m.next4().1;
+            let rhs = m.next4().1;
+            let rhs_a = m.get_awi(rhs);
+            m.get_mut_awi(lhs).repeat_(&rhs_a);
+            let rhs_b = m.get_dag(rhs);
+            m.get_mut_dag(lhs).repeat_(&rhs_b);
+        }
         _ => unreachable!(),
     }
 }

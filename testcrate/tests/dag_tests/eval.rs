@@ -147,6 +147,8 @@ fn dag_bits_functions_internal(
     assert!(x0.mux_(x1, false).is_none());
     assert!(x0.mux_(x1, true).is_none());
 
+    x0.repeat_(x1);
+
     test_nonequal_bw!(
         x0, x1, s0, s1
         ;// functions with signature `fn({ , &, &mut} self) -> ...`
