@@ -17,7 +17,6 @@ macro_rules! primitive_conversion {
         $x0:ident,
         $x2:ident,
         $x3:ident,
-        $x4:ident,
         $($fn_:ident, $fn_to:ident, $bits:expr);*;
     ) => {
         $(
@@ -33,9 +32,8 @@ macro_rules! primitive_conversion {
             #[allow(unused_comparisons)]
             if tmp < 0 && $bits < $x0.bw() {
                 // Sign extend
-                $x4.umax_();
-                $x4.shl_($bits).unwrap();
-                $x3.or_($x4)?;
+                let end = $x3.bw();
+                $x3.range_or_($bits..end)?;
             }
             eq($x2, $x3);
         )*
@@ -372,7 +370,7 @@ fn identities_inner(
     x3.and_(x0)?;
     eq(x2, x3);
     primitive_conversion!(
-        x0, x2, x3, x4,
+        x0, x2, x3,
         u8_, to_u8, 8;
         u16_, to_u16, 16;
         u32_, to_u32, 32;
@@ -532,53 +530,52 @@ fn fuzz_lengths(w: usize) -> Vec<usize> {
 }
 
 // the result of this applied to one 16 bit $x looks like
-// 1111111111111111
-// 1111111111111110
-// 1111111111111100
-// 1111111110000000
-// 1111111100000000
-// 1110000000000000
-// 1100000000000000
-// 1000000000000000
-// 111111111111111
-// 111111111111110
-// 111111111111100
-// 111111110000000
-// 111111100000000
-// 110000000000000
-// 100000000000000
-// 11111111111111
-// 11111111111110
-// 11111111111100
-// 11111110000000
-// 11111100000000
-// 10000000000000
-// 111111111
-// 111111110
-// 111111100
-// 110000000
-// 100000000
-// 11111111
-// 11111110
-// 11111100
-// 10000000
-// 111
-// 110
-// 100
-// 11
-// 10
-// 1
+/*
+0000000000000001
+0000000000000011
+0000000011111111
+0000000111111111
+0000111111111111
+0001111111111111
+0111111111111111
+1111111111111111
+0000000000000010
+0000000011111110
+0000000111111110
+0000111111111110
+0001111111111110
+0111111111111110
+1111111111111110
+0000000010000000
+0000000110000000
+0000111110000000
+0001111110000000
+0111111110000000
+1111111110000000
+0000000100000000
+0000111100000000
+0001111100000000
+0111111100000000
+1111111100000000
+0000100000000000
+0001100000000000
+0111100000000000
+1111100000000000
+0001000000000000
+0111000000000000
+1111000000000000
+0100000000000000
+1100000000000000
+1000000000000000
+*/
 #[allow(unused_macros)]
 macro_rules! edge_cases {
-    ($fuzz_lengths:ident, $x:ident, $x2:ident, $inner:block) => {
+    ($fuzz_lengths:ident, $x:ident, $inner:block) => {
         for i0 in 0..$fuzz_lengths.len() {
-            $x.umax_();
-            $x.lshr_($fuzz_lengths[i0]).unwrap();
             for i1 in i0..$fuzz_lengths.len() {
-                $x2.umax_();
-                $x2.shl_($fuzz_lengths[i1 - i0]).unwrap();
-                $x.and_($x2).unwrap();
-                $inner
+                $x.zero_();
+                $x.range_or_($fuzz_lengths[i0]..($fuzz_lengths[i1] + 1)).unwrap();
+                $inner;
             }
         }
     };
@@ -596,8 +593,8 @@ pub fn identities(iters: u32, seed: u64, tmp: [&mut Bits; 6]) -> Option<()> {
     #[cfg(not(debug_assertions))]
     {
         let fl = fuzz_lengths(w);
-        edge_cases!(fl, x0, x2, {
-            edge_cases!(fl, x1, x3, {
+        edge_cases!(fl, x0, {
+            edge_cases!(fl, x1, {
                 let s0 = (rng.next_u32() as usize) % w;
                 let s1 = (rng.next_u32() as usize) % w;
                 let d0 = (u128::from(rng.next_u64()) | (u128::from(rng.next_u64()) << 64)) as Digit;

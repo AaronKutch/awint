@@ -175,8 +175,7 @@ impl<'a> Concat<'a> {
         if self.ls_shift == self.ms_shift {
             return
         }
-        let tmp = ExtAwi::umax(bw(self.ms_shift - self.ls_shift));
-        self.fill.field_to(self.ls_shift, &tmp, tmp.bw()).unwrap();
+        self.fill.range_or_(self.ls_shift..self.ms_shift).unwrap();
     }
 
     /// The first element is the bitwidth used by the macro, second is the
