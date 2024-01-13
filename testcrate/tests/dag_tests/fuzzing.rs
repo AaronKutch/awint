@@ -168,7 +168,7 @@ impl Mem {
 }
 
 fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
-    let next_op = rng.next_u32() % 30;
+    let next_op = rng.next_u32() % 31;
     match next_op {
         // Lut, StaticLut
         0 => {
