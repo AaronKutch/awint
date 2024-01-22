@@ -1,5 +1,3 @@
-#![allow(clippy::thread_local_initializer_can_be_made_const)]
-
 //! Access to special epoch structs and functions. Most users should instead use
 //! a downstream epoch management construct such as the `Epoch` from the
 //! `starlight` crate.
