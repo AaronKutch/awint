@@ -643,8 +643,12 @@ impl Bits {
                 if to > self.bw() {
                     break
                 }
-                self.field_to(to, rhs, core::cmp::min(w, self.bw() - to))
-                    .unwrap();
+                let min = if w < (self.bw() - to) {
+                    w
+                } else {
+                    self.bw() - to
+                };
+                self.field_to(to, rhs, min).unwrap();
                 to += w;
             }
         } else {
