@@ -24,16 +24,13 @@ const MAX_FP_64: isize = 1100;
 
 fn fuzz_awi(rng: &mut Xoshiro128StarStar, w: NonZeroUsize) -> ExtAwi {
     let mut val = ExtAwi::zero(w);
-    let mut mask = ExtAwi::umax(w);
     for _ in 0..8 {
-        mask.umax_();
-        mask.range_and_(0..((rng.next_u64() as usize) % w.get()))
-            .unwrap();
-        mask.rotl_((rng.next_u64() as usize) % w.get()).unwrap();
+        let start = (rng.next_u64() as usize) % (w.get() + 1);
+        let end = (rng.next_u64() as usize) % (w.get() + 1);
         match rng.next_u32() % 4 {
-            0 => val.or_(&mask).unwrap(),
-            1 => val.and_(&mask).unwrap(),
-            _ => val.xor_(&mask).unwrap(),
+            0 => val.range_or_(start..end).unwrap(),
+            1 => val.range_and_(start..end).unwrap(),
+            _ => val.range_xor_(start..end).unwrap(),
         }
     }
     val

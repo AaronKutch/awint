@@ -2,7 +2,7 @@ use awint::{
     awi,
     awint_dag::{
         epoch::{_get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback},
-        EvalError, Op,
+        Op,
     },
     dag, inlawi_ty,
 };
@@ -215,10 +215,7 @@ fn dag_try() {
 
         s.retro_(&awi!(8u64)).unwrap();
 
-        awi::assert!(matches!(
-            epoch0.assert_assertions(),
-            Err(EvalError::AssertionFailure(_))
-        ));
+        awi::assert!(epoch0.assert_assertions().is_err());
     }
 }
 

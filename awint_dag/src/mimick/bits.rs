@@ -111,7 +111,8 @@ impl Bits {
         self
     }
 
-    pub(crate) fn set_state(&mut self, state: PState) {
+    /// Not intended for most users.
+    pub fn set_state(&mut self, state: PState) {
         // other `PState`s that need the old state will keep it alive despite the
         // previous one being dropped
         self._state = state;

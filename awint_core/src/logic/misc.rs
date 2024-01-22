@@ -619,4 +619,71 @@ impl Bits {
             None
         }
     }
+
+    /// Repeat-assigns `self` by `rhs`. This is logically equivalent to
+    /// concatenating an infinite number of `rhs` bit strings together, then
+    /// resize-assigning to `self`.
+    #[const_fn(cfg(feature = "const_support"))]
+    pub const fn repeat_(&mut self, rhs: &Bits) {
+        let w = rhs.bw();
+        if w == 1 {
+            // repeat a single bit
+            if rhs.lsb() {
+                self.umax_();
+            } else {
+                self.zero_();
+            }
+        } else if self.bw() <= w {
+            // just resize
+            self.resize_(rhs, false);
+        } else if w > BITS {
+            // general case
+            let mut to = 0;
+            loop {
+                if to > self.bw() {
+                    break
+                }
+                let min = if w < (self.bw() - to) {
+                    w
+                } else {
+                    self.bw() - to
+                };
+                self.field_to(to, rhs, min).unwrap();
+                to += w;
+            }
+        } else {
+            // exponentially expand to more than half a digit
+            let mut x = rhs.to_digit();
+            let mut s = w;
+            loop {
+                if s > (BITS / 2) {
+                    break
+                }
+                x |= x << s;
+                s <<= 1;
+            }
+            if s == BITS {
+                // simple digit repeating
+
+                // Safety: the indexes are in bounds
+                unsafe {
+                    const_for!(i in {0..self.total_digits()} {
+                        *self.get_unchecked_mut(i) = x;
+                    });
+                }
+            } else {
+                // `digit_or` in a loop onto a zeroed `self`
+                self.zero_();
+                let mut to = 0;
+                loop {
+                    if to > self.bw() {
+                        break
+                    }
+                    self.digit_or_(x, to);
+                    to += s;
+                }
+            }
+            self.clear_unused_bits();
+        }
+    }
 }

@@ -40,6 +40,10 @@
 // can't think of occurances with more than 1 bit.
 
 // TODO
+// we now have `range_or_` and `range_and`, there are umax cases that could be
+// optimized to avoid a buffer
+
+// TODO
 // Known issues:
 //
 // there are more cases where we could avoid buffers

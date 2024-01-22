@@ -174,3 +174,14 @@ pub struct Location {
     pub line: u32,
     pub col: u32,
 }
+
+impl Location {
+    /// If a dummy `Location` is needed as some argument
+    pub fn dummy() -> Self {
+        Self {
+            file: "dummy location",
+            line: u32::MAX,
+            col: u32::MAX,
+        }
+    }
+}

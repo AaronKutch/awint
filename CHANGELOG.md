@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.16.0] - 2024-01-22
+### Changes
+- made `EpochKey::pop_off_epoch_stack` return an error rather than panic
+- made some `from_state` functions public
+- many optimizations for `starlight` and other consumers of `awint_dag`
+
+### Additions
+- added `Bits::range_or`, `Bits::range_xor`, and `Bits::repeat`
+
 ## [0.15.1] - 2023-12-11
 ### Fixes
 - Fixed outdated messages, added the `gen_counter_for_pstate` flag

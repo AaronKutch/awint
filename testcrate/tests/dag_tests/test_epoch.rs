@@ -18,7 +18,7 @@ use awint::{
         epoch::{EpochCallback, EpochKey},
         triple_arena::Arena,
         triple_arena_render::{self, DebugNode, DebugNodeTrait},
-        EAwi, EvalError, EvalResult, Lineage, Location, Op, PState,
+        EAwi, EvalResult, Lineage, Location, Op, PState,
     },
     bw, Awi,
 };
@@ -37,7 +37,7 @@ pub struct State {
     /// Location where this state is derived from
     pub location: Option<Location>,
     /// Errors
-    pub err: Option<EvalError>,
+    pub err: Option<String>,
     /// Used in algorithms
     pub visit: NonZeroU64,
 }
@@ -164,7 +164,7 @@ impl Drop for Epoch {
                 );
             });
             // unregister callback
-            self.key.pop_off_epoch_stack();
+            self.key.pop_off_epoch_stack().unwrap();
         }
     }
 }
@@ -215,22 +215,21 @@ impl Epoch {
         })
     }
 
-    pub fn assert_assertions(&self) -> Result<(), EvalError> {
+    pub fn assert_assertions(&self) -> Result<(), String> {
         for assertion in &self.assertions() {
             let eval = eval_thread_local_state(*assertion);
             if eval != Ok(Awi::from_bool(true)) {
-                return Err(EvalError::AssertionFailure(format!("{assertion} {eval:?}")))
+                return Err(format!("{assertion} {eval:?}"))
             }
         }
         Ok(())
     }
 
-    pub fn _render_to_svg_file(&self, out_file: std::path::PathBuf) -> Result<(), EvalError> {
+    pub fn _render_to_svg_file(&self, out_file: std::path::PathBuf) {
         self.get_states(|states| {
             let out_file = out_file.clone();
             triple_arena_render::render_to_svg_file(states, false, out_file).unwrap();
         });
-        Ok(())
     }
 }
 
@@ -243,7 +242,7 @@ fn get_thread_local_state_mut<O, F: FnMut(&mut State) -> O>(p_state: PState, mut
     })
 }
 
-fn eval_thread_local_state(p_state: PState) -> Result<Awi, EvalError> {
+fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
     let mut res = None;
     EPOCH_DATA.with(|stack| {
         let mut stack = stack.borrow_mut();
@@ -290,13 +289,13 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, EvalError> {
                             for op in operands {
                                 write!(s, "{:?}, ", states[op]).unwrap();
                             }
-                            Err(EvalError::OtherString(format!(
+                            Err(format!(
                                 "`EvalResult::Noop` failure on {} {:?} (\n{}\n)",
                                 p, states[p].op, s
-                            )))
+                            ))
                         }
                         EvalResult::Unevaluatable | EvalResult::PassUnevaluatable => {
-                            Err(EvalError::Unevaluatable)
+                            Err("unevaluatable".to_owned())
                         }
                         EvalResult::AssertionSuccess => {
                             if let Op::Assert([_]) = states[p].op {
@@ -306,28 +305,24 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, EvalError> {
                                 unreachable!()
                             }
                         }
-                        EvalResult::AssertionFailure => Err(EvalError::AssertionFailure(format!(
+                        EvalResult::AssertionFailure => Err(format!(
                             "`EvalResult::AssertionFailure` (\n{:?}\n) on {:?}",
                             p, states[p].op
-                        ))),
+                        )),
                         EvalResult::Error(e) => {
                             let operands = states[p].op.operands();
                             let mut s = String::new();
                             for op in operands {
                                 write!(s, "{:?}, ", states[op]).unwrap();
                             }
-                            Err(EvalError::OtherString(format!(
+                            Err(format!(
                                 "`EvalResult::Error` failure (\n{:?}\n) on {} {:?} (\n{}\n)",
                                 e, p, states[p].op, s
-                            )))
+                            ))
                         }
                     };
                     match eval_res {
                         Ok(()) => {}
-                        Err(EvalError::Unevaluatable) => {
-                            res = Some(Err(EvalError::Unevaluatable));
-                            return
-                        }
                         Err(e) => {
                             states[p].err = Some(e.clone());
                             res = Some(Err(e));
@@ -355,10 +350,7 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, EvalError> {
         if let Op::Literal(ref lit) = states[p_state].op {
             res = Some(Ok(lit.clone()));
         } else {
-            res = Some(Err(EvalError::OtherString(format!(
-                "`could not eval to a literal {}",
-                p_state
-            ))));
+            res = Some(Err(format!("`could not eval to a literal {}", p_state)));
         }
     });
     res.unwrap()
@@ -388,9 +380,9 @@ impl LazyAwi {
     }
 
     /// Retroactively-assigns by `rhs`.
-    pub fn retro_(&self, rhs: &awi::Bits) -> Result<(), EvalError> {
+    pub fn retro_(&self, rhs: &awi::Bits) -> Result<(), String> {
         if self.nzbw != rhs.nzbw() {
-            return Err(EvalError::OtherStr("bitwidth mismatch"));
+            return Err("bitwidth mismatch".to_owned());
         }
         let p_lhs = self.state();
         get_thread_local_state_mut(p_lhs, |state| {
@@ -398,9 +390,7 @@ impl LazyAwi {
                 state.op = Op::Literal(awi::Awi::from(rhs));
                 Ok(())
             } else {
-                Err(EvalError::OtherStr(
-                    "this testing `LazyAwi` struct cannot be assigned to more than once",
-                ))
+                Err("this testing `LazyAwi` struct cannot be assigned to more than once".to_owned())
             }
         })
     }
@@ -448,7 +438,7 @@ impl EvalAwi {
         }
     }
 
-    pub fn eval(&self) -> Result<awi::Awi, EvalError> {
+    pub fn eval(&self) -> Result<awi::Awi, String> {
         let p_state = self.state();
         eval_thread_local_state(p_state)
     }

@@ -127,13 +127,25 @@ const fn bits_functions() {
 
     // miscellanious functions that won't work with the macro
 
+    assert!(x0.range_or_(0..128).is_some());
+    assert!(x0.range_or_(127..0).is_some());
+    assert!(x0.range_or_(128..128).is_some());
+    assert!(x0.range_or_(129..129).is_none());
+    // we want to test this reversed range specifically
+    assert!(x0.range_or_(129..128).is_none());
+    assert!(x0.range_or_(0..129).is_none());
     assert!(x0.range_and_(0..128).is_some());
     assert!(x0.range_and_(127..0).is_some());
     assert!(x0.range_and_(128..128).is_some());
     assert!(x0.range_and_(129..129).is_none());
-    // we want to test this reversed range specifically
     assert!(x0.range_and_(129..128).is_none());
     assert!(x0.range_and_(0..129).is_none());
+    assert!(x0.range_xor_(0..128).is_some());
+    assert!(x0.range_xor_(127..0).is_some());
+    assert!(x0.range_xor_(128..128).is_some());
+    assert!(x0.range_xor_(129..129).is_none());
+    assert!(x0.range_xor_(129..128).is_none());
+    assert!(x0.range_xor_(0..129).is_none());
 
     assert!(x0.field(0, x1, 0, 128).is_some());
     assert!(x0.field(0, x1, 64, 128).is_some());
@@ -232,6 +244,8 @@ const fn bits_functions() {
 
     assert!(x0.mux_(x1, false).is_none());
     assert!(x0.mux_(x1, true).is_none());
+
+    x0.repeat_(x1);
 
     let _ = x0.total_cmp(x1);
 

@@ -83,6 +83,48 @@ impl Bits {
         unsafe_binop_for_each_mut!(self, rhs, x, y, { *x ^= y }, false)
     }
 
+    /// Or-assigns a range of ones to `self`. An empty or reversed range does
+    /// nothing to `self`. `None` is returned if `range.start > self.bw()`
+    /// or `range.end > self.bw()`.
+    #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
+    pub const fn range_or_(&mut self, range: Range<usize>) -> Option<()> {
+        if range.start > self.bw() || range.end > self.bw() {
+            return None
+        }
+        // see `range_and_` for why we chose this
+        if range.start >= range.end {
+            return Some(())
+        }
+        let start = digits_u(range.start);
+        let end = digits_u(range.end);
+        let start_bits = extra_u(range.start);
+        let end_bits = extra_u(range.end);
+        // Safety: the early `None` return above prevents any out of bounds indexing.
+        unsafe {
+            // set all digits in the full digit range
+            if (start + 1) < end {
+                self.digit_set(true, (start + 1)..end, false);
+            }
+            match (end_bits == 0, start == end) {
+                (false, false) => {
+                    *self.get_unchecked_mut(start) |= MAX << start_bits;
+                    *self.get_unchecked_mut(end) |= MAX >> (BITS - end_bits);
+                }
+                (false, true) => {
+                    // The range is entirely contained in one digit
+                    *self.get_unchecked_mut(start) |=
+                        (MAX << start_bits) & (MAX >> (BITS - end_bits));
+                }
+                (true, _) => {
+                    // Avoid overshift from `(BITS - end_bits)`
+                    *self.get_unchecked_mut(start) |= MAX << start_bits;
+                }
+            }
+        }
+        Some(())
+    }
+
     /// And-assigns a range of ones to `self`. Useful for masking. An empty or
     /// reversed range zeroes `self`. `None` is returned if `range.start >
     /// self.bw()` or `range.end > self.bw()`.
@@ -132,6 +174,50 @@ impl Bits {
             // zero the rest of the digits
             if (end + 1) < self.total_digits() {
                 self.digit_set(false, (end + 1)..self.total_digits(), false);
+            }
+        }
+        Some(())
+    }
+
+    /// Xor-assigns a range of ones to `self`. An empty or reversed range does
+    /// nothing to `self`. `None` is returned if `range.start > self.bw()`
+    /// or `range.end > self.bw()`.
+    #[const_fn(cfg(feature = "const_support"))]
+    #[must_use]
+    pub const fn range_xor_(&mut self, range: Range<usize>) -> Option<()> {
+        if range.start > self.bw() || range.end > self.bw() {
+            return None
+        }
+        // see `range_and_` for why we chose this
+        if range.start >= range.end {
+            return Some(())
+        }
+        let start = digits_u(range.start);
+        let end = digits_u(range.end);
+        let start_bits = extra_u(range.start);
+        let end_bits = extra_u(range.end);
+        // Safety: the early `None` return above prevents any out of bounds indexing.
+        unsafe {
+            // set all digits in the full digit range
+            if (start + 1) < end {
+                const_for!(i in {(start + 1)..end} {
+                    *self.get_unchecked_mut(i) ^= MAX;
+                });
+            }
+            match (end_bits == 0, start == end) {
+                (false, false) => {
+                    *self.get_unchecked_mut(start) ^= MAX << start_bits;
+                    *self.get_unchecked_mut(end) ^= MAX >> (BITS - end_bits);
+                }
+                (false, true) => {
+                    // The range is entirely contained in one digit
+                    *self.get_unchecked_mut(start) ^=
+                        (MAX << start_bits) & (MAX >> (BITS - end_bits));
+                }
+                (true, _) => {
+                    // Avoid overshift from `(BITS - end_bits)`
+                    *self.get_unchecked_mut(start) ^= MAX << start_bits;
+                }
             }
         }
         Some(())
