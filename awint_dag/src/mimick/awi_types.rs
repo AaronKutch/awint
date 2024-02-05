@@ -15,7 +15,7 @@ use smallvec::smallvec;
 
 use crate::{dag, mimick::Bits, Lineage, Op, PState};
 
-/// Mimicking `awint_core::InlAwi`.
+/// Mimicking [awint_ext::InlAwi]
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
 #[derive(Clone, Copy)]
@@ -297,7 +297,7 @@ impl From<awi::isize> for UsizeInlAwi {
     }
 }
 
-/// Mimicking `awint_ext::ExtAwi`
+/// Mimicking [awint_ext::ExtAwi]
 ///
 /// Note: `extawi!(opaque: ..64)` just works
 #[derive(Clone)]
@@ -582,7 +582,7 @@ extawi_from!(
     isize, from_isize;
 );
 
-/// Mimicking `awint_ext::Awi`
+/// Mimicking [awint_ext::Awi]
 ///
 /// Note: `awi!(opaque: ..64)` just works
 #[derive(Clone)]

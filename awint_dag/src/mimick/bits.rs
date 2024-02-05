@@ -14,7 +14,7 @@ use crate::{
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
 
-/// Mimicking `awint_core::Bits`
+/// Mimicking [awint_ext::Bits]
 #[repr(C)] // needed for `internal_as_ref*`
 pub struct Bits {
     _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
