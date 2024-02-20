@@ -21,3 +21,5 @@ rand_xoshiro = "0.6"
 
 [features]
 const_support = ["awint/const_support"]
+gen_counter_for_pstate = ["awint/gen_counter_for_pstate"]
+u32_for_pstate = ["awint/u32_for_pstate"]

@@ -27,3 +27,5 @@ try_support = []
 debug = ["awint_macro_internals/debug"]
 # forces `PState` to always have a generation counter
 gen_counter_for_pstate = []
+# makes `PState` use a u32 sized index and counter
+u32_for_pstate = []

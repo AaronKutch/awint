@@ -1,8 +1,7 @@
 use awint::{
     awi,
-    awint_dag::{
-        epoch::{_get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback},
-        Op,
+    awint_dag::epoch::{
+        _get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback,
     },
     dag, inlawi_ty,
 };
@@ -215,23 +214,5 @@ fn dag_try() {
         s.retro_(&awi!(8u64)).unwrap();
 
         assert!(epoch0.assert_assertions().is_err());
-    }
-}
-
-#[cfg(target_pointer_width = "64")]
-#[test]
-#[ignore]
-fn dag_size() {
-    use std::mem;
-
-    use awint::awint_dag::PState;
-
-    #[cfg(not(debug_assertions))]
-    {
-        assert_eq!(mem::size_of::<Op<PState>>(), 72);
-    }
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(mem::size_of::<Op<PState>>(), 104);
     }
 }

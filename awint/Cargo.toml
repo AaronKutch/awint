@@ -46,3 +46,7 @@ u16_digits = ["awint_core/u16_digits"]
 u32_digits = ["awint_core/u32_digits"]
 u64_digits = ["awint_core/u64_digits"]
 u128_digits = ["awint_core/u128_digits"]
+
+# forwarded to awint_dag
+gen_counter_for_pstate = ["awint_dag?/gen_counter_for_pstate"]
+u32_for_pstate = ["awint_dag?/u32_for_pstate"]
