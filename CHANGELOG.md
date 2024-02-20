@@ -1,6 +1,9 @@
 # Changelog
 
 ## [0.17.0] - TODO
+### Crate
+- `triple_arena` 0.13
+
 ### Changes
 - The `dag` module no longer contains the mimicking assertions directly, instead explicitly import
   them from the `mimick` submodule
