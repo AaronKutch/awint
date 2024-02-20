@@ -102,9 +102,8 @@ pub const USIZE_BITS: usize = usize::BITS as usize;
 /// Subset of `awint::awi`
 pub mod awi {
     // everything except for `char`, `str`, `f32`, and `f64`
-    pub use core::{
-        assert, assert_eq, assert_ne,
-        primitive::{bool, i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize},
+    pub use core::primitive::{
+        bool, i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize,
     };
 
     pub use Option::{self, None, Some};

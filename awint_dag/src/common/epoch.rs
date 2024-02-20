@@ -2,6 +2,8 @@
 //! a downstream epoch management construct such as the `Epoch` from the
 //! `starlight` crate.
 
+#![allow(clippy::thread_local_initializer_can_be_made_const)]
+
 use std::{
     cell::{Cell, RefCell},
     marker::PhantomData,

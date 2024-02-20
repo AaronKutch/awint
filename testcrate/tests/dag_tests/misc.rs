@@ -82,62 +82,61 @@ fn dag_epoch_fail() {
 #[test]
 #[should_panic]
 fn dag_assert_eq_fail() {
-    use awint::dag::*;
+    use dag::*;
     let epoch0 = Epoch::new();
     let x = extawi!(opaque: ..7);
     let y = extawi!(opaque: ..8);
-    dag::assert_eq!(x, y);
+    mimick::assert_eq!(x, y);
     drop(epoch0);
 }
 
 #[test]
 #[should_panic]
 fn dag_assert_ne_fail() {
-    use awint::dag::*;
+    use dag::*;
     let epoch0 = Epoch::new();
     let x = extawi!(opaque: ..7);
     let y = extawi!(opaque: ..8);
-    dag::assert_ne!(x, y);
+    mimick::assert_ne!(x, y);
     drop(epoch0);
 }
 
 #[test]
 #[should_panic]
 fn dag_assert_eq_fail2() {
-    use awint::dag::*;
+    use dag::*;
     let epoch0 = Epoch::new();
     let x = extawi!(13u8);
     let y = extawi!(99u8);
-    dag::assert_eq!(x, y);
+    mimick::assert_eq!(x, y);
     drop(epoch0);
 }
 
 #[test]
 #[should_panic]
 fn dag_assert_ne_fail2() {
-    use awint::dag::*;
+    use dag::*;
     let epoch0 = Epoch::new();
     let x = extawi!(13u8);
     let y = extawi!(13u8);
-    dag::assert_ne!(x, y);
+    mimick::assert_ne!(x, y);
     drop(epoch0);
 }
 
 #[test]
 fn dag_assertions() {
-    use awint::dag::*;
-    use dag::{assert, assert_eq, assert_ne};
+    use dag::*;
     let epoch0 = Epoch::new();
     let x = inlawi!(13u8);
     let y = inlawi!(13u8);
     let z = inlawi!(99u8);
     let is_true = x.lsb();
-    assert!(true);
-    assert!(is_true);
-    assert_eq!(x, y);
-    assert_ne!(x, z);
+    mimick::assert!(true);
+    mimick::assert!(is_true);
+    mimick::assert_eq!(x, y);
+    mimick::assert_ne!(x, z);
     // check that optimizing away is working
-    core::assert_eq!(epoch0.assertions().len(), 0);
+    assert_eq!(epoch0.assertions().len(), 0);
     let lazy_x = LazyAwi::opaque(bw(8));
     let lazy_y = LazyAwi::opaque(bw(8));
     let lazy_z = LazyAwi::opaque(bw(8));
@@ -145,10 +144,10 @@ fn dag_assertions() {
     let y = &lazy_y;
     let z = &lazy_z;
     let is_true = x.lsb();
-    assert!(is_true);
-    assert_eq!(x, y);
-    assert_ne!(x, z);
-    core::assert_eq!(epoch0.assertions().len(), 3);
+    mimick::assert!(is_true);
+    mimick::assert_eq!(x, y);
+    mimick::assert_ne!(x, z);
+    assert_eq!(epoch0.assertions().len(), 3);
     {
         use awi::*;
         lazy_x.retro_(&awi!(13u8)).unwrap();
@@ -201,21 +200,21 @@ fn dag_try() {
     let _ = stuff::test_option_try(s.to_usize());
     let _ = stuff::test_result_try(s.to_usize());
     // make sure it is happening at the `Try` point
-    std::assert_eq!(epoch0.assertions().len(), 2);
+    assert_eq!(epoch0.assertions().len(), 2);
     Option::some_at_dagtime((), false.into()).unwrap();
     Option::<()>::none_at_dagtime(false.into())
         .ok_or(())
         .unwrap_err();
     Result::<(), &str>::ok_at_dagtime((), false.into()).unwrap();
     Result::<&str, ()>::err_at_dagtime((), false.into()).unwrap_err();
-    std::assert_eq!(epoch0.assertions().len(), 6);
+    assert_eq!(epoch0.assertions().len(), 6);
 
     {
         use awi::*;
 
         s.retro_(&awi!(8u64)).unwrap();
 
-        awi::assert!(epoch0.assert_assertions().is_err());
+        assert!(epoch0.assert_assertions().is_err());
     }
 }
 

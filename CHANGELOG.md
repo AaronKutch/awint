@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.17.0] - TODO
+### Changes
+- The `dag` module no longer contains the mimicking assertions directly, instead explicitly import
+  them from the `mimick` submodule
+
 ## [0.16.0] - 2024-01-22
 ### Changes
 - made `EpochKey::pop_off_epoch_stack` return an error rather than panic
