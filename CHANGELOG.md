@@ -7,6 +7,12 @@
 ### Changes
 - The `dag` module no longer contains the mimicking assertions directly, instead explicitly import
   them from the `mimick` submodule
+- Changed the `opaque_` related functions
+
+### Additions
+- Added `Awi::shrink_to_msb`
+- Added `Op::Argument`
+- Added some special `arg` and `opaque` functions
 
 ## [0.16.0] - 2024-01-22
 ### Changes

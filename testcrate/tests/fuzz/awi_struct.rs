@@ -7,11 +7,11 @@ use rand_xoshiro::{
 };
 
 const N: (u64, u64) = if cfg!(miri) {
-    (1000, 48)
+    (1000, 47)
 } else if cfg!(debug_assertions) {
-    (50000, 2461)
+    (50000, 2426)
 } else {
-    (1000000, 49779)
+    (1000000, 47110)
 };
 
 #[test]
@@ -32,7 +32,7 @@ fn awi_struct() {
             assert!(x0.capacity() >= x0.nzbw());
             assert_eq!(x0.as_ref(), x1.as_ref());
         }
-        match rng.next_u32() % 20 {
+        match rng.next_u32() % 21 {
             0 => {
                 let w = next_nzbw();
                 x0 = Awi::zero(w);
@@ -134,6 +134,13 @@ fn awi_struct() {
             }
             19 => {
                 assert_eq!(x0.as_ref(), x1.as_ref());
+            }
+            20 => {
+                let new_bitwidth = NonZeroUsize::new(x1.sig()).unwrap_or(bw(1));
+                let tmp = x1.clone();
+                x1 = ExtAwi::zero(new_bitwidth);
+                x1.resize_(&tmp, false);
+                x0.shrink_to_msb();
                 iter_max += 1;
             }
             _ => unreachable!(),

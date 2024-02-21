@@ -329,6 +329,10 @@ impl Op<EAwi> {
         match self {
             Invalid => Unevaluatable,
             Opaque(..) => Unevaluatable,
+            Argument(a) => {
+                ceq_strict!(w, a.nzbw());
+                Unevaluatable
+            }
             Literal(a) => {
                 ceq_strict!(w, a.nzbw());
                 Valid(a)
