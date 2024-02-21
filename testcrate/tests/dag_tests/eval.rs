@@ -4,7 +4,7 @@ use std::num::NonZeroUsize;
 
 use awint::{
     awi,
-    awint_dag::{ConcatType, Lineage, Op},
+    awint_dag::{mimick, ConcatType, Lineage, Op},
     dag,
 };
 
@@ -47,11 +47,8 @@ fn dag_bits_functions_internal(
     s1: dag::usize,
     _epoch0: &Epoch,
 ) {
-    use awint::dag::*;
-    // TODO https://github.com/rust-lang/rust/issues/109261
-    #[allow(unused_imports)]
-    use dag::assert;
-
+    use dag::*;
+    use mimick::assert;
     let [x0, x1, x2, x3, x4] = x;
 
     // TODO `mul_`, `neg_add_`, never add any `digit_` dependent functions
@@ -266,7 +263,7 @@ fn dag_bits_functions() {
     let s1 = inlawi!(128u64).to_usize();
     dag_bits_functions_internal([y0, y1, y2, y3, y4], s0, s1, &epoch0);
 
-    awi::assert!(epoch0.assertions().is_empty());
+    assert!(epoch0.assertions().is_empty());
 
     let x5 = LazyAwi::opaque(bw(128));
     let x6 = LazyAwi::opaque(bw(192));
@@ -334,7 +331,7 @@ fn dag_lut_eval() {
     let e = EvalAwi::from(&y);
     {
         use awi::*;
-        awi::assert_eq!(e.eval().unwrap(), awi!(0));
+        assert_eq!(e.eval().unwrap(), awi!(0));
     }
 
     let mut y = awi!(0);
@@ -352,7 +349,7 @@ fn dag_lut_eval() {
     let e = EvalAwi::from(&y);
     {
         use awi::*;
-        awi::assert_eq!(e.eval().unwrap(), awi!(1));
+        assert_eq!(e.eval().unwrap(), awi!(1));
     }
     drop(epoch0);
 }

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.17.0] - 2024-02-20
+### Crate
+- `triple_arena` 0.13
+
+### Changes
+- The `dag` module no longer contains the mimicking assertions directly, instead explicitly import
+  them from the `mimick` submodule
+- Changed the `opaque_` related functions
+
+### Additions
+- Added `Awi::shrink_to_msb`
+- Added `Op::Argument`
+- Added some special `arg` and `opaque` functions
+
 ## [0.16.0] - 2024-01-22
 ### Changes
 - made `EpochKey::pop_off_epoch_stack` return an error rather than panic

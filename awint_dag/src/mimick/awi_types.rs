@@ -15,7 +15,7 @@ use smallvec::smallvec;
 
 use crate::{dag, mimick::Bits, Lineage, Op, PState};
 
-/// Mimicking `awint_core::InlAwi`.
+/// Mimicking [awint_ext::InlAwi]
 ///
 /// Note: `inlawi!(opaque: ..64)` just works
 #[derive(Clone, Copy)]
@@ -33,6 +33,10 @@ impl<const BW: usize, const LEN: usize> Lineage for InlAwi<BW, LEN> {
     }
 }
 
+/// # Note
+///
+/// These functions are all mimicks of functions for [awint_ext::InlAwi], except
+/// for the special `arg`, `opaque`, and `opaque_with`.
 impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
     /// Special mimick-only function, most users should be using other
     /// construction methods
@@ -81,9 +85,30 @@ impl<const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
         )))
     }
 
+    /// Constructs with the special `Op::Argument` state
+    pub fn arg(arg: awi::InlAwi<BW, LEN>) -> Self {
+        Self::from_state(PState::new(
+            Self::const_nzbw(),
+            Op::Argument(awi::Awi::from(arg)),
+            None,
+        ))
+    }
+
+    /// Constructs with the special `Op::Opaque` state, with a `None` name and
+    /// no arguments
     pub fn opaque() -> Self {
         RawStackBits::<BW, LEN>::_assert_invariants();
         Self::new(Op::Opaque(smallvec![], None))
+    }
+
+    /// Constructs with the special `Op::Opaque` state, with custom bitwidth,
+    /// name, and arguments
+    pub fn opaque_with(name: &'static str, with: &[&Bits]) -> Self {
+        let mut v = smallvec![];
+        for x in with {
+            v.push(x.state());
+        }
+        Self::new(Op::Opaque(v, Some(name)))
     }
 
     pub fn zero() -> Self {
@@ -297,7 +322,7 @@ impl From<awi::isize> for UsizeInlAwi {
     }
 }
 
-/// Mimicking `awint_ext::ExtAwi`
+/// Mimicking [awint_ext::ExtAwi]
 ///
 /// Note: `extawi!(opaque: ..64)` just works
 #[derive(Clone)]
@@ -313,6 +338,10 @@ impl Lineage for ExtAwi {
     }
 }
 
+/// # Note
+///
+/// These functions are all mimicks of functions for [awint_ext::ExtAwi], except
+/// for the special `arg`, `opaque`, and `opaque_with`.
 impl ExtAwi {
     /// Special mimick-only function, most users should be using other
     /// construction methods
@@ -341,8 +370,29 @@ impl ExtAwi {
         Self::from_state(bits.state())
     }
 
+    /// Constructs with the special `Op::Argument` state
+    pub fn arg(arg: &awi::Bits) -> Self {
+        Self::from_state(PState::new(
+            arg.nzbw(),
+            Op::Argument(awi::Awi::from_bits(arg)),
+            None,
+        ))
+    }
+
+    /// Constructs with the special `Op::Opaque` state, with a `None` name and
+    /// no arguments
     pub fn opaque(w: NonZeroUsize) -> Self {
         Self::new(w, Op::Opaque(smallvec![], None))
+    }
+
+    /// Constructs with the special `Op::Opaque` state, with custom bitwidth,
+    /// name, and arguments
+    pub fn opaque_with(w: NonZeroUsize, name: &'static str, with: &[&Bits]) -> Self {
+        let mut v = smallvec![];
+        for x in with {
+            v.push(x.state());
+        }
+        Self::new(w, Op::Opaque(v, Some(name)))
     }
 
     pub fn zero(w: NonZeroUsize) -> Self {
@@ -582,7 +632,7 @@ extawi_from!(
     isize, from_isize;
 );
 
-/// Mimicking `awint_ext::Awi`
+/// Mimicking [awint_ext::Awi]
 ///
 /// Note: `awi!(opaque: ..64)` just works
 #[derive(Clone)]
@@ -598,6 +648,13 @@ impl Lineage for Awi {
     }
 }
 
+/// # Note
+///
+/// These functions are all mimicks of functions for [awint_ext::Awi], except
+/// for the special `arg`, `opaque`, and `opaque_with`.
+///
+/// `Awi::shrink_to_msb` does not have a mimicking version, because it modifies
+/// the bitwidth based on a value that could be dynamic
 impl Awi {
     /// Special mimick-only function, most users should be using other
     /// construction methods
@@ -626,8 +683,29 @@ impl Awi {
         Self::from_state(bits.state())
     }
 
+    /// Constructs with the special `Op::Argument` state
+    pub fn arg(arg: &awi::Bits) -> Self {
+        Self::from_state(PState::new(
+            arg.nzbw(),
+            Op::Argument(awi::Awi::from_bits(arg)),
+            None,
+        ))
+    }
+
+    /// Constructs with the special `Op::Opaque` state, with a `None` name and
+    /// no arguments
     pub fn opaque(w: NonZeroUsize) -> Self {
         Self::new(w, Op::Opaque(smallvec![], None))
+    }
+
+    /// Constructs with the special `Op::Opaque` state, with custom bitwidth,
+    /// name, and arguments
+    pub fn opaque_with(w: NonZeroUsize, name: &'static str, with: &[&Bits]) -> Self {
+        let mut v = smallvec![];
+        for x in with {
+            v.push(x.state());
+        }
+        Self::new(w, Op::Opaque(v, Some(name)))
     }
 
     pub fn zero(w: NonZeroUsize) -> Self {
@@ -652,10 +730,6 @@ impl Awi {
 
     pub fn from_bits_with_capacity(bits: &Bits, _min_capacity: NonZeroUsize) -> Awi {
         Self::from_state(bits.state())
-    }
-
-    pub fn opaque_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {
-        Self::new(w, Op::Opaque(smallvec![], None))
     }
 
     pub fn zero_with_capacity(w: NonZeroUsize, _min_capacity: NonZeroUsize) -> Self {

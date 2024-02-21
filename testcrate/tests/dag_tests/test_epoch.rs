@@ -1,3 +1,5 @@
+#![allow(clippy::thread_local_initializer_can_be_made_const)]
+
 //! for `awint_dag` mimicking only testing. There are a few cases that are
 //! really only tested well in `starlight`
 

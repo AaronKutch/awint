@@ -35,14 +35,11 @@ pub mod awi {
 /// Reexports all the mimicking versions of `awi` items
 #[cfg(feature = "dag")]
 pub mod dag {
-    pub use awint_dag::{
-        dag::*,
-        mimick::{
-            Option::{None, Some},
-            Result::{Err, Ok},
-        },
+    pub use awint_dag::dag::{
+        Option::{None, Some},
+        Result::{Err, Ok},
+        *,
     };
-    pub use awint_macros::*;
 }
 
 /// Reexports items defined within the `awint` crate system

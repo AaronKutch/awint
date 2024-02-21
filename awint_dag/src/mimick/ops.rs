@@ -187,7 +187,7 @@ macro_rules! ref_self_output_usize {
 /// # Note
 ///
 /// These functions are all mimicks of functions for [awint_ext::Bits], except
-/// for the special `opaque_` that can never be evaluated.
+/// for the special `opaque_`.
 impl Bits {
     unary!(
         not_ Not,
@@ -264,20 +264,14 @@ impl Bits {
         count_ones CountOnes,
     );
 
-    pub fn opaque_(&mut self) {
-        self.update_state(
-            self.state_nzbw(),
-            Opaque(smallvec![self.state()], awi::None),
-        )
-        .unwrap_at_runtime();
-    }
-
-    pub fn opaque_with_(&mut self, with: &[&Bits], name: awi::Option<&'static str>) {
+    /// Assigns with the special `Op::Opaque` state, with the state of `self`
+    /// being the first argument
+    pub fn opaque_(&mut self, name: &'static str, with: &[&Bits]) {
         let mut v = smallvec![self.state()];
         for x in with {
             v.push(x.state());
         }
-        self.update_state(self.state_nzbw(), Opaque(v, name))
+        self.update_state(self.state_nzbw(), Opaque(v, awi::Some(name)))
             .unwrap_at_runtime();
     }
 

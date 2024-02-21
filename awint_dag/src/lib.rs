@@ -66,13 +66,17 @@ pub use mimick::assertion::{internal_assert, internal_assert_eq, internal_assert
 pub use mimick::primitive;
 pub use smallvec;
 
-/// All mimicking items
+/// All mimicking items except the mimicking assertion macros
 pub mod dag {
     pub use awint_ext::bw;
+    pub use awint_macros::*;
 
+    // we do not export the mimicking asserts, because of the current import conflict edge
+    // cases involving the builtin macros, and because even if it was fixed it is too easy to
+    // accidentally use the `dag` versions when the `awi` versions are intended
     pub use crate::{
         mimick::{
-            assert, assert_eq, assert_ne, Awi, Bits, ExtAwi, InlAwi, Option,
+            self, Awi, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
             Result,
             Result::{Err, Ok},

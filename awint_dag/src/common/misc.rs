@@ -1,3 +1,5 @@
+#[allow(unused)]
+use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
 use awint_ext::{
@@ -11,11 +13,45 @@ use crate::{
     triple_arena::ptr_struct,
 };
 
-#[cfg(any(debug_assertions, feature = "gen_counter_for_pstate"))]
+#[cfg(any(
+    debug_assertions,
+    all(feature = "gen_counter_for_pstate", not(feature = "u32_for_pstate"))
+))]
 ptr_struct!(PState);
 
-#[cfg(not(any(debug_assertions, feature = "gen_counter_for_pstate")))]
+#[cfg(all(
+    not(debug_assertions),
+    not(feature = "gen_counter_for_pstate"),
+    not(feature = "u32_for_pstate")
+))]
 ptr_struct!(PState());
+
+#[cfg(all(
+    not(debug_assertions),
+    feature = "gen_counter_for_pstate",
+    feature = "u32_for_pstate"
+))]
+ptr_struct!(PState[NonZeroU32](NonZeroU32));
+
+#[cfg(all(
+    not(debug_assertions),
+    not(feature = "gen_counter_for_pstate"),
+    feature = "u32_for_pstate"
+))]
+ptr_struct!(PState[NonZeroU32]());
+
+#[ignore]
+#[test]
+fn dag_size() {
+    use std::mem;
+
+    println!("PState size: {}", mem::size_of::<PState>());
+
+    // 104 with debug assertions, 72 default release, still 72 with "u32_for_pstate"
+    println!("Op<PState> size: {}", mem::size_of::<Op<PState>>());
+
+    panic!();
+}
 
 impl PState {
     /// Enters a new `State` from the given components into the thread local

@@ -559,6 +559,15 @@ impl<'a> Awi {
         // we cannot change from internal to external
     }
 
+    /// Resizes and shrinks the capacity of `self` to make the smallest possible
+    /// fit to the unsigned value representation of `self`. This always leaves
+    /// the most significant bit set to 1, except if `self.is_zero()` in which
+    /// case `self` is set to a single 0 bit.
+    pub fn shrink_to_msb(&mut self) {
+        self.resize(NonZeroUsize::new(self.sig()).unwrap_or(bw(1)), false);
+        self.shrink_to_fit();
+    }
+
     /// Increases capacity if necessary, otherwise just changes the bitwidth and
     /// overwrites nothing (meaning that previously set bits in the capacity can
     /// appear in the available bits). Increases capacity to at least the next

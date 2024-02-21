@@ -114,6 +114,9 @@ pub enum Op<T: Debug + DummyDefault + Clone> {
     // operands)
     Opaque(SmallVec<[T; 2]>, Option<&'static str>),
 
+    // An argument for custom `Opaque`s to use
+    Argument(Awi),
+
     // literal assign
     Literal(Awi),
 
@@ -296,6 +299,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match *self {
             Invalid => "invalid",
             Opaque(_, name) => name.unwrap_or("opaque"),
+            Argument(_) => "arg",
             Literal(_) => "literal",
             Assert(_) => "assert",
             StaticGet(..) => "static_get",
@@ -375,7 +379,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         let mut v = vec![];
         // add common "lhs"
         match *self {
-            Invalid | Opaque(..) | Literal(_) => (),
+            Invalid | Opaque(..) | Argument(..) | Literal(_) => (),
             Assert(_) => v.push("b"),
             Repeat(_) => v.push("x"),
             StaticGet(..) => v.push("x"),
@@ -494,6 +498,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match self {
             Invalid => &[],
             Opaque(v, _) => v,
+            Argument(_) => &[],
             Literal(_) => &[],
             Assert(v) => v,
             Repeat(v) => v,
@@ -573,6 +578,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
         match self {
             Invalid => &mut [],
             Opaque(v, _) => v,
+            Argument(_) => &mut [],
             Literal(_) => &mut [],
             Assert(v) => v,
             Repeat(v) => v,
@@ -686,6 +692,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
                 m(res_v.as_mut_slice(), this.operands());
                 Opaque(res_v, *name)
             }
+            Argument(lit) => Argument(lit.clone()),
             Literal(lit) => Literal(lit.clone()),
             Assert(v) => Assert(map1!(m, v)),
             Repeat(v) => Repeat(map1!(m, v)),
