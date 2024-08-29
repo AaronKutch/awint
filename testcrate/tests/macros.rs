@@ -1,3 +1,6 @@
+// TODO
+#![allow(renamed_and_removed_lints)]
+#![allow(stable_features)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]

@@ -5,19 +5,21 @@ use awint_core::{Bits, InlAwi};
 use crate::FP;
 
 /// A minimal `FP<inlawi_ty!(25)>` real number representation of an IEEE-754 32
-/// bit floating point number. This derives from 23 mantissa bits, the omitted
-/// leading 1 bit, and sign bit. This cannot represent the infinity and NaN
-/// cases, but subnormal values can be represented. Canonically, the fixed point
-/// is always 150 (the 127 bias plus 23 mantissa bits) minus the raw IEEE-754
-/// exponent.
+/// bit floating point number.
+///
+/// This derives from 23 mantissa bits, the omitted leading 1 bit, and sign bit.
+/// This cannot represent the infinity and NaN cases, but subnormal values can
+/// be represented. Canonically, the fixed point is always 150 (the 127 bias
+/// plus 23 mantissa bits) minus the raw IEEE-754 exponent.
 pub type F32 = FP<InlAwi<25, { Bits::unstable_raw_digits(25) }>>;
 
 /// A minimal `FP<inlawi_ty!(54)>` real number representation of an IEEE-754 64
-/// bit floating point number. This derives from 52 mantissa bits, the omitted
-/// leading 1 bit, and sign bit. This cannot represent the infinity and NaN
-/// cases, but subnormal values can be represented. Canonically, the fixed point
-/// is always 1075 (the 1023 bias plus 52 mantissa bits) minus the raw IEEE-754
-/// exponent.
+/// bit floating point number.
+///
+/// This derives from 52 mantissa bits, the omitted leading 1 bit, and sign bit.
+/// This cannot represent the infinity and NaN cases, but subnormal values can
+/// be represented. Canonically, the fixed point is always 1075 (the 1023 bias
+/// plus 52 mantissa bits) minus the raw IEEE-754 exponent.
 pub type F64 = FP<InlAwi<54, { Bits::unstable_raw_digits(54) }>>;
 
 impl F32 {

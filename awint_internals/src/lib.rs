@@ -40,12 +40,13 @@ compile_error!(
      `--all-features` was used, which does not work for `awint`."
 );
 
-/// The basic element of the internal slice in `Bits`. This should be a type
-/// alias of the unsigned integer of the architecture's registers. On most
-/// architectures, this is simply `usize`, however there are cases such as AVR
-/// where the pointer size is 16 bits but the register size is 8 bits. If this
-/// were not register size, it can incur excessive unrolling or underutilization
-/// for every loop in the internals.
+/// The basic element of the internal slice in `Bits`.
+///
+/// This should be a type alias of the unsigned integer of the architecture's
+/// registers. On most architectures, this is simply `usize`, however there are
+/// cases such as AVR where the pointer size is 16 bits but the register size is
+/// 8 bits. If this were not register size, it can incur excessive unrolling or
+/// underutilization for every loop in the internals.
 #[cfg(not(any(
     feature = "u8_digits",
     feature = "u16_digits",

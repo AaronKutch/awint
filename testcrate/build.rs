@@ -2,7 +2,11 @@
 // Here, we try to generate code which tests all successful code generation
 // paths
 
+// TODO
+#![warn(renamed_and_removed_lints)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::manual_unwrap_or)]
+#![allow(clippy::manual_unwrap_or_default)]
 
 use std::{
     cmp::{max, min},

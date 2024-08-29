@@ -714,8 +714,9 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 }
 
 // C4D
-/// Copy Corresponding Concatenations of Components Dynamically. Takes
-/// concatenations of components as an input, and copies bits of the source to
+/// Copy Corresponding Concatenations of Components Dynamically.
+///
+/// Takes concatenations of components as an input, and copies bits of the source to
 /// corresponding bits of the sinks. Returns `()` if the operation is
 /// infallible, otherwise returns `Option<()>`. Returns `None` if component
 /// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
@@ -771,8 +772,9 @@ pub fn awi(input: TokenStream) -> TokenStream {
 // `static_width: false` if `const` allocation is ever supported.
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct a `&'static Bits`. Requires `const_support` and some feature flags
-/// to work. See the [crate documentation](crate) for more.
+/// construct a `&'static Bits`.
+///
+/// Requires `const_support` and some feature flags to work. See the [crate documentation](crate) for more.
 #[proc_macro]
 pub fn bits(input: TokenStream) -> TokenStream {
     match awint_macro_bits(&input.to_string()) {

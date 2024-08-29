@@ -91,11 +91,12 @@ fn inv_lb_u16p15() {
     }
 }
 
-/// This is used for quickly calculating the maximum number of bits
-/// needed for a string representation of a number in some radix to be
-/// represented. This may give more bits than needed, but is guaranteed to never
-/// underestimate the number of bits needed.
-/// Returns `None` if we see memory exhaustion
+/// Calculates the maximum bitwidth needed for a string respresentation in a
+/// given radix.
+///
+/// This may give more bits than needed, but is guaranteed to never
+/// underestimate the number of bits needed. Returns `None` if we see memory
+/// exhaustion.
 pub const fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError> {
     if radix < 2 || radix > 36 {
         return Err(InvalidRadix)

@@ -1,4 +1,7 @@
-use std::num::NonZeroUsize;
+use std::{
+    cmp::{max, min},
+    num::NonZeroUsize,
+};
 
 use awint::{
     fp::{F32, F64},
@@ -8,7 +11,6 @@ use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
 };
-use std::cmp::{min,max};
 
 use crate::fuzz::fp::num_eq;
 

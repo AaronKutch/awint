@@ -59,9 +59,11 @@ pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u1
     (sum0, sum1)
 }
 
-/// Computes (x * y) + z. This cannot overflow, because it returns the value
-/// widened into a tuple, where the first element is the least significant part
-/// of the integer and the second is the most significant.
+/// Computes (x * y) + z.
+///
+/// This cannot overflow, because it returns the value widened into a tuple,
+/// where the first element is the least significant part of the integer and the
+/// second is the most significant.
 #[inline]
 pub const fn widen_mul_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
     widen_mul_add_internal!(

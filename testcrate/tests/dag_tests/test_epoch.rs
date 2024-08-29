@@ -1,3 +1,4 @@
+#![allow(renamed_and_removed_lints)]
 #![allow(clippy::thread_local_initializer_can_be_made_const)]
 
 //! for `awint_dag` mimicking only testing. There are a few cases that are
