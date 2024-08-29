@@ -8,6 +8,7 @@ use rand_xoshiro::{
     rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
 };
+use std::cmp::{min,max};
 
 use crate::fuzz::fp::num_eq;
 
@@ -25,12 +26,14 @@ const MAX_FP_64: isize = 1100;
 fn fuzz_awi(rng: &mut Xoshiro128StarStar, w: NonZeroUsize) -> ExtAwi {
     let mut val = ExtAwi::zero(w);
     for _ in 0..8 {
-        let start = (rng.next_u64() as usize) % (w.get() + 1);
-        let end = (rng.next_u64() as usize) % (w.get() + 1);
+        let tmp0 = (rng.next_u64() as usize) % w.get();
+        let tmp1 = (rng.next_u64() as usize) % (w.get() + 1);
+        let r0 = min(tmp0, tmp1);
+        let r1 = max(tmp0, tmp1);
         match rng.next_u32() % 4 {
-            0 => val.range_or_(start..end).unwrap(),
-            1 => val.range_and_(start..end).unwrap(),
-            _ => val.range_xor_(start..end).unwrap(),
+            0 => val.range_or_(r0..r1).unwrap(),
+            1 => val.range_and_(r0..r1).unwrap(),
+            _ => val.range_xor_(r0..r1).unwrap(),
         }
     }
     val
