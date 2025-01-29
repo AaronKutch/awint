@@ -83,7 +83,7 @@ thread_local!(
 /// they are done.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EpochKey {
-    gen: NonZeroU64,
+    generation: NonZeroU64,
     _no_send_or_sync: PhantomData<fn() -> Rc<()>>,
 }
 
@@ -92,16 +92,16 @@ impl EpochCallback {
     /// recieve callbacks from the mimicking types. Returns an `EpochKey`, which
     /// has a method [EpochKey::pop_off_epoch_stack] to deregister the epoch.
     pub fn push_on_epoch_stack(self) -> EpochKey {
-        let gen: NonZeroU64 = EPOCH_GEN.with(|g| {
-            let gen = g.get();
+        let generation: NonZeroU64 = EPOCH_GEN.with(|g| {
+            let generation = g.get();
             g.set(
-                NonZeroU64::new(gen.get().wrapping_add(1))
+                NonZeroU64::new(generation.get().wrapping_add(1))
                     .expect("epoch generation counter overflow"),
             );
-            gen
+            generation
         });
         EPOCH_STACK.with(|v| {
-            v.borrow_mut().push((gen, self));
+            v.borrow_mut().push((generation, self));
         });
         // TODO #25
         //CURRENT_CALLBACK.replace(self);
@@ -109,7 +109,7 @@ impl EpochCallback {
             x.replace(self);
         });
         EpochKey {
-            gen,
+            generation,
             _no_send_or_sync: PhantomData,
         }
     }
@@ -131,8 +131,8 @@ impl EpochKey {
         EPOCH_STACK.with(|v| {
             let mut epoch_stack = v.borrow_mut();
             let (top_gen, _) = epoch_stack.last().unwrap();
-            if self.gen != *top_gen {
-                return Err((self.gen, *top_gen));
+            if self.generation != *top_gen {
+                return Err((self.generation, *top_gen));
             }
             epoch_stack.pop().unwrap();
             if let Some((_, callback)) = epoch_stack.last() {
@@ -155,14 +155,14 @@ impl EpochKey {
     /// Returns an `EpochKey` that is always invalid
     pub fn invalid() -> Self {
         Self {
-            gen: NonZeroU64::new(1).unwrap(),
+            generation: NonZeroU64::new(1).unwrap(),
             _no_send_or_sync: PhantomData,
         }
     }
 
     /// Returns the generation of `self`
-    pub fn gen(&self) -> NonZeroU64 {
-        self.gen
+    pub fn generation(&self) -> NonZeroU64 {
+        self.generation
     }
 }
 
