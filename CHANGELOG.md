@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.0] - TODO
+### Additions
+
 ## [0.17.0] - 2024-02-20
 ### Crate
 - `triple_arena` 0.13
