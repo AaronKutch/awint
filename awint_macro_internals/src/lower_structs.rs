@@ -682,7 +682,7 @@ impl<'a> Lower<'a> {
         for (p_b, bind, (used, mutable)) in self.binds.iter() {
             if *used {
                 match bind {
-                    Bind::Literal(ref awi) => {
+                    Bind::Literal(awi) => {
                         writeln!(
                             s,
                             "let {}_{}:{}=&{};",
@@ -693,7 +693,7 @@ impl<'a> Lower<'a> {
                         )
                         .unwrap();
                     }
-                    Bind::Txt(ref chars) => {
+                    Bind::Txt(chars) => {
                         let chars = chars_to_string(chars);
                         // note: we can't use extra braces in the bindings or else the E0716
                         // workaround doesn't work
