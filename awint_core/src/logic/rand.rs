@@ -37,7 +37,7 @@ impl Bits {
             (self.bw() / 8) + 1
         };
         let bytes = &mut self.as_mut_bytes_full_width_nonportable()[..size_in_u8];
-        let result = rng.fill_bytes(bytes);
+        rng.fill_bytes(bytes);
         // this is a no-op on little endian, but on big endian this fixes byte order in
         // regular digits and rotates out unused bytes
         const_for!(i in {0..self.total_digits()} {
@@ -45,6 +45,5 @@ impl Bits {
         });
         // clean up unused bits in last byte
         self.clear_unused_bits();
-        result
     }
 }
