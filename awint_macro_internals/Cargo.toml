@@ -12,9 +12,9 @@ description = "Internal macro utilities for the `awint` system of crates"
 awint_ext = { version = "0.17.0", path = "../awint_ext", default-features = false }
 proc-macro2 = "1.0"
 #triple_arena = { path = "../../triple_arena/triple_arena" }
-triple_arena = "0.13"
+triple_arena = "0.14"
 #triple_arena_render = { path = "../../triple_arena/triple_arena_render", optional = true }
-triple_arena_render = { version = "0.13", optional = true }
+triple_arena_render = { version = "0.14", optional = true }
 
 # for examples
 [dev-dependencies]
