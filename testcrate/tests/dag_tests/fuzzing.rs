@@ -84,7 +84,7 @@ impl Mem {
         let nzbw = NonZeroUsize::new(w).unwrap();
         let lazy = LazyAwi::opaque(nzbw);
         let mut lit = awi::Awi::zero(nzbw);
-        lit.rand_(&mut self.rng).unwrap();
+        lit.rand_(&mut self.rng);
         let tmp = lit.to_usize() % cap;
         lit.usize_(tmp);
         let p = self.a.insert(Pair {
@@ -106,7 +106,7 @@ impl Mem {
             let nzbw = NonZeroUsize::new(w).unwrap();
             let lazy = LazyAwi::opaque(nzbw);
             let mut lit = awi::Awi::zero(nzbw);
-            lit.rand_(&mut self.rng).unwrap();
+            lit.rand_(&mut self.rng);
             let p = self.a.insert(Pair {
                 awi: lit.clone(),
                 dag: dag::Awi::from(lazy.as_ref()),

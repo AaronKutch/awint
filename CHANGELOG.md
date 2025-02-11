@@ -1,7 +1,8 @@
 # Changelog
 
 ## [0.18.0] - TODO
-### Additions
+### Changes
+- Updated to `rand_core` 0.9 and changed the `rand_` function to return `()`
 
 ## [0.17.0] - 2024-02-20
 ### Crate

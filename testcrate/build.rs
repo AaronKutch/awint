@@ -440,7 +440,7 @@ impl<'a> Concat<'a> {
                 }
 
                 let mut val = ExtAwi::zero(bw(referenced_bw));
-                val.rand_(self.rng).unwrap();
+                val.rand_(self.rng);
 
                 // 0 is literal, 1 is variable
                 let mut range = if comp_type == 0 {
@@ -493,7 +493,7 @@ impl<'a> Concat<'a> {
             if !matches!(self.rand_usize() % 8, 0..=5) {
                 // variable
                 let mut val = ExtAwi::zero(bw(referenced_bw));
-                val.rand_(self.rng).unwrap();
+                val.rand_(self.rng);
 
                 let tmp = self.gen_variable(bitwidth, referenced_bw, &val, false);
                 let start = tmp.0;

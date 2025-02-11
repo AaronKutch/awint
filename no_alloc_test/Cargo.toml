@@ -14,5 +14,5 @@ publish = false
 [dependencies]
 awint = { path = "../awint", default-features = false, features = ["zeroize_support", "rand_support", "serde_support"] }
 panic-halt = "0.2"
-rand_xoshiro = "0.6"
+rand_xoshiro = "0.7"
 riscv-minimal-rt = "0.5"

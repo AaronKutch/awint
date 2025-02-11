@@ -14,14 +14,14 @@ categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 [dependencies]
 awint_internals = { version = "0.17.0", path = "../awint_internals", default-features = false }
 const_fn = "0.4"
-rand_core = { version = "0.6", default-features = false, optional = true }
+rand_core = { version = "0.9", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, optional = true }
 zeroize = { version = "1", default-features = false, optional = true }
 
 # for examples
 [dev-dependencies]
 awint = { path = "../awint" }
-rand_xoshiro = "0.6"
+rand_xoshiro = "0.7"
 ron = "0.8"
 
 [features]

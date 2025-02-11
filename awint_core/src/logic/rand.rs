@@ -8,7 +8,7 @@ impl Bits {
 
     /// Randomly-assigns `self` using a [rand_core::RngCore] random number
     /// generator. This works by calling
-    /// [RngCore::try_fill_bytes](rand_core::RngCore::try_fill_bytes) and uses
+    /// [RngCore::fill_bytes](rand_core::RngCore::fill_bytes) and uses
     /// platform independent methods such that if a pseudorandom generator is
     /// used, it should always produce the same results when tried on the same
     /// sequence of different bitwidth `Bits`.
@@ -20,16 +20,13 @@ impl Bits {
     ///
     /// let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     /// let mut val = inlawi!(0u100);
-    /// val.rand_(&mut rng).unwrap();
+    /// val.rand_(&mut rng);
     /// assert_eq!(val, inlawi!(0x5ab77d3629a089d75dec9045du100));
-    /// val.rand_(&mut rng).unwrap();
+    /// val.rand_(&mut rng);
     /// assert_eq!(val, inlawi!(0x4c25a514060dea0565c95a8dau100));
     /// ```
-    pub fn rand_<R>(&mut self, rng: &mut R) -> Result<(), rand_core::Error>
-    where
-        R: rand_core::RngCore,
-    {
-        // We really want to use `try_fill_bytes` without an intermediate buffer.
+    pub fn rand_<R: rand_core::RngCore>(&mut self, rng: &mut R) {
+        // We really want to use `fill_bytes` without an intermediate buffer.
 
         // Here we make it portable with respect to length by emulating a byte sized
         // unused bits scheme. On big endian systems this will set some unused bytes,
@@ -40,7 +37,7 @@ impl Bits {
             (self.bw() / 8) + 1
         };
         let bytes = &mut self.as_mut_bytes_full_width_nonportable()[..size_in_u8];
-        let result = rng.try_fill_bytes(bytes);
+        let result = rng.fill_bytes(bytes);
         // this is a no-op on little endian, but on big endian this fixes byte order in
         // regular digits and rotates out unused bytes
         const_for!(i in {0..self.total_digits()} {

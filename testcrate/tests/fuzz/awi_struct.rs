@@ -84,11 +84,11 @@ fn awi_struct() {
                 x1 = ExtAwi::uone(w);
             }
             10 => {
-                x1.rand_(&mut rng).unwrap();
+                x1.rand_(&mut rng);
                 x0 = Awi::from_bits(&x1);
             }
             11 => {
-                x1.rand_(&mut rng).unwrap();
+                x1.rand_(&mut rng);
                 x0 = Awi::from_bits_with_capacity(&x1, next_nzbw());
             }
             12 => {
