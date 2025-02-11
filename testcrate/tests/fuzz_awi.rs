@@ -1,3 +1,4 @@
+#![allow(stable_features)]
 #![feature(const_option)]
 #![feature(const_mut_refs)]
 
