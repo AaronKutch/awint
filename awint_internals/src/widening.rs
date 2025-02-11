@@ -88,8 +88,8 @@ type U256 = (u128, u128);
 
 /// Computes the quotient and remainder of `duo` divided by `div` and returns
 /// them as a tuple.
-pub const fn dd_division_u256(duo: U256, div: U256) -> (U256, U256) {
-    // uses the trifecta algorithm from https://crates.io/crates/triple_arena
+pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
+    // uses the trifecta algorithm from https://crates.io/crates/specialized-div-rem
 
     const fn lz_u256(x: U256) -> usize {
         let res = x.1.leading_zeros() as usize;
@@ -348,7 +348,7 @@ pub const fn dd_division(
     dd_division_internal!(
         duo, div;
         128 => {
-            let (quo, rem) = dd_division_u256(
+            let (quo, rem) = u256_div_rem(
                 (duo.0 as u128, duo.1 as u128),
                 (div.0 as u128, div.1 as u128)
             );

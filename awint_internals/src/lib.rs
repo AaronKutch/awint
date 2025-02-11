@@ -29,9 +29,7 @@ use core::num::NonZeroUsize;
 
 pub use raw_bits::{CustomDst, RawBits, RawStackBits};
 pub use serde_common::*;
-pub use widening::{
-    dd_division, dd_division_u256, widen_add, widen_mul_add, widening_mul_add_u128,
-};
+pub use widening::{dd_division, u256_div_rem, widen_add, widen_mul_add, widening_mul_add_u128};
 
 // If more than one flag is active it will cause an error because two `Digits`
 // are defined. However, we have this one duplication check in case of trying to
