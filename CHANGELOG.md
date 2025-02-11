@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.18.0] - TODO
+## [0.18.0] - 2025-02-11
 ### Changes
 - Updated to `rand_core` 0.9 and changed the `rand_` function to return `()`
 - Updated to `triple_arena` 0.14
