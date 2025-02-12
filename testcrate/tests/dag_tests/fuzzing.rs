@@ -14,7 +14,7 @@ use rand_xoshiro::{
     Xoshiro128StarStar,
 };
 
-use crate::dag_tests::{Epoch, EvalAwi, LazyAwi};
+use super::test_epoch::{Epoch, EvalAwi, LazyAwi};
 
 // miri is just here to check that the unsized deref hacks are working
 const N: (u32, u32) = if cfg!(miri) {

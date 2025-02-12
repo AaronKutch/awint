@@ -2,7 +2,7 @@
 
 use awint::{awint_dag::mimick, dag};
 
-use crate::dag_tests::Epoch;
+use crate::dag_tests::test_epoch::Epoch;
 
 // just copied from `macros.rs` and all asserts stripped (since the DAG
 // currently assumes all operations succeed)
