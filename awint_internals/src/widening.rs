@@ -59,9 +59,11 @@ pub const fn widening_mul_add_u128(lhs: u128, rhs: u128, add: u128) -> (u128, u1
     (sum0, sum1)
 }
 
-/// Computes (x * y) + z. This cannot overflow, because it returns the value
-/// widened into a tuple, where the first element is the least significant part
-/// of the integer and the second is the most significant.
+/// Computes (x * y) + z.
+///
+/// This cannot overflow, because it returns the value widened into a tuple,
+/// where the first element is the least significant part of the integer and the
+/// second is the most significant.
 #[inline]
 pub const fn widen_mul_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
     widen_mul_add_internal!(
@@ -82,10 +84,12 @@ pub const fn widen_mul_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
 
 type U256 = (u128, u128);
 
+// FIXME rename and export but complete `fracints` before publish
+
 /// Computes the quotient and remainder of `duo` divided by `div` and returns
 /// them as a tuple.
-pub const fn dd_division_u256(duo: U256, div: U256) -> (U256, U256) {
-    // uses the trifecta algorithm from https://crates.io/crates/triple_arena
+pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
+    // uses the trifecta algorithm from https://crates.io/crates/specialized-div-rem
 
     const fn lz_u256(x: U256) -> usize {
         let res = x.1.leading_zeros() as usize;
@@ -344,7 +348,7 @@ pub const fn dd_division(
     dd_division_internal!(
         duo, div;
         128 => {
-            let (quo, rem) = dd_division_u256(
+            let (quo, rem) = u256_div_rem(
                 (duo.0 as u128, duo.1 as u128),
                 (div.0 as u128, div.1 as u128)
             );

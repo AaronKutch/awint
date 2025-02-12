@@ -395,9 +395,11 @@ pub fn parse_usb(ast: &Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
     }
 }
 
-/// Tries to parse raw `input` as a range. Looks for the existence of top
-/// level ".." or "..=" punctuation. If `allow_single_bit_range` is set, will
-/// return a single bit range if ".." or "..=" does not exist.
+/// Tries to parse raw `input` as a range.
+///
+/// Looks for the existence of top level ".." or "..=" punctuation. If
+/// `allow_single_bit_range` is set, will return a single bit range if ".." or
+/// "..=" does not exist.
 pub fn parse_range(
     ast: &mut Ast,
     range_txt: PText,

@@ -10,9 +10,9 @@ fn rand() {
     // `rand_` function
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     let mut val = inlawi!(zero: ..100);
-    val.const_as_mut().rand_(&mut rng).unwrap();
+    val.const_as_mut().rand_(&mut rng);
     assert_eq!(val, inlawi!(0x5ab77d3629a089d75dec9045du100));
-    val.const_as_mut().rand_(&mut rng).unwrap();
+    val.const_as_mut().rand_(&mut rng);
     assert_eq!(val, inlawi!(0x4c25a514060dea0565c95a8dau100));
 }
 

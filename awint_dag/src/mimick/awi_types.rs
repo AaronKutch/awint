@@ -554,7 +554,7 @@ impl From<&awi::Bits> for ExtAwi {
     }
 }
 
-// there are some bizaare trait conflicts if we don't enumerate all these cases
+// there are some bizarre trait conflicts if we don't enumerate all these cases
 
 impl From<&awi::ExtAwi> for ExtAwi {
     fn from(bits: &awi::ExtAwi) -> ExtAwi {
@@ -921,7 +921,7 @@ impl From<&awi::Bits> for Awi {
     }
 }
 
-// there are some bizaare trait conflicts if we don't enumerate all these cases
+// there are some bizarre trait conflicts if we don't enumerate all these cases
 
 impl From<&awi::Awi> for Awi {
     fn from(bits: &awi::Awi) -> Awi {

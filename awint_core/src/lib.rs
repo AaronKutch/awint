@@ -207,17 +207,18 @@ formatting the rest of this document
 //! operations), is to:
 //!
 //! 1. take the wrapping absolute value of the input (the
-//! overflowing absolute value of `MIN_iN` is `MIN_iN`)
+//!    overflowing absolute value of `MIN_iN` is `MIN_iN`)
 //!
-//! 2. cast it to a `uN` type so
-//! we can use unsigned-less-than (e.x. in Rust primitives it is simply `i64 as
-//! u64`, in `awint` we reinterpret)
+//! 2. cast it to a `uN` type so we can use unsigned-less-than
+//!    (e.x. in Rust primitives it is simply `i64 as u64`,
+//!    in `awint` we reinterpret the bitstring)
 //!
-//! 3. Accept the original input if the cast
-//! value is `< 2^(N-1)` (the cast `MIN_iN` value exceeds this as well as the
-//! normally unrepresentable values). `Bits::sig` quickly calculates the number
-//! of significant bits, such that if `x.sig() == 100` then it means that the
-//! unsigned value would fit in 100 bits.
+//! 3. Accept the original input if the cast value is `< 2^(N-1)`
+//!    (the cast `MIN_iN` value exceeds this as well as the
+//!    normally unrepresentable values). `Bits::sig` quickly
+//!    calculates the number of significant bits, such that if
+//!    `x.sig() == 100` then it means that the unsigned value
+//!    would fit in 100 bits.
 //!
 //! `awint::Bits` has several casting operations from the concatenation macros,
 //! to `Bits::resize_`, `sign_resize_`, and `zero_resize_`. `awint::Awi` has

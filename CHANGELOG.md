@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0] - 2025-02-11
+### Changes
+- Updated to `rand_core` 0.9 and changed the `rand_` function to return `()`
+- Updated to `triple_arena` 0.14
+
+### Additions
+- Exposed some more things from `awint_internals`
+
 ## [0.17.0] - 2024-02-20
 ### Crate
 - `triple_arena` 0.13

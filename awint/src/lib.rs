@@ -19,9 +19,10 @@ pub use awint_macro_internals;
 pub use awint_macros::*;
 
 /// Reexports all the regular arbitrary width integer structs, macros, common
-/// enums, and most of `core::primitive::*`. This is useful for glob importing
-/// everything or for when using the regular items in a context with structs
-/// imported from `awint_dag`.
+/// enums, and most of `core::primitive::*`.
+///
+/// This is useful for glob importing everything or for when using the regular
+/// items in a context with structs imported from `awint_dag`.
 pub mod awi {
     #[cfg(not(feature = "alloc"))]
     pub use awint_core::awi::*;

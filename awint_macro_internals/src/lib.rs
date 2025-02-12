@@ -7,7 +7,10 @@
 //! the "std" feature is enabled
 
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::manual_repeat_n)]
 #![allow(clippy::comparison_chain)]
+// TODO
+#![allow(unexpected_cfgs)]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
 
 mod cc_macro;

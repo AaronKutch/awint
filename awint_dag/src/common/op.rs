@@ -697,13 +697,13 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
             Assert(v) => Assert(map1!(m, v)),
             Repeat(v) => Repeat(map1!(m, v)),
             StaticGet(v, inx) => StaticGet(map1!(m, v), *inx),
-            Concat(ref concat) => {
+            Concat(concat) => {
                 let mut res_concat =
                     ConcatType::from_iter(iter::repeat(DummyDefault::default()).take(concat.len()));
                 m(res_concat.as_mut_slice(), this.operands());
                 Concat(res_concat)
             }
-            ConcatFields(ref concat) => {
+            ConcatFields(concat) => {
                 let mut res_concat = ConcatFieldsType::from_iter(
                     concat
                         .field_as_slice()
@@ -713,7 +713,7 @@ impl<T: Debug + DummyDefault + Clone> Op<T> {
                 m(res_concat.t_as_mut_slice(), this.operands());
                 ConcatFields(res_concat)
             }
-            StaticLut(ref concat, table) => {
+            StaticLut(concat, table) => {
                 let mut res_concat =
                     ConcatType::from_iter(iter::repeat(DummyDefault::default()).take(concat.len()));
                 m(res_concat.as_mut_slice(), this.operands());

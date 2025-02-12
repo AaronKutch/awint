@@ -8,7 +8,8 @@ use awint::{
     dag,
 };
 
-use crate::dag_tests::{Epoch, EvalAwi, LazyAwi};
+use super::test_epoch::Epoch;
+use crate::dag_tests::test_epoch::{EvalAwi, LazyAwi};
 
 macro_rules! test_nonequal_bw {
     (

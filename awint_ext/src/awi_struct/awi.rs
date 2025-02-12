@@ -27,10 +27,12 @@ union InlOrExt {
     _ext: *const Digit,
 }
 
-/// An arbitrary width integer with manually controlled bitwidth. This is
-/// different from [ExtAwi](crate::ExtAwi) and [InlAwi](awint_core::InlAwi) in
-/// that it has a capacity, meaning that its bitwidth can be changed without
-/// reallocation if the capacity is large enough.
+/// An arbitrary width integer with manually controlled bitwidth.
+///
+/// This is different from [ExtAwi](crate::ExtAwi) and
+/// [InlAwi](awint_core::InlAwi) in that it has a capacity, meaning that its
+/// bitwidth can be changed without reallocation if the capacity is large
+/// enough.
 ///
 /// Small bitwidths (`usize::BITS` on most platforms) can be stored inline by
 /// this struct without any allocation, which greatly helps cases where only a

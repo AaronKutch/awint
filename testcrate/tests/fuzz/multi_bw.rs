@@ -253,7 +253,7 @@ pub fn u8_slice() {
             cc!(InlAwi::from_u8(*byte); .., x1[r0..r1]; ..8).unwrap();
         }
         assert_eq!(x0, x1);
-        x0.rand_(&mut rng).unwrap();
+        x0.rand_(&mut rng);
         x0.to_u8_slice(&mut array[..inx]);
         let mut byte = InlAwi::from_u8(0);
         for (i, item) in array.iter().take(inx).enumerate() {

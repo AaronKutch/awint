@@ -24,7 +24,7 @@ fn lut_and_field() {
         for pow in 1..pow_max {
             let mul = 1 << pow;
             let mut awi_lut = ExtAwi::zero(bw(out_bw * mul));
-            awi_lut.rand_(&mut rng).unwrap();
+            awi_lut.rand_(&mut rng);
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let out = awi_out.const_as_mut();
             let lut = awi_lut.as_ref();
@@ -59,15 +59,15 @@ fn lut_and_lut_set() {
             let mul = 1 << pow;
             let mut awi_lut = ExtAwi::zero(bw(entry_bw * mul));
             let lut = awi_lut.const_as_mut();
-            lut.rand_(&mut rng).unwrap();
+            lut.rand_(&mut rng);
             let mut awi_lut_copy = ExtAwi::zero(lut.nzbw());
             let lut_copy = awi_lut_copy.const_as_mut();
             lut_copy.copy_(lut).unwrap();
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let inx = awi_inx.const_as_mut();
             for _ in 0..mul {
-                inx.rand_(&mut rng).unwrap();
-                entry.rand_(&mut rng).unwrap();
+                inx.rand_(&mut rng);
+                entry.rand_(&mut rng);
                 entry_copy.copy_(entry).unwrap();
                 // before `lut_set`, copy the old entry
                 entry_old.lut_(lut, inx).unwrap();
@@ -97,7 +97,7 @@ fn funnel_() {
         let mut awi_rhs = ExtAwi::zero(bw(2 * awi_lhs.bw()));
         let mut awi_alt0 = ExtAwi::zero(bw(awi_rhs.bw()));
         let mut awi_alt1 = ExtAwi::zero(bw(awi_lhs.bw()));
-        awi_rhs.rand_(&mut rng).unwrap();
+        awi_rhs.rand_(&mut rng);
         let shift = awi_shift.const_as_mut();
         let lhs = awi_lhs.const_as_mut();
         let rhs = awi_rhs.const_as_mut();
@@ -129,9 +129,9 @@ fn awint_internals_test() {
     let mut lhs = inlawi!(0u128);
     let mut rhs = inlawi!(0u128);
     let mut add = inlawi!(0u128);
-    lhs.rand_(&mut rng).unwrap();
-    rhs.rand_(&mut rng).unwrap();
-    add.rand_(&mut rng).unwrap();
+    lhs.rand_(&mut rng);
+    rhs.rand_(&mut rng);
+    add.rand_(&mut rng);
     let (lo, hi) =
         awint::awint_internals::widening_mul_add_u128(lhs.to_u128(), rhs.to_u128(), add.to_u128());
     let mut tmp0 = extawi!(0u128);

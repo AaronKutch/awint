@@ -29,7 +29,7 @@ use core::num::NonZeroUsize;
 
 pub use raw_bits::{CustomDst, RawBits, RawStackBits};
 pub use serde_common::*;
-pub use widening::{dd_division, widen_add, widen_mul_add, widening_mul_add_u128};
+pub use widening::{dd_division, u256_div_rem, widen_add, widen_mul_add, widening_mul_add_u128};
 
 // If more than one flag is active it will cause an error because two `Digits`
 // are defined. However, we have this one duplication check in case of trying to
@@ -40,12 +40,13 @@ compile_error!(
      `--all-features` was used, which does not work for `awint`."
 );
 
-/// The basic element of the internal slice in `Bits`. This should be a type
-/// alias of the unsigned integer of the architecture's registers. On most
-/// architectures, this is simply `usize`, however there are cases such as AVR
-/// where the pointer size is 16 bits but the register size is 8 bits. If this
-/// were not register size, it can incur excessive unrolling or underutilization
-/// for every loop in the internals.
+/// The basic element of the internal slice in `Bits`.
+///
+/// This should be a type alias of the unsigned integer of the architecture's
+/// registers. On most architectures, this is simply `usize`, however there are
+/// cases such as AVR where the pointer size is 16 bits but the register size is
+/// 8 bits. If this were not register size, it can incur excessive unrolling or
+/// underutilization for every loop in the internals.
 #[cfg(not(any(
     feature = "u8_digits",
     feature = "u16_digits",

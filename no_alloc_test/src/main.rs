@@ -18,7 +18,7 @@ fn main() -> ! {
     x0.add_(x1).unwrap();
     assert!(x0.is_zero());
     let mut rng = Xoshiro128StarStar::seed_from_u64(0);
-    x0.rand_(&mut rng).unwrap();
+    x0.rand_(&mut rng);
     cc!(x1; x0).unwrap();
     let _ = inlawi!(umax: .., x0; ..100).unwrap();
 

@@ -375,7 +375,7 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
         i += 1;
     }
 
-    // fraction part, can be followed by ' or 'p' for exponent, or 'u' or 'i' for
+    // fraction part, can be followed by 'e' or 'p' for exponent, or 'u' or 'i' for
     // bitwidth
     if let Some(fraction_start) = fraction_start {
         loop {
