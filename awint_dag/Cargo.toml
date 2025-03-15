@@ -1,6 +1,6 @@
 [package]
 name = "awint_dag"
-version = "0.18.0"
+version = "0.18.1"
 edition = "2021"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -12,9 +12,9 @@ keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
 [dependencies]
-awint_ext = { version = "0.18.0", path = "../awint_ext", default-features = false }
-awint_macro_internals = { version = "0.18.0", path = "../awint_macro_internals", default-features = false }
-awint_macros = { version = "0.18.0", path = "../awint_macros", default-features = false }
+awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false }
+awint_macro_internals = { version = "0.18.1", path = "../awint_macro_internals", default-features = false }
+awint_macros = { version = "0.18.1", path = "../awint_macros", default-features = false }
 # our minimum version is above the 1.51 required for some of these features
 smallvec = { version = "1.13", default-features = false, features = ["const_generics", "const_new", "union"] }
 
