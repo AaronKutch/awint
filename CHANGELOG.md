@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.18.1] - 2025-03-15
+### Crate
+- Moved the macro documentation to a `macro_doc` module in `awint` because rustdoc can't behave
+
 ## [0.18.0] - 2025-02-11
 ### Changes
 - Updated to `rand_core` 0.9 and changed the `rand_` function to return `()`

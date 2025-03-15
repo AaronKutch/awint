@@ -18,6 +18,10 @@ pub use awint_ext::{Awi, ExtAwi, FPType, OrdBits, FP};
 pub use awint_macro_internals;
 pub use awint_macros::*;
 
+// This is located here because of issues with rustdoc
+/// Macro documentation
+pub mod macro_docs;
+
 /// Reexports all the regular arbitrary width integer structs, macros, common
 /// enums, and most of `core::primitive::*`.
 ///
