@@ -62,6 +62,7 @@ pub const LB_I3F13: [u16; 37] = [
 ];
 
 #[test]
+#[cfg(not(miri))]
 fn lb_u16p13() {
     use core::ops::Mul;
     for i in 2..=36 {
@@ -81,6 +82,7 @@ pub const INV_LB_I1F15: [u16; 37] = [
 ];
 
 #[test]
+#[cfg(not(miri))]
 fn inv_lb_u16p15() {
     use core::ops::Mul;
     for i in 2..=36 {
