@@ -142,6 +142,7 @@ pub fn _test_callback() -> EpochCallback {
         })
     }
     EpochCallback {
+        name: "_test_callback",
         new_pstate,
         register_assertion_bit,
         get_nzbw,
@@ -353,7 +354,7 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
         if let Op::Literal(ref lit) = states[p_state].op {
             res = Some(Ok(lit.clone()));
         } else {
-            res = Some(Err(format!("`could not eval to a literal {}", p_state)));
+            res = Some(Err(format!("`could not eval to a literal {p_state}")));
         }
     });
     res.unwrap()

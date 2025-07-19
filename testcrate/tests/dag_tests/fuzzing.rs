@@ -1,3 +1,5 @@
+#![allow(clippy::manual_is_multiple_of)]
+
 use std::{
     cmp::{max, min},
     num::NonZeroUsize,

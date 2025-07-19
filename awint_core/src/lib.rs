@@ -397,6 +397,7 @@ formatting the rest of this document
 #![allow(clippy::branches_sharing_code)]
 // TODO when clippy issue 9175 is fixed remove
 #![allow(clippy::question_mark)]
+#![allow(clippy::manual_is_multiple_of)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[doc(hidden)]

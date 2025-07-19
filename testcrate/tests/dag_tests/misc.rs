@@ -1,34 +1,24 @@
-#[cfg(not(miri))]
-use awint::awint_dag::epoch::{_get_epoch_callback, _unregistered_callback};
 use awint::{
     awi,
-    awint_dag::epoch::{_get_epoch_gen, _get_epoch_stack},
+    awint_dag::epoch::{
+        _get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback,
+    },
     dag, inlawi_ty,
 };
 
-#[cfg(not(miri))]
-use crate::dag_tests::test_epoch::_test_callback;
-use crate::dag_tests::test_epoch::{Epoch, LazyAwi};
+use crate::dag_tests::test_epoch::{Epoch, LazyAwi, _test_callback};
 
 #[test]
 fn dag_epochs() {
     use awint::dag::u8;
     assert_eq!(_get_epoch_gen().get(), 2);
     assert!(_get_epoch_stack().is_empty());
-    // TODO Miri has some issue with this and I currently don't have the time to
-    // find out why
-    #[cfg(not(miri))]
-    {
-        assert_eq!(_get_epoch_callback(), _unregistered_callback());
-    }
+    assert_eq!(_get_epoch_callback().name, _unregistered_callback().name);
     {
         let epoch0 = Epoch::new();
         assert_eq!(_get_epoch_gen().get(), 3);
         assert_eq!(_get_epoch_stack().len(), 1);
-        #[cfg(not(miri))]
-        {
-            assert_eq!(_get_epoch_callback(), _test_callback());
-        }
+        assert_eq!(_get_epoch_callback().name, _test_callback().name);
         let x: &u8 = &7.into();
         // test `Copy` trait
         let _y: u8 = *x;
@@ -53,10 +43,7 @@ fn dag_epochs() {
         epoch0.get_states(|states| assert_eq!(states.len(), 1));
     };
     assert!(_get_epoch_stack().is_empty());
-    #[cfg(not(miri))]
-    {
-        assert_eq!(_get_epoch_callback(), _unregistered_callback());
-    }
+    assert_eq!(_get_epoch_callback().name, _unregistered_callback().name);
 }
 
 #[test]
