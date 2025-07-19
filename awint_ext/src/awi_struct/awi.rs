@@ -7,7 +7,7 @@ use core::{
     marker::PhantomData,
     mem,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
     ptr,
     ptr::NonNull,
 };
@@ -904,15 +904,6 @@ impl DerefMut for Awi {
     }
 }
 
-impl Index<RangeFull> for Awi {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for Awi {
     #[inline]
     fn borrow(&self) -> &Bits {
@@ -923,13 +914,6 @@ impl Borrow<Bits> for Awi {
 impl AsRef<Bits> for Awi {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl IndexMut<RangeFull> for Awi {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }

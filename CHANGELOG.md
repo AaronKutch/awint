@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.19.0] - TODO
+### Changes
+- Removed the `Index` and `IndexMut` implementations for the storage types
+
 ## [0.18.1] - 2025-03-15
 ### Crate
 - Moved the macro documentation to a `macro_doc` module in `awint` because rustdoc can't behave

@@ -142,7 +142,7 @@ fn awint_internals_test() {
     let rhs = inlawi!(zero: ..,rhs;..256).unwrap();
     let mut add = inlawi!(zero: ..,add;..256).unwrap();
     add.mul_add_(&lhs, &rhs).unwrap();
-    assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
+    assert_eq!(extawi!(tmp1, tmp0).as_ref(), add.as_ref());
 
     let mut buf = [0u8; 68];
     for x in &mut buf {

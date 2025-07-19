@@ -1,6 +1,6 @@
 use core::{
     borrow::{Borrow, BorrowMut},
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
 };
 
 use crate::{data::inlawi::UsizeInlAwi, Bits, InlAwi};
@@ -21,15 +21,6 @@ impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn borrow(&self) -> &Bits {
@@ -40,13 +31,6 @@ impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
 impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }

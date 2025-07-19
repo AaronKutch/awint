@@ -5,7 +5,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
     ptr,
     ptr::NonNull,
 };
@@ -333,15 +333,6 @@ impl DerefMut for ExtAwi {
     }
 }
 
-impl Index<RangeFull> for ExtAwi {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for ExtAwi {
     #[inline]
     fn borrow(&self) -> &Bits {
@@ -352,13 +343,6 @@ impl Borrow<Bits> for ExtAwi {
 impl AsRef<Bits> for ExtAwi {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl IndexMut<RangeFull> for ExtAwi {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }

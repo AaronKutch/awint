@@ -21,15 +21,6 @@ impl<const BW: usize, const LEN: usize> const DerefMut for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> const Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl<const BW: usize, const LEN: usize> const Borrow<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn borrow(&self) -> &Bits {
@@ -40,13 +31,6 @@ impl<const BW: usize, const LEN: usize> const Borrow<Bits> for InlAwi<BW, LEN> {
 impl<const BW: usize, const LEN: usize> const AsRef<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> const IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }

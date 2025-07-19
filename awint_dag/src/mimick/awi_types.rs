@@ -3,7 +3,7 @@ use std::{
     fmt,
     marker::PhantomData,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
     rc::Rc,
 };
 
@@ -151,14 +151,6 @@ impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
     fn borrow(&self) -> &Bits {
         self
@@ -167,12 +159,6 @@ impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }
@@ -496,14 +482,6 @@ impl DerefMut for ExtAwi {
     }
 }
 
-impl Index<RangeFull> for ExtAwi {
-    type Output = Bits;
-
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for ExtAwi {
     fn borrow(&self) -> &Bits {
         self
@@ -513,12 +491,6 @@ impl Borrow<Bits> for ExtAwi {
 impl AsRef<Bits> for ExtAwi {
     fn as_ref(&self) -> &Bits {
         self
-    }
-}
-
-impl IndexMut<RangeFull> for ExtAwi {
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
     }
 }
 
@@ -863,14 +835,6 @@ impl DerefMut for Awi {
     }
 }
 
-impl Index<RangeFull> for Awi {
-    type Output = Bits;
-
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for Awi {
     fn borrow(&self) -> &Bits {
         self
@@ -880,12 +844,6 @@ impl Borrow<Bits> for Awi {
 impl AsRef<Bits> for Awi {
     fn as_ref(&self) -> &Bits {
         self
-    }
-}
-
-impl IndexMut<RangeFull> for Awi {
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
     }
 }
 
