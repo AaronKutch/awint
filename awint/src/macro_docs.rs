@@ -351,36 +351,26 @@
 //!     cc!(0x123u12; z).unwrap();
 //! }
 //! ```
-// FIXME
-// Also, if you are using the `const_support` feature and are trying to use
-// the macros in a `const` context, as of Rust 1.70 you need to add all of
-// ```text
-// #![feature(const_mut_refs)]
-// #![feature(const_option)]
-// #![feature(const_trait_impl)]
-// ```
-// to your crate roots or else you will encounter many confusing or misleading
-// compiler errors.
-//
-// ```
-// #![feature(const_mut_refs)]
-// #![feature(const_option)]
-// #![feature(const_trait_impl)]
-// #![feature(inline_const)]
-// use awint::awi::*;
-// // `bits!` is mainly used to create single large `&'static Bits` constants,
-// // but the source concatenation capability is there.
-// const A: &Bits = bits!(umax: ..32, 0xfedcba98_u32);
-// const B: &Bits = bits!(0x3210u16);
-// const C: &Bits = bits!(A, 0x7654u16, B; ..96).unwrap();
-// assert_eq!(C, bits!(0xffffffff_fedcba98_76543210_u96));
-// // there is _a lot_ of stuff going on behind the scenes to make this possible
-// const D: &Bits = const {
-//     const R: usize = 48;
-//     bits!(C[(R - 42)..R], C[R..(R + 42)]).unwrap()
-// };
-// assert_eq!(D, bits!(0xba987_654323ff_fffffedc_u84));
-// ```
+//!
+//! ```test
+//! // (only on nightly currently)
+//! #![feature(const_trait_impl)]
+//! #![feature(const_deref)]
+//! 
+//! use awint::awi::*;
+//! // `bits!` is mainly used to create single large `&'static Bits` constants,
+//! // but the source concatenation capability is there.
+//! const A: &Bits = bits!(umax: ..32, 0xfedcba98_u32);
+//! const B: &Bits = bits!(0x3210u16);
+//! const C: &Bits = bits!(A, 0x7654u16, B; ..96).unwrap();
+//! assert_eq!(C, bits!(0xffffffff_fedcba98_76543210_u96));
+//! // there is _a lot_ of stuff going on behind the scenes to make this possible
+//! const D: &Bits = const {
+//!     const R: usize = 48;
+//!     bits!(C[(R - 42)..R], C[R..(R + 42)]).unwrap()
+//! };
+//! assert_eq!(D, bits!(0xba987_654323ff_fffffedc_u84));
+//! ```
 //!
 //! ### Fillers
 //!

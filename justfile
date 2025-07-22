@@ -18,9 +18,11 @@ test *ARGS:
 
 test_all *ARGS:
   cargo nextest run {{ALL_FEATURES}},const_support {{ARGS}}
+  cargo t --doc {{ALL_FEATURES}},const_support {{ARGS}}
 
 test_stable *ARGS:
   cargo +nightly-2023-04-14 t {{ALL_FEATURES}} {{ARGS}}
+  cargo +nightly-2023-04-14 t --doc {{ALL_FEATURES}} {{ARGS}}
 
 bench *ARGS:
   cargo bench -p testcrate {{ARGS}}

@@ -39,18 +39,16 @@ system depending on these feature flags:
 Note: By default, "std" and "try_support" is turned on, use `default-features = false` and select
 specific features to be more specific.
 
-NOTE: As of Rust 1.70, if you try to use "const_support" with the macros you may get strange
-"erroneous constant used" and "deref_mut" errors unless you add all of
+NOTE: As of Rust 1.90, if you try to use "const_support" with the macros you may get errors unless
+you add
 ```
 #![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-#![feature(const_option)]
+#![feature(const_deref)]
 ```
-to _all_ of the crate roots where you use the macros in `const` contexts.
+to _all_ of the crate roots where you use the macros in `const` contexts. "const_support" can
+require specific versions of nightly Rust (see https://github.com/AaronKutch/awint/issues/19).
 
-NOTE: "const_support" can require specific versions of nightly Rust (see https://github.com/AaronKutch/awint/issues/19).
-
-NOTE: Uses the Miri flags `-Zmiri-tree-borrows -Zmiri-strict-provenance`.
+NOTE: This crate is based on using the Miri flags `-Zmiri-tree-borrows -Zmiri-strict-provenance`.
 
 ## Planned Features
 
