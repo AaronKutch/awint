@@ -1,6 +1,4 @@
-use core::borrow::BorrowMut;
-
-use awint_core::{Bits, InlAwi};
+use awint_core::{AsMutBits, Bits, InlAwi};
 
 use crate::FP;
 
@@ -98,7 +96,7 @@ impl F64 {
     }
 }
 
-impl<B: BorrowMut<Bits>> FP<B> {
+impl<B: AsMutBits> FP<B> {
     /// Floating-assigns `FP::from_f32(f)` to `this`. Note that this modifies
     /// `this.fp` according to [floating_](FP::floating_).
     pub fn f32_(this: &mut Self, f: f32) {

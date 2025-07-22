@@ -33,7 +33,7 @@ mod fp_struct;
 mod serde;
 pub(crate) mod string_internals;
 pub use awi_struct::Awi;
-pub use awint_core::{bw, Bits, InlAwi, OrdBits, SerdeError};
+pub use awint_core::{bw, AsBits, AsMutBits, Bits, InlAwi, OrdBits, SerdeError};
 pub use extawi::ExtAwi;
 pub use fp_struct::{FPType, FP};
 

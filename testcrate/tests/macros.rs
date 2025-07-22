@@ -5,6 +5,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(inline_const)]
+#![feature(const_deref)]
 
 use awint::awi::*;
 
@@ -13,24 +14,24 @@ macro_rules! construction {
         $(
             let inlawi = inlawi!(zero: ..$w);
             let extawi = ExtAwi::zero(bw($w));
-            assert!(inlawi.as_ref().is_zero());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
+            assert!(inlawi.as_bits().is_zero());
+            assert_eq!(inlawi.as_bits(), extawi.as_bits());
             let inlawi = inlawi!(umax: ..$w);
             let extawi = ExtAwi::umax(bw($w));
-            assert!(inlawi.as_ref().is_umax());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
+            assert!(inlawi.as_bits().is_umax());
+            assert_eq!(inlawi.as_bits(), extawi.as_bits());
             let inlawi = inlawi!(imax: ..$w);
             let extawi = ExtAwi::imax(bw($w));
-            assert!(inlawi.as_ref().is_imax());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
+            assert!(inlawi.as_bits().is_imax());
+            assert_eq!(inlawi.as_bits(), extawi.as_bits());
             let inlawi = inlawi!(imin: ..$w);
             let extawi = ExtAwi::imin(bw($w));
-            assert!(inlawi.as_ref().is_imin());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
+            assert!(inlawi.as_bits().is_imin());
+            assert_eq!(inlawi.as_bits(), extawi.as_bits());
             let inlawi = inlawi!(uone: ..$w);
             let extawi = ExtAwi::uone(bw($w));
-            assert!(inlawi.as_ref().is_uone());
-            assert_eq!(inlawi.as_ref(), extawi.as_ref());
+            assert!(inlawi.as_bits().is_uone());
+            assert_eq!(inlawi.as_bits(), extawi.as_bits());
         )*
     };
 }
@@ -55,8 +56,8 @@ fn macro_successes() {
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
-    assert_eq!(a.as_ref(), b);
-    assert_eq!(a.as_ref(), c.as_ref());
+    assert_eq!(a.as_bits(), b);
+    assert_eq!(a.as_bits(), c.as_bits());
     // dynamic ranges
     let x: usize = 8;
     let val = ExtAwi::zero(bw(12));

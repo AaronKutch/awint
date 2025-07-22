@@ -10,3 +10,7 @@ pub use inlawi::InlAwi;
 mod const_traits;
 #[cfg(not(feature = "const_support"))]
 mod traits;
+#[cfg(feature = "const_support")]
+pub use const_traits::{AsBits, AsMutBits};
+#[cfg(not(feature = "const_support"))]
+pub use traits::{AsBits, AsMutBits};

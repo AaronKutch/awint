@@ -384,6 +384,10 @@ formatting the rest of this document
 #![cfg_attr(feature = "const_support", feature(const_swap))]
 #![cfg_attr(feature = "const_support", feature(const_option))]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
+#![cfg_attr(feature = "const_support", feature(const_deref))]
+#![cfg_attr(feature = "const_support", feature(const_from))]
+#![cfg_attr(feature = "const_support", feature(const_cmp))]
+#![cfg_attr(feature = "const_support", feature(const_index))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]
@@ -405,7 +409,7 @@ pub use awint_internals;
 pub use awint_internals::{bw, SerdeError};
 
 pub(crate) mod data;
-pub use data::{Bits, InlAwi};
+pub use data::{Bits, InlAwi, AsBits, AsMutBits};
 
 mod logic;
 
@@ -417,5 +421,5 @@ pub mod awi {
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
 
-    pub use crate::{Bits, InlAwi};
+    pub use crate::{Bits, InlAwi, AsBits, AsMutBits};
 }

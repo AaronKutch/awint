@@ -6,11 +6,10 @@ use core::{
     mem,
     num::NonZeroUsize,
     ops::{Deref, DerefMut},
-    ptr,
-    ptr::NonNull,
+    ptr::{self, NonNull},
 };
 
-use awint_core::{Bits, InlAwi};
+use awint_core::{AsBits, AsMutBits, Bits, InlAwi};
 use const_fn::const_fn;
 
 use crate::awint_internals::*;
@@ -282,7 +281,7 @@ impl Clone for ExtAwi {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl PartialEq for ExtAwi {
     fn eq(&self, rhs: &Self) -> bool {
-        self.as_ref() == rhs.as_ref()
+        self.internal_as_ref() == rhs.internal_as_ref()
     }
 }
 
@@ -292,7 +291,7 @@ impl Eq for ExtAwi {}
 #[cfg(feature = "zeroize_support")]
 impl zeroize::Zeroize for ExtAwi {
     fn zeroize(&mut self) {
-        self.as_mut().zeroize()
+        self.internal_as_mut().zeroize()
     }
 }
 
@@ -302,7 +301,7 @@ macro_rules! impl_fmt {
             /// Forwards to the corresponding impl for `Bits`
             impl fmt::$ty for ExtAwi {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::$ty::fmt(self.as_ref(), f)
+                    fmt::$ty::fmt(self.internal_as_ref(), f)
                 }
             }
         )*
@@ -313,7 +312,7 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl Hash for ExtAwi {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.as_ref().hash(state);
+        self.internal_as_ref().hash(state);
     }
 }
 
@@ -361,12 +360,24 @@ impl AsMut<Bits> for ExtAwi {
     }
 }
 
-// we unfortunately can't do something like `impl<B: Borrow<Bits>> From<B>`
-// because specialization is not stabilized
+impl AsBits for ExtAwi {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
 
-/// Creates an `ExtAwi` from copying a `Bits` reference
-impl From<&Bits> for ExtAwi {
-    fn from(bits: &Bits) -> ExtAwi {
+impl AsMutBits for ExtAwi {
+    #[inline]
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}
+
+/// Creates an `ExtAwi` from anything implementing `AsBits`
+impl<B: AsBits> From<&B> for ExtAwi {
+    fn from(bits: &B) -> ExtAwi {
+        let bits = bits.as_bits();
         let mut tmp = ExtAwi::zero(bits.nzbw());
         tmp.const_as_mut().copy_(bits).unwrap();
         tmp

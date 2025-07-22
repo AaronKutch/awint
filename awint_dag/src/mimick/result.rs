@@ -1,6 +1,5 @@
 use core::result::Result as StdResult;
 use std::{
-    borrow::{Borrow, BorrowMut},
     fmt::Debug,
     ops::{Deref, DerefMut},
     process::{ExitCode, Termination},
@@ -315,7 +314,7 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T: Borrow<Bits> + BorrowMut<Bits>, E> Result<T, E> {
+impl<T: AsMutBits, E> Result<T, E> {
     #[track_caller]
     pub fn unwrap_or(self, default: T) -> T {
         match self {
@@ -323,8 +322,8 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>, E> Result<T, E> {
             Err(_) => default,
             Opaque(z) => match z.res {
                 StdOk(mut t) => {
-                    if t.borrow_mut()
-                        .mux_(default.borrow(), z.is_ok)
+                    if t.as_mut_bits()
+                        .mux_(default.as_bits(), z.is_ok)
                         .is_none_at_runtime()
                     {
                         panic!("called `Result::unwrap_or()` with unequal bitwidth types")

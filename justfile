@@ -14,7 +14,10 @@ check:
   cargo doc
 
 test *ARGS:
-  cargo nextest run {{ARGS}}
+  cargo nextest run {{ALL_FEATURES}} {{ARGS}}
+
+test_all *ARGS:
+  cargo nextest run {{ALL_FEATURES}},const_support {{ARGS}}
 
 bench *ARGS:
   cargo bench -p testcrate {{ARGS}}

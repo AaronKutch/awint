@@ -1,5 +1,4 @@
 use core::{
-    borrow::BorrowMut,
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
@@ -9,69 +8,69 @@ use core::{
 use awint_internals::*;
 use const_fn::const_fn;
 
-use crate::Bits;
+use crate::{AsBits, AsMutBits, Bits};
 
 /// A wrapper implementing total ordering
 ///
 /// Implements `PartialEq`, `Eq`, `PartialOrd`, and `Ord` by using
 /// `Bits::total_cmp`. `Hash` also uses the `Bits`. This is intended for fast
 /// comparisons in ordered structures.
-pub struct OrdBits<B: BorrowMut<Bits>>(pub B);
+pub struct OrdBits<B>(pub B);
 
-impl<B: BorrowMut<Bits>> PartialEq for OrdBits<B> {
+impl<B: AsBits> PartialEq for OrdBits<B> {
     fn eq(&self, rhs: &Self) -> bool {
-        self.0.borrow() == rhs.0.borrow()
+        self.0.as_bits() == rhs.0.as_bits()
     }
 }
 
-impl<B: BorrowMut<Bits>> Eq for OrdBits<B> {}
+impl<B: AsBits> Eq for OrdBits<B> {}
 
-impl<B: BorrowMut<Bits>> PartialOrd for OrdBits<B> {
+impl<B: AsBits> PartialOrd for OrdBits<B> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<B: BorrowMut<Bits>> Ord for OrdBits<B> {
+impl<B: AsBits> Ord for OrdBits<B> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.borrow().total_cmp(other.0.borrow())
+        self.0.as_bits().total_cmp(other.0.as_bits())
     }
 }
 
-impl<B: BorrowMut<Bits>> Hash for OrdBits<B> {
+impl<B: AsBits> Hash for OrdBits<B> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.borrow().hash(state);
+        self.0.as_bits().hash(state);
     }
 }
 
-impl<B: BorrowMut<Bits>> Deref for OrdBits<B> {
+impl<B: AsBits> Deref for OrdBits<B> {
     type Target = Bits;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.0.borrow()
+        self.0.as_bits()
     }
 }
 
-impl<B: BorrowMut<Bits>> DerefMut for OrdBits<B> {
+impl<B: AsMutBits> DerefMut for OrdBits<B> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Bits {
-        self.0.borrow_mut()
+        self.0.as_mut_bits()
     }
 }
 
-impl<B: Clone + BorrowMut<Bits>> Clone for OrdBits<B> {
+impl<B: Clone> Clone for OrdBits<B> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<B: Copy + BorrowMut<Bits>> Copy for OrdBits<B> {}
+impl<B: Copy> Copy for OrdBits<B> {}
 
 macro_rules! impl_fmt {
     ($($ty:ident)*) => {
         $(
-            impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for OrdBits<B> {
+            impl<B: fmt::$ty> fmt::$ty for OrdBits<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     fmt::$ty::fmt(&self.0, f)
                 }

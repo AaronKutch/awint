@@ -91,7 +91,7 @@ impl Mem {
         lit.usize_(tmp);
         let p = self.a.insert(Pair {
             awi: lit.clone(),
-            dag: dag::Awi::from(lazy.as_ref()),
+            dag: dag::Awi::from(&lazy),
             eval: None,
         });
         self.roots.push((lazy, lit));
@@ -111,7 +111,7 @@ impl Mem {
             lit.rand_(&mut self.rng);
             let p = self.a.insert(Pair {
                 awi: lit.clone(),
-                dag: dag::Awi::from(lazy.as_ref()),
+                dag: dag::Awi::from(&lazy),
                 eval: None,
             });
             self.roots.push((lazy, lit));

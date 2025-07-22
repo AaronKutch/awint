@@ -8,7 +8,7 @@
 
 #[doc(hidden)]
 pub use awint_core::awint_internals;
-pub use awint_core::{bw, Bits, InlAwi, SerdeError};
+pub use awint_core::{bw, AsBits, AsMutBits, Bits, InlAwi, SerdeError};
 #[cfg(feature = "dag")]
 pub use awint_dag;
 #[cfg(feature = "alloc")]

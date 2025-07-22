@@ -1,11 +1,10 @@
 use alloc::{string::String, vec::Vec};
 use core::{
-    borrow::BorrowMut,
     cmp::{max, min},
     num::NonZeroUsize,
 };
 
-use awint_core::{awint_internals::Digit, Bits};
+use awint_core::{awint_internals::Digit, AsBits, AsMutBits};
 
 use crate::{
     awint_internals::{bits_upper_bound, SerdeError, SerdeError::*},
@@ -19,28 +18,7 @@ fn itousize(i: isize) -> Option<usize> {
     usize::try_from(i).ok()
 }
 
-/// These functions are associated to avoid name clashes.
-///
-/// Note: Adding new functions to `FP` is a WIP
-// TODO
-impl<B: BorrowMut<Bits>> FP<B> {
-    /// One-assigns `this`. Returns `None` if a positive one value is not
-    /// representable.
-    #[must_use]
-    pub fn one_(this: &mut Self) -> Option<()> {
-        // if fp is negative, one can certainly not be represented
-        let fp = itousize(this.fp())?;
-        // if `this.signed() && fp == this.bw()`, trying to set the one would set the
-        // sign bit
-        if fp > this.bw().wrapping_sub(this.signed() as usize) {
-            None
-        } else {
-            this.const_as_mut().zero_();
-            this.const_as_mut().digit_or_(1, fp);
-            Some(())
-        }
-    }
-
+impl<B: AsBits> FP<B> {
     /// Relative significant bit positions, determines the bit positions
     /// (inclusive) of the least and most significant bits relative to the
     /// fixed point
@@ -54,166 +32,6 @@ impl<B: BorrowMut<Bits>> FP<B> {
         let lo = this.fp().wrapping_neg();
         // the msb position is one less than the bitwidth
         (lo, this.ibw().wrapping_sub(1).wrapping_add(lo))
-    }
-
-    /// The same as [FP::truncate_] except it always intreprets arguments
-    /// as unsigned
-    pub fn utruncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) {
-        this.zero_();
-        let lbb = FP::rel_sb(this);
-        let rbb = FP::rel_sb(rhs);
-
-        // find overlap
-        let lo = max(lbb.0, rbb.0);
-        let hi = min(lbb.1, rbb.1);
-        if hi < lo {
-            // does not overlap
-            return
-        }
-        let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
-        let diff = lbb.0.abs_diff(rbb.0);
-        // the fielding will start from 0 in one argument and end at `diff` in the other
-        let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
-        this.field(to, rhs, from, width).unwrap();
-    }
-
-    /// Truncate-assigns `rhs` to `this`. For the unsigned case, logically what
-    /// this does is make `this` and `rhs` into concatenations with infinite
-    /// zeros on both ends, aligns the fixed points, and copies from `rhs`
-    /// to `this`. For the case of `rhs.signed()`, the absolute value of
-    /// `rhs` is used for truncation to `this` followed by
-    /// `this.neg_(rhs.msb() && this.signed())`.
-    pub fn truncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) {
-        let mut b = rhs.is_negative();
-        // reinterpret as unsigned to avoid imin overflow
-        rhs.const_as_mut().neg_(b);
-        FP::utruncate_(this, rhs);
-        rhs.const_as_mut().neg_(b);
-        b &= this.signed();
-        this.const_as_mut().neg_(b);
-    }
-
-    /// The same as [FP::otruncate_] except it always intreprets arguments
-    /// as unsigned
-    #[must_use = "use `utruncate_` if you do not need the overflow booleans"]
-    pub fn outruncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &FP<C>) -> (bool, bool) {
-        this.zero_();
-        if rhs.is_zero() {
-            return (false, false)
-        }
-        let lbb = FP::rel_sb(this);
-        let rbb = FP::rel_sb(rhs);
-
-        // find overlap
-        let lo = max(lbb.0, rbb.0);
-        let hi = min(lbb.1, rbb.1);
-        if hi < lo {
-            // does not overlap
-            return (true, true)
-        }
-        let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
-        let diff = lbb.0.abs_diff(rbb.0);
-        let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
-        this.field(to, rhs, from, width).unwrap();
-        // when testing if a less significant numerical bit is cut off, we need to be
-        // aware that it can be cut off from above even if overlap happens, for
-        // example:
-        //
-        // 1.0
-        //  .yyy
-        // _____
-        //  .000
-        //
-        // The `1` is the least significant numerical bit, but will get truncated by
-        // being above the rel_msb.
-
-        // note overflow cannot happen because of the `rhs.is_zero()` early return and
-        // invariants
-        let mut lsnb = rhs.tz() as isize;
-        lsnb = lsnb.wrapping_add(rbb.0);
-        let mut msnb = rhs.bw().wrapping_sub(rhs.lz()).wrapping_sub(1) as isize;
-        msnb = msnb.wrapping_add(rbb.0);
-        (
-            (lsnb < lbb.0) || (lsnb > lbb.1),
-            (msnb < lbb.0) || (msnb > lbb.1),
-        )
-    }
-
-    /// Overflow-truncate-assigns `rhs` to `this`. The same as
-    /// [FP::truncate_], except that a tuple of booleans is returned. The
-    /// first indicates if the least significant numerical bit was truncated,
-    /// and the second indicates if the most significant numerical bit was
-    /// truncated. Additionally, if `this.is_negative() != rhs.is_negative()`,
-    /// the second overflow is set.
-    ///
-    /// What this means is that if transitive truncations return no overflow,
-    /// then numerical value is preserved. If only `FP::otruncate_(...).0`
-    /// is true, then less significant numerical values were changed and only
-    /// some kind of truncation rounding has occured to the numerical value. If
-    /// `FP::otruncate_(...).1` is true, then the numerical value could be
-    /// dramatically changed.
-    #[must_use = "use `truncate_` if you do not need the overflow booleans"]
-    pub fn otruncate_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> (bool, bool) {
-        let mut b = rhs.is_negative();
-        // reinterpret as unsigned to avoid imin overflow
-        rhs.const_as_mut().neg_(b);
-        let o = FP::outruncate_(this, rhs);
-        rhs.const_as_mut().neg_(b);
-        // imin works correctly
-        b &= this.signed();
-        this.const_as_mut().neg_(b);
-        (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
-    }
-
-    /// Floating-assigns `rhs` to `this`. This modifies the `fp` of `this` to
-    /// retain as much significant numerical precision as possible. If
-    /// `this.signed()`, the msnb (most significant numerical bit) is moved to
-    /// the second msb of `this`. Otherwise, the msnb is moved to the msb of
-    /// `this`. If `rhs.is_negative()` and `this` is not signed, the absolute
-    /// value of `rhs` is used. If `rhs.is_zero()`, `this` and its `fp` are
-    /// zeroed. Returns `None` if the fixed point invariant would be
-    /// violated.
-    pub fn floating_<C: BorrowMut<Bits>>(this: &mut Self, rhs: &mut FP<C>) -> Option<()> {
-        let b = rhs.is_negative();
-        rhs.neg_(b);
-        let rhs_lz = rhs.lz();
-        if rhs_lz == rhs.bw() {
-            // efficient zero
-            this.zero_();
-            // do this since we will also do this in triop situations
-            this.set_fp(0).unwrap();
-        } else {
-            let msnb_add1 = rhs.bw().wrapping_sub(rhs_lz);
-            let this_sig_w = this.bw().wrapping_sub(this.signed() as usize);
-            let (to, from, width) = if msnb_add1 > this_sig_w {
-                (0, msnb_add1.wrapping_sub(this_sig_w), this_sig_w)
-            } else {
-                (this_sig_w.wrapping_sub(msnb_add1), 0, msnb_add1)
-            };
-            let rhs_exp = (msnb_add1.wrapping_sub(1) as isize).wrapping_sub(rhs.fp());
-            let neg_this = b && this.signed();
-            if neg_this && (this.bw() == 1) {
-                // corner case: negative powers of two can be represented with one signed bit
-                if this.set_fp(rhs_exp.wrapping_neg()).is_none() {
-                    rhs.neg_(b);
-                    return None
-                }
-                this.umax_();
-            } else {
-                if this
-                    .set_fp((this_sig_w as isize).wrapping_sub(1).wrapping_sub(rhs_exp))
-                    .is_none()
-                {
-                    rhs.neg_(b);
-                    return None
-                }
-                this.zero_();
-                this.field(to, rhs, from, width).unwrap();
-                this.neg_(neg_this);
-            }
-        }
-        rhs.neg_(b);
-        Some(())
     }
 
     /// Creates a tuple of `Vec<u8>`s representing the integer and fraction
@@ -383,5 +201,188 @@ impl<B: BorrowMut<Bits>> FP<B> {
             max_ufp,
         )?;
         Ok((String::from_utf8(i).unwrap(), String::from_utf8(f).unwrap()))
+    }
+}
+
+/// These functions are associated to avoid name clashes.
+///
+/// Note: Adding new functions to `FP` is a WIP
+// TODO
+impl<B: AsMutBits> FP<B> {
+    /// One-assigns `this`. Returns `None` if a positive one value is not
+    /// representable.
+    #[must_use]
+    pub fn one_(this: &mut Self) -> Option<()> {
+        // if fp is negative, one can certainly not be represented
+        let fp = itousize(this.fp())?;
+        // if `this.signed() && fp == this.bw()`, trying to set the one would set the
+        // sign bit
+        if fp > this.bw().wrapping_sub(this.signed() as usize) {
+            None
+        } else {
+            this.const_as_mut().zero_();
+            this.const_as_mut().digit_or_(1, fp);
+            Some(())
+        }
+    }
+
+    /// The same as [FP::truncate_] except it always intreprets arguments
+    /// as unsigned
+    pub fn utruncate_<C: AsBits>(this: &mut Self, rhs: &FP<C>) {
+        this.zero_();
+        let lbb = FP::rel_sb(this);
+        let rbb = FP::rel_sb(rhs);
+
+        // find overlap
+        let lo = max(lbb.0, rbb.0);
+        let hi = min(lbb.1, rbb.1);
+        if hi < lo {
+            // does not overlap
+            return
+        }
+        let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
+        let diff = lbb.0.abs_diff(rbb.0);
+        // the fielding will start from 0 in one argument and end at `diff` in the other
+        let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
+        this.field(to, rhs, from, width).unwrap();
+    }
+
+    /// Truncate-assigns `rhs` to `this`. For the unsigned case, logically what
+    /// this does is make `this` and `rhs` into concatenations with infinite
+    /// zeros on both ends, aligns the fixed points, and copies from `rhs`
+    /// to `this`. For the case of `rhs.signed()`, the absolute value of
+    /// `rhs` is used for truncation to `this` followed by
+    /// `this.neg_(rhs.msb() && this.signed())`.
+    pub fn truncate_<C: AsMutBits>(this: &mut Self, rhs: &mut FP<C>) {
+        let mut b = rhs.is_negative();
+        // reinterpret as unsigned to avoid imin overflow
+        rhs.const_as_mut().neg_(b);
+        FP::utruncate_(this, rhs);
+        rhs.const_as_mut().neg_(b);
+        b &= this.signed();
+        this.const_as_mut().neg_(b);
+    }
+
+    /// The same as [FP::otruncate_] except it always intreprets arguments
+    /// as unsigned
+    #[must_use = "use `utruncate_` if you do not need the overflow booleans"]
+    pub fn outruncate_<C: AsBits>(this: &mut Self, rhs: &FP<C>) -> (bool, bool) {
+        this.zero_();
+        if rhs.is_zero() {
+            return (false, false)
+        }
+        let lbb = FP::rel_sb(this);
+        let rbb = FP::rel_sb(rhs);
+
+        // find overlap
+        let lo = max(lbb.0, rbb.0);
+        let hi = min(lbb.1, rbb.1);
+        if hi < lo {
+            // does not overlap
+            return (true, true)
+        }
+        let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
+        let diff = lbb.0.abs_diff(rbb.0);
+        let (to, from) = if lbb.0 < rbb.0 { (diff, 0) } else { (0, diff) };
+        this.field(to, rhs, from, width).unwrap();
+        // when testing if a less significant numerical bit is cut off, we need to be
+        // aware that it can be cut off from above even if overlap happens, for
+        // example:
+        //
+        // 1.0
+        //  .yyy
+        // _____
+        //  .000
+        //
+        // The `1` is the least significant numerical bit, but will get truncated by
+        // being above the rel_msb.
+
+        // note overflow cannot happen because of the `rhs.is_zero()` early return and
+        // invariants
+        let mut lsnb = rhs.tz() as isize;
+        lsnb = lsnb.wrapping_add(rbb.0);
+        let mut msnb = rhs.bw().wrapping_sub(rhs.lz()).wrapping_sub(1) as isize;
+        msnb = msnb.wrapping_add(rbb.0);
+        (
+            (lsnb < lbb.0) || (lsnb > lbb.1),
+            (msnb < lbb.0) || (msnb > lbb.1),
+        )
+    }
+
+    /// Overflow-truncate-assigns `rhs` to `this`. The same as
+    /// [FP::truncate_], except that a tuple of booleans is returned. The
+    /// first indicates if the least significant numerical bit was truncated,
+    /// and the second indicates if the most significant numerical bit was
+    /// truncated. Additionally, if `this.is_negative() != rhs.is_negative()`,
+    /// the second overflow is set.
+    ///
+    /// What this means is that if transitive truncations return no overflow,
+    /// then numerical value is preserved. If only `FP::otruncate_(...).0`
+    /// is true, then less significant numerical values were changed and only
+    /// some kind of truncation rounding has occured to the numerical value. If
+    /// `FP::otruncate_(...).1` is true, then the numerical value could be
+    /// dramatically changed.
+    #[must_use = "use `truncate_` if you do not need the overflow booleans"]
+    pub fn otruncate_<C: AsMutBits>(this: &mut Self, rhs: &mut FP<C>) -> (bool, bool) {
+        let mut b = rhs.is_negative();
+        // reinterpret as unsigned to avoid imin overflow
+        rhs.const_as_mut().neg_(b);
+        let o = FP::outruncate_(this, rhs);
+        rhs.const_as_mut().neg_(b);
+        // imin works correctly
+        b &= this.signed();
+        this.const_as_mut().neg_(b);
+        (o.0, o.1 || (this.is_negative() != rhs.is_negative()))
+    }
+
+    /// Floating-assigns `rhs` to `this`. This modifies the `fp` of `this` to
+    /// retain as much significant numerical precision as possible. If
+    /// `this.signed()`, the msnb (most significant numerical bit) is moved to
+    /// the second msb of `this`. Otherwise, the msnb is moved to the msb of
+    /// `this`. If `rhs.is_negative()` and `this` is not signed, the absolute
+    /// value of `rhs` is used. If `rhs.is_zero()`, `this` and its `fp` are
+    /// zeroed. Returns `None` if the fixed point invariant would be
+    /// violated.
+    pub fn floating_<C: AsMutBits>(this: &mut Self, rhs: &mut FP<C>) -> Option<()> {
+        let b = rhs.is_negative();
+        rhs.neg_(b);
+        let rhs_lz = rhs.lz();
+        if rhs_lz == rhs.bw() {
+            // efficient zero
+            this.zero_();
+            // do this since we will also do this in triop situations
+            this.set_fp(0).unwrap();
+        } else {
+            let msnb_add1 = rhs.bw().wrapping_sub(rhs_lz);
+            let this_sig_w = this.bw().wrapping_sub(this.signed() as usize);
+            let (to, from, width) = if msnb_add1 > this_sig_w {
+                (0, msnb_add1.wrapping_sub(this_sig_w), this_sig_w)
+            } else {
+                (this_sig_w.wrapping_sub(msnb_add1), 0, msnb_add1)
+            };
+            let rhs_exp = (msnb_add1.wrapping_sub(1) as isize).wrapping_sub(rhs.fp());
+            let neg_this = b && this.signed();
+            if neg_this && (this.bw() == 1) {
+                // corner case: negative powers of two can be represented with one signed bit
+                if this.set_fp(rhs_exp.wrapping_neg()).is_none() {
+                    rhs.neg_(b);
+                    return None
+                }
+                this.umax_();
+            } else {
+                if this
+                    .set_fp((this_sig_w as isize).wrapping_sub(1).wrapping_sub(rhs_exp))
+                    .is_none()
+                {
+                    rhs.neg_(b);
+                    return None
+                }
+                this.zero_();
+                this.field(to, rhs, from, width).unwrap();
+                this.neg_(neg_this);
+            }
+        }
+        rhs.neg_(b);
+        Some(())
     }
 }

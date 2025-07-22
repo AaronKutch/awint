@@ -3,6 +3,10 @@
 ## [0.19.0] - TODO
 ### Changes
 - Removed the `Index` and `IndexMut` implementations for the storage types
+- Generics that previously used `AsRef<Bits>` and `Borrow<Bits>`, etc have been rewritten to use `AsBits` and `AsMutBits`.
+
+### Additions
+- Added `AsBits` and `AsMutBits` traits, which have none of the technical issues that the standard traits have
 
 ## [0.18.1] - 2025-03-15
 ### Crate

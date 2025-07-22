@@ -6,7 +6,6 @@
 
 use core::fmt;
 use std::{
-    borrow::Borrow,
     cell::RefCell,
     fmt::Write,
     num::{NonZeroU64, NonZeroUsize},
@@ -23,7 +22,9 @@ use awint::{
         triple_arena_render::{self, DebugNode, DebugNodeTrait},
         EAwi, EvalResult, Lineage, Location, Op, PState,
     },
-    bw, Awi,
+    bw,
+    dag::AsBits,
+    Awi,
 };
 
 /// Represents a single state that `mimick::Bits` is in at one point in time.
@@ -391,7 +392,8 @@ impl LazyAwi {
         let p_lhs = self.state();
         get_thread_local_state_mut(p_lhs, |state| {
             if state.op.is_opaque() {
-                state.op = Op::Literal(awi::Awi::from(rhs));
+                let rhs: awi::Awi = From::from(&rhs);
+                state.op = Op::Literal(rhs);
                 Ok(())
             } else {
                 Err("this testing `LazyAwi` struct cannot be assigned to more than once".to_owned())
@@ -408,15 +410,10 @@ impl Deref for LazyAwi {
     }
 }
 
-impl Borrow<dag::Bits> for LazyAwi {
-    fn borrow(&self) -> &dag::Bits {
-        self
-    }
-}
-
-impl AsRef<dag::Bits> for LazyAwi {
-    fn as_ref(&self) -> &dag::Bits {
-        self
+impl AsBits for LazyAwi {
+    #[inline]
+    fn as_bits(&self) -> &dag::Bits {
+        self.internal_as_ref()
     }
 }
 
@@ -454,8 +451,8 @@ impl fmt::Debug for EvalAwi {
     }
 }
 
-impl<B: AsRef<dag::Bits>> From<B> for EvalAwi {
-    fn from(b: B) -> Self {
-        Self::from_bits(b.as_ref())
+impl<B: dag::AsBits> From<&B> for EvalAwi {
+    fn from(b: &B) -> Self {
+        Self::from_bits(b.as_bits())
     }
 }

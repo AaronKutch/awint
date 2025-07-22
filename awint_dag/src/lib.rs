@@ -49,6 +49,7 @@
 #![allow(clippy::manual_ok_err)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::comparison_chain)]
+#![allow(clippy::needless_lifetimes)]
 #![cfg_attr(feature = "try_support", feature(try_trait_v2))]
 #![cfg_attr(feature = "try_support", feature(try_trait_v2_residual))]
 #![cfg_attr(feature = "try_support", feature(never_type))]
@@ -78,7 +79,7 @@ pub mod dag {
     // accidentally use the `dag` versions when the `awi` versions are intended
     pub use crate::{
         mimick::{
-            self, Awi, Bits, ExtAwi, InlAwi, Option,
+            self, AsBits, AsMutBits, Awi, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
             Result,
             Result::{Err, Ok},

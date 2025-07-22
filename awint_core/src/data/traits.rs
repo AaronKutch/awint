@@ -107,3 +107,73 @@ impl PartialEq for Bits {
 
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl Eq for Bits {}
+
+/// Common trait for obtaining `&Bits`
+///
+/// This trait exists to avoid blanket impl problems, and to give custom storage
+/// types a way to independently define other common traits
+pub trait AsBits {
+    fn as_bits(&self) -> &Bits;
+}
+
+impl<'a, T: AsBits> AsBits for &'a T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+impl<'a, T: AsBits> AsBits for &'a mut T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+/// Common trait for obtaining `&mut Bits`
+pub trait AsMutBits: AsBits {
+    fn as_mut_bits(&mut self) -> &mut Bits;
+}
+
+impl<'a, T: AsMutBits> AsMutBits for &'a mut T {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        <T as AsMutBits>::as_mut_bits(self)
+    }
+}
+
+impl AsBits for Bits {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self
+    }
+}
+
+// these seem to be required
+impl<'a> AsBits for &'a Bits {
+    fn as_bits(&self) -> &Bits {
+        self
+    }
+}
+
+impl<'a> AsBits for &'a mut Bits {
+    fn as_bits(&self) -> &Bits {
+        self
+    }
+}
+
+impl AsMutBits for Bits {
+    #[inline]
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsBits for InlAwi<BW, LEN> {
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsMutBits for InlAwi<BW, LEN> {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}

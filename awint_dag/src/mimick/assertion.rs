@@ -36,15 +36,15 @@ pub fn internal_assert(stringified: &str, assert_true: impl Into<dag::bool>, loc
 
 #[doc(hidden)]
 #[track_caller]
-pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(
+pub fn internal_assert_eq<AsRefBitsType: dag::AsBits>(
     lhs_stringified: &str,
     rhs_stringified: &str,
     lhs: AsRefBitsType,
     rhs: AsRefBitsType,
     location: Location,
 ) {
-    let lhs = lhs.as_ref();
-    let rhs = rhs.as_ref();
+    let lhs = lhs.as_bits();
+    let rhs = rhs.as_bits();
     if let dag::Some(eq) = lhs.const_eq(rhs) {
         if create_assertion(eq, location).is_none() {
             if let (Op::Literal(lhs_lit), Op::Literal(rhs_lit)) =
@@ -74,15 +74,15 @@ pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(
 
 #[doc(hidden)]
 #[track_caller]
-pub fn internal_assert_ne<AsRefBitsType: AsRef<dag::Bits>>(
+pub fn internal_assert_ne<AsRefBitsType: dag::AsBits>(
     lhs_stringified: &str,
     rhs_stringified: &str,
     lhs: AsRefBitsType,
     rhs: AsRefBitsType,
     location: Location,
 ) {
-    let lhs = lhs.as_ref();
-    let rhs = rhs.as_ref();
+    let lhs = lhs.as_bits();
+    let rhs = rhs.as_bits();
     if let dag::Some(ne) = lhs.const_ne(rhs) {
         if create_assertion(ne, location).is_none() {
             if let (Op::Literal(lhs_lit), Op::Literal(rhs_lit)) =
