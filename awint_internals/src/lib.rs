@@ -10,11 +10,7 @@
 //! `awint`.
 
 #![no_std]
-// TODO
-#![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts_mut))]
-#![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 // not const and tends to be longer
-#![allow(clippy::manual_range_contains)]
 #![allow(clippy::needless_range_loop)]
 
 // TODO when const traits are stabilized, try introducing the `BitsInternals`

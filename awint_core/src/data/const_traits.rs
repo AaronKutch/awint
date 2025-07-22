@@ -114,7 +114,6 @@ impl Eq for Bits {}
 /// types a way to independently define other common traits.
 #[const_trait]
 pub trait AsBits {
-    #[inline]
     fn as_bits(&self) -> &Bits;
 }
 
@@ -133,7 +132,6 @@ impl<'a, T: AsBits> AsBits for &'a mut T {
 /// Common trait for obtaining `&mut Bits`
 #[const_trait]
 pub trait AsMutBits: AsBits {
-    #[inline]
     fn as_mut_bits(&mut self) -> &mut Bits;
 }
 

@@ -186,7 +186,6 @@ fn macro_successes() {
     assert_eq!(sink0, result);
     assert_eq!(sink1, result);
 
-    // FIXME
     #[cfg(feature = "const_support")]
     {
         const A: &Bits = bits!(umax: ..32, 0xfedcba98_u32);

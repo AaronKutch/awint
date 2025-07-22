@@ -4,6 +4,7 @@
 ### Changes
 - Removed the `Index` and `IndexMut` implementations for the storage types
 - Generics that previously used `AsRef<Bits>` and `Borrow<Bits>`, etc have been rewritten to use `AsBits` and `AsMutBits`.
+- Removed some `const` impls, but when using `AsBits` and `AsMutBits` it is possible to use `awint` effectively on 1.90 nightly now. The stable MSRV is still 1.70.
 
 ### Additions
 - Added `AsBits` and `AsMutBits` traits, which have none of the technical issues that the standard traits have

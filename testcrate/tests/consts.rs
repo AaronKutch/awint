@@ -1,10 +1,6 @@
-// FIXME restore const configuration
 #![cfg(feature = "const_support")]
-#![feature(const_mut_refs)]
-#![feature(const_option)]
 #![feature(const_deref)]
 #![feature(const_trait_impl)]
-#![allow(clippy::reversed_empty_ranges)]
 
 use awint::{awint_internals::Digit, bw, cc, inlawi, inlawi_ty, AsBits, Bits, InlAwi};
 

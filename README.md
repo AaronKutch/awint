@@ -48,8 +48,9 @@ NOTE: As of Rust 1.70, if you try to use "const_support" with the macros you may
 ```
 to _all_ of the crate roots where you use the macros in `const` contexts.
 
-NOTE: As of some versions of Rust starting around 1.70, "const_support" is unfortunately broken on
-nightly (see https://github.com/AaronKutch/awint/issues/19).
+NOTE: "const_support" can require specific versions of nightly Rust (see https://github.com/AaronKutch/awint/issues/19).
+
+NOTE: Uses the Miri flags `-Zmiri-tree-borrows -Zmiri-strict-provenance`.
 
 ## Planned Features
 
