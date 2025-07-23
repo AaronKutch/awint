@@ -356,7 +356,7 @@
 //! // (only on nightly currently)
 //! #![feature(const_trait_impl)]
 //! #![feature(const_deref)]
-//! 
+//!
 //! use awint::awi::*;
 //! // `bits!` is mainly used to create single large `&'static Bits` constants,
 //! // but the source concatenation capability is there.
