@@ -8,6 +8,10 @@ quick:
   cargo fmt
   cargo clippy --all --all-targets {{ALL_FEATURES}} -- -D clippy::all
 
+# Needs an up-to-date version of `cargo install cargo-sort`
+fmt:
+  cargo sort -w
+
 check:
   cargo check
   cargo clippy --all --all-targets -- -D clippy::all

@@ -11,17 +11,6 @@ description = "Externally allocating `awint` functionality"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
-[dependencies]
-awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
-const_fn = "0.4"
-serde = { version = "1.0", default-features = false, optional = true }
-zeroize = { version = "1", default-features = false, optional = true }
-
-# for examples
-[dev-dependencies]
-awint = { path = "../awint" }
-ron = "0.8"
-
 [features]
 default = []
 # Turns on nightly features required for many functions to be marked `const`
@@ -35,3 +24,14 @@ u16_digits = ["awint_core/u16_digits"]
 u32_digits = ["awint_core/u32_digits"]
 u64_digits = ["awint_core/u64_digits"]
 u128_digits = ["awint_core/u128_digits"]
+
+[dependencies]
+awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
+const_fn = "0.4"
+serde = { version = "1.0", default-features = false, optional = true }
+zeroize = { version = "1", default-features = false, optional = true }
+
+# for examples
+[dev-dependencies]
+awint = { path = "../awint" }
+ron = "0.8"

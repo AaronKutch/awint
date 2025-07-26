@@ -8,6 +8,11 @@ readme = "README.md"
 repository = "https://github.com/AaronKutch/awint"
 description = "Internal macro utilities for the `awint` system of crates"
 
+[features]
+# Enables impls for debugging purposes. Also enables generation counters. Note: I did not name it
+# 'd', 'b', 'g' because I have to check that no debug macros are in the crates.
+debug = ["triple_arena_render"]
+
 [dependencies]
 awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false }
 proc-macro2 = "1.0"
@@ -19,8 +24,3 @@ triple_arena_render = { version = "0.14", optional = true }
 # for examples
 [dev-dependencies]
 awint = { path = "../awint" }
-
-[features]
-# Enables impls for debugging purposes. Also enables generation counters. Note: I did not name it
-# 'd', 'b', 'g' because I have to check that no debug macros are in the crates.
-debug = ["triple_arena_render"]

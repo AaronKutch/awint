@@ -11,19 +11,6 @@ description = "Core no-std and no-alloc `awint` functionality"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
-[dependencies]
-awint_internals = { version = "0.18.1", path = "../awint_internals", default-features = false }
-const_fn = "0.4"
-rand_core = { version = "0.9", default-features = false, optional = true }
-serde = { version = "1.0", default-features = false, optional = true }
-zeroize = { version = "1", default-features = false, optional = true }
-
-# for examples
-[dev-dependencies]
-awint = { path = "../awint" }
-rand_xoshiro = "0.7"
-ron = "0.8"
-
 [features]
 default = []
 # Turns on nightly features required for many functions to be marked `const`
@@ -39,3 +26,16 @@ u16_digits = ["awint_internals/u16_digits"]
 u32_digits = ["awint_internals/u32_digits"]
 u64_digits = ["awint_internals/u64_digits"]
 u128_digits = ["awint_internals/u128_digits"]
+
+[dependencies]
+awint_internals = { version = "0.18.1", path = "../awint_internals", default-features = false }
+const_fn = "0.4"
+rand_core = { version = "0.9", default-features = false, optional = true }
+serde = { version = "1.0", default-features = false, optional = true }
+zeroize = { version = "1", default-features = false, optional = true }
+
+# for examples
+[dev-dependencies]
+awint = { path = "../awint" }
+rand_xoshiro = "0.7"
+ron = "0.8"

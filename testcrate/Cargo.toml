@@ -4,9 +4,18 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
+[features]
+const_support = ["awint/const_support"]
+gen_counter_for_pstate = ["awint/gen_counter_for_pstate"]
+u32_for_pstate = ["awint/u32_for_pstate"]
+
 [dependencies]
 # the "debug" feature enabled here is a test for the flag and the generation counters it enables
 awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std"] }
+
+[build-dependencies]
+awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }
+rand_xoshiro = "0.7"
 
 [dev-dependencies]
 # enable all other features here so that building on stable works
@@ -14,12 +23,3 @@ awint = { path = "../awint", default-features = false, features = ["rand_support
 rand_xoshiro = "0.7"
 ron = "0.8"
 zeroize = { version = "1", default-features = false }
-
-[build-dependencies]
-awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }
-rand_xoshiro = "0.7"
-
-[features]
-const_support = ["awint/const_support"]
-gen_counter_for_pstate = ["awint/gen_counter_for_pstate"]
-u32_for_pstate = ["awint/u32_for_pstate"]

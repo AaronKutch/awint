@@ -13,13 +13,6 @@ description = "Arbitrary width integers"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
-[dependencies]
-awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
-awint_dag = { version = "0.18.1", path = "../awint_dag", default-features = false, optional = true }
-awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false, optional = true }
-awint_macro_internals = { version = "0.18.1", path = "../awint_macro_internals", default-features = false, optional = true }
-awint_macros = { version = "0.18.1", path = "../awint_macros" }
-
 # note: running the tests requires `--all-features`
 [features]
 default = ["try_support", "std"]
@@ -50,3 +43,10 @@ u128_digits = ["awint_core/u128_digits"]
 # forwarded to awint_dag
 gen_counter_for_pstate = ["awint_dag?/gen_counter_for_pstate"]
 u32_for_pstate = ["awint_dag?/u32_for_pstate"]
+
+[dependencies]
+awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
+awint_dag = { version = "0.18.1", path = "../awint_dag", default-features = false, optional = true }
+awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false, optional = true }
+awint_macro_internals = { version = "0.18.1", path = "../awint_macro_internals", default-features = false, optional = true }
+awint_macros = { version = "0.18.1", path = "../awint_macros" }
