@@ -931,7 +931,7 @@ impl AsMut<Bits> for Awi {
     }
 }
 /// Creates an `Awi` from anything implementing `AsBits`
-impl<B: AsBits> From<&B> for Awi {
+impl<B: AsBits + ?Sized> From<&B> for Awi {
     fn from(bits: &B) -> Awi {
         let bits = bits.as_bits();
         let mut tmp = Awi::zero(bits.nzbw());

@@ -375,7 +375,7 @@ impl AsMutBits for ExtAwi {
 }
 
 /// Creates an `ExtAwi` from anything implementing `AsBits`
-impl<B: AsBits> From<&B> for ExtAwi {
+impl<B: AsBits + ?Sized> From<&B> for ExtAwi {
     fn from(bits: &B) -> ExtAwi {
         let bits = bits.as_bits();
         let mut tmp = ExtAwi::zero(bits.nzbw());

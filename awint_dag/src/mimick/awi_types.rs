@@ -544,7 +544,7 @@ impl fmt::Debug for ExtAwi {
 
 forward_debug_fmt!(ExtAwi);
 
-impl<B: AsBits> From<&B> for ExtAwi {
+impl<B: AsBits + ?Sized> From<&B> for ExtAwi {
     fn from(bits: &B) -> ExtAwi {
         let bits = bits.as_bits();
         Self::from_state(bits.state())
@@ -908,7 +908,7 @@ impl fmt::Debug for Awi {
 
 forward_debug_fmt!(Awi);
 
-impl<B: AsBits> From<&B> for Awi {
+impl<B: AsBits + ?Sized> From<&B> for Awi {
     fn from(bits: &B) -> Awi {
         let bits = bits.as_bits();
         Self::from_state(bits.state())
