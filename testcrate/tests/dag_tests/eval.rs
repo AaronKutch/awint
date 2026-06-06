@@ -4,7 +4,7 @@ use std::num::NonZeroUsize;
 
 use awint::{
     awi,
-    awint_dag::{mimick, ConcatType, Lineage, Op},
+    awint_dag::{ConcatType, Lineage, Op},
     dag,
 };
 
@@ -48,8 +48,8 @@ fn dag_bits_functions_internal(
     s1: dag::usize,
     _epoch0: &Epoch,
 ) {
+    use awint::awint_dag::mimick::assert;
     use dag::*;
-    use mimick::assert;
     let [x0, x1, x2, x3, x4] = x;
 
     // TODO `mul_`, `neg_add_`, never add any `digit_` dependent functions

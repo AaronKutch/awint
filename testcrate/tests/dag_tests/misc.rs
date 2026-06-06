@@ -6,7 +6,7 @@ use awint::{
     dag, inlawi_ty,
 };
 
-use crate::dag_tests::test_epoch::{Epoch, LazyAwi, _test_callback};
+use crate::dag_tests::test_epoch::{_test_callback, Epoch, LazyAwi};
 
 #[test]
 fn dag_epochs() {

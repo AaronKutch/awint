@@ -5,7 +5,6 @@
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(inline_const)]
-#![feature(const_deref)]
 
 use awint::awi::*;
 

@@ -1,6 +1,6 @@
 #![allow(clippy::let_unit_value)]
 
-use awint::{awint_dag::mimick, dag};
+use awint::dag;
 
 use crate::dag_tests::test_epoch::Epoch;
 
@@ -8,8 +8,8 @@ use crate::dag_tests::test_epoch::Epoch;
 // currently assumes all operations succeed)
 #[test]
 fn dag_macros() {
+    use awint::awint_dag::mimick::{assert, assert_eq};
     use dag::*;
-    use mimick::{assert, assert_eq};
     let epoch0 = Epoch::new();
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);
