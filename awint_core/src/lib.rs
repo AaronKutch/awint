@@ -377,9 +377,8 @@ formatting the rest of this document
 //! with right shifts.
 
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
-#![cfg_attr(feature = "const_support", feature(const_deref))]
-#![cfg_attr(feature = "const_support", feature(const_from))]
 #![cfg_attr(feature = "const_support", feature(const_cmp))]
+#![cfg_attr(feature = "const_support", feature(const_convert))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]

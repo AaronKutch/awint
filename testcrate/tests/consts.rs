@@ -1,6 +1,6 @@
 #![cfg(feature = "const_support")]
-#![feature(const_deref)]
 #![feature(const_trait_impl)]
+#![feature(const_convert)]
 
 use awint::{awint_internals::Digit, bw, cc, inlawi, inlawi_ty, AsBits, Bits, InlAwi};
 

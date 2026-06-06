@@ -39,11 +39,11 @@ system depending on these feature flags:
 Note: By default, "std" and "try_support" is turned on, use `default-features = false` and select
 specific features to be more specific.
 
-NOTE: As of Rust 1.90, if you try to use "const_support" with the macros you may get errors unless
+NOTE: As of Rust 1.98-nightly, if you try to use "const_support" with the macros you may get errors unless
 you add
 ```
 #![feature(const_trait_impl)]
-#![feature(const_deref)]
+#![feature(const_convert)]
 ```
 to _all_ of the crate roots where you use the macros in `const` contexts. "const_support" can
 require specific versions of nightly Rust (see https://github.com/AaronKutch/awint/issues/19).

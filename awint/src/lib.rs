@@ -4,7 +4,6 @@
 //! `awint_dag`. There are also hidden developer reexports.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "const_support", feature(const_trait_impl))]
 
 #[doc(hidden)]
 pub use awint_core::awint_internals;

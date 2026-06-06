@@ -1,10 +1,12 @@
 // TODO
+#![cfg(feature = "const_support")]
 #![allow(renamed_and_removed_lints)]
 #![allow(stable_features)]
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(const_option)]
 #![feature(inline_const)]
+#![feature(const_convert)]
 
 use awint::awi::*;
 

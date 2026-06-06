@@ -112,8 +112,7 @@ impl Eq for Bits {}
 ///
 /// This trait exists to avoid blanket impl problems, and to give custom storage
 /// types a way to independently define other common traits.
-#[const_trait]
-pub trait AsBits {
+pub const trait AsBits {
     fn as_bits(&self) -> &Bits;
 }
 
@@ -130,8 +129,7 @@ impl<'a, T: AsBits> AsBits for &'a mut T {
 }
 
 /// Common trait for obtaining `&mut Bits`
-#[const_trait]
-pub trait AsMutBits: AsBits {
+pub const trait AsMutBits: AsBits {
     fn as_mut_bits(&mut self) -> &mut Bits;
 }
 
