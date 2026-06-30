@@ -4,6 +4,7 @@
 ### Crate
 - bumped MSRV to 1.85
 - `triple_arena` 0.15
+- `rand_core` 0.10
 
 ### Changes
 - Removed the `Index` and `IndexMut` implementations for the storage types

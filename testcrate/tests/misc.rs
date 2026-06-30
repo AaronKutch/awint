@@ -4,7 +4,7 @@ use awint::{
 };
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 
 /// [Bits::lut_] needs its own test because of its special requirements

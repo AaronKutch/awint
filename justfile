@@ -11,6 +11,7 @@ alias t := test
 alias r := run
 
 ALL_FEATURES := "--features=std,zeroize_support,rand_support,serde_support,dag,try_support,debug"
+STABLE_FEATURES := "--features=std,zeroize_support,rand_support,serde_support,dag,debug"
 
 quick:
   {{cargo}} fmt
@@ -30,6 +31,10 @@ check:
 test *ARGS:
   {{cargo}} nextest run {{ALL_FEATURES}} {{ARGS}}
 
+test_const *ARGS:
+  {{cargo}} nextest run {{ALL_FEATURES}},const_support {{ARGS}}
+  {{cargo}} t --doc {{ALL_FEATURES}},const_support {{ARGS}}
+
 test_all *ARGS:
   {{cargo}} sort -cw
   {{cargo}} doc --no-deps
@@ -38,8 +43,9 @@ test_all *ARGS:
 
 # Needs to be run with the MSRV toolchain
 test_for_msrv *ARGS:
-  {{cargo}} t {{ALL_FEATURES}} {{ARGS}}
-  {{cargo}} t --doc {{ALL_FEATURES}} {{ARGS}}
+  (cd ./no_alloc_test && {{cargo}} b --target=riscv32i-unknown-none-elf -p no_alloc_test)
+  {{cargo}} r --bin stable --no-default-features {{STABLE_FEATURES}}
+  {{cargo}} b --no-default-features {{STABLE_FEATURES}}
 
 bench *ARGS:
   {{cargo}} bench -p testcrate {{ARGS}}

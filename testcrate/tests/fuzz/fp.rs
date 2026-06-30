@@ -3,7 +3,7 @@ use std::{cmp::min, num::NonZeroUsize};
 use awint::{Awi, Bits, ExtAwi, FP, bw, cc};
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::fuzz_step;

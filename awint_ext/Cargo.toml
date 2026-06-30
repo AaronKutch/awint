@@ -34,4 +34,4 @@ zeroize = { version = "1", default-features = false, optional = true }
 # for examples
 [dev-dependencies]
 awint = { path = "../awint" }
-ron = "0.8"
+ron = "0.12"

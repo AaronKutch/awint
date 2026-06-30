@@ -22,7 +22,7 @@ use std::{
 use awint::awi::*;
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 
 // number of tests generated

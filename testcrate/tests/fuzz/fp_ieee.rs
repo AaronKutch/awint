@@ -9,7 +9,7 @@ use awint::{
 };
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::fp::num_eq;

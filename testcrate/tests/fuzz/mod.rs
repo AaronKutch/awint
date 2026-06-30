@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use awint::{Bits, awint_internals::Digit};
-use rand_xoshiro::{Xoshiro128StarStar, rand_core::RngCore};
+use rand_xoshiro::{Xoshiro128StarStar, rand_core::Rng};
 mod awi_struct;
 #[cfg(not(miri))]
 mod fp;

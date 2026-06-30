@@ -6,7 +6,7 @@ use std::num::NonZeroUsize;
 use awint::{ExtAwi, FP, bw};
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::fuzz_step;

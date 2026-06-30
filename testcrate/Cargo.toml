@@ -15,11 +15,11 @@ awint = { path = "../awint", default-features = false, features = ["rand_support
 
 [build-dependencies]
 awint = { path = "../awint", default-features = false, features = ["std", "rand_support"] }
-rand_xoshiro = "0.7"
+rand_xoshiro = "0.8"
 
 [dev-dependencies]
 # enable all other features here so that building on stable works
 awint = { path = "../awint", default-features = false, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std", "try_support"] }
-rand_xoshiro = "0.7"
-ron = "0.8"
+rand_xoshiro = "0.8"
+ron = "0.12"
 zeroize = { version = "1", default-features = false }

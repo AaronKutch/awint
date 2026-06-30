@@ -4,7 +4,7 @@ extern crate test;
 use awint::{Awi, Bits, ExtAwi, InlAwi, awi, cc, extawi, inlawi};
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 use test::Bencher;
 

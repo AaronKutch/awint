@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 # empty workspace array so that this compiles without affecting the main workspace
 
 [package]
@@ -13,6 +13,6 @@ publish = false
 
 [dependencies]
 awint = { path = "../awint", default-features = false, features = ["zeroize_support", "rand_support", "serde_support"] }
-panic-halt = "0.2"
-rand_xoshiro = "0.7"
+panic-halt = "1"
+rand_xoshiro = "0.8"
 riscv-minimal-rt = "0.5"

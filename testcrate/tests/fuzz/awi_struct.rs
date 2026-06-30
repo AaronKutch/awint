@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use awint::{AsBits, Awi, Bits, ExtAwi, bw};
 use rand_xoshiro::{
     Xoshiro128StarStar,
-    rand_core::{RngCore, SeedableRng},
+    rand_core::{Rng, SeedableRng},
 };
 
 const N: (u64, u64) = if cfg!(miri) {
