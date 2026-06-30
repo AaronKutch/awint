@@ -92,7 +92,7 @@ impl Bits {
         let duo_sig_dd = duo.get_double_digit(i);
         let div_sig_dd = div.get_double_digit(i);
         // Because `lz_diff < BITS`, the quotient will fit in one `Digit`
-        let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
+        let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0.0;
         // using `rem` as a temporary
         rem.copy_(div).unwrap();
         let uof = rem.digit_cin_mul_(0, small_quo);
@@ -158,10 +158,10 @@ impl Bits {
                     (div.first(), div.get_unchecked(1)),
                 );
                 // using `digit_` to make sure other digits are zeroed
-                quo.digit_(tmp.0 .0);
-                *quo.get_unchecked_mut(1) = tmp.0 .1;
-                rem.digit_(tmp.1 .0);
-                *rem.get_unchecked_mut(1) = tmp.1 .1;
+                quo.digit_(tmp.0.0);
+                *quo.get_unchecked_mut(1) = tmp.0.1;
+                rem.digit_(tmp.1.0);
+                *rem.get_unchecked_mut(1) = tmp.1.1;
             }
             return Some(());
         }
@@ -230,7 +230,7 @@ impl Bits {
                         )
                     }
                 };
-                let quo_part = dd_division(duo_sig_dd, div_sig_d_add1).0 .0;
+                let quo_part = dd_division(duo_sig_dd, div_sig_d_add1).0.0;
                 let extra_shl = duo_extra - div_extra;
                 let shl_bits = extra_u(extra_shl);
                 let shl_digits = digits_u(extra_shl);
@@ -303,7 +303,7 @@ impl Bits {
                 let duo_sig_dd = rem.get_double_digit(i);
                 let div_sig_dd = div.get_double_digit(i);
                 // Because `lz_diff < BITS`, the quotient will fit in one `Digit`
-                let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0 .0;
+                let mut small_quo = dd_division(duo_sig_dd, div_sig_dd).0.0;
                 // subtract `div*small_quo` from `rem` inplace
                 let mut mul_carry = 0;
                 let mut add_carry = 1;
@@ -350,7 +350,7 @@ impl Bits {
                         (rem.first(), rem.get_unchecked(1)),
                         (div.first(), div.get_unchecked(1)),
                     );
-                    let tmp0 = widen_add(quo.first(), tmp.0 .0, 0);
+                    let tmp0 = widen_add(quo.first(), tmp.0.0, 0);
 
                     *quo.first_mut() = tmp0.0;
                     // tmp.0.1 is zero, just handle the carry now
@@ -358,8 +358,8 @@ impl Bits {
                         subquo.inc_(tmp0.1 != 0);
                     });
                     // using `digit_` to make sure other digits are zeroed
-                    rem.digit_(tmp.1 .0);
-                    *rem.get_unchecked_mut(1) = tmp.1 .1;
+                    rem.digit_(tmp.1.0);
+                    *rem.get_unchecked_mut(1) = tmp.1.1;
                 }
                 return Some(());
             }

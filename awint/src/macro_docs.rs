@@ -155,12 +155,14 @@
 //! // for top level delimited groups, and if the last token tree in the
 //! // component is "[]" delimited it will treat that as a bit indexer. This
 //! // allows for almost every conceivable Rust expression being used:
-//! assert!(cc!([inlawi!(0u10); 4][3][(|| {
-//!     let _ = (4..5, 6..=7);
-//!     let _ = "'\".,;";
-//!     9
-//! })()])
-//! .is_some());
+//! assert!(
+//!     cc!([inlawi!(0u10); 4][3][(|| {
+//!         let _ = (4..5, 6..=7);
+//!         let _ = "'\".,;";
+//!         9
+//!     })()])
+//!     .is_some()
+//! );
 //! // The first `[inlawi!(0u10); 4]` is an array of 4 `InlAwi`s, the middle
 //! // `[3]` indexes the array of `InlAwi`s, and the rightmost "[]" delimited
 //! // group is interpreted as a single bit index. The parsing is able to

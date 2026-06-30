@@ -1,4 +1,4 @@
-use alloc::alloc::{alloc, alloc_zeroed, dealloc, Layout};
+use alloc::alloc::{Layout, alloc, alloc_zeroed, dealloc};
 use core::{
     borrow::{Borrow, BorrowMut},
     fmt,

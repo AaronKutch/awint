@@ -3,7 +3,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{data::inlawi::UsizeInlAwi, Bits, InlAwi};
+use crate::{Bits, InlAwi, data::inlawi::UsizeInlAwi};
 
 impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
     type Target = Bits;

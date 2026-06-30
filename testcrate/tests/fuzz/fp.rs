@@ -1,9 +1,9 @@
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint::{bw, cc, Awi, Bits, ExtAwi, FP};
+use awint::{Awi, Bits, ExtAwi, FP, bw, cc};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 use crate::fuzz::fuzz_step;

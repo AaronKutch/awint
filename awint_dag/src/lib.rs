@@ -53,12 +53,12 @@
 
 mod common;
 pub mod mimick;
-pub use awint_ext::awint_internals::{location, Location};
+pub use awint_ext::awint_internals::{Location, location};
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
 pub use common::{
-    epoch, ConcatFieldsType, ConcatType, DummyDefault, EAwi, EvalResult, Lineage, Op, PState,
+    ConcatFieldsType, ConcatType, DummyDefault, EAwi, EvalResult, Lineage, Op, PState, epoch,
 };
 // export needed by the macros
 #[doc(hidden)]

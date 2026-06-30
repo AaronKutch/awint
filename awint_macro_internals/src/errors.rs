@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fmt::Write, iter};
 
-use crate::{chars_to_string, Ast, Delimiter, PText, Text};
+use crate::{Ast, Delimiter, PText, Text, chars_to_string};
 
 /// Wrap `s` in ANSI delimiters for terminal colors.
 /// {90..=97} => {grey, red, green, yellow, blue, purple, cyan, white}

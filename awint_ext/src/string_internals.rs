@@ -4,8 +4,8 @@ use core::{cmp, num::NonZeroUsize, ops::DerefMut};
 use awint_core::{Bits, InlAwi};
 
 use crate::{
-    awint_internals::{SerdeError::*, *},
     Awi,
+    awint_internals::{SerdeError::*, *},
 };
 
 // Note: we are not making these free functions at least until some allocator

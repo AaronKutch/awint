@@ -4,11 +4,11 @@ use core::num::NonZeroUsize;
 use awint_core::{Bits, SerdeError};
 
 use crate::{
+    Awi,
     string_internals::{
         bits_to_string_radix, bits_to_vec_radix, internal_from_bytes_general,
         internal_from_bytes_radix, internal_from_str,
     },
-    Awi,
 };
 
 /// # non-`const` string representation conversion

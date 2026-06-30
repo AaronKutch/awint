@@ -1,10 +1,10 @@
 use core::cmp;
 use std::cmp::min;
 
-use awint::{bw, cc, Bits, ExtAwi, InlAwi};
+use awint::{Bits, ExtAwi, InlAwi, bw, cc};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 use crate::fuzz::{eq, fuzz_step, ne};

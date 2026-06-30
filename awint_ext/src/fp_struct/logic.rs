@@ -4,11 +4,11 @@ use core::{
     num::NonZeroUsize,
 };
 
-use awint_core::{awint_internals::Digit, AsBits, AsMutBits};
+use awint_core::{AsBits, AsMutBits, awint_internals::Digit};
 
 use crate::{
-    awint_internals::{bits_upper_bound, SerdeError, SerdeError::*},
     Awi, FP,
+    awint_internals::{SerdeError, SerdeError::*, bits_upper_bound},
 };
 
 // TODO there are variations of algorithms that can eliminate all the cases

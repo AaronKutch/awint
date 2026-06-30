@@ -2,7 +2,7 @@ use core::{num::NonZeroUsize, ptr::NonNull};
 
 use const_fn::const_fn;
 
-use crate::{Digit, BITS};
+use crate::{BITS, Digit};
 
 // Note: this crate cannot depend on `alloc`,
 // so the `layout` function is contained in `awint_extawi`

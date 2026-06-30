@@ -8,12 +8,12 @@ use std::{
 use awint::{
     awi,
     awint_internals::USIZE_BITS,
-    awint_macro_internals::triple_arena::{ptr_struct, Arena},
+    awint_macro_internals::triple_arena::{Arena, ptr_struct},
     dag,
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 use super::test_epoch::{Epoch, EvalAwi, LazyAwi};

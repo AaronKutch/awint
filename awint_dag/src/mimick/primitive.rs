@@ -1,9 +1,9 @@
 use std::{fmt, num::NonZeroUsize, ops::*};
 
-use awint_ext::{awi, awint_internals::*, Awi};
+use awint_ext::{Awi, awi, awint_internals::*};
 use awint_macro_internals::triple_arena::Ptr;
 
-use crate::{dag, mimick::InlAwi, Lineage, Op, PState};
+use crate::{Lineage, Op, PState, dag, mimick::InlAwi};
 
 macro_rules! unary {
     ($name:ident; $($std_trait:ident $std_fn:ident $assign_name:ident),*,) => {

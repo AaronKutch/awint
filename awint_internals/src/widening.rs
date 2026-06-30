@@ -1,4 +1,4 @@
-use crate::{Digit, BITS};
+use crate::{BITS, Digit};
 
 /// Computes x + y + z and returns the widened result as a tuple.
 #[inline]

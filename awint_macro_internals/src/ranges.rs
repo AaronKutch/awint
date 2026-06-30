@@ -1,6 +1,6 @@
 use awint_ext::Bits;
 
-use crate::{chars_to_string, usize_to_i128, Ast, CCMacroError, Delimiter, PText, Text};
+use crate::{Ast, CCMacroError, Delimiter, PText, Text, chars_to_string, usize_to_i128};
 
 /// Tries parsing as hexadecimal, octal, binary, and decimal
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {
@@ -30,11 +30,7 @@ pub fn i128_try_parse(s: &[char]) -> Option<i128> {
         chars_to_string(s).parse().ok()
     };
     if let Some(val) = val {
-        if neg {
-            val.checked_neg()
-        } else {
-            Some(val)
-        }
+        if neg { val.checked_neg() } else { Some(val) }
     } else {
         None
     }

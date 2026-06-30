@@ -1,11 +1,11 @@
 use std::{mem, num::NonZeroUsize, str::FromStr};
 
-use awint_ext::Awi;
 use ComponentType::*;
+use awint_ext::Awi;
 
 use crate::{
-    chars_to_string, i128_to_nonzerousize, parse_range, usize_to_i128, Ast, CCMacroError,
-    Delimiter, PBind, PText, PVal, PWidth, Text, Usbr,
+    Ast, CCMacroError, Delimiter, PBind, PText, PVal, PWidth, Text, Usbr, chars_to_string,
+    i128_to_nonzerousize, parse_range, usize_to_i128,
 };
 
 #[derive(Debug, Clone)]
@@ -237,7 +237,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                                          which returned SerdeError::{e:?}"
                                     ),
                                     mid_txt,
-                                ))
+                                ));
                             }
                         }
                     }

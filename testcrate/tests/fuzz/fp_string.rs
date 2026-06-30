@@ -3,10 +3,10 @@
 
 use std::num::NonZeroUsize;
 
-use awint::{bw, ExtAwi, FP};
+use awint::{ExtAwi, FP, bw};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 use crate::fuzz::fuzz_step;

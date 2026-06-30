@@ -1,10 +1,10 @@
 use awint::{
     awi::*,
-    awint_internals::{Digit, BITS, USIZE_BITS},
+    awint_internals::{BITS, Digit, USIZE_BITS},
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 /// [Bits::lut_] needs its own test because of its special requirements

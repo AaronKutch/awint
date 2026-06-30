@@ -4,8 +4,8 @@
 
 use std::num::NonZeroUsize;
 
-use awint_ext::{awint_internals::USIZE_BITS, Awi, Bits};
 use Op::*;
+use awint_ext::{Awi, Bits, awint_internals::USIZE_BITS};
 
 use crate::{DummyDefault, Op};
 
@@ -156,11 +156,7 @@ macro_rules! ceq_strict {
 // mainly for typechecking
 #[inline]
 fn cbool(x: &Bits) -> Option<bool> {
-    if x.bw() == 1 {
-        Some(x.to_bool())
-    } else {
-        None
-    }
+    if x.bw() == 1 { Some(x.to_bool()) } else { None }
 }
 
 macro_rules! cbool {
@@ -1025,11 +1021,7 @@ impl Op<EAwi> {
                         )
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             FieldTo([a, b, c, d]) => {
                 ceq_strict!(w, a.nzbw());
@@ -1077,11 +1069,7 @@ impl Op<EAwi> {
                         )
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             Field([a, b, c, d, e]) => {
                 ceq_strict!(w, a.nzbw());
@@ -1155,11 +1143,7 @@ impl Op<EAwi> {
                         );
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             FieldBit([a, b, c, d]) => {
                 ceq_strict!(w, a.nzbw());
@@ -1206,11 +1190,7 @@ impl Op<EAwi> {
                         );
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             ArbMulAdd([a, b, c]) => {
                 ceq_strict!(w, a.nzbw());

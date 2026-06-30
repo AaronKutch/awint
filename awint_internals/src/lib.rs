@@ -100,7 +100,7 @@ pub const USIZE_BITS: usize = usize::BITS as usize;
 pub mod awi {
     // everything except for `char`, `str`, `f32`, and `f64`
     pub use core::primitive::{
-        bool, i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize,
+        bool, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize,
     };
 
     pub use Option::{self, None, Some};

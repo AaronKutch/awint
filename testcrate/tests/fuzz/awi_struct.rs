@@ -1,9 +1,9 @@
 use std::num::NonZeroUsize;
 
-use awint::{bw, AsBits, Awi, Bits, ExtAwi};
+use awint::{AsBits, Awi, Bits, ExtAwi, bw};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 const N: (u64, u64) = if cfg!(miri) {

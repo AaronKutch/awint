@@ -6,7 +6,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use awint_core::{awint_internals::Digit, AsBits, AsMutBits, Bits};
+use awint_core::{AsBits, AsMutBits, Bits, awint_internals::Digit};
 
 use crate::Awi;
 

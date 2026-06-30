@@ -2,7 +2,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
 
-use awint::{awint_internals::Digit, bw, cc, inlawi, inlawi_ty, AsBits, Bits, InlAwi};
+use awint::{AsBits, Bits, InlAwi, awint_internals::Digit, bw, cc, inlawi, inlawi_ty};
 
 const fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (Digit::MAX << x.extra())) != 0 {

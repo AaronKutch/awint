@@ -2,12 +2,12 @@ use core::cmp;
 use std::cmp::Ordering;
 
 use awint::{
-    awint_internals::{Digit, BITS, USIZE_BITS},
     Bits, ExtAwi,
+    awint_internals::{BITS, Digit, USIZE_BITS},
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 
 use crate::fuzz::{eq, fuzz_step, ne};

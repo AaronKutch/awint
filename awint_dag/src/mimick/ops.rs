@@ -9,14 +9,13 @@
 
 use std::{cmp::min, marker::PhantomData, num::NonZeroUsize, ops::Range};
 
+use Op::*;
 use awint_ext::{awi, awint_internals::USIZE_BITS, bw};
 use smallvec::smallvec;
-use Op::*;
 
 use crate::{
-    dag,
+    ConcatFieldsType, ConcatType, Lineage, Op, dag,
     mimick::{Bits, InlAwi, None, Option, Some},
-    ConcatFieldsType, ConcatType, Lineage, Op,
 };
 
 // TODO there's no telling how long Try will be unstable
@@ -374,11 +373,7 @@ impl Bits {
     #[doc(hidden)]
     pub fn efficient_ule(s: dag::usize, max: usize) -> Option<()> {
         if let awi::Some(s) = s.state().try_get_as_usize() {
-            if s <= max {
-                Some(())
-            } else {
-                None
-            }
+            if s <= max { Some(()) } else { None }
         } else if max == 0 {
             let s_awi = dag::Awi::from_usize(s);
             let success = s_awi.is_zero();

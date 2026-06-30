@@ -7,11 +7,11 @@
 
 #[doc(hidden)]
 pub use awint_core::awint_internals;
-pub use awint_core::{bw, AsBits, AsMutBits, Bits, InlAwi, SerdeError};
+pub use awint_core::{AsBits, AsMutBits, Bits, InlAwi, SerdeError, bw};
 #[cfg(feature = "dag")]
 pub use awint_dag;
 #[cfg(feature = "alloc")]
-pub use awint_ext::{Awi, ExtAwi, FPType, OrdBits, FP};
+pub use awint_ext::{Awi, ExtAwi, FP, FPType, OrdBits};
 #[doc(hidden)]
 #[cfg(feature = "std")]
 pub use awint_macro_internals;
@@ -27,13 +27,13 @@ pub mod macro_docs;
 /// This is useful for glob importing everything or for when using the regular
 /// items in a context with structs imported from `awint_dag`.
 pub mod awi {
+    pub use Option::{None, Some};
+    pub use Result::{Err, Ok};
     #[cfg(not(feature = "alloc"))]
     pub use awint_core::awi::*;
     #[cfg(feature = "alloc")]
     pub use awint_ext::awi::*;
     pub use awint_macros::*;
-    pub use Option::{None, Some};
-    pub use Result::{Err, Ok};
 }
 
 /// Reexports all the mimicking versions of `awi` items
@@ -48,9 +48,9 @@ pub mod dag {
 
 /// Reexports items defined within the `awint` crate system
 pub mod prelude {
-    pub use awint_core::{bw, Bits, InlAwi};
+    pub use awint_core::{Bits, InlAwi, bw};
     #[cfg(feature = "alloc")]
-    pub use awint_ext::{Awi, ExtAwi, FPType, FP};
+    pub use awint_ext::{Awi, ExtAwi, FP, FPType};
     pub use awint_macros::*;
 }
 

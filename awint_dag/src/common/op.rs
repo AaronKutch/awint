@@ -1,8 +1,8 @@
 use std::{fmt::Debug, iter, mem, num::NonZeroUsize};
 
-use awint_ext::Awi;
-use smallvec::{smallvec, SmallVec};
 use Op::*;
+use awint_ext::Awi;
+use smallvec::{SmallVec, smallvec};
 
 use crate::DummyDefault;
 

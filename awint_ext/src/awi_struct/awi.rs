@@ -1,4 +1,4 @@
-use alloc::alloc::{alloc, alloc_zeroed, dealloc, realloc, Layout};
+use alloc::alloc::{Layout, alloc, alloc_zeroed, dealloc, realloc};
 use core::{
     borrow::{Borrow, BorrowMut},
     cmp::max,

@@ -28,21 +28,21 @@ mod fp_struct;
 mod serde;
 pub(crate) mod string_internals;
 pub use awi_struct::Awi;
-pub use awint_core::{bw, AsBits, AsMutBits, Bits, InlAwi, OrdBits, SerdeError};
+pub use awint_core::{AsBits, AsMutBits, Bits, InlAwi, OrdBits, SerdeError, bw};
 pub use extawi::ExtAwi;
-pub use fp_struct::{FPType, FP};
+pub use fp_struct::{FP, FPType};
 
 /// Subset of `awint::awi`
 pub mod awi {
-    pub use awint_core::awi::*;
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
+    pub use awint_core::awi::*;
 
-    pub use crate::{Awi, ExtAwi, FPType, FP};
+    pub use crate::{Awi, ExtAwi, FP, FPType};
 }
 
 /// Fixed point related items
 pub mod fp {
     pub use super::fp_struct::{F32, F64};
-    pub use crate::{FPType, FP};
+    pub use crate::{FP, FPType};
 }

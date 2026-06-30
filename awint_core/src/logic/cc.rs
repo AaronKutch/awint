@@ -32,11 +32,7 @@ impl<T> CCResult<T> {
 impl CCResult<()> {
     #[inline]
     pub const fn wrap_if_success(self) -> Option<()> {
-        if self.success {
-            Some(())
-        } else {
-            None
-        }
+        if self.success { Some(()) } else { None }
     }
 }
 

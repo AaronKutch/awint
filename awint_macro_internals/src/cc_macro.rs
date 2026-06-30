@@ -4,8 +4,8 @@ use awint_ext::Awi;
 use proc_macro2::TokenStream;
 
 use crate::{
-    cc_macro_code_gen, error_and_help, stage1, stage2, stage3, stage4, stage5, token_stream_to_ast,
-    CCMacroError, CodeGen, Names,
+    CCMacroError, CodeGen, Names, cc_macro_code_gen, error_and_help, stage1, stage2, stage3,
+    stage4, stage5, token_stream_to_ast,
 };
 
 /// Input parsing and code generation function for corresponding concatenations

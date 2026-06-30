@@ -3,8 +3,8 @@ use std::num::NonZeroUsize;
 use awint_ext::Awi;
 
 use crate::{
-    i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PCWidth,
-    PText, Usbr,
+    Ast, CCMacroError, Component, ComponentType::*, PCWidth, PText, Usbr, i128_to_nonzerousize,
+    i128_to_usize,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

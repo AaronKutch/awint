@@ -1,8 +1,8 @@
 use awint::{
-    awint_internals::{bits_upper_bound, chars_upper_bound, USIZE_BITS},
-    extawi, inlawi, AsBits, Bits, ExtAwi, InlAwi,
+    AsBits, Bits, ExtAwi, FP, InlAwi,
     SerdeError::*,
-    FP,
+    awint_internals::{USIZE_BITS, bits_upper_bound, chars_upper_bound},
+    extawi, inlawi,
 };
 
 #[test]

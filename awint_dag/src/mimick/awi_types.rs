@@ -9,14 +9,13 @@ use std::{
 
 use awint_ext::{
     awi,
-    awint_internals::{bw, forward_debug_fmt, RawStackBits, USIZE_BITS},
+    awint_internals::{RawStackBits, USIZE_BITS, bw, forward_debug_fmt},
 };
 use smallvec::smallvec;
 
 use crate::{
-    dag,
+    Lineage, Op, PState, dag,
     mimick::{AsBits, AsMutBits, Bits},
-    Lineage, Op, PState,
 };
 
 /// Mimicking [awint_ext::InlAwi]

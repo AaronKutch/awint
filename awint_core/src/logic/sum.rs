@@ -162,11 +162,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     #[must_use]
     pub const fn neg_add_(&mut self, neg: bool, rhs: &Self) -> Option<()> {
-        if neg {
-            self.sub_(rhs)
-        } else {
-            self.add_(rhs)
-        }
+        if neg { self.sub_(rhs) } else { self.add_(rhs) }
     }
 
     /// A general summation with carry-in `cin` and two inputs `lhs` and `rhs`.

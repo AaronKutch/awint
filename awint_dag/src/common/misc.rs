@@ -3,8 +3,9 @@ use std::num::NonZeroU32;
 use std::num::NonZeroUsize;
 
 use awint_ext::{
+    Awi,
     awint_internals::{Location, USIZE_BITS},
-    bw, Awi,
+    bw,
 };
 
 use crate::{

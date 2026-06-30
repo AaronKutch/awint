@@ -61,10 +61,10 @@
 
 use std::{fmt::Write, num::NonZeroUsize};
 
-use awint_ext::{awint_core::OrdBits, Awi};
+use awint_ext::{Awi, awint_core::OrdBits};
 use triple_arena::Ptr;
 
-use crate::{chars_to_string, Ast, Bind, CodeGen, ComponentType::*, Lower, Names};
+use crate::{Ast, Bind, CodeGen, ComponentType::*, Lower, Names, chars_to_string};
 
 /// Lowering of the parsed structs into Rust code.
 pub fn cc_macro_code_gen<

@@ -1,10 +1,10 @@
 #![feature(test)]
 
 extern crate test;
-use awint::{awi, cc, extawi, inlawi, Awi, Bits, ExtAwi, InlAwi};
+use awint::{Awi, Bits, ExtAwi, InlAwi, awi, cc, extawi, inlawi};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{RngCore, SeedableRng},
 };
 use test::Bencher;
 

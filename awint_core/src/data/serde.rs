@@ -2,10 +2,9 @@ use core::fmt;
 
 use awint_internals::*;
 use serde::{
-    de,
+    Deserialize, Deserializer, Serialize, Serializer, de,
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, SerializeTuple},
-    Deserialize, Deserializer, Serialize, Serializer,
 };
 
 use crate::InlAwi;
@@ -25,7 +24,7 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "InlAwi".
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// use ron::to_string;
     ///
     /// assert_eq!(
@@ -210,7 +209,7 @@ impl<'de, const BW: usize, const LEN: usize> Deserialize<'de> for InlAwi<BW, LEN
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "InlAwi".
-    /// use awint::{inlawi, inlawi_ty, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi, inlawi_ty};
     /// use ron::from_str;
     ///
     /// // note: you will probably have to specify the type with `inlawi_ty`

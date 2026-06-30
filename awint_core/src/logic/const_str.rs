@@ -1,8 +1,8 @@
 use core::fmt;
 
+use SerdeError::*;
 use awint_internals::*;
 use const_fn::const_fn;
-use SerdeError::*;
 
 use crate::Bits;
 

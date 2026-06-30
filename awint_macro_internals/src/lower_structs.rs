@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
-use awint_ext::{awint_core::OrdBits, Awi};
+use awint_ext::{Awi, awint_core::OrdBits};
 use triple_arena::{OrdArena, Ptr};
 
 use crate::{
-    chars_to_string, Ast, Component, ComponentType, Concatenation, FillerAlign, FnNames, Names,
-    PBind, PCWidth, PVal, PWidth, Usb,
+    Ast, Component, ComponentType, Concatenation, FillerAlign, FnNames, Names, PBind, PCWidth,
+    PVal, PWidth, Usb, chars_to_string,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -435,7 +435,7 @@ impl<'a> Lower<'a> {
                 );
             }
         } // else is a filler, keep shift changes however
-          // this runs for both fillers and nonfillers
+        // this runs for both fillers and nonfillers
         if !(msb_align || last_in_align) {
             // add to the shift amount afterwards
             if first_in_align {
@@ -569,7 +569,7 @@ impl<'a> Lower<'a> {
                     }
                 }
             } // else cases like `extawi!(umax: ..r)` or `extawi!(umax: ..;
-              // ..8)`
+            // ..8)`
         }
         s
     }

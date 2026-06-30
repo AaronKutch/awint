@@ -14,7 +14,7 @@ use std::{
 
 use awint_ext::awint_internals::Location;
 
-use crate::{dag, Op, PState};
+use crate::{Op, PState, dag};
 
 /// A set of callback functions called by the mimicking types as they are
 /// created and operated on.

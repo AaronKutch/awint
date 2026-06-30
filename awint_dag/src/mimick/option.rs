@@ -5,8 +5,8 @@ use std::{
     process::{ExitCode, Termination},
 };
 
-use awint_ext::{awi, awint_internals::Location};
 use StdOption::{None as StdNone, Some as StdSome};
+use awint_ext::{awi, awint_internals::Location};
 
 use crate::{dag, epoch::register_assertion_bit_for_current_epoch, mimick::*};
 

@@ -4,7 +4,7 @@ pub use core::stringify;
 
 use awint_ext::awint_internals::Location;
 
-use crate::{dag, epoch::register_assertion_bit_for_current_epoch, Lineage, Op};
+use crate::{Lineage, Op, dag, epoch::register_assertion_bit_for_current_epoch};
 
 /// Creates an assertion, returning `None` if eager evaluation can determine
 /// that it is false
@@ -12,11 +12,7 @@ pub fn create_assertion(assert_true: dag::bool, location: Location) -> Option<()
     let p_state = assert_true.state();
     if let Op::Literal(ref lit) = p_state.get_op() {
         assert_eq!(lit.bw(), 1);
-        if lit.to_bool() {
-            Some(())
-        } else {
-            None
-        }
+        if lit.to_bool() { Some(()) } else { None }
     } else {
         register_assertion_bit_for_current_epoch(assert_true, location);
         Some(())

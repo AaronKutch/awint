@@ -2,10 +2,9 @@ use core::fmt;
 
 use awint_core::bw;
 use serde::{
-    de,
+    Deserialize, Deserializer, Serialize, Serializer, de,
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, SerializeTuple},
-    Deserialize, Deserializer, Serialize, Serializer,
 };
 
 use crate::{Awi, ExtAwi};
@@ -21,7 +20,7 @@ impl Serialize for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
+    /// use awint::{Bits, ExtAwi, InlAwi, extawi, inlawi};
     /// use ron::to_string;
     ///
     /// assert_eq!(
@@ -59,7 +58,7 @@ impl Serialize for Awi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "Awi".
-    /// use awint::{awi, inlawi, Awi, Bits, InlAwi};
+    /// use awint::{Awi, Bits, InlAwi, awi, inlawi};
     /// use ron::to_string;
     ///
     /// assert_eq!(
@@ -208,7 +207,7 @@ impl<'de> Deserialize<'de> for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
+    /// use awint::{Bits, ExtAwi, InlAwi, extawi, inlawi};
     /// use ron::from_str;
     ///
     /// let x: ExtAwi = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
@@ -306,7 +305,7 @@ impl<'de> Deserialize<'de> for Awi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{awi, Awi, Bits, InlAwi};
+    /// use awint::{Awi, Bits, InlAwi, awi};
     /// use ron::from_str;
     ///
     /// let x: Awi = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();

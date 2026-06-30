@@ -1,7 +1,7 @@
 [package]
 name = "awint_macro_internals"
 version = "0.18.1"
-edition = "2021"
+edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -16,10 +16,10 @@ debug = ["triple_arena_render"]
 [dependencies]
 awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false }
 proc-macro2 = "1.0"
-#triple_arena = { path = "../../triple_arena/triple_arena" }
-triple_arena = "0.14"
-#triple_arena_render = { path = "../../triple_arena/triple_arena_render", optional = true }
-triple_arena_render = { version = "0.14", optional = true }
+triple_arena = { path = "../../triple_arena/triple_arena" }
+#triple_arena = "0.14"
+triple_arena_render = { path = "../../triple_arena/triple_arena_render", optional = true }
+#triple_arena_render = { version = "0.14", optional = true }
 
 # for examples
 [dev-dependencies]

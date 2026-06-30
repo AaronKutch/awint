@@ -13,17 +13,15 @@ use std::{
 };
 
 use awint::{
-    awi,
+    Awi, awi,
     awint_dag::{
-        dag,
+        EAwi, EvalResult, Lineage, Location, Op, PState, dag,
         epoch::{EpochCallback, EpochKey},
         triple_arena::Arena,
         triple_arena_render::{self, DebugNode, DebugNodeTrait},
-        EAwi, EvalResult, Lineage, Location, Op, PState,
     },
     bw,
     dag::AsBits,
-    Awi,
 };
 
 /// Represents a single state that `mimick::Bits` is in at one point in time.

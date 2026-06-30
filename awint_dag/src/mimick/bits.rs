@@ -7,9 +7,9 @@ use std::{
 };
 
 use crate::{
+    EvalResult, Lineage, Op, PState,
     common::EAwi,
     mimick::{Awi, ExtAwi, InlAwi},
-    EvalResult, Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
