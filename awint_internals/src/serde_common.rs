@@ -101,7 +101,7 @@ fn inv_lb_u16p15() {
 /// exhaustion.
 pub const fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError> {
     if radix < 2 || radix > 36 {
-        return Err(InvalidRadix)
+        return Err(InvalidRadix);
     }
 
     // For example, when the radix 10 string "123456789" is going to be converted to
@@ -119,7 +119,7 @@ pub const fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError
         // `len` should not be larger than `isize::MAX`.
         let estimate = (tmp >> 13).wrapping_add(1);
         if (estimate & (!((1u128 << (USIZE_BITS - 1)) - 1))) == 0 {
-            return Ok(estimate as usize)
+            return Ok(estimate as usize);
         }
     }
     Err(Overflow)
@@ -129,7 +129,7 @@ pub const fn bits_upper_bound(len: usize, radix: u8) -> Result<usize, SerdeError
 /// number of characters in the given `radix` needed to represent those bits.
 pub const fn chars_upper_bound(significant_bits: usize, radix: u8) -> Result<usize, SerdeError> {
     if radix < 2 || radix > 36 {
-        return Err(InvalidRadix)
+        return Err(InvalidRadix);
     }
 
     if let Some(tmp) = (INV_LB_I1F15[radix as usize] as u128)
@@ -138,7 +138,7 @@ pub const fn chars_upper_bound(significant_bits: usize, radix: u8) -> Result<usi
         let estimate = (tmp >> 15).wrapping_add(1);
         // check that it would fit within `isize::MAX`
         if (estimate & (!((1u128 << (USIZE_BITS - 1)) - 1))) == 0 {
-            return Ok(estimate as usize)
+            return Ok(estimate as usize);
         }
     }
     Err(Overflow)

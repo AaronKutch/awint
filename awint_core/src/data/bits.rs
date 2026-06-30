@@ -344,7 +344,7 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn clear_unused_bits(&mut self) {
         if self.extra() == 0 {
-            return // There are no unused bits
+            return; // There are no unused bits
         }
         *self.last_mut() &= MAX >> (BITS - self.extra());
     }

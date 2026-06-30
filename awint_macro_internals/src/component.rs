@@ -95,7 +95,7 @@ impl Component {
     pub fn has_full_range(&self) -> bool {
         if let Some(ref start) = self.range.start {
             if !start.is_guaranteed_zero() {
-                return false
+                return false;
             }
         }
         match self.c_type {
@@ -103,7 +103,7 @@ impl Component {
             Literal(ref lit) => {
                 if let Some(ref end) = self.range.end {
                     if !end.s.is_empty() || (end.x != usize_to_i128(lit.bw()).unwrap()) {
-                        return false
+                        return false;
                     }
                 }
                 true
@@ -181,12 +181,12 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                 return Err(CCMacroError::new(
                     "specified initialization is followed by empty component".to_owned(),
                     ast.cc[0].comps[comps_len - 1].mid_txt.unwrap(),
-                ))
+                ));
             }
             let init_p = ast.txt.insert(ast.txt[first_txt][..txt_i].to_vec());
             ast.txt[first_txt] = ast.txt[first_txt][(txt_i + 1)..].to_vec();
             ast.txt_init = Some(init_p);
-            break
+            break;
         }
         txt_i += 1;
     }
@@ -199,7 +199,7 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
                 return Err(CCMacroError::new(
                     "there is a range but no preceeding bits".to_owned(),
                     ast.cc[concat_i].comps[comp_i].txt,
-                ))
+                ));
             }
             if let Some(range_txt) = ast.cc[concat_i].comps[comp_i].range_txt {
                 match parse_range(ast, range_txt, true) {

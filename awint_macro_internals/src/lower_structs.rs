@@ -72,7 +72,7 @@ impl<'a> Lower<'a> {
             let var = txt[..(txt.len() - 5)].to_owned();
             if let Some(p) = self.binds.find_key(&Bind::Txt(var)) {
                 self.binds.get_val_mut(p).unwrap().0 = true;
-                return format!("{}({}_{})", self.fn_names.get_bw, self.names.bind, p.inx())
+                return format!("{}({}_{})", self.fn_names.get_bw, self.names.bind, p.inx());
             }
         }
         chars_to_string(txt)
@@ -107,7 +107,7 @@ impl<'a> Lower<'a> {
     /// internally pushes the upperbound-bitwidth check.
     pub fn lower_comp(&mut self, comp: &mut Component) -> Option<PWidth> {
         if comp.is_unbounded_filler() {
-            return None
+            return None;
         }
         // push width between the upper bound and bitwidth of variable, so that the
         // later reversal check will prevent the upper bound from being beyond the
@@ -221,7 +221,7 @@ impl<'a> Lower<'a> {
         ) {
             // always infallible except potentially with respect to 0 bitwidth return
             // situations which is handled elsewhere
-            return (true, "0;0".to_owned(), "0;0".to_owned())
+            return (true, "0;0".to_owned(), "0;0".to_owned());
         }
         let mut ge = String::new();
         let mut eq = String::new();
@@ -466,7 +466,7 @@ impl<'a> Lower<'a> {
     pub fn field_concat(&mut self, concat: &Concatenation, from_buf: bool) -> String {
         if (concat.comps.len() == 1) && concat.comps[0].has_full_range() {
             if matches!(&concat.comps[0].c_type, ComponentType::Filler) {
-                return String::new()
+                return String::new();
             }
             // use copy_
             let sink = concat.comps[0].bind.unwrap();
@@ -478,7 +478,7 @@ impl<'a> Lower<'a> {
                     self.names.bind,
                     sink.inx(),
                     self.names.awi_ref,
-                )
+                );
             } else {
                 self.binds.get_val_mut(sink).unwrap().0 = true;
                 return format!(
@@ -487,14 +487,14 @@ impl<'a> Lower<'a> {
                     self.names.awi_ref,
                     self.names.bind,
                     sink.inx(),
-                )
+                );
             }
         }
         let mut s = String::new();
         let mut lsb_i = 0;
         while lsb_i < concat.comps.len() {
             if concat.comps[lsb_i].width.is_none() {
-                break
+                break;
             }
             self.field_comp(
                 &mut s,
@@ -509,7 +509,7 @@ impl<'a> Lower<'a> {
         let mut msb_i = concat.comps.len() - 1;
         while msb_i > lsb_i {
             if concat.comps[msb_i].width.is_none() {
-                break
+                break;
             }
             self.field_comp(
                 &mut s,

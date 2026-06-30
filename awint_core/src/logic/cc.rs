@@ -129,9 +129,9 @@ impl Bits {
                     run_fielding: false,
                     success: true,
                     _phantom_data: PhantomData,
-                }
+                };
             } else {
-                return none
+                return none;
             }
         }
         CCResult {

@@ -108,7 +108,7 @@ impl<B: AsMutBits> FP<B> {
     pub fn checked_f32_(this: &mut Self, f: f32) -> Option<()> {
         let exponent = ((f.to_bits() >> 23) & ((1 << 8) - 1)) as u8;
         if exponent == u8::MAX {
-            return None
+            return None;
         }
         FP::f32_(this, f);
         Some(())
@@ -125,7 +125,7 @@ impl<B: AsMutBits> FP<B> {
     pub fn checked_f64_(this: &mut Self, f: f64) -> Option<()> {
         let exponent = ((f.to_bits() >> 52) & ((1 << 11) - 1)) as u16;
         if exponent == ((1 << 11) - 1) {
-            return None
+            return None;
         }
         FP::f64_(this, f);
         Some(())
@@ -137,7 +137,7 @@ impl<B: AsMutBits> FP<B> {
     /// significant numerical bit is 2^128 or greater), `None` is returned.
     pub fn try_to_f32(this: &mut Self) -> Option<f32> {
         if this.is_zero() {
-            return Some(0.0)
+            return Some(0.0);
         }
         let sign = this.is_negative();
         // note: reinterpret as unsigned
@@ -187,7 +187,7 @@ impl<B: AsMutBits> FP<B> {
     /// significant numerical bit is 2^1024 or greater), `None` is returned.
     pub fn try_to_f64(this: &mut Self) -> Option<f64> {
         if this.is_zero() {
-            return Some(0.0)
+            return Some(0.0);
         }
         let sign = this.is_negative();
         // note: reinterpret as unsigned

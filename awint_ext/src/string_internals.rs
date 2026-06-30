@@ -41,7 +41,7 @@ pub(crate) fn bits_to_vec_radix(
                 dst.pop();
             }
             dst.shrink_to_fit();
-            break
+            break;
         }
         if i == len.wrapping_sub(min_chars) {
             // terminate early to keep the minimum number of chars
@@ -52,7 +52,7 @@ pub(crate) fn bits_to_vec_radix(
                 dst.pop();
             }
             dst.shrink_to_fit();
-            break
+            break;
         }
         if (i + 1) == len {
             // all zeros
@@ -60,7 +60,7 @@ pub(crate) fn bits_to_vec_radix(
                 dst.pop();
             }
             dst.shrink_to_fit();
-            break
+            break;
         }
     }
     Ok(dst)
@@ -100,10 +100,10 @@ pub(crate) fn internal_from_bytes_radix(
 
     if sign.is_none() {
         if bits.zero_resize_(tmp) {
-            return Err(Overflow)
+            return Err(Overflow);
         }
     } else if bits.sign_resize_(tmp) {
-        return Err(Overflow)
+        return Err(Overflow);
     }
     Ok(())
 }
@@ -222,10 +222,10 @@ pub(crate) fn internal_from_bytes_general(
 
     if sign.is_none() {
         if bits.zero_resize_(quo) {
-            return Err(Overflow)
+            return Err(Overflow);
         }
     } else if bits.sign_resize_(quo) {
-        return Err(Overflow)
+        return Err(Overflow);
     }
     Ok(())
 }
@@ -273,7 +273,7 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
         for c in s {
             if *c != b'_' {
                 all_underscores = false;
-                break
+                break;
             }
         }
         all_underscores
@@ -281,24 +281,24 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
 
     let s = s.as_bytes();
     if s.is_empty() {
-        return Err(Empty)
+        return Err(Empty);
     }
 
     let mut i = 0;
     if s[i] == b'-' {
         if s.len() < 2 {
-            return Err(Empty)
+            return Err(Empty);
         }
         sign = Some(true);
         i += 1;
     }
     if (s[i] == b'u') || (s[i] == b'i') {
         // case that we want a better error for
-        return Err(EmptyInteger)
+        return Err(EmptyInteger);
     }
     // first char after a possible '-' should always be '0'-'9'
     if !((b'0' <= s[i]) && (s[i] <= b'9')) {
-        return Err(InvalidChar)
+        return Err(InvalidChar);
     }
 
     if (s[i] == b'0') && ((i + 1) < s.len()) {
@@ -324,7 +324,7 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
             let c = *c;
             if !((c == b'_') || (c == b'0') || (c == b'1')) {
                 binary_mode = false;
-                break
+                break;
             }
             if c != b'_' {
                 w += 1;
@@ -334,10 +334,10 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
             if let Some(w) = NonZeroUsize::new(w) {
                 let mut res = f(w);
                 internal_from_bytes_radix(&mut res, None, s, 2)?;
-                return Ok(res)
+                return Ok(res);
             } else {
                 // there was '_' only
-                return Err(EmptyInteger)
+                return Err(EmptyInteger);
             }
         }
     }
@@ -349,14 +349,14 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
     let mut exp_start = None;
     loop {
         if i >= s.len() {
-            break
+            break;
         }
         if !is_integral(s[i], radix) {
             if s[i] == b'.' {
                 fraction_start = Some(i + 1);
             } else if s[i] == b'u' {
                 if sign.is_some() {
-                    return Err(NegativeUnsigned)
+                    return Err(NegativeUnsigned);
                 }
                 sign = None;
             } else if s[i] == b'i' {
@@ -366,11 +366,11 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
             } else if (s[i] == b'e') || (s[i] == b'p') {
                 exp_start = Some(i + 1);
             } else {
-                return Err(InvalidChar)
+                return Err(InvalidChar);
             }
             integer = Some(&s[integer_start..i]);
             i += 1;
-            break
+            break;
         }
         i += 1;
     }
@@ -380,12 +380,12 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
     if let Some(fraction_start) = fraction_start {
         loop {
             if i >= s.len() {
-                break
+                break;
             }
             if !is_integral(s[i], radix) {
                 if s[i] == b'u' {
                     if sign.is_some() {
-                        return Err(NegativeUnsigned)
+                        return Err(NegativeUnsigned);
                     }
                     sign = None;
                 } else if s[i] == b'i' {
@@ -395,11 +395,11 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
                 } else if (s[i] == b'e') || (s[i] == b'p') {
                     exp_start = Some(i + 1);
                 } else {
-                    return Err(InvalidChar)
+                    return Err(InvalidChar);
                 }
                 fraction = Some(&s[fraction_start..i]);
                 i += 1;
-                break
+                break;
             }
             i += 1;
         }
@@ -409,20 +409,20 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
     if let Some(mut exp_start) = exp_start {
         loop {
             if i >= s.len() {
-                break
+                break;
             }
             if !is_integral(s[i], radix) {
                 if s[i] == b'-' {
                     if exp_negative {
-                        return Err(InvalidChar)
+                        return Err(InvalidChar);
                     }
                     exp_negative = true;
                     exp_start += 1;
                     i += 1;
-                    continue
+                    continue;
                 } else if s[i] == b'u' {
                     if sign.is_some() {
-                        return Err(NegativeUnsigned)
+                        return Err(NegativeUnsigned);
                     }
                     sign = None;
                 } else if s[i] == b'i' {
@@ -430,11 +430,11 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
                         sign = Some(false);
                     }
                 } else {
-                    return Err(InvalidChar)
+                    return Err(InvalidChar);
                 }
                 exp = Some(&s[exp_start..i]);
                 i += 1;
-                break
+                break;
             }
             i += 1;
         }
@@ -446,17 +446,17 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
     loop {
         if i >= s.len() {
             bitwidth = Some(&s[bitwidth_start..i]);
-            break
+            break;
         }
         if !is_integral(s[i], None) {
             if s[i] == b'f' {
                 fp_start = Some(i + 1);
             } else {
-                return Err(InvalidChar)
+                return Err(InvalidChar);
             }
             bitwidth = Some(&s[bitwidth_start..i]);
             i += 1;
-            break
+            break;
         }
         i += 1;
     }
@@ -466,19 +466,19 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
         loop {
             if i >= s.len() {
                 fp = Some(&s[fp_start..i]);
-                break
+                break;
             }
             if !is_integral(s[i], None) {
                 if s[i] == b'-' {
                     if fp_negative {
-                        return Err(InvalidChar)
+                        return Err(InvalidChar);
                     }
                     fp_negative = true;
                     fp_start += 1;
                     i += 1;
-                    continue
+                    continue;
                 } else {
-                    return Err(InvalidChar)
+                    return Err(InvalidChar);
                 }
             }
             i += 1;
@@ -488,7 +488,7 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
     let radix = radix.unwrap_or(10);
     if let Some(bitwidth) = bitwidth {
         if is_empty_or_all_underscores(bitwidth) {
-            return Err(EmptyBitwidth)
+            return Err(EmptyBitwidth);
         }
         let pad0 = &mut InlAwi::from_usize(0);
         let pad1 = &mut InlAwi::from_usize(0);
@@ -497,15 +497,15 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
         let w = if let Some(w) = NonZeroUsize::new(usize_awi.to_usize()) {
             w
         } else {
-            return Err(ZeroBitwidth)
+            return Err(ZeroBitwidth);
         };
         if let Some(integer) = integer {
             if is_empty_or_all_underscores(integer) {
-                return Err(EmptyInteger)
+                return Err(EmptyInteger);
             }
             let exp = if let Some(exp) = exp {
                 if is_empty_or_all_underscores(exp) {
-                    return Err(EmptyExponent)
+                    return Err(EmptyExponent);
                 }
                 usize_awi.bytes_radix_(Some(exp_negative), exp, radix, pad0, pad1)?;
                 usize_awi.to_isize()
@@ -514,7 +514,7 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
             };
             if let Some(fp) = fp {
                 if is_empty_or_all_underscores(fp) {
-                    return Err(EmptyFixedPoint)
+                    return Err(EmptyFixedPoint);
                 }
                 // fixed point mode
 
@@ -522,7 +522,7 @@ pub(crate) fn internal_from_str<O: DerefMut<Target = Bits>, F: FnMut(NonZeroUsiz
                 let fp = usize_awi.to_isize();
                 let fraction = if let Some(fraction) = fraction {
                     if is_empty_or_all_underscores(fraction) {
-                        return Err(EmptyFraction)
+                        return Err(EmptyFraction);
                     }
                     fraction
                 } else {

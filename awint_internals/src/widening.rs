@@ -186,16 +186,16 @@ pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
     // quotient is 0 or 1 branch
     if div_lz <= duo_lz {
         if ge_u256(duo, div) {
-            return (one_u256, sub_u256(duo, div))
+            return (one_u256, sub_u256(duo, div));
         } else {
-            return (zero_u256, duo)
+            return (zero_u256, duo);
         }
     }
 
     // smaller division branch
     if duo_lz >= n {
         let (quo, rem) = half_division(duo.0, div.0);
-        return ((quo, 0), (rem, 0))
+        return ((quo, 0), (rem, 0));
     }
 
     // short division branch
@@ -213,7 +213,7 @@ pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
         return (
             or_u256(or_u256((quo_0, 0), (quo_1 << 64, quo_1 >> 64)), (0, quo_hi)),
             (rem_1, 0),
-        )
+        );
     }
 
     let lz_diff = div_lz - duo_lz;
@@ -232,9 +232,9 @@ pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
         let (tmp_hi, overflow) = widening_mul_add_u128(quo, div_hi, carry);
         let tmp = (tmp_lo, tmp_hi);
         if (overflow != 0) || lt_u256(duo, tmp) {
-            return ((quo - 1, 0), sub_u256(add_u256(duo, div), tmp))
+            return ((quo - 1, 0), sub_u256(add_u256(duo, div), tmp));
         } else {
-            return ((quo, 0), sub_u256(duo, tmp))
+            return ((quo, 0), sub_u256(duo, tmp));
         }
     }
 
@@ -281,9 +281,9 @@ pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
                 return (
                     add_u256(quo, (quo_part - 1, 0)),
                     sub_u256(add_u256(duo, div), tmp),
-                )
+                );
             } else {
-                return (add_u256(quo, (quo_part, 0)), sub_u256(duo, tmp))
+                return (add_u256(quo, (quo_part, 0)), sub_u256(duo, tmp));
             }
         }
 
@@ -292,9 +292,9 @@ pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
         if div_lz <= duo_lz {
             // quotient can have 0 or 1 added to it
             if ge_u256(duo, div) {
-                return (add_u256(quo, one_u256), sub_u256(duo, div))
+                return (add_u256(quo, one_u256), sub_u256(duo, div));
             } else {
-                return (quo, duo)
+                return (quo, duo);
             }
         }
 
@@ -303,7 +303,7 @@ pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {
         if n <= duo_lz {
             // simple division and addition
             let tmp = half_division(duo.0, div.0);
-            return (add_u256(quo, (tmp.0, 0)), (tmp.1, 0))
+            return (add_u256(quo, (tmp.0, 0)), (tmp.1, 0));
         }
     }
 }

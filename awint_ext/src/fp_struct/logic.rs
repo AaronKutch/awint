@@ -85,10 +85,10 @@ impl<B: AsBits> FP<B> {
         max_ufp: usize,
     ) -> Result<(Vec<u8>, Vec<u8>), SerdeError> {
         if radix < 2 || radix > 36 {
-            return Err(InvalidRadix)
+            return Err(InvalidRadix);
         }
         if this.fp().unsigned_abs() > max_ufp {
-            return Err(Overflow)
+            return Err(Overflow);
         }
         // I was originally going to include b'-', but it causes insertion performance
         // problems here, and users have to remove it anyway in the usage cases where a
@@ -171,7 +171,7 @@ impl<B: AsBits> FP<B> {
                 if s[s.len().wrapping_sub(1)] == b'0' {
                     let _ = s.pop();
                 } else {
-                    break
+                    break;
                 }
             }
             s
@@ -238,7 +238,7 @@ impl<B: AsMutBits> FP<B> {
         let hi = min(lbb.1, rbb.1);
         if hi < lo {
             // does not overlap
-            return
+            return;
         }
         let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
         let diff = lbb.0.abs_diff(rbb.0);
@@ -269,7 +269,7 @@ impl<B: AsMutBits> FP<B> {
     pub fn outruncate_<C: AsBits>(this: &mut Self, rhs: &FP<C>) -> (bool, bool) {
         this.zero_();
         if rhs.is_zero() {
-            return (false, false)
+            return (false, false);
         }
         let lbb = FP::rel_sb(this);
         let rbb = FP::rel_sb(rhs);
@@ -279,7 +279,7 @@ impl<B: AsMutBits> FP<B> {
         let hi = min(lbb.1, rbb.1);
         if hi < lo {
             // does not overlap
-            return (true, true)
+            return (true, true);
         }
         let width = hi.wrapping_sub(lo).wrapping_add(1) as usize;
         let diff = lbb.0.abs_diff(rbb.0);
@@ -366,7 +366,7 @@ impl<B: AsMutBits> FP<B> {
                 // corner case: negative powers of two can be represented with one signed bit
                 if this.set_fp(rhs_exp.wrapping_neg()).is_none() {
                     rhs.neg_(b);
-                    return None
+                    return None;
                 }
                 this.umax_();
             } else {
@@ -375,7 +375,7 @@ impl<B: AsMutBits> FP<B> {
                     .is_none()
                 {
                     rhs.neg_(b);
-                    return None
+                    return None;
                 }
                 this.zero_();
                 this.field(to, rhs, from, width).unwrap();

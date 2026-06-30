@@ -11,7 +11,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn inc_(&mut self, cin: bool) -> bool {
         if !cin {
-            return false
+            return false;
         }
         unsafe_for_each_mut!(
             self,
@@ -49,7 +49,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn dec_(&mut self, cin: bool) -> bool {
         if cin {
-            return true
+            return true;
         }
         unsafe_for_each_mut!(
             self,
@@ -178,7 +178,7 @@ impl Bits {
     #[must_use]
     pub const fn cin_sum_(&mut self, cin: bool, lhs: &Self, rhs: &Self) -> Option<(bool, bool)> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
-            return None
+            return None;
         }
         let mut carry = cin as Digit;
         unsafe {

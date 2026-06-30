@@ -74,7 +74,7 @@ impl Concatenation {
                                  filler equivalent to its width instead"
                                     .to_owned(),
                             ),
-                        })
+                        });
                     }
                 }
                 Variable => {
@@ -92,7 +92,7 @@ impl Concatenation {
                                  no-ops"
                                     .to_owned(),
                                 concat_txt,
-                            ))
+                            ));
                         }
                         if !matches!(self.filler_alignment, FillerAlign::None) {
                             // filler already set
@@ -108,7 +108,7 @@ impl Concatenation {
                                      aligned, remove one or break apart the macro into more macros"
                                         .to_owned(),
                                 ),
-                            })
+                            });
                         }
                         if comp_i == 0 {
                             if concat_len == 1 {
@@ -139,7 +139,7 @@ impl Concatenation {
                          `awint` integer which would panic, else it is still a useless no-op"
                             .to_owned(),
                     ),
-                })
+                });
             }
         }
         Ok(())
@@ -230,7 +230,7 @@ pub fn stage4(
                              {concat_i} have unequal bitwidths {prev_bw} and {this_bw}"
                         ),
                         concat.txt,
-                    ))
+                    ));
                 }
             } else {
                 common_bw = Some(this_bw);
@@ -250,7 +250,7 @@ pub fn stage4(
                              function followed by a colon, such as \"zero: \" or \"umax: \""
                                 .to_owned(),
                         ),
-                    })
+                    });
                 }
             }
         }
@@ -269,7 +269,7 @@ pub fn stage4(
                     .to_owned(),
             ),
             ..Default::default()
-        })
+        });
     }
     if (!deterministic) && (ast.cc.len() == 1) {
         // this case shouldn't have a use
@@ -281,7 +281,7 @@ pub fn stage4(
                 "unbounded fillers have no effects if there is only one concatenation".to_owned(),
             ),
             ..Default::default()
-        })
+        });
     }
     if !deterministic {
         for concat in &ast.cc {
@@ -299,7 +299,7 @@ pub fn stage4(
                                  ..var ;\" that gives the macro needed information"
                                     .to_owned(),
                             ),
-                        })
+                        });
                     }
                 }
             }
@@ -328,7 +328,7 @@ pub fn stage4(
                                  ..var ;\" that gives the macro needed information"
                                     .to_owned(),
                             ),
-                        })
+                        });
                     }
                 }
             }

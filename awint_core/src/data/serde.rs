@@ -52,13 +52,13 @@ impl<const BW: usize, const LEN: usize> Serialize for InlAwi<BW, LEN> {
         for i in 0..upper {
             if buf[i] != b'0' {
                 lower = i;
-                break
+                break;
             }
             if (i + 1) == upper {
                 // all zeros, use one zero. `chars_upper_bound` always returns at least 1, so
                 // underflow is not possible.
                 lower = upper - 1;
-                break
+                break;
             }
         }
         let str_buf = core::str::from_utf8(&buf[lower..upper]).unwrap();
@@ -136,13 +136,13 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
             match key {
                 Field::Bw => {
                     if w.is_some() {
-                        return Err(de::Error::duplicate_field("bw"))
+                        return Err(de::Error::duplicate_field("bw"));
                     }
                     w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
-                        return Err(de::Error::duplicate_field("bits"))
+                        return Err(de::Error::duplicate_field("bits"));
                     }
                     bits = Some(map.next_value()?);
                 }
@@ -152,13 +152,13 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
         if w == 0 {
             // in case someone made `BW == 0` manually
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         if w != BW {
             return Err(de::Error::custom(
                 "`bw` field does not equal `BW` of `InlAwi<BW, LEN>` type this deserialization is \
                  happening on",
-            ))
+            ));
         }
         let mut val = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
@@ -166,7 +166,7 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -183,13 +183,13 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
         if w == 0 {
             // in case someone made `BW == 0` manually
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         if w != BW {
             return Err(de::Error::custom(
                 "`bw` field does not equal `BW` of `InlAwi<BW, LEN>` type this deserialization is \
                  happening on",
-            ))
+            ));
         }
         let mut val = InlAwi::<BW, LEN>::zero();
         let mut pad = InlAwi::<BW, LEN>::zero();
@@ -197,7 +197,7 @@ impl<'de, const BW: usize, const LEN: usize> Visitor<'de> for InlAwiVisitor<BW, 
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }

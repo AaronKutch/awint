@@ -34,7 +34,7 @@ impl Bits {
     #[must_use]
     pub const fn digit_udivide_inplace_(&mut self, div: Digit) -> Option<Digit> {
         if div == 0 {
-            return None
+            return None;
         }
         // Note: we cannot have a carry-in because the quotient could otherwise
         // overflow; `rem` needs to start as 0 and it would cause signature problems
@@ -57,7 +57,7 @@ impl Bits {
     #[must_use]
     pub const fn digit_udivide_(&mut self, duo: &Self, div: Digit) -> Option<Digit> {
         if div == 0 || self.bw() != duo.bw() {
-            return None
+            return None;
         }
         let mut rem = 0;
         const_for!(i in {0..self.total_digits()}.rev() {
@@ -118,7 +118,7 @@ impl Bits {
         div.assert_cleared_unused_bits();
         let w = quo.bw();
         if div.is_zero() || w != rem.bw() || w != duo.bw() || w != div.bw() {
-            return None
+            return None;
         }
         // This is a version of the "trifecta" division algorithm adapted for bigints.
         // See https://github.com/AaronKutch/specialized-div-rem for better documentation.
@@ -137,7 +137,7 @@ impl Bits {
                 quo.zero_();
                 rem.copy_(duo).unwrap();
             }
-            return Some(())
+            return Some(());
         }
 
         // small division branch
@@ -146,7 +146,7 @@ impl Bits {
             let tmp_div = div.to_digit();
             quo.digit_(tmp_duo.wrapping_div(tmp_div));
             rem.digit_(tmp_duo.wrapping_rem(tmp_div));
-            return Some(())
+            return Some(());
         }
 
         // double digit division branch. This is needed or else some branches below
@@ -163,7 +163,7 @@ impl Bits {
                 rem.digit_(tmp.1 .0);
                 *rem.get_unchecked_mut(1) = tmp.1 .1;
             }
-            return Some(())
+            return Some(());
         }
 
         // TODO optimize for `trailing_zeros`. This function needs optimization in
@@ -174,7 +174,7 @@ impl Bits {
         if w - div_lz <= BITS {
             let tmp = quo.digit_udivide_(duo, div.to_digit()).unwrap();
             rem.digit_(tmp);
-            return Some(())
+            return Some(());
         }
 
         // Two possibility division algorithm branch
@@ -187,7 +187,7 @@ impl Bits {
             unsafe {
                 Bits::two_possibility_algorithm(quo, rem, duo, div);
             }
-            return Some(())
+            return Some(());
         }
 
         // We make a slight deviation from the original trifecta algorithm: instead of
@@ -328,7 +328,7 @@ impl Bits {
                         subquo.inc_(tmp.1 != 0);
                     });
                 }
-                return Some(())
+                return Some(());
             }
 
             duo_lz = rem.lz();
@@ -339,7 +339,7 @@ impl Bits {
                     quo.inc_(true);
                     rem.sub_(div).unwrap();
                 }
-                return Some(())
+                return Some(());
             }
 
             // duo fits in two digits. Only possible if `div` fits into two digits, but it
@@ -361,7 +361,7 @@ impl Bits {
                     rem.digit_(tmp.1 .0);
                     *rem.get_unchecked_mut(1) = tmp.1 .1;
                 }
-                return Some(())
+                return Some(());
             }
         }
     }
@@ -380,7 +380,7 @@ impl Bits {
     ) -> Option<()> {
         let w = quo.bw();
         if div.is_zero() || w != rem.bw() || w != duo.bw() || w != div.bw() {
-            return None
+            return None;
         }
         let duo_msb = duo.msb();
         let div_msb = div.msb();

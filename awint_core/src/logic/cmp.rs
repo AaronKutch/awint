@@ -91,7 +91,7 @@ impl Bits {
     pub const fn is_zero(&self) -> bool {
         unsafe_for_each!(self, x, {
             if x != 0 {
-                return false
+                return false;
             }
         });
         true
@@ -150,7 +150,7 @@ impl Bits {
     #[must_use]
     pub const fn is_uone(&self) -> bool {
         if self.first() != 1 {
-            return false
+            return false;
         }
         unsafe_for_each!(self, x, {1..self.total_digits()} {
             if x != 0 {
@@ -325,9 +325,9 @@ impl Bits {
     pub const fn total_cmp(&self, rhs: &Self) -> Ordering {
         if self.bw() != rhs.bw() {
             if self.bw() < rhs.bw() {
-                return Ordering::Less
+                return Ordering::Less;
             } else {
-                return Ordering::Greater
+                return Ordering::Greater;
             }
         }
         unsafe {

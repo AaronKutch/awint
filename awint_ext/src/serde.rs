@@ -146,13 +146,13 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             match key {
                 Field::Bw => {
                     if w.is_some() {
-                        return Err(de::Error::duplicate_field("bw"))
+                        return Err(de::Error::duplicate_field("bw"));
                     }
                     w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
-                        return Err(de::Error::duplicate_field("bits"))
+                        return Err(de::Error::duplicate_field("bits"));
                     }
                     bits = Some(map.next_value()?);
                 }
@@ -161,7 +161,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
         let w = w.ok_or_else(|| de::Error::missing_field("bw"))?;
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = ExtAwi::zero(w);
@@ -170,7 +170,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -186,7 +186,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = ExtAwi::zero(w);
@@ -195,7 +195,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -244,13 +244,13 @@ impl<'de> Visitor<'de> for AwiVisitor {
             match key {
                 Field::Bw => {
                     if w.is_some() {
-                        return Err(de::Error::duplicate_field("bw"))
+                        return Err(de::Error::duplicate_field("bw"));
                     }
                     w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
-                        return Err(de::Error::duplicate_field("bits"))
+                        return Err(de::Error::duplicate_field("bits"));
                     }
                     bits = Some(map.next_value()?);
                 }
@@ -259,7 +259,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
         let w = w.ok_or_else(|| de::Error::missing_field("bw"))?;
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = Awi::zero(w);
@@ -268,7 +268,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -284,7 +284,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = Awi::zero(w);
@@ -293,7 +293,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }

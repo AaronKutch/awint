@@ -71,7 +71,7 @@ pub fn cc_macro<
             };
             return Err(error_and_help(&format!("input failed to tokenize: {e}{note}"),
                 "for further information see the library documentation of `awint_macros` \
-                https://docs.rs/awint_macros/"))
+                https://docs.rs/awint_macros/"));
         }
     };
 
@@ -88,7 +88,7 @@ pub fn cc_macro<
                         .to_owned(),
                     concat.txt,
                 )
-                .ast_error(&ast))
+                .ast_error(&ast));
             }
             trailing_semicolon = true;
         }
@@ -101,7 +101,7 @@ pub fn cc_macro<
                             .to_owned(),
                         comp.txt,
                     )
-                    .ast_error(&ast))
+                    .ast_error(&ast));
                 }
                 trailing_commas.push(concat_i);
             }
@@ -115,7 +115,7 @@ pub fn cc_macro<
     }
     if ast.cc.is_empty() {
         return Err(error_and_help("empty input", "for further information see the \
-        library documentation of `awint_macros` https://docs.rs/awint_macros/"))
+        library documentation of `awint_macros` https://docs.rs/awint_macros/"));
     }
     // Components are written like `component N, component N - 1`, I ultimately made
     // this decision so that literals next to each other would concatenate

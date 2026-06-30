@@ -80,7 +80,7 @@ impl Mem {
         if try_query && (!self.v[w].is_empty()) {
             let p = self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()];
             if self.get_awi(p).to_usize() < cap {
-                return p
+                return p;
             }
         }
         let nzbw = NonZeroUsize::new(w).unwrap();
@@ -286,15 +286,17 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let cout = m.next(1);
             let cin_a = m.get_awi(cin);
             let cin_b = m.get_dag(cin);
-            let out_a;
-            let out_b;
-            if (rng.next_u32() & 1) == 0 {
-                out_a = m.get_mut_awi(x).inc_(cin_a.to_bool());
-                out_b = m.get_mut_dag(x).inc_(cin_b.to_bool());
+            let (out_a, out_b) = if (rng.next_u32() & 1) == 0 {
+                (
+                    m.get_mut_awi(x).inc_(cin_a.to_bool()),
+                    m.get_mut_dag(x).inc_(cin_b.to_bool()),
+                )
             } else {
-                out_a = m.get_mut_awi(x).dec_(cin_a.to_bool());
-                out_b = m.get_mut_dag(x).dec_(cin_b.to_bool());
-            }
+                (
+                    m.get_mut_awi(x).dec_(cin_a.to_bool()),
+                    m.get_mut_dag(x).dec_(cin_b.to_bool()),
+                )
+            };
             m.get_mut_awi(cout).bool_(out_a);
             m.get_mut_dag(cout).bool_(out_b);
         }

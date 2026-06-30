@@ -59,7 +59,7 @@ impl Bits {
     #[must_use]
     pub const fn mul_add_(&mut self, lhs: &Self, rhs: &Self) -> Option<()> {
         if self.bw() != lhs.bw() || self.bw() != rhs.bw() {
-            return None
+            return None;
         }
         unsafe {
             const_for!(lhs_i in {0..self.total_digits()} {
@@ -86,7 +86,7 @@ impl Bits {
     #[must_use]
     pub const fn mul_(&mut self, rhs: &Self, pad: &mut Self) -> Option<()> {
         if self.bw() != rhs.bw() || self.bw() != pad.bw() {
-            return None
+            return None;
         }
         pad.zero_();
         unsafe {

@@ -129,7 +129,7 @@ fn ceq(x: NonZeroUsize, y: NonZeroUsize) -> bool {
 macro_rules! ceq {
     ($x:expr, $y:expr) => {
         if !ceq($x, $y) {
-            return EvalResult::Noop
+            return EvalResult::Noop;
         }
     };
 }
@@ -145,7 +145,7 @@ macro_rules! ceq_strict {
         #[cfg(debug_assertions)]
         {
             if !ceq($x, $y) {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
     };
@@ -170,7 +170,7 @@ macro_rules! cbool {
             if let Some(b) = cbool($expr) {
                 b
             } else {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
         #[cfg(not(debug_assertions))]
@@ -196,7 +196,7 @@ macro_rules! cusize {
             if let Some(b) = cusize(&$expr) {
                 b
             } else {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
         #[cfg(not(debug_assertions))]
@@ -211,7 +211,7 @@ macro_rules! cbool_w {
         #[cfg(debug_assertions)]
         {
             if $expr.get() != 1 {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
     }};
@@ -222,7 +222,7 @@ macro_rules! cusize_w {
         #[cfg(debug_assertions)]
         {
             if $expr.get() != USIZE_BITS {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
     }};
@@ -555,7 +555,7 @@ impl Op<EAwi> {
                             r.lut_(&lit, &test_inx).unwrap();
                             if let Some(ref common_eval) = common_eval {
                                 if *common_eval != r {
-                                    return Unevaluatable
+                                    return Unevaluatable;
                                 }
                             } else {
                                 common_eval = Some(r.clone());
@@ -600,7 +600,7 @@ impl Op<EAwi> {
                     }
                 }
                 if !res {
-                    return Noop
+                    return Noop;
                 }
                 // TODO some optimizing possible
                 awi2!(a, b, {
@@ -617,7 +617,7 @@ impl Op<EAwi> {
                     || ((1usize << b.bw()) != w.get())
                     || ((w.get() << 1) != a.bw())
                 {
-                    return Noop
+                    return Noop;
                 }
                 awi2!(a, b, {
                     let mut r = Awi::zero(w);
@@ -932,7 +932,7 @@ impl Op<EAwi> {
                     }
                 }
                 if !res {
-                    return Noop
+                    return Noop;
                 }
                 awi3!(a, b, c, {
                     a.lut_set(&b, &c).unwrap();

@@ -199,7 +199,7 @@ impl Epoch {
             for (i, layer) in stack.iter().enumerate().rev() {
                 if layer.key == self.key {
                     res = layer.assertions.clone();
-                    break
+                    break;
                 }
                 if i == 0 {
                     // shouldn't be reachable even with leaks
@@ -223,7 +223,7 @@ impl Epoch {
         for assertion in &self.assertions() {
             let eval = eval_thread_local_state(*assertion);
             if eval != Ok(Awi::from_bool(true)) {
-                return Err(format!("{assertion} {eval:?}"))
+                return Err(format!("{assertion} {eval:?}"));
             }
         }
         Ok(())
@@ -263,7 +263,7 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
                 // reached a root
                 path.pop().unwrap();
                 if path.is_empty() {
-                    break
+                    break;
                 }
                 path.last_mut().unwrap().0 += 1;
                 path.last_mut().unwrap().2 &= states[p].op.is_literal();
@@ -330,12 +330,12 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
                         Err(e) => {
                             states[p].err = Some(e.clone());
                             res = Some(Err(e));
-                            return
+                            return;
                         }
                     }
                 }
                 if path.is_empty() {
-                    break
+                    break;
                 }
                 path.last_mut().unwrap().2 &= all_literals;
             } else {

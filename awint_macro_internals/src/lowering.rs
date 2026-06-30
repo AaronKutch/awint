@@ -86,7 +86,7 @@ pub fn cc_macro_code_gen<
         if let Literal(ref lit) = comp.c_type {
             // constants have been normalized and combined by now
             if comp.range.static_range().is_some() {
-                return (code_gen.must_use)(&(code_gen.lit_construction_fn)(Awi::from_bits(lit)))
+                return (code_gen.must_use)(&(code_gen.lit_construction_fn)(Awi::from_bits(lit)));
             }
         }
     }
@@ -168,7 +168,7 @@ pub fn cc_macro_code_gen<
         let mut s = String::new();
         for concat in &ast.cc {
             if (concat.comps.len() == 1) && concat.comps[0].is_unbounded_filler() {
-                continue
+                continue;
             }
             if !s.is_empty() {
                 s += ",";

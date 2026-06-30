@@ -6,14 +6,14 @@ use crate::{chars_to_string, usize_to_i128, Ast, CCMacroError, Delimiter, PText,
 pub fn i128_try_parse(s: &[char]) -> Option<i128> {
     let mut s = s;
     if s.is_empty() {
-        return None
+        return None;
     }
     let mut neg = false;
     if s[0] == '-' {
         neg = true;
         s = &s[1..];
         if s.is_empty() {
-            return None
+            return None;
         }
     }
     let val = if (s.len() > 2) && (s[0] == '0') {
@@ -144,7 +144,7 @@ impl Usbr {
                     return Err(
                         "determined statically that this has a range with a negative bound"
                             .to_owned(),
-                    )
+                    );
                 }
             }
         }
@@ -154,32 +154,32 @@ impl Usbr {
                     return Err(
                         "determined statically that this has a range with a negative bound"
                             .to_owned(),
-                    )
+                    );
                 }
             }
         }
         if let Some((r0, r1)) = self.static_range() {
             if r0 > r1 {
-                return Err("determined statically that this has a reversed range".to_owned())
+                return Err("determined statically that this has a reversed range".to_owned());
             } else if r0 == r1 {
                 // this is required for literals that would take up a concatenation
                 return Err(
                     "determined statically that this has a zero bitwidth range, which is a \
                      useless no-op"
                         .to_owned(),
-                )
+                );
             }
         }
         // `static_width` does the equal string check
         if let Some(w) = self.static_width() {
             if w < 0 {
-                return Err("determined statically that this has a reversed range".to_owned())
+                return Err("determined statically that this has a reversed range".to_owned());
             } else if w == 0 {
                 return Err(
                     "determined statically that this has a zero bitwidth range, which is a \
                      useless no-op"
                         .to_owned(),
-                )
+                );
             }
         }
         Ok(())
@@ -200,7 +200,7 @@ impl Usbr {
                          the bitwidth of the literal ({})",
                         x,
                         bits.bw()
-                    ))
+                    ));
                 }
             }
         } else {
@@ -214,7 +214,7 @@ impl Usbr {
                          of the literal ({})",
                         x,
                         bits.bw()
-                    ))
+                    ));
                 }
             }
         } else {
@@ -227,7 +227,7 @@ impl Usbr {
                      the literal ({})",
                     w,
                     bits.bw()
-                ))
+                ));
             }
         }
         Ok(())
@@ -239,7 +239,7 @@ impl Usbr {
             if let Some(start) = start.static_val() {
                 if let Some(ref end) = self.end {
                     if let Some(end) = end.static_val() {
-                        return Some((start, end))
+                        return Some((start, end));
                     }
                 }
             }
@@ -252,7 +252,7 @@ impl Usbr {
         if let Some(ref start) = self.start {
             if let Some(ref end) = self.end {
                 if start.s == end.s {
-                    return end.x.checked_sub(start.x)
+                    return end.x.checked_sub(start.x);
                 }
             }
         }
@@ -266,7 +266,7 @@ impl Usbr {
                 // is a useless case anyway and prevents edge cases
                 return Err(
                     "a filler with a bounded start should also have a bounded end".to_owned(),
-                )
+                );
             }
         }
         Ok(())
@@ -303,7 +303,7 @@ pub fn parse_usb(ast: &Ast, usb_txt: PText) -> Result<Usb, CCMacroError> {
                 "wrap the bound in parenthesis like `({})`",
                 chars_to_string(&s)
             )),
-        })
+        });
     }
 
     let mut seen_plus = Vec::<usize>::new();
@@ -412,7 +412,7 @@ pub fn parse_range(
         return Err(Some(CCMacroError::new(
             "range is empty".to_owned(),
             range_txt,
-        )))
+        )));
     }
 
     // inclusive index of the first and exclusive index of the last char
@@ -438,7 +438,7 @@ pub fn parse_range(
                             // inclusive range
                             inclusive = true;
                             if range.is_some() {
-                                return double_err()
+                                return double_err();
                             }
                             range = Some((i - 2, i + 1));
                             dots = 0;
@@ -451,7 +451,7 @@ pub fn parse_range(
                                 "encountered top level deprecated \"...\" string in range"
                                     .to_owned(),
                                 range_txt,
-                            )))
+                            )));
                         }
                     } else {
                         next_dots = 0;
@@ -465,7 +465,7 @@ pub fn parse_range(
         if next_dots == 0 && dots == 2 {
             // exclusive range
             if range.is_some() {
-                return double_err()
+                return double_err();
             }
             range = Some((i - 2, i));
             dots = 0;
@@ -475,7 +475,7 @@ pub fn parse_range(
     }
     if dots == 2 {
         if range.is_some() {
-            return double_err()
+            return double_err();
         }
         // the range ended with ".."
         range = Some((range_len - 2, range_len));

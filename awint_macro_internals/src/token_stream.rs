@@ -51,7 +51,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     let trees = g.stream().into_iter().collect();
                     stack[last].0.pop_front().unwrap();
                     stack.push((trees, d));
-                    continue
+                    continue;
                 }
                 TokenTree::Ident(i) => {
                     s.extend(i.to_string().chars());
@@ -127,7 +127,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     .push(Text::Group(crate::Delimiter::Concatenation, concat));
                 let root = ast.txt.insert(ast_stack.pop().unwrap().0);
                 ast.txt_root = root;
-                break
+                break;
             }
             let (group, delimiter) = ast_stack.pop().unwrap();
             let txt = ast.txt.insert(group);

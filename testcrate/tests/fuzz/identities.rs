@@ -509,7 +509,7 @@ fn identities_inner(
 #[allow(dead_code)]
 fn fuzz_lengths(w: usize) -> Vec<usize> {
     if w < 4 {
-        return (0..w).collect()
+        return (0..w).collect();
     }
     let mut v = vec![0, 1];
     let mut x = 8;

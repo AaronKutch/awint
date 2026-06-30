@@ -425,12 +425,12 @@ impl Bits {
     pub fn efficient_add_then_ule(a: dag::usize, b: dag::usize, max: usize) -> Option<()> {
         if let awi::Some(a) = a.state().try_get_as_usize() {
             if a > max {
-                return None
+                return None;
             }
             Bits::efficient_ule(b, max - a)
         } else if let awi::Some(b) = b.state().try_get_as_usize() {
             if b > max {
-                return None
+                return None;
             }
             Bits::efficient_ule(a, max - b)
         } else if max == 0 {
@@ -508,7 +508,7 @@ impl Bits {
             }
         }
         if !res {
-            return None
+            return None;
         }
         if let awi::Some(lut) = lut.state().try_get_as_awi() {
             // optimization for meta lowering
@@ -1007,7 +1007,7 @@ impl Bits {
                         run_fielding: false,
                         success: ok_on_zero.into(),
                         _phantom_data: PhantomData,
-                    }
+                    };
                 }
             } else if !ok_on_zero {
                 b &= !cw.is_zero();

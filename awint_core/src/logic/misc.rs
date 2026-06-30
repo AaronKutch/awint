@@ -156,10 +156,10 @@ impl Bits {
             || (to > (self.bw() - width))
             || (from > (rhs.bw() - width))
         {
-            return None
+            return None;
         }
         if width == 0 {
-            return Some(())
+            return Some(());
         }
         // since we are dealing with three different sets of digit and subdigit shifts,
         // the only sane way to do this is to make a digit aligned copy
@@ -231,7 +231,7 @@ impl Bits {
                                 *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp;
                             }
                         }
-                        break
+                        break;
                     }
                     let tmp = rhs.get_digit(from);
                     // shift up into new field placements
@@ -263,10 +263,10 @@ impl Bits {
         // we do the comparisons in this order to make sure that the subtractions do not
         // overflow
         if (width > self.bw()) || (width > rhs.bw()) || (to > (self.bw() - width)) {
-            return None
+            return None;
         }
         if width == 0 {
-            return Some(())
+            return Some(());
         }
         unsafe {
             if (bw_digits != 0) && (to_bits == 0) {
@@ -318,7 +318,7 @@ impl Bits {
                                 *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp;
                             }
                         }
-                        break
+                        break;
                     }
                     let tmp = rhs.get_unchecked(i - to_digits);
                     // shift up into new field placements
@@ -349,10 +349,10 @@ impl Bits {
         // we do the comparisons in this order to make sure that the subtractions do not
         // overflow
         if (width > self.bw()) || (width > rhs.bw()) || (from > (rhs.bw() - width)) {
-            return None
+            return None;
         }
         if width == 0 {
-            return Some(())
+            return Some(());
         }
         unsafe {
             if (bw_digits != 0) && (from_bits == 0) {
@@ -392,7 +392,7 @@ impl Bits {
                             let mask = MAX << bw_bits;
                             *self.first_mut() = tmp | (self.first() & mask);
                         }
-                        break
+                        break;
                     }
                     *self.get_unchecked_mut(i) = rhs.get_digit(from);
                     i += 1;
@@ -408,7 +408,7 @@ impl Bits {
     #[must_use]
     pub const fn field_width(&mut self, rhs: &Self, width: usize) -> Option<()> {
         if (width > self.bw()) || (width > rhs.bw()) {
-            return None
+            return None;
         }
         let bw_digits = digits_u(width);
         let bw_bits = extra_u(width);
@@ -495,7 +495,7 @@ impl Bits {
                         }
                     }
                     self.clear_unused_bits();
-                    return Some(())
+                    return Some(());
                 }
             }
         }
@@ -579,7 +579,7 @@ impl Bits {
                                                 (self.get_unchecked(i + inx_digits) & mask) | tmp;
                                         }
                                     }
-                                    break
+                                    break;
                                 }
                                 let tmp = entry.get_unchecked(i);
                                 // shift up into new field placements
@@ -599,7 +599,7 @@ impl Bits {
                         }
                     }
                     self.clear_unused_bits();
-                    return Some(())
+                    return Some(());
                 }
             }
         }
@@ -641,7 +641,7 @@ impl Bits {
             let mut to = 0;
             loop {
                 if to > self.bw() {
-                    break
+                    break;
                 }
                 let min = if w < (self.bw() - to) {
                     w
@@ -657,7 +657,7 @@ impl Bits {
             let mut s = w;
             loop {
                 if s > (BITS / 2) {
-                    break
+                    break;
                 }
                 x |= x << s;
                 s <<= 1;
@@ -677,7 +677,7 @@ impl Bits {
                 let mut to = 0;
                 loop {
                     if to > self.bw() {
-                        break
+                        break;
                     }
                     self.digit_or_(x, to);
                     to += s;

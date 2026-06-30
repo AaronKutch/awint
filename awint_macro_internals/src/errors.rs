@@ -66,7 +66,7 @@ impl CCMacroError {
                             s += d.lhs_str();
                         }
                         stack.push((*p, 0));
-                        continue
+                        continue;
                     }
                     Text::Chars(chars) => {
                         extend(&mut color_line, &color_lvl, chars.len());
@@ -78,7 +78,7 @@ impl CCMacroError {
                 }
             } else {
                 if last == 0 {
-                    break
+                    break;
                 }
                 stack.pop();
                 let last = stack.len() - 1;

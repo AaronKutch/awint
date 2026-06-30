@@ -117,7 +117,7 @@ impl Ast {
                 }
             } else {
                 if last == 0 {
-                    break
+                    break;
                 }
                 stack.pop();
                 let last = stack.len() - 1;

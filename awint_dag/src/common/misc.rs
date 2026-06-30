@@ -71,7 +71,7 @@ impl PState {
     pub fn try_get_as_usize(&self) -> Option<usize> {
         if let Op::Literal(lit) = self.get_op() {
             if lit.bw() == USIZE_BITS {
-                return Some(lit.to_usize())
+                return Some(lit.to_usize());
             }
         }
         None

@@ -28,10 +28,10 @@ impl FPType {
     #[must_use]
     pub fn unique_min_fraction_digits(&self, radix: u8) -> Option<usize> {
         if radix < 2 {
-            return None
+            return None;
         }
         if self.fp <= 0 {
-            return Some(0)
+            return Some(0);
         }
         let mut test = Awi::uone(NonZeroUsize::new(self.fp.unsigned_abs()).unwrap());
         let mut digits = 0;
@@ -40,7 +40,7 @@ impl FPType {
             if test.digit_cin_mul_(0, radix as Digit) != 0 {
                 // as soon as overflow happens, that means
                 // `(((radix^digits) * 1 ULP) >> this.fp()) > 0`
-                break
+                break;
             }
         }
         Some(digits)

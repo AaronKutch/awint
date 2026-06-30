@@ -177,7 +177,7 @@ impl<'a> Concat<'a> {
     /// For setting the unbounded filler bits
     pub fn set_middle_filler_mask(&mut self) {
         if self.ls_shift == self.ms_shift {
-            return
+            return;
         }
         self.fill.range_or_(self.ls_shift..self.ms_shift).unwrap();
     }
