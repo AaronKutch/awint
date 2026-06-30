@@ -497,15 +497,15 @@ impl<'a> Awi {
         unsafe {
             self.internal_capacity_change(NonZeroUsize::new(new_cap).unwrap(), false);
         }
-        if let Some(old_digit) = old_digit {
-            if self._cap != 0 {
-                // we have changed to external
+        if let Some(old_digit) = old_digit
+            && self._cap != 0
+        {
+            // we have changed to external
 
-                // Safety: write the guaranteed first digit
-                unsafe {
-                    let ptr = self._inl_or_ext._ext as *mut Digit;
-                    ptr.write(old_digit);
-                }
+            // Safety: write the guaranteed first digit
+            unsafe {
+                let ptr = self._inl_or_ext._ext as *mut Digit;
+                ptr.write(old_digit);
             }
         }
     }
@@ -550,12 +550,12 @@ impl<'a> Awi {
         unsafe {
             self.internal_capacity_change(self._nzbw, false);
         }
-        if let Some(old_digit) = old_digit {
-            if self._cap == 0 {
-                // we have changed to internal
-                // Safety: we write to the internal digit
-                self._inl_or_ext._inl = old_digit;
-            }
+        if let Some(old_digit) = old_digit
+            && self._cap == 0
+        {
+            // we have changed to internal
+            // Safety: we write to the internal digit
+            self._inl_or_ext._inl = old_digit;
         }
         // we cannot change from internal to external
     }

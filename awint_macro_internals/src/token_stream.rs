@@ -56,13 +56,13 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                 TokenTree::Ident(i) => {
                     s.extend(i.to_string().chars());
                     let mut another_ident = false;
-                    if stack[last].0.len() > 1 {
-                        if let TokenTree::Ident(_) = stack[last].0[1] {
-                            // Special case to prevent things like "as usize" from getting squashed
-                            // together as "asusize".
-                            s.push(' ');
-                            another_ident = true;
-                        }
+                    if stack[last].0.len() > 1
+                        && let TokenTree::Ident(_) = stack[last].0[1]
+                    {
+                        // Special case to prevent things like "as usize" from getting squashed
+                        // together as "asusize".
+                        s.push(' ');
+                        another_ident = true;
                     }
                     if !another_ident {
                         ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));

@@ -491,12 +491,11 @@ impl Op<EAwi> {
                 // and bitwidth
                 let total_width = NonZeroUsize::new(total_width).unwrap();
                 let mut good = false;
-                if total_width.get() < USIZE_BITS {
-                    if let Some(lut_len) = (1usize << total_width.get()).checked_mul(w.get()) {
-                        if lut_len == lit.bw() {
-                            good = true;
-                        }
-                    }
+                if total_width.get() < USIZE_BITS
+                    && let Some(lut_len) = (1usize << total_width.get()).checked_mul(w.get())
+                    && lut_len == lit.bw()
+                {
+                    good = true;
                 }
                 if !good {
                     return Error("`StaticLut` with bad bitwidths");
@@ -588,12 +587,11 @@ impl Op<EAwi> {
             }
             Lut([a, b]) => {
                 let mut res = false;
-                if b.bw() < USIZE_BITS {
-                    if let Some(lut_len) = (1usize << b.bw()).checked_mul(w.get()) {
-                        if lut_len == a.bw() {
-                            res = true;
-                        }
-                    }
+                if b.bw() < USIZE_BITS
+                    && let Some(lut_len) = (1usize << b.bw()).checked_mul(w.get())
+                    && lut_len == a.bw()
+                {
+                    res = true;
                 }
                 if !res {
                     return Noop;
@@ -920,12 +918,11 @@ impl Op<EAwi> {
             LutSet([a, b, c]) => {
                 ceq_strict!(w, a.nzbw());
                 let mut res = false;
-                if c.bw() < USIZE_BITS {
-                    if let Some(lut_len) = (1usize << c.bw()).checked_mul(b.bw()) {
-                        if lut_len == a.bw() {
-                            res = w == a.nzbw();
-                        }
-                    }
+                if c.bw() < USIZE_BITS
+                    && let Some(lut_len) = (1usize << c.bw()).checked_mul(b.bw())
+                    && lut_len == a.bw()
+                {
+                    res = w == a.nzbw();
                 }
                 if !res {
                     return Noop;

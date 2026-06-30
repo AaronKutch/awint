@@ -120,19 +120,17 @@ impl<'a> Lower<'a> {
                 comp.start = Some(start_p_val);
             }
             let p_val = self.values.insert(Value::Usize(format!("{w}")), false).0;
-            if need_extra_check {
-                if let Some(ref end) = comp.range.end {
-                    // range end is not the same as variable end, need to check
-                    let end_p_val = self.lower_bound(end);
-                    let var_end_p_val = self
-                        .values
-                        .insert(Value::Bitwidth(comp.bind.unwrap()), false)
-                        .0;
-                    let _ = self
-                        .widths
-                        .insert(Width::Range(end_p_val, var_end_p_val), (true, false));
-                };
-            }
+            if need_extra_check && let Some(ref end) = comp.range.end {
+                // range end is not the same as variable end, need to check
+                let end_p_val = self.lower_bound(end);
+                let var_end_p_val = self
+                    .values
+                    .insert(Value::Bitwidth(comp.bind.unwrap()), false)
+                    .0;
+                let _ = self
+                    .widths
+                    .insert(Width::Range(end_p_val, var_end_p_val), (true, false));
+            };
             self.widths.insert(Width::Single(p_val), (false, false)).0
         } else {
             let end_p_val = if let Some(ref end) = comp.range.end {
@@ -190,17 +188,17 @@ impl<'a> Lower<'a> {
         let mut s0 = String::new();
         let mut s1 = String::new();
         for (_, width, used) in self.widths.iter() {
-            if used.0 {
-                if let Width::Range(lo, hi) = width {
-                    if !s0.is_empty() {
-                        s0 += ",";
-                        s1 += ",";
-                    }
-                    *self.values.get_val_mut(*lo).unwrap() = true;
-                    *self.values.get_val_mut(*hi).unwrap() = true;
-                    write!(s0, "{}_{}", self.names.value, lo.inx(),).unwrap();
-                    write!(s1, "{}_{}", self.names.value, hi.inx()).unwrap();
+            if used.0
+                && let Width::Range(lo, hi) = width
+            {
+                if !s0.is_empty() {
+                    s0 += ",";
+                    s1 += ",";
                 }
+                *self.values.get_val_mut(*lo).unwrap() = true;
+                *self.values.get_val_mut(*hi).unwrap() = true;
+                write!(s0, "{}_{}", self.names.value, lo.inx(),).unwrap();
+                write!(s1, "{}_{}", self.names.value, hi.inx()).unwrap();
             }
         }
         if s0.is_empty() {
@@ -226,30 +224,30 @@ impl<'a> Lower<'a> {
         let mut ge = String::new();
         let mut eq = String::new();
         for concat in &ast.cc {
-            if concat.static_width.is_none() {
-                if let Some(cw) = concat.cw {
-                    *self.cw.get_val_mut(cw).unwrap() = true;
-                    if concat.deterministic_width {
-                        let mut set_dynamic_width = false;
-                        if self.dynamic_width.is_none() {
-                            self.dynamic_width = Some(cw);
-                            set_dynamic_width = true;
-                        }
-                        // we can avoid comparing the same value against itself, however the second
-                        // condition handles cases like `inlawi!(a; ..64)` where the dynamic width
-                        // might not be equal to the static width we expect
-                        if (!set_dynamic_width) || ast.common_bw.is_some() {
-                            if !eq.is_empty() {
-                                eq += ",";
-                            }
-                            write!(eq, "{}_{}", self.names.cw, cw.inx()).unwrap();
-                        }
-                    } else {
-                        if !ge.is_empty() {
-                            ge += ",";
-                        }
-                        write!(ge, "{}_{}", self.names.cw, cw.inx()).unwrap();
+            if concat.static_width.is_none()
+                && let Some(cw) = concat.cw
+            {
+                *self.cw.get_val_mut(cw).unwrap() = true;
+                if concat.deterministic_width {
+                    let mut set_dynamic_width = false;
+                    if self.dynamic_width.is_none() {
+                        self.dynamic_width = Some(cw);
+                        set_dynamic_width = true;
                     }
+                    // we can avoid comparing the same value against itself, however the second
+                    // condition handles cases like `inlawi!(a; ..64)` where the dynamic width
+                    // might not be equal to the static width we expect
+                    if (!set_dynamic_width) || ast.common_bw.is_some() {
+                        if !eq.is_empty() {
+                            eq += ",";
+                        }
+                        write!(eq, "{}_{}", self.names.cw, cw.inx()).unwrap();
+                    }
+                } else {
+                    if !ge.is_empty() {
+                        ge += ",";
+                    }
+                    write!(ge, "{}_{}", self.names.cw, cw.inx()).unwrap();
                 }
             }
         }
@@ -344,10 +342,10 @@ impl<'a> Lower<'a> {
     ) {
         let width = comp.width.unwrap();
         let mut width1 = false;
-        if let Some(w) = comp.range.static_width() {
-            if w == 1 {
-                width1 = true;
-            }
+        if let Some(w) = comp.range.static_width()
+            && w == 1
+        {
+            width1 = true;
         }
         let width_s = format!("{}_{}", self.names.width, width.inx());
         if msb_align {

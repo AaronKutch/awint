@@ -83,11 +83,11 @@ impl CCMacroError {
                 stack.pop();
                 let last = stack.len() - 1;
                 let mut unset_color = false;
-                if let Some(prev_last) = color_lvl {
-                    if last == prev_last {
-                        use_color_line = true;
-                        unset_color = true;
-                    }
+                if let Some(prev_last) = color_lvl
+                    && last == prev_last
+                {
+                    use_color_line = true;
+                    unset_color = true;
                 }
                 match ast.txt[stack[last].0][stack[last].1] {
                     Text::Group(d, _) => match d {

@@ -495,12 +495,11 @@ impl Bits {
         let lhs_w = self.state_nzbw();
         let inx_w = inx.state_nzbw();
         let lut_w = lut.state_nzbw();
-        if inx_w.get() < USIZE_BITS {
-            if let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get()) {
-                if lut_len == lut_w.get() {
-                    res = true;
-                }
-            }
+        if inx_w.get() < USIZE_BITS
+            && let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get())
+            && lut_len == lut_w.get()
+        {
+            res = true;
         }
         if !res {
             return None;

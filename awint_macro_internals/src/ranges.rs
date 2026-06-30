@@ -65,14 +65,14 @@ impl Usb {
     /// `({+/-}{string/i128} {+/-} {+/-}{string/i128})`.
     /// Returns `true` if simplification happened
     pub fn simplify(&mut self) -> Result<(), String> {
-        if !self.s.is_empty() {
-            if let Some(x) = i128_try_parse(&self.s) {
-                self.s.clear();
-                self.x = self
-                    .x
-                    .checked_add(x)
-                    .ok_or_else(|| "i128 overflow".to_owned())?;
-            }
+        if !self.s.is_empty()
+            && let Some(x) = i128_try_parse(&self.s)
+        {
+            self.s.clear();
+            self.x = self
+                .x
+                .checked_add(x)
+                .ok_or_else(|| "i128 overflow".to_owned())?;
         }
         // note: we could determine now if the value is negative, but for better
         // error reporting I want it at the range level
@@ -133,26 +133,22 @@ impl Usbr {
         // to perform checks about the range sides being in bounds, but we can still
         // calculate static ranges.
 
-        if let Some(ref mut start) = self.start {
-            if let Some(val) = start.static_val() {
-                if val < 0 {
-                    // make it generic because the simplification can move things around
-                    return Err(
-                        "determined statically that this has a range with a negative bound"
-                            .to_owned(),
-                    );
-                }
-            }
+        if let Some(ref mut start) = self.start
+            && let Some(val) = start.static_val()
+            && val < 0
+        {
+            // make it generic because the simplification can move things around
+            return Err(
+                "determined statically that this has a range with a negative bound".to_owned(),
+            );
         }
-        if let Some(ref mut end) = self.end {
-            if let Some(val) = end.static_val() {
-                if val < 0 {
-                    return Err(
-                        "determined statically that this has a range with a negative bound"
-                            .to_owned(),
-                    );
-                }
-            }
+        if let Some(ref mut end) = self.end
+            && let Some(val) = end.static_val()
+            && val < 0
+        {
+            return Err(
+                "determined statically that this has a range with a negative bound".to_owned(),
+            );
         }
         if let Some((r0, r1)) = self.static_range() {
             if r0 > r1 {
@@ -189,81 +185,77 @@ impl Usbr {
     pub fn simplify_literal(&mut self, bits: &Bits) -> Result<(), String> {
         let bits_bw = usize_to_i128(bits.bw())?;
         if let Some(ref start) = self.start {
-            if let Some(x) = start.static_val() {
-                if x >= bits_bw {
-                    return Err(format!(
-                        "start of range ({}) statically determined to be greater than or equal to \
-                         the bitwidth of the literal ({})",
-                        x,
-                        bits.bw()
-                    ));
-                }
+            if let Some(x) = start.static_val()
+                && x >= bits_bw
+            {
+                return Err(format!(
+                    "start of range ({}) statically determined to be greater than or equal to the \
+                     bitwidth of the literal ({})",
+                    x,
+                    bits.bw()
+                ));
             }
         } else {
             self.start = Some(Usb::zero());
         }
         if let Some(ref end) = self.end {
-            if let Some(x) = end.static_val() {
-                if x > bits_bw {
-                    return Err(format!(
-                        "end of range ({}) statically determined to be greater than the bitwidth \
-                         of the literal ({})",
-                        x,
-                        bits.bw()
-                    ));
-                }
+            if let Some(x) = end.static_val()
+                && x > bits_bw
+            {
+                return Err(format!(
+                    "end of range ({}) statically determined to be greater than the bitwidth of \
+                     the literal ({})",
+                    x,
+                    bits.bw()
+                ));
             }
         } else {
             self.end = Some(Usb::val(bits_bw));
         }
-        if let Some(w) = self.static_width() {
-            if w > bits_bw {
-                return Err(format!(
-                    "width of range ({}) statically determined to be greater than the bitwidth of \
-                     the literal ({})",
-                    w,
-                    bits.bw()
-                ));
-            }
+        if let Some(w) = self.static_width()
+            && w > bits_bw
+        {
+            return Err(format!(
+                "width of range ({}) statically determined to be greater than the bitwidth of the \
+                 literal ({})",
+                w,
+                bits.bw()
+            ));
         }
         Ok(())
     }
 
     /// Returns if a static range was able to be determined
     pub fn static_range(&self) -> Option<(i128, i128)> {
-        if let Some(ref start) = self.start {
-            if let Some(start) = start.static_val() {
-                if let Some(ref end) = self.end {
-                    if let Some(end) = end.static_val() {
-                        return Some((start, end));
-                    }
-                }
-            }
+        if let Some(ref start) = self.start
+            && let Some(start) = start.static_val()
+            && let Some(ref end) = self.end
+            && let Some(end) = end.static_val()
+        {
+            return Some((start, end));
         }
         None
     }
 
     /// Returns if a static width was able to be determined
     pub fn static_width(&self) -> Option<i128> {
-        if let Some(ref start) = self.start {
-            if let Some(ref end) = self.end {
-                if start.s == end.s {
-                    return end.x.checked_sub(start.x);
-                }
-            }
+        if let Some(ref start) = self.start
+            && let Some(ref end) = self.end
+            && start.s == end.s
+        {
+            return end.x.checked_sub(start.x);
         }
         None
     }
 
     /// Returns an error if ranges are statically determined to be invalid
     pub fn simplify_filler(&mut self) -> Result<(), String> {
-        if let Some(ref start) = self.start {
-            if !start.is_guaranteed_zero() && self.end.is_none() {
-                // is a useless case anyway and prevents edge cases
-                return Err(
-                    "a filler with a bounded start should also have a bounded end".to_owned(),
-                );
-            }
+        if let Some(ref start) = self.start
+            && !start.is_guaranteed_zero()
+            && self.end.is_none()
+        {
+            // is a useless case anyway and prevents edge cases
+            return Err("a filler with a bounded start should also have a bounded end".to_owned());
         }
         Ok(())
     }
@@ -501,13 +493,11 @@ pub fn parse_range(
         } else {
             Some(parse_usb(ast, rhs_p)?)
         };
-        if inclusive {
-            if let Some(ref mut end) = end {
-                end.x = end
-                    .x
-                    .checked_add(1)
-                    .ok_or_else(|| CCMacroError::new("i128 overflow".to_owned(), rhs_p))?;
-            }
+        if inclusive && let Some(ref mut end) = end {
+            end.x = end
+                .x
+                .checked_add(1)
+                .ok_or_else(|| CCMacroError::new("i128 overflow".to_owned(), rhs_p))?;
         }
         Ok(Usbr {
             start: Some(start),

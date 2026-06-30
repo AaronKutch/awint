@@ -43,30 +43,30 @@ impl Component {
                 // note: `lit` here is a reference to a clone
                 self.range.simplify_literal(lit)?;
                 // static ranges on literals have been verified, attempt to truncate
-                if let Some(ref end) = self.range.end {
-                    if let Some(x) = end.static_val() {
-                        let mut tmp = Awi::zero(i128_to_nonzerousize(x)?);
-                        tmp.zero_resize_(lit);
-                        *lit = tmp;
-                    }
+                if let Some(ref end) = self.range.end
+                    && let Some(x) = end.static_val()
+                {
+                    let mut tmp = Awi::zero(i128_to_nonzerousize(x)?);
+                    tmp.zero_resize_(lit);
+                    *lit = tmp;
                 }
                 // Note: I only truncate the start when the end is a plain static value, because
                 // the subtraction from the end would introduce the possibility for an
                 // underflow, and we would need yet another layer to the checks in the code gen.
-                if let Some(ref end) = self.range.end {
-                    if end.static_val().is_some() {
-                        // attempt to truncate bits below the start
-                        if let Some(x) = self.range.start.clone().and_then(|x| x.static_val()) {
-                            if x > 0 {
-                                let nz_x = i128_to_nonzerousize(x)?;
-                                let w = lit.bw() - nz_x.get();
-                                let mut tmp = Awi::zero(NonZeroUsize::new(w).unwrap());
-                                tmp.field_from(lit, nz_x.get(), w).unwrap();
-                                *lit = tmp;
-                                self.range.start.as_mut().unwrap().x = 0;
-                                self.range.end.as_mut().unwrap().x -= x;
-                            }
-                        }
+                if let Some(ref end) = self.range.end
+                    && end.static_val().is_some()
+                {
+                    // attempt to truncate bits below the start
+                    if let Some(x) = self.range.start.clone().and_then(|x| x.static_val())
+                        && x > 0
+                    {
+                        let nz_x = i128_to_nonzerousize(x)?;
+                        let w = lit.bw() - nz_x.get();
+                        let mut tmp = Awi::zero(NonZeroUsize::new(w).unwrap());
+                        tmp.field_from(lit, nz_x.get(), w).unwrap();
+                        *lit = tmp;
+                        self.range.start.as_mut().unwrap().x = 0;
+                        self.range.end.as_mut().unwrap().x -= x;
                     }
                 }
                 self.c_type = Literal(lit.clone());
@@ -93,18 +93,18 @@ impl Component {
     /// Returns if the range on this component is "full". Unbounded fillers
     /// return false.
     pub fn has_full_range(&self) -> bool {
-        if let Some(ref start) = self.range.start {
-            if !start.is_guaranteed_zero() {
-                return false;
-            }
+        if let Some(ref start) = self.range.start
+            && !start.is_guaranteed_zero()
+        {
+            return false;
         }
         match self.c_type {
             Unparsed => unreachable!(),
             Literal(ref lit) => {
-                if let Some(ref end) = self.range.end {
-                    if !end.s.is_empty() || (end.x != usize_to_i128(lit.bw()).unwrap()) {
-                        return false;
-                    }
+                if let Some(ref end) = self.range.end
+                    && (!end.s.is_empty() || (end.x != usize_to_i128(lit.bw()).unwrap()))
+                {
+                    return false;
                 }
                 true
             }
@@ -131,12 +131,12 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
             let len = ast.txt[comp_txt].len();
             let mut has_range = false;
             // get top level last group
-            if let Text::Group(ref mut d, p) = ast.txt[comp_txt][len - 1] {
-                if let Delimiter::Bracket = d {
-                    *d = Delimiter::RangeBracket;
-                    ast.cc[concat_i].comps[comp_i].range_txt = Some(p);
-                    has_range = true;
-                }
+            if let Text::Group(ref mut d, p) = ast.txt[comp_txt][len - 1]
+                && let Delimiter::Bracket = d
+            {
+                *d = Delimiter::RangeBracket;
+                ast.cc[concat_i].comps[comp_i].range_txt = Some(p);
+                has_range = true;
             }
             let range_txt = if has_range {
                 Some(ast.txt[comp_txt].pop().unwrap())
@@ -161,18 +161,19 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
     let mut txt_i = 0;
     while txt_i < len {
         let mut is_single_colon = false;
-        if let Text::Chars(ref s) = ast.txt[first_txt][txt_i] {
-            if (s.len() == 1) && (s[0] == ':') {
-                is_single_colon = true;
-                if (txt_i + 1) < len {
-                    if let Text::Chars(ref s2) = ast.txt[first_txt][txt_i + 1] {
-                        if (s2.len() == 1) && (s2[0] == ':') {
-                            // skip "::" separators
-                            txt_i += 1;
-                            is_single_colon = false;
-                        }
-                    }
-                }
+        if let Text::Chars(ref s) = ast.txt[first_txt][txt_i]
+            && (s.len() == 1)
+            && (s[0] == ':')
+        {
+            is_single_colon = true;
+            if (txt_i + 1) < len
+                && let Text::Chars(ref s2) = ast.txt[first_txt][txt_i + 1]
+                && (s2.len() == 1)
+                && (s2[0] == ':')
+            {
+                // skip "::" separators
+                txt_i += 1;
+                is_single_colon = false;
             }
         }
         if is_single_colon {
@@ -220,25 +221,25 @@ pub fn stage1(ast: &mut Ast) -> Result<(), CCMacroError> {
             }
             if let Unparsed = ast.cc[concat_i].comps[comp_i].c_type {
                 let mut needs_parsing = true;
-                if let Text::Chars(ref s) = ast.txt[mid_txt][0] {
-                    if matches!(s[0], '-' | '0'..='9') {
-                        let mut s = vec![];
-                        ast.chars_assign_subtree(&mut s, mid_txt);
-                        let s = chars_to_string(&s);
-                        match Awi::from_str(&s) {
-                            Ok(awi) => {
-                                ast.cc[concat_i].comps[comp_i].c_type = Literal(awi);
-                                needs_parsing = false;
-                            }
-                            Err(e) => {
-                                return Err(CCMacroError::new(
-                                    format!(
-                                        "was parsed with `<Awi as FromStr>::from_str(\"{s}\")` \
-                                         which returned SerdeError::{e:?}"
-                                    ),
-                                    mid_txt,
-                                ));
-                            }
+                if let Text::Chars(ref s) = ast.txt[mid_txt][0]
+                    && matches!(s[0], '-' | '0'..='9')
+                {
+                    let mut s = vec![];
+                    ast.chars_assign_subtree(&mut s, mid_txt);
+                    let s = chars_to_string(&s);
+                    match Awi::from_str(&s) {
+                        Ok(awi) => {
+                            ast.cc[concat_i].comps[comp_i].c_type = Literal(awi);
+                            needs_parsing = false;
+                        }
+                        Err(e) => {
+                            return Err(CCMacroError::new(
+                                format!(
+                                    "was parsed with `<Awi as FromStr>::from_str(\"{s}\")` which \
+                                     returned SerdeError::{e:?}"
+                                ),
+                                mid_txt,
+                            ));
                         }
                     }
                 }
