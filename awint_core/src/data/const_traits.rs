@@ -59,14 +59,14 @@ const impl From<bool> for InlAwi<1, { Bits::unstable_raw_digits(1) }> {
 macro_rules! inlawi_from {
     ($($w:expr, $u:ident $from_u:ident $i:ident $from_i:ident);*;) => {
         $(
-            impl const From<$u> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+            const impl From<$u> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 fn from(x: $u) -> Self {
                     Self::$from_u(x)
                 }
             }
 
-            impl const From<$i> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+            const impl From<$i> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 fn from(x: $i) -> Self {
                     Self::$from_i(x)
