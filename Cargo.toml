@@ -8,9 +8,9 @@ members = [
     "awint_internals",
     "awint_macro_internals",
     "awint_macros",
-    "testcrate",
     # note: this must be a separate workspace
     #"no_alloc_test",
+    "testcrate",
 ]
 
 [patch.crates-io]
