@@ -2,8 +2,8 @@
 
 extern crate proc_macro;
 use awint_macro_internals::{
-    awint_macro_bits, awint_macro_cc, awint_macro_extawi, awint_macro_inlawi,
-    unstable_native_inlawi_ty, awint_macro_awi,
+    awint_macro_awi, awint_macro_bits, awint_macro_cc, awint_macro_extawi, awint_macro_inlawi,
+    unstable_native_inlawi_ty,
 };
 use proc_macro::TokenStream;
 
@@ -27,8 +27,8 @@ pub fn inlawi_ty(input: TokenStream) -> TokenStream {
 // C4D
 /// Copy Corresponding Concatenations of Components Dynamically.
 ///
-/// Takes concatenations of components as an input, and copies bits of the source to
-/// corresponding bits of the sinks. Returns `()` if the operation is
+/// Takes concatenations of components as an input, and copies bits of the
+/// source to corresponding bits of the sinks. Returns `()` if the operation is
 /// infallible, otherwise returns `Option<()>`. Returns `None` if component
 /// indexes are out of bounds or if concatenation bitwidths mismatch. Performs
 /// allocation in general, but will try to avoid allocation if the common
@@ -43,7 +43,8 @@ pub fn cc(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an [InlAwi](awint_macro_internals::awint_core::InlAwi). See `awint::macro_docs` for more.
+/// construct an [InlAwi](awint_macro_internals::awint_core::InlAwi). See
+/// `awint::macro_docs` for more.
 #[proc_macro]
 pub fn inlawi(input: TokenStream) -> TokenStream {
     match awint_macro_inlawi(&input.to_string()) {
@@ -53,7 +54,8 @@ pub fn inlawi(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an [ExtAwi](awint_macro_internals::awint_ext::ExtAwi). See `awint::macro_docs` for more.
+/// construct an [ExtAwi](awint_macro_internals::awint_ext::ExtAwi). See
+/// `awint::macro_docs` for more.
 #[proc_macro]
 pub fn extawi(input: TokenStream) -> TokenStream {
     match awint_macro_extawi(&input.to_string()) {
@@ -63,7 +65,8 @@ pub fn extawi(input: TokenStream) -> TokenStream {
 }
 
 /// A concatenations of components macro, additionally using the source value to
-/// construct an [Awi](awint_macro_internals::awint_ext::Awi). See `awint::macro_docs` for more.
+/// construct an [Awi](awint_macro_internals::awint_ext::Awi). See
+/// `awint::macro_docs` for more.
 #[proc_macro]
 pub fn awi(input: TokenStream) -> TokenStream {
     match awint_macro_awi(&input.to_string()) {
@@ -82,7 +85,8 @@ pub fn awi(input: TokenStream) -> TokenStream {
 /// A concatenations of components macro, additionally using the source value to
 /// construct a `&'static Bits`.
 ///
-/// Requires `const_support` and some feature flags to work. See `awint::macro_docs` for more.
+/// Requires `const_support` and some feature flags to work. See
+/// `awint::macro_docs` for more.
 #[proc_macro]
 pub fn bits(input: TokenStream) -> TokenStream {
     match awint_macro_bits(&input.to_string()) {
