@@ -2,7 +2,7 @@
 # rustup default
 #
 # - Nix: `nix develop .#nightly -c just check` (or `.#msrv`, or nothing for default pinned)
-# - rustup: `just toolchain=nightly check` (or `toolchain=1.85`, etc.)
+# - rustup: `just toolchain=nightly check` (or `toolchain=1.86`, etc.)
 toolchain := ""
 cargo := if toolchain == "" { "cargo" } else { "cargo +" + toolchain }
 rustc := if toolchain == "" { "rustc" } else { "rustc +" + toolchain }

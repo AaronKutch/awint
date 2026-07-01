@@ -4,7 +4,7 @@ version = "0.18.1"
 edition = "2024"
 # when updating, update `rust-msrv` in flake.nix and `stable_build` in ci.yml, and separately
 # bump rust-toolchain.toml
-rust-version = "1.85"
+rust-version = "1.86"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"

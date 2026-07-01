@@ -2,7 +2,7 @@
 
 ## [0.19.0] - TODO
 ### Crate
-- bumped MSRV to 1.85
+- bumped MSRV to 1.86
 - `triple_arena` 0.15
 - `rand_core` 0.10
 
