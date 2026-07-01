@@ -62,7 +62,7 @@
 use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::{Awi, awint_core::OrdBits};
-use triple_arena::Ptr;
+use triple_arena::traits::*;
 
 use crate::{Ast, Bind, CodeGen, ComponentType::*, Lower, Names, chars_to_string};
 

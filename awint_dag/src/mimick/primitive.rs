@@ -1,7 +1,7 @@
 use std::{fmt, num::NonZeroUsize, ops::*};
 
 use awint_ext::{Awi, awi, awint_internals::*};
-use awint_macro_internals::triple_arena::Ptr;
+use awint_macro_internals::triple_arena::traits::Ptr;
 
 use crate::{Lineage, Op, PState, dag, mimick::InlAwi};
 

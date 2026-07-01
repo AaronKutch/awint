@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use awint_ext::{Awi, awint_core::OrdBits};
-use triple_arena::{OrdArena, Ptr};
+use triple_arena::{OrdArena, traits::*};
 
 use crate::{
     Ast, Component, ComponentType, Concatenation, FillerAlign, FnNames, Names, PBind, PCWidth,
