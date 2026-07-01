@@ -5,6 +5,7 @@
 # - rustup: `just toolchain=nightly check` (or `toolchain=1.85`, etc.)
 toolchain := ""
 cargo := if toolchain == "" { "cargo" } else { "cargo +" + toolchain }
+rustc := if toolchain == "" { "rustc" } else { "rustc +" + toolchain }
 
 alias c := check
 alias t := test
@@ -17,8 +18,8 @@ quick:
   {{cargo}} fmt
   {{cargo}} clippy --all --all-targets {{ALL_FEATURES}} -- -D clippy::all
 
-fix:
-  {{cargo}} clippy --fix --all --all-targets {{ALL_FEATURES}} -- -D clippy::all
+fix *ARGS:
+  {{cargo}} clippy --fix --all --all-targets --all-features {{ARGS}} -- -D clippy::all
 
 fmt:
   {{cargo}} sort -w
@@ -56,6 +57,9 @@ run *ARGS:
 miri *ARGS:
   MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance" {{cargo}} miri test {{ALL_FEATURES}} {{ARGS}}
 
+doc *ARGS:
+  {{cargo}} doc --open {{ARGS}}
+
 clean:
   {{cargo}} clean
 
@@ -63,3 +67,7 @@ clean:
 # `"rust-analyzer.cargo.extraEnv": {"NIX_PROFILES": "/nix/var/nix/profiles/default ${userHome}/.nix-profile", "PATH": "..."},`
 ra_path:
   nix develop .#nightly --command printenv PATH
+
+# equivalent to `rustup doc`
+std_doc:
+  xdg-open "$({{rustc}} --print sysroot)/share/doc/rust/html/index.html"
