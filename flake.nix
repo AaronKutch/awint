@@ -42,6 +42,7 @@
           just
           cargo-nextest
           cargo-sort
+          cargo-machete
           ripgrep
           jq
         ];

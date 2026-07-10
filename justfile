@@ -38,9 +38,10 @@ test_const *ARGS:
 
 test_all *ARGS:
   {{cargo}} sort -cw
-  {{cargo}} doc --no-deps
+  {{cargo}} doc --no-deps {{ALL_FEATURES}}
   {{cargo}} nextest run {{ALL_FEATURES}},const_support {{ARGS}}
   {{cargo}} t --doc {{ALL_FEATURES}},const_support {{ARGS}}
+  {{cargo}} machete
 
 # Needs to be run with the MSRV toolchain
 test_for_msrv *ARGS:
