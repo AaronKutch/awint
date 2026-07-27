@@ -2,6 +2,7 @@ use std::{mem, num::NonZeroUsize, str::FromStr};
 
 use ComponentType::*;
 use awint_ext::Awi;
+use triple_arena::traits::*;
 
 use crate::{
     Ast, CCMacroError, Delimiter, PBind, PText, PVal, PWidth, Text, Usbr, chars_to_string,

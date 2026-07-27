@@ -7,6 +7,7 @@ use std::{
 
 use awint::{
     awi,
+    awint_dag::triple_arena::traits::*,
     awint_internals::USIZE_BITS,
     awint_macro_internals::triple_arena::{Arena, ptr_struct},
     dag,
@@ -66,7 +67,7 @@ impl Mem {
     }
 
     pub fn clear(&mut self) {
-        self.a.clear();
+        self.a.clear().allow();
         self.v.clear();
         self.roots.clear();
         for _ in 0..self.v_len {

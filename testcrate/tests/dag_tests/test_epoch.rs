@@ -17,7 +17,7 @@ use awint::{
     awint_dag::{
         EAwi, EvalResult, Lineage, Location, Op, PState, dag,
         epoch::{EpochCallback, EpochKey},
-        triple_arena::Arena,
+        triple_arena::{Arena, traits::*},
         triple_arena_render::{self, DebugNode, DebugNodeTrait},
     },
     bw,

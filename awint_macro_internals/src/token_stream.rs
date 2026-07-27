@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, mem};
 
 use proc_macro2::{TokenStream, TokenTree};
+use triple_arena::traits::*;
 
 use crate::{Ast, Component, Concatenation, Text};
 

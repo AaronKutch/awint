@@ -1,7 +1,8 @@
 use awint::{
     awi,
-    awint_dag::epoch::{
-        _get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback,
+    awint_dag::{
+        epoch::{_get_epoch_callback, _get_epoch_gen, _get_epoch_stack, _unregistered_callback},
+        triple_arena::traits::*,
     },
     dag, inlawi_ty,
 };
