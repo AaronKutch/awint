@@ -83,11 +83,11 @@ pub fn cc_macro_code_gen<
     // first check for simple infallible constant return
     if is_returning && (ast.cc.len() == 1) && (ast.cc[0].comps.len() == 1) {
         let comp = &ast.cc[0].comps[0];
-        if let Literal(ref lit) = comp.c_type {
-            // constants have been normalized and combined by now
-            if comp.range.static_range().is_some() {
-                return (code_gen.must_use)(&(code_gen.lit_construction_fn)(Awi::from_bits(lit)));
-            }
+        // constants have been normalized and combined by now
+        if let Literal(ref lit) = comp.c_type
+            && comp.range.static_range().is_some()
+        {
+            return (code_gen.must_use)(&(code_gen.lit_construction_fn)(Awi::from_bits(lit)));
         }
     }
 
@@ -109,7 +109,10 @@ pub fn cc_macro_code_gen<
                 Literal(ref awi) => {
                     ast.cc[concat_i].comps[comp_i].bind = Some(
                         l.binds
-                            .insert(OrdPair::new( Bind::Literal(OrdBits(awi.clone())), (false, false)))
+                            .insert(OrdPair::new(
+                                Bind::Literal(OrdBits(awi.clone())),
+                                (false, false),
+                            ))
                             .0,
                     )
                 }
@@ -120,8 +123,11 @@ pub fn cc_macro_code_gen<
                         &mut chars,
                         ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
                     );
-                    ast.cc[concat_i].comps[comp_i].bind =
-                        Some(l.binds.insert(OrdPair::new( Bind::Txt(chars), (false, false))).0)
+                    ast.cc[concat_i].comps[comp_i].bind = Some(
+                        l.binds
+                            .insert(OrdPair::new(Bind::Txt(chars), (false, false)))
+                            .0,
+                    )
                 }
                 Filler => {
                     if concat_i == 0 {
@@ -159,7 +165,7 @@ pub fn cc_macro_code_gen<
     let common_cw = if let Some(bw) = ast.common_bw {
         format!("let {}={}usize;\n", names.cw, bw)
     } else if let Some(p_cw) = l.dynamic_width {
-    *l.cw.get_mut(p_cw).unwrap().v_mut() = true;
+        *l.cw.get_mut(p_cw).unwrap().v_mut() = true;
         let s = format!("let {}={}_{};\n", names.cw, names.cw, p_cw.inx());
         s
     } else {

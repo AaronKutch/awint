@@ -54,21 +54,19 @@ impl Component {
                 // Note: I only truncate the start when the end is a plain static value, because
                 // the subtraction from the end would introduce the possibility for an
                 // underflow, and we would need yet another layer to the checks in the code gen.
+                // attempt to truncate bits below the start
                 if let Some(ref end) = self.range.end
                     && end.static_val().is_some()
+                    && let Some(x) = self.range.start.clone().and_then(|x| x.static_val())
+                    && x > 0
                 {
-                    // attempt to truncate bits below the start
-                    if let Some(x) = self.range.start.clone().and_then(|x| x.static_val())
-                        && x > 0
-                    {
-                        let nz_x = i128_to_nonzerousize(x)?;
-                        let w = lit.bw() - nz_x.get();
-                        let mut tmp = Awi::zero(NonZeroUsize::new(w).unwrap());
-                        tmp.field_from(lit, nz_x.get(), w).unwrap();
-                        *lit = tmp;
-                        self.range.start.as_mut().unwrap().x = 0;
-                        self.range.end.as_mut().unwrap().x -= x;
-                    }
+                    let nz_x = i128_to_nonzerousize(x)?;
+                    let w = lit.bw() - nz_x.get();
+                    let mut tmp = Awi::zero(NonZeroUsize::new(w).unwrap());
+                    tmp.field_from(lit, nz_x.get(), w).unwrap();
+                    *lit = tmp;
+                    self.range.start.as_mut().unwrap().x = 0;
+                    self.range.end.as_mut().unwrap().x -= x;
                 }
                 self.c_type = Literal(lit.clone());
             }

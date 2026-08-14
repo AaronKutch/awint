@@ -155,30 +155,31 @@ impl Concatenation {
         // normalized to start at 0 and end at the end of the literal bitwidth
         let mut i = self.comps.len() - 1;
         while i > 0 {
-            if self.comps[i - 1].is_static_literal() && self.comps[i].is_static_literal() {
-                // this is infallible, the only reason for this awkward arrangement is to get
-                // around borrowing issues
-                if let (Literal(lit0), Literal(lit1)) = (
+            // the tuple destructuring is infallible, the only reason for this awkward
+            // arrangement is to get around borrowing issues
+            if self.comps[i - 1].is_static_literal()
+                && self.comps[i].is_static_literal()
+                && let (Literal(lit0), Literal(lit1)) = (
                     self.comps[i - 1].c_type.clone(),
                     self.comps[i].c_type.clone(),
-                ) {
-                    let w0 = self.comps[i - 1].range.static_width().unwrap();
-                    let w1 = self.comps[i].range.static_width().unwrap();
-                    let total_i128 = w0.checked_add(w1).unwrap();
-                    let total = i128_to_nonzerousize(total_i128).unwrap();
-                    let mut combined = Awi::zero(total);
-                    combined.zero_resize_(&lit0);
-                    combined
-                        .field_to(
-                            i128_to_usize(w0).unwrap(),
-                            &lit1,
-                            i128_to_usize(w1).unwrap(),
-                        )
-                        .unwrap();
-                    self.comps[i - 1].c_type = Literal(combined);
-                    self.comps[i - 1].range = Usbr::new_static(0, total_i128);
-                    self.comps.remove(i);
-                }
+                )
+            {
+                let w0 = self.comps[i - 1].range.static_width().unwrap();
+                let w1 = self.comps[i].range.static_width().unwrap();
+                let total_i128 = w0.checked_add(w1).unwrap();
+                let total = i128_to_nonzerousize(total_i128).unwrap();
+                let mut combined = Awi::zero(total);
+                combined.zero_resize_(&lit0);
+                combined
+                    .field_to(
+                        i128_to_usize(w0).unwrap(),
+                        &lit1,
+                        i128_to_usize(w1).unwrap(),
+                    )
+                    .unwrap();
+                self.comps[i - 1].c_type = Literal(combined);
+                self.comps[i - 1].range = Usbr::new_static(0, total_i128);
+                self.comps.remove(i);
             }
             i -= 1;
         }
