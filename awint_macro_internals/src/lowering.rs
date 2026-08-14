@@ -62,7 +62,7 @@
 use std::{fmt::Write, num::NonZeroUsize};
 
 use awint_ext::{Awi, awint_core::OrdBits};
-use triple_arena::traits::*;
+use triple_arena::{OrdPair, traits::*};
 
 use crate::{Ast, Bind, CodeGen, ComponentType::*, Lower, Names, chars_to_string};
 
@@ -109,7 +109,7 @@ pub fn cc_macro_code_gen<
                 Literal(ref awi) => {
                     ast.cc[concat_i].comps[comp_i].bind = Some(
                         l.binds
-                            .insert(Bind::Literal(OrdBits(awi.clone())), (false, false))
+                            .insert(OrdPair::new( Bind::Literal(OrdBits(awi.clone())), (false, false)))
                             .0,
                     )
                 }
@@ -121,7 +121,7 @@ pub fn cc_macro_code_gen<
                         ast.cc[concat_i].comps[comp_i].mid_txt.unwrap(),
                     );
                     ast.cc[concat_i].comps[comp_i].bind =
-                        Some(l.binds.insert(Bind::Txt(chars), (false, false)).0)
+                        Some(l.binds.insert(OrdPair::new( Bind::Txt(chars), (false, false))).0)
                 }
                 Filler => {
                     if concat_i == 0 {
@@ -159,7 +159,7 @@ pub fn cc_macro_code_gen<
     let common_cw = if let Some(bw) = ast.common_bw {
         format!("let {}={}usize;\n", names.cw, bw)
     } else if let Some(p_cw) = l.dynamic_width {
-        *l.cw.get_val_mut(p_cw).unwrap() = true;
+    *l.cw.get_mut(p_cw).unwrap().v_mut() = true;
         let s = format!("let {}={}_{};\n", names.cw, names.cw, p_cw.inx());
         s
     } else {
@@ -174,7 +174,7 @@ pub fn cc_macro_code_gen<
                 s += ",";
             }
             let p_cw = concat.cw.unwrap();
-            *l.cw.get_val_mut(p_cw).unwrap() = true;
+            *l.cw.get_mut(p_cw).unwrap().v_mut() = true;
             write!(s, "{}_{}", names.cw, p_cw.inx()).unwrap();
         }
         format!("let {}={}([{}]);\n", names.cw, fn_names.max_fn, s)

@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use awint_ext::{Awi, awint_core::OrdBits};
-use triple_arena::{OrdArena, traits::*};
+use triple_arena::{  OrdPair, SimpleOrdArena, traits::*};
 
 use crate::{
     Ast, Component, ComponentType, Concatenation, FillerAlign, FnNames, Names, PBind, PCWidth,
@@ -37,14 +37,14 @@ pub struct CWidth(Vec<PWidth>);
 pub struct Lower<'a> {
     /// The first bool is if the binding is used, the second is for if it needs
     /// to be mutable
-    pub binds: OrdArena<PBind, Bind, (bool, bool)>,
+    pub binds: SimpleOrdArena<PBind, OrdPair<Bind, (bool, bool)>>,
     /// The bool is if the value is used
-    pub values: OrdArena<PVal, Value, bool>,
+    pub values: SimpleOrdArena<PVal, OrdPair<Value, bool>>,
     /// The first bool is if the width is used for lt checks, the second if it
     /// needs to be assigned to a `let` binding
-    pub widths: OrdArena<PWidth, Width, (bool, bool)>,
+    pub widths: SimpleOrdArena<PWidth, OrdPair<Width, (bool, bool)>>,
     // the bool is if the cw is used
-    pub cw: OrdArena<PCWidth, CWidth, bool>,
+    pub cw: SimpleOrdArena<PCWidth, OrdPair<CWidth, bool>>,
     pub dynamic_width: Option<PCWidth>,
     pub names: Names<'a>,
     pub fn_names: FnNames<'a>,
@@ -53,10 +53,10 @@ pub struct Lower<'a> {
 impl<'a> Lower<'a> {
     pub fn new(names: Names<'a>, fn_names: FnNames<'a>) -> Self {
         Self {
-            binds: OrdArena::new(),
-            values: OrdArena::new(),
-            widths: OrdArena::new(),
-            cw: OrdArena::new(),
+            binds: SimpleOrdArena::new(),
+            values: SimpleOrdArena::new(),
+            widths: SimpleOrdArena::new(),
+            cw: SimpleOrdArena::new(),
             dynamic_width: None,
             names,
             fn_names,
@@ -71,7 +71,7 @@ impl<'a> Lower<'a> {
         if txt.ends_with(self.fn_names.bw_call) {
             let var = txt[..(txt.len() - 5)].to_owned();
             if let Some(p) = self.binds.find_key(&Bind::Txt(var)) {
-                self.binds.get_val_mut(p).unwrap().0 = true;
+                self.binds.get_mut(p).unwrap().v_mut().0 = true;
                 return format!("{}({}_{})", self.fn_names.get_bw, self.names.bind, p.inx());
             }
         }
@@ -80,23 +80,25 @@ impl<'a> Lower<'a> {
 
     pub fn lower_bound(&mut self, usb: &Usb) -> PVal {
         if let Some(x) = usb.static_val() {
-            self.values.insert(Value::Usize(format!("{x}")), false).0
+            self.values.insert(OrdPair::new( Value::Usize(format!("{x}")), false)).0
         } else {
             let txt = self.try_txt_bound_to_binding(&usb.s);
             if usb.x < 0 {
                 self.values
                     .insert(
+                        OrdPair::new(
                         Value::Usize(format!("{}({},{})", self.fn_names.usize_sub, txt, -usb.x)),
-                        false,
+                        false,)
                     )
                     .0
             } else if usb.x == 0 {
-                self.values.insert(Value::Usize(txt), false).0
+                self.values.insert(
+                    OrdPair::new(Value::Usize(txt), false)).0
             } else {
                 self.values
                     .insert(
-                        Value::Usize(format!("{}({},{})", self.fn_names.usize_add, txt, usb.x)),
-                        false,
+                        OrdPair::new(Value::Usize(format!("{}({},{})", self.fn_names.usize_add, txt, usb.x)),
+                        false,)
                     )
                     .0
             }
@@ -119,19 +121,22 @@ impl<'a> Lower<'a> {
                 let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
                 comp.start = Some(start_p_val);
             }
-            let p_val = self.values.insert(Value::Usize(format!("{w}")), false).0;
+            let p_val = self.values.insert(
+                        OrdPair::new(Value::Usize(format!("{w}")), false)).0;
             if need_extra_check && let Some(ref end) = comp.range.end {
                 // range end is not the same as variable end, need to check
                 let end_p_val = self.lower_bound(end);
                 let var_end_p_val = self
                     .values
-                    .insert(Value::Bitwidth(comp.bind.unwrap()), false)
+                    .insert(
+                        OrdPair::new(Value::Bitwidth(comp.bind.unwrap()), false))
                     .0;
                 let _ = self
                     .widths
-                    .insert(Width::Range(end_p_val, var_end_p_val), (true, false));
+                    .insert(
+                        OrdPair::new(Width::Range(end_p_val, var_end_p_val), (true, false)));
             };
-            self.widths.insert(Width::Single(p_val), (false, false)).0
+            self.widths.insert(OrdPair::new(Width::Single(p_val), (false, false))).0
         } else {
             let end_p_val = if let Some(ref end) = comp.range.end {
                 let end_p_val = self.lower_bound(end);
@@ -139,28 +144,33 @@ impl<'a> Lower<'a> {
                     // range end is not the same as variable end, need to check
                     let var_end_p_val = self
                         .values
-                        .insert(Value::Bitwidth(comp.bind.unwrap()), false)
+                        .insert(
+                        OrdPair::new(Value::Bitwidth(comp.bind.unwrap()), false))
                         .0;
                     let _ = self
                         .widths
-                        .insert(Width::Range(end_p_val, var_end_p_val), (true, false));
+                        .insert(
+                        OrdPair::new(Width::Range(end_p_val, var_end_p_val), (true, false)));
                 }
                 end_p_val
             } else {
                 // need information from component
                 self.values
-                    .insert(Value::Bitwidth(comp.bind.unwrap()), false)
+                    .insert(
+                        OrdPair::new(Value::Bitwidth(comp.bind.unwrap()), false))
                     .0
             };
             if comp.range.start.as_ref().unwrap().is_guaranteed_zero() {
                 self.widths
-                    .insert(Width::Single(end_p_val), (false, false))
+                    .insert(
+                        OrdPair::new(Width::Single(end_p_val), (false, false)))
                     .0
             } else {
                 let start_p_val = self.lower_bound(comp.range.start.as_ref().unwrap());
                 comp.start = Some(start_p_val);
                 self.widths
-                    .insert(Width::Range(start_p_val, end_p_val), (true, false))
+                    .insert(
+                        OrdPair::new(Width::Range(start_p_val, end_p_val), (true, false)))
                     .0
             }
         });
@@ -177,7 +187,7 @@ impl<'a> Lower<'a> {
         }
         // `v` can be empty in cases like `extawi!(umax: ..; ..8)`
         if !v.is_empty() {
-            concat.cw = Some(self.cw.insert(CWidth(v), false).0);
+            concat.cw = Some(self.cw.insert(OrdPair::new(CWidth(v), false)).0);
         }
     }
 
@@ -187,7 +197,8 @@ impl<'a> Lower<'a> {
     pub fn lower_le_checks(&mut self) -> (bool, String, String) {
         let mut s0 = String::new();
         let mut s1 = String::new();
-        for (_, width, used) in self.widths.iter() {
+        for (_, pair) in self.widths.iter() {
+            let (width, used) = pair.k_v();
             if used.0
                 && let Width::Range(lo, hi) = width
             {
@@ -195,8 +206,8 @@ impl<'a> Lower<'a> {
                     s0 += ",";
                     s1 += ",";
                 }
-                *self.values.get_val_mut(*lo).unwrap() = true;
-                *self.values.get_val_mut(*hi).unwrap() = true;
+                *self.values.get_mut(*lo).unwrap().v_mut() = true;
+                *self.values.get_mut(*hi).unwrap().v_mut() = true;
                 write!(s0, "{}_{}", self.names.value, lo.inx(),).unwrap();
                 write!(s1, "{}_{}", self.names.value, hi.inx()).unwrap();
             }
@@ -227,7 +238,7 @@ impl<'a> Lower<'a> {
             if concat.static_width.is_none()
                 && let Some(cw) = concat.cw
             {
-                *self.cw.get_val_mut(cw).unwrap() = true;
+                *self.cw.get_mut(cw).unwrap().v_mut() = true;
                 if concat.deterministic_width {
                     let mut set_dynamic_width = false;
                     if self.dynamic_width.is_none() {
@@ -374,13 +385,13 @@ impl<'a> Lower<'a> {
                 .unwrap();
             }
         }
-        self.widths.get_val_mut(width).unwrap().1 = true;
+    self.widths.get_mut(width).unwrap().v_mut().1 = true;
         if let Some(bind) = comp.bind {
             let bind_s = format!("{}_{}", self.names.bind, bind.inx());
             if from_buf {
-                *self.binds.get_val_mut(bind).unwrap() = (true, true);
+                *self.binds.get_mut(bind).unwrap().v_mut() = (true, true);
                 if let Some(start) = comp.start {
-                    *self.values.get_val_mut(start).unwrap() = true;
+                    *self.values.get_mut(start).unwrap().v_mut() = true;
                 }
                 let start_s = if let Some(start) = comp.start {
                     format!("{}_{}", self.names.value, start.inx())
@@ -405,9 +416,9 @@ impl<'a> Lower<'a> {
                     width1,
                 );
             } else {
-                self.binds.get_val_mut(bind).unwrap().0 = true;
+                self.binds.get_mut(bind).unwrap().v_mut().0 = true;
                 if let Some(start) = comp.start {
-                    *self.values.get_val_mut(start).unwrap() = true;
+                    *self.values.get_mut(start).unwrap().v_mut() = true;
                 }
                 let start_s = if let Some(start) = comp.start {
                     format!("{}_{}", self.names.value, start.inx())
@@ -469,7 +480,7 @@ impl<'a> Lower<'a> {
             // use copy_
             let sink = concat.comps[0].bind.unwrap();
             if from_buf {
-                *self.binds.get_val_mut(sink).unwrap() = (true, true);
+                *self.binds.get_mut(sink).unwrap().v_mut() = (true, true);
                 return format!(
                     "let _ = {}({}_{},{});\n",
                     self.fn_names.copy_,
@@ -478,7 +489,7 @@ impl<'a> Lower<'a> {
                     self.names.awi_ref,
                 );
             } else {
-                self.binds.get_val_mut(sink).unwrap().0 = true;
+                self.binds.get_mut(sink).unwrap().v_mut().0 = true;
                 return format!(
                     "let _ = {}({},{}_{});\n",
                     self.fn_names.copy_,
@@ -550,10 +561,10 @@ impl<'a> Lower<'a> {
         } else {
             // direct copy assigning
             if let Some(src) = ast.cc[0].comps[0].bind {
-                self.binds.get_val_mut(src).unwrap().0 = true;
+                self.binds.get_mut(src).unwrap().v_mut().0 = true;
                 for i in 1..ast.cc.len() {
                     if let Some(sink) = ast.cc[i].comps[0].bind {
-                        *self.binds.get_val_mut(sink).unwrap() = (true, true);
+                        *self.binds.get_mut(sink).unwrap().v_mut() = (true, true);
                         writeln!(
                             s,
                             "let _ = {}({}_{},{}_{});",
@@ -574,11 +585,12 @@ impl<'a> Lower<'a> {
 
     pub fn lower_cws(&mut self) -> String {
         let mut s = String::new();
-        for (p_cw, cw, used) in self.cw.iter() {
+        for (p_cw, pair ) in self.cw.iter() {
+            let (cw, used) = pair.k_v();
             if *used {
                 let mut tmp = String::new();
                 for (i, w) in cw.0.iter().enumerate() {
-                    self.widths.get_val_mut(*w).unwrap().1 = true;
+                    self.widths.get_mut(*w).unwrap().v_mut().1 = true;
                     if i == 0 {
                         tmp = format!("{}_{}", self.names.width, w.inx());
                     } else {
@@ -599,11 +611,12 @@ impl<'a> Lower<'a> {
 
     pub fn lower_widths(&mut self) -> String {
         let mut s = String::new();
-        for (p_w, w, used) in self.widths.iter() {
+        for (p_w,pair) in self.widths.iter() {
+            let (w, used) = pair.k_v();
             if used.1 {
                 match w {
                     Width::Single(v) => {
-                        *self.values.get_val_mut(*v).unwrap() = true;
+                        *self.values.get_mut(*v).unwrap().v_mut() = true;
                         writeln!(
                             s,
                             "let {}_{}={}_{};",
@@ -615,8 +628,8 @@ impl<'a> Lower<'a> {
                         .unwrap();
                     }
                     Width::Range(v0, v1) => {
-                        *self.values.get_val_mut(*v0).unwrap() = true;
-                        *self.values.get_val_mut(*v1).unwrap() = true;
+                        *self.values.get_mut(*v0).unwrap().v_mut() = true;
+                        *self.values.get_mut(*v1).unwrap().v_mut() = true;
                         writeln!(
                             s,
                             "let {}_{}={}({}_{},{}_{});",
@@ -638,11 +651,12 @@ impl<'a> Lower<'a> {
 
     pub fn lower_values(&mut self) -> String {
         let mut s = String::new();
-        for (p_v, v, used) in self.values.iter() {
+        for (p_v, pair) in self.values.iter() {
+            let (v, used) = pair.k_v();
             if *used {
                 match v {
                     Value::Bitwidth(b) => {
-                        self.binds.get_val_mut(*b).unwrap().0 = true;
+                        self.binds.get_mut(*b).unwrap().v_mut().0 = true;
                         writeln!(
                             s,
                             "let {}_{}={}({}({}_{}));",
@@ -677,7 +691,8 @@ impl<'a> Lower<'a> {
         mut static_construction_fn: F,
     ) -> String {
         let mut s = String::new();
-        for (p_b, bind, (used, mutable)) in self.binds.iter() {
+        for (p_b, pair ) in self.binds.iter() {
+            let (bind, (used, mutable)) = pair.k_v();
             if *used {
                 match bind {
                     Bind::Literal(awi) => {
