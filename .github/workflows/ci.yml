@@ -58,6 +58,8 @@ jobs:
   no_alloc_build:
     name: Doc and Build for no-std and no-alloc
     runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v7
       - name: Install nightly-riscv32i-unknown-none-elf
@@ -71,15 +73,31 @@ jobs:
           cargo doc $ALL_FEATURES
           cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
-  stable_build:
-    name: Build on stable
+  # makes sure the tests work on 32 bit and 64 bit big endian targets
+  cross-compile-big-endian:
+    name: Big Endian Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: cross-compile-mips
+      run: |
+        rustup set profile minimal
+        rustup default nightly
+        rustup component add rust-src
+        cargo install cross
+        cross test --target powerpc64-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
+        cross test --target powerpc-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
+
+  msrv_build:
+    name: MSRV build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # reads the `rust-version` of awint_internals/Cargo.toml
       - name: Install MSRV
         run: |
           rustup set profile minimal
-          rustup install 1.86
+          rustup default "$(sed -n 's/^rust-version = "\(.*\)"/\1/p' awint_internals/Cargo.toml)"
       # In the past I have had problems with features not being orthogonal due to configuration
       # mistakes, so we test several combinations here
       - name: Check that the crate builds on its MSRV
@@ -126,17 +144,3 @@ jobs:
         # note: run clippy on no_alloc_test manually
         run: |
           cargo clippy --all --all-targets $ALL_FEATURES -- -D clippy::all
-
-  # makes sure the tests work on 32 bit and 64 bit big endian targets
-  cross-compile-big-endian:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v7
-    - name: cross-compile-mips
-      run: |
-        rustup set profile minimal
-        rustup default nightly
-        rustup component add rust-src
-        cargo install cross
-        cross test --target powerpc64-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
-        cross test --target powerpc-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate

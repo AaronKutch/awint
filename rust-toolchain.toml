@@ -1,5 +1,0 @@
-# This is just a pinned stable for flake.nix
-[toolchain]
-channel = "1.96"
-components = ["rustfmt", "clippy", "rust-src", "rust-analyzer", "rust-docs"]
-targets = ["riscv32i-unknown-none-elf"]
