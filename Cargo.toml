@@ -14,13 +14,13 @@ members = [
 ]
 
 [workspace.dependencies]
-awint = { path = "./awint", default-features = false }
-awint_core = { path = "./awint_core", default-features = false }
-awint_dag = { path = "./awint_dag", default-features = false }
-awint_ext = { path = "./awint_ext", default-features = false }
-awint_internals = { path = "./awint_internals", default-features = false }
-awint_macro_internals = { path = "./awint_macro_internals", default-features = false }
-awint_macros = { path = "./awint_macros", default-features = false }
+awint = { version = "0.19.0", path = "./awint", default-features = false }
+awint_core = { version = "0.19.0", path = "./awint_core", default-features = false }
+awint_dag = { version = "0.19.0", path = "./awint_dag", default-features = false }
+awint_ext = { version = "0.19.0", path = "./awint_ext", default-features = false }
+awint_internals = { version = "0.19.0", path = "./awint_internals", default-features = false }
+awint_macro_internals = { version = "0.19.0", path = "./awint_macro_internals", default-features = false }
+awint_macros = { version = "0.19.0", path = "./awint_macros", default-features = false }
 const_fn = "0.4"
 proc-macro2 = "1.0"
 rand_core = { version = "0.10", default-features = false }
