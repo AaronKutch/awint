@@ -58,19 +58,19 @@ impl Bits {
     /// use awint::awi::*;
     /// use star_rng::StarRng;
     ///
-    /// let mut rng = StarRng::new(7);
+    /// let mut rng = &mut StarRng::new(7);
     /// let mut x = awi!(0u128);
     /// // this should be done in a loop with thousands of iterations,
     /// // here I have unrolled a few for example
-    /// rng.linear_fuzz_step(&mut x);
+    /// x.star_rng_linear_fuzz_step_(rng);
     /// assert_eq!(x, awi!(0x1_ffffffff_f0000000_u128));
-    /// rng.linear_fuzz_step(&mut x);
+    /// x.star_rng_linear_fuzz_step_(rng);
     /// assert_eq!(x, awi!(0x3ffff01_ffffffff_f0000000_u128));
-    /// rng.linear_fuzz_step(&mut x);
+    /// x.star_rng_linear_fuzz_step_(rng);
     /// assert_eq!(x, awi!(0x3fffcfe_00000001_f0000000_u128));
-    /// rng.linear_fuzz_step(&mut x);
+    /// x.star_rng_linear_fuzz_step_(rng);
     /// assert_eq!(x, awi!(0xc000301_fffffffe_0fffff00_u128));
-    /// rng.linear_fuzz_step(&mut x);
+    /// x.star_rng_linear_fuzz_step_(rng);
     /// assert_eq!(x, awi!(0xc_0c000301_fffffffe_0fffff00_u128));
     /// ```
     pub fn star_rng_linear_fuzz_step_(&mut self, rng: &mut StarRng) {

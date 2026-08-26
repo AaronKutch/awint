@@ -4,6 +4,7 @@
 ### Crate
 - MSRV 1.88
 - `triple_arena` 0.15
+- `star_rng` 0.3
 - `rand_core` 0.10
 
 ### Changes

@@ -58,14 +58,13 @@ use crate::Bits;
 ///
 /// assert_eq!(x, inlawi!(-246i100).as_ref());
 /// ```
-// FIXME
+///
 /// ```text
 /// // note: see README because this is broken on some nightlies
 ///
 /// // only needed if you are trying to use in `const` contexts
 /// #![feature(const_trait_impl)]
-/// #![feature(const_mut_refs)]
-/// #![feature(const_option)]
+/// #![feature(const_convert)]
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
 ///
 /// const fn const_example(mut lhs: &mut Bits, rhs: &Bits) {
