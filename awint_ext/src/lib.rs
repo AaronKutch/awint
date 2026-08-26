@@ -6,18 +6,13 @@
 //! practically requires allocation to use. This crate is intended to be used
 //! through the main `awint` crate, available with the "alloc" feature.
 
-#![cfg_attr(feature = "const_support", feature(const_mut_refs))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]
 // There are many guaranteed nonzero lengths
 #![allow(clippy::len_without_is_empty)]
-// We are using special indexing everywhere
-#![allow(clippy::needless_range_loop)]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
-// we need certain hot loops to stay separate
-#![allow(clippy::branches_sharing_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;
@@ -33,21 +28,21 @@ mod fp_struct;
 mod serde;
 pub(crate) mod string_internals;
 pub use awi_struct::Awi;
-pub use awint_core::{bw, Bits, InlAwi, OrdBits, SerdeError};
+pub use awint_core::{AsBits, AsMutBits, Bits, InlAwi, OrdBits, SerdeError, bw};
 pub use extawi::ExtAwi;
-pub use fp_struct::{FPType, FP};
+pub use fp_struct::{FP, FPType};
 
 /// Subset of `awint::awi`
 pub mod awi {
-    pub use awint_core::awi::*;
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
+    pub use awint_core::awi::*;
 
-    pub use crate::{Awi, ExtAwi, FPType, FP};
+    pub use crate::{Awi, ExtAwi, FP, FPType};
 }
 
 /// Fixed point related items
 pub mod fp {
     pub use super::fp_struct::{F32, F64};
-    pub use crate::{FPType, FP};
+    pub use crate::{FP, FPType};
 }

@@ -22,8 +22,8 @@
 //! Numerical values such as 42 or -1337 must be translated into a form
 //! representable on computers, and only some integer types with some minimum
 //! bitwidth are capable of representing them. If an integer type can represent
-//! them, then we can prefix the values to the type, e.x. `42u8` is an unsigned 8
-//! bit integer with numerical value 42. `-1337i64` is a signed 64 bit integer
+//! them, then we can prefix the values to the type, e.x. `42u8` is an unsigned
+//! 8 bit integer with numerical value 42. `-1337i64` is a signed 64 bit integer
 //! with numerical value -1337. `-1337i8`, however, is something that does not
 //! exist, because -1337 surpasses the numerical limits of signed 8 bit integers
 //!
@@ -126,10 +126,6 @@
 //! numerical values `X` and `Y`. The shift amount `s` is some nonnegative
 //! integer.
 //!
-/*
-note: comment with /* */ when and remove //! when
-formatting the rest of this document
-*/
 //! |Overflowable Operation|unsigned|signed|
 //! |:-:|:-:|:-:|
 //! |Negation or Absolute Value (`x.neg_(...)` or `x.abs_()`)|depends|`X != MIN` or switches interpretation|
@@ -185,11 +181,11 @@ formatting the rest of this document
 //! needed, but you need to do bounds calculations manually using the numerical
 //! bounds presented at the start.
 //!
-//! For example, let's say a type representable in `i16` is being multiplied with
-//! another `i16`, an `i1` is added to it, and one final `i15` is divided. Our
-//! heuristics say that the first step needs 16 + 16 = 32 bits, the next needs
-//! max(32, 1) + 1 == 33 bits, and the last needs max(33, 15) + 1 == 34 bits
-//! plus a check that the divisor is not zero. If we have only power-of-two
+//! For example, let's say a type representable in `i16` is being multiplied
+//! with another `i16`, an `i1` is added to it, and one final `i15` is divided.
+//! Our heuristics say that the first step needs 16 + 16 = 32 bits, the next
+//! needs max(32, 1) + 1 == 33 bits, and the last needs max(33, 15) + 1 == 34
+//! bits plus a check that the divisor is not zero. If we have only power-of-two
 //! sized primitives, we need to cast all the inputs to `i64` (although the
 //! first intermediate could be done in an `i32` before being cast to `i64`).
 //!
@@ -206,19 +202,18 @@ formatting the rest of this document
 //! one input state and in turn removes the need to add an extra bit for some
 //! operations), is to:
 //!
-//! 1. take the wrapping absolute value of the input (the
-//!    overflowing absolute value of `MIN_iN` is `MIN_iN`)
+//! 1. take the wrapping absolute value of the input (the overflowing absolute
+//!    value of `MIN_iN` is `MIN_iN`)
 //!
-//! 2. cast it to a `uN` type so we can use unsigned-less-than
-//!    (e.x. in Rust primitives it is simply `i64 as u64`,
-//!    in `awint` we reinterpret the bitstring)
+//! 2. cast it to a `uN` type so we can use unsigned-less-than (e.x. in Rust
+//!    primitives it is simply `i64 as u64`, in `awint` we reinterpret the
+//!    bitstring)
 //!
-//! 3. Accept the original input if the cast value is `< 2^(N-1)`
-//!    (the cast `MIN_iN` value exceeds this as well as the
-//!    normally unrepresentable values). `Bits::sig` quickly
-//!    calculates the number of significant bits, such that if
-//!    `x.sig() == 100` then it means that the unsigned value
-//!    would fit in 100 bits.
+//! 3. Accept the original input if the cast value is `< 2^(N-1)` (the cast
+//!    `MIN_iN` value exceeds this as well as the normally unrepresentable
+//!    values). `Bits::sig` quickly calculates the number of significant bits,
+//!    such that if `x.sig() == 100` then it means that the unsigned value would
+//!    fit in 100 bits.
 //!
 //! `awint::Bits` has several casting operations from the concatenation macros,
 //! to `Bits::resize_`, `sign_resize_`, and `zero_resize_`. `awint::Awi` has
@@ -368,22 +363,17 @@ formatting the rest of this document
 //! but afterwards the bitwidth can be reduced.
 //!
 //! Bonus point: reciprocals like `x^-1` can be independently processed by
-//! treating the implicit 1 as something to attach a fixed multiplier to, e.x. `(1*2^62)
-//! / x`. If we are dividing by `x` a lot for instance, we could use one
-//! division to calculate a reciprocal. As long as `x` is small compared to
+//! treating the implicit 1 as something to attach a fixed multiplier to, e.x.
+//! `(1*2^62) / x`. If we are dividing by `x` a lot for instance, we could use
+//! one division to calculate a reciprocal. As long as `x` is small compared to
 //! the multiplier, we can use multiplications by this reciprocal to do as many
 //! quick and accurate divisions as we like. We just need to keep track of the
 //! multipliers for post processing, which if powers of two can be done mostly
 //! with right shifts.
 
-#![cfg_attr(feature = "const_support", feature(const_maybe_uninit_as_mut_ptr))]
-#![cfg_attr(feature = "const_support", feature(const_mut_refs))]
-#![cfg_attr(feature = "const_support", feature(const_ptr_read))]
-#![cfg_attr(feature = "const_support", feature(const_ptr_write))]
-#![cfg_attr(feature = "const_support", feature(const_slice_from_raw_parts_mut))]
-#![cfg_attr(feature = "const_support", feature(const_swap))]
-#![cfg_attr(feature = "const_support", feature(const_option))]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]
+#![cfg_attr(feature = "const_support", feature(const_cmp))]
+#![cfg_attr(feature = "const_support", feature(const_convert))]
 #![no_std]
 // We need to be certain in some places that lifetimes are being elided correctly
 #![allow(clippy::needless_lifetimes)]
@@ -393,18 +383,17 @@ formatting the rest of this document
 #![allow(clippy::needless_range_loop)]
 // not const and tends to be longer
 #![allow(clippy::manual_range_contains)]
-// we need certain hot loops to stay separate
-#![allow(clippy::branches_sharing_code)]
 // TODO when clippy issue 9175 is fixed remove
 #![allow(clippy::question_mark)]
+#![allow(clippy::manual_is_multiple_of)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[doc(hidden)]
 pub use awint_internals;
-pub use awint_internals::{bw, SerdeError};
+pub use awint_internals::{SerdeError, bw};
 
 pub(crate) mod data;
-pub use data::{Bits, InlAwi};
+pub use data::{AsBits, AsMutBits, Bits, InlAwi};
 
 mod logic;
 
@@ -412,9 +401,9 @@ pub use logic::OrdBits;
 
 /// Subset of `awint::awi`
 pub mod awi {
-    pub use awint_internals::awi::*;
     pub use Option::{None, Some};
     pub use Result::{Err, Ok};
+    pub use awint_internals::awi::*;
 
-    pub use crate::{Bits, InlAwi};
+    pub use crate::{AsBits, AsMutBits, Bits, InlAwi};
 }

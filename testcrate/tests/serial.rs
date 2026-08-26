@@ -1,8 +1,8 @@
 use awint::{
-    awint_internals::{bits_upper_bound, chars_upper_bound, USIZE_BITS},
-    extawi, inlawi, Bits, ExtAwi, InlAwi,
+    AsBits, Bits, ExtAwi, FP, InlAwi,
     SerdeError::*,
-    FP,
+    awint_internals::{USIZE_BITS, bits_upper_bound, chars_upper_bound},
+    extawi, inlawi,
 };
 
 #[test]
@@ -206,7 +206,7 @@ fn fmt_strings() {
     let inl_awi = inlawi!(0xfedcba9876543210u100);
     let ext_awi = extawi!(0xfedcba9876543210u100);
     let bits_awi = inlawi!(0xfedcba9876543210u100);
-    let bits = bits_awi.as_ref();
+    let bits = bits_awi.as_bits();
     fmt_test!(inl_awi ext_awi bits);
     assert_eq!(format!("{}", inlawi!(0u100)), "0x0_u100");
     assert_eq!(

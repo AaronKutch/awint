@@ -9,7 +9,7 @@ macro_rules! const_for {
             // the increment must happen before `$b` so that `continue`s still cause it
             $i = $i.wrapping_add(1);
             if $i >= $range.end {
-                break
+                break;
             }
             $b;
         }
@@ -18,7 +18,7 @@ macro_rules! const_for {
         let mut $i: usize = $range.end;
         loop {
             if $i <= $range.start {
-                break
+                break;
             }
             $i = $i.wrapping_sub(1);
             $b;

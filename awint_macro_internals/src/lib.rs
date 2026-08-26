@@ -9,6 +9,8 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::manual_repeat_n)]
 #![allow(clippy::comparison_chain)]
+#![allow(clippy::manual_is_multiple_of)]
+#![allow(clippy::derivable_impls)]
 // TODO
 #![allow(unexpected_cfgs)]
 #![cfg_attr(feature = "const_support", feature(const_trait_impl))]

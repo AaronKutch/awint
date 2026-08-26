@@ -1,7 +1,7 @@
 [package]
 name = "awint_macros"
-version = "0.18.1"
-edition = "2021"
+version = "0.19.0"
+edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -15,9 +15,7 @@ categories = ["data-structures", "mathematics", "algorithms"]
 proc-macro = true
 
 [dependencies]
-awint_internals = { version = "0.18.1", path = "../awint_internals", default-features = false }
-awint_macro_internals = { version = "0.18.1", path = "../awint_macro_internals" }
+awint_macro_internals = { workspace = true }
 
 [dev-dependencies]
-# for examples
-awint = { path = "../awint" }
+awint = { path = "../awint", default-features = false, features = ["alloc"] }

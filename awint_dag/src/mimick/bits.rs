@@ -7,9 +7,9 @@ use std::{
 };
 
 use crate::{
+    EvalResult, Lineage, Op, PState,
     common::EAwi,
     mimick::{Awi, ExtAwi, InlAwi},
-    EvalResult, Lineage, Op, PState,
 };
 
 // this is a workaround for https://github.com/rust-lang/rust/issues/57749 that works on stable
@@ -198,8 +198,42 @@ impl fmt::Debug for Bits {
     }
 }
 
-impl AsRef<Bits> for &Bits {
-    fn as_ref(&self) -> &Bits {
+pub trait AsBits {
+    fn as_bits(&self) -> &Bits;
+}
+
+impl<'a, T: AsBits + ?Sized> AsBits for &'a T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+impl<'a, T: AsBits + ?Sized> AsBits for &'a mut T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+/// Common trait for obtaining `&mut Bits`
+pub trait AsMutBits: AsBits {
+    fn as_mut_bits(&mut self) -> &mut Bits;
+}
+
+impl<'a, T: AsMutBits + ?Sized> AsMutBits for &'a mut T {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        <T as AsMutBits>::as_mut_bits(self)
+    }
+}
+
+impl AsBits for Bits {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self
+    }
+}
+
+impl<'a> AsMutBits for &'a mut Bits {
+    fn as_mut_bits(&mut self) -> &mut Bits {
         self
     }
 }

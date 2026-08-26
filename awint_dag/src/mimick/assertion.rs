@@ -4,7 +4,7 @@ pub use core::stringify;
 
 use awint_ext::awint_internals::Location;
 
-use crate::{dag, epoch::register_assertion_bit_for_current_epoch, Lineage, Op};
+use crate::{Lineage, Op, dag, epoch::register_assertion_bit_for_current_epoch};
 
 /// Creates an assertion, returning `None` if eager evaluation can determine
 /// that it is false
@@ -12,11 +12,7 @@ pub fn create_assertion(assert_true: dag::bool, location: Location) -> Option<()
     let p_state = assert_true.state();
     if let Op::Literal(ref lit) = p_state.get_op() {
         assert_eq!(lit.bw(), 1);
-        if lit.to_bool() {
-            Some(())
-        } else {
-            None
-        }
+        if lit.to_bool() { Some(()) } else { None }
     } else {
         register_assertion_bit_for_current_epoch(assert_true, location);
         Some(())
@@ -36,15 +32,15 @@ pub fn internal_assert(stringified: &str, assert_true: impl Into<dag::bool>, loc
 
 #[doc(hidden)]
 #[track_caller]
-pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(
+pub fn internal_assert_eq<AsRefBitsType: dag::AsBits>(
     lhs_stringified: &str,
     rhs_stringified: &str,
     lhs: AsRefBitsType,
     rhs: AsRefBitsType,
     location: Location,
 ) {
-    let lhs = lhs.as_ref();
-    let rhs = rhs.as_ref();
+    let lhs = lhs.as_bits();
+    let rhs = rhs.as_bits();
     if let dag::Some(eq) = lhs.const_eq(rhs) {
         if create_assertion(eq, location).is_none() {
             if let (Op::Literal(lhs_lit), Op::Literal(rhs_lit)) =
@@ -74,15 +70,15 @@ pub fn internal_assert_eq<AsRefBitsType: AsRef<dag::Bits>>(
 
 #[doc(hidden)]
 #[track_caller]
-pub fn internal_assert_ne<AsRefBitsType: AsRef<dag::Bits>>(
+pub fn internal_assert_ne<AsRefBitsType: dag::AsBits>(
     lhs_stringified: &str,
     rhs_stringified: &str,
     lhs: AsRefBitsType,
     rhs: AsRefBitsType,
     location: Location,
 ) {
-    let lhs = lhs.as_ref();
-    let rhs = rhs.as_ref();
+    let lhs = lhs.as_bits();
+    let rhs = rhs.as_bits();
     if let dag::Some(ne) = lhs.const_ne(rhs) {
         if create_assertion(ne, location).is_none() {
             if let (Op::Literal(lhs_lit), Op::Literal(rhs_lit)) =

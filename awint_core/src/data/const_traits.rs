@@ -1,11 +1,11 @@
 use core::{
     borrow::{Borrow, BorrowMut},
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
 };
 
-use crate::{data::inlawi::UsizeInlAwi, Bits, InlAwi};
+use crate::{Bits, InlAwi, data::inlawi::UsizeInlAwi};
 
-impl<const BW: usize, const LEN: usize> const Deref for InlAwi<BW, LEN> {
+const impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
     type Target = Bits;
 
     #[inline]
@@ -14,58 +14,42 @@ impl<const BW: usize, const LEN: usize> const Deref for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> const DerefMut for InlAwi<BW, LEN> {
+const impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Bits {
         self.internal_as_mut()
     }
 }
 
-impl<const BW: usize, const LEN: usize> const Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> const Borrow<Bits> for InlAwi<BW, LEN> {
+impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn borrow(&self) -> &Bits {
         self
     }
 }
 
-impl<const BW: usize, const LEN: usize> const AsRef<Bits> for InlAwi<BW, LEN> {
+impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn as_ref(&self) -> &Bits {
         self
     }
 }
 
-impl<const BW: usize, const LEN: usize> const IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> const BorrowMut<Bits> for InlAwi<BW, LEN> {
+impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn borrow_mut(&mut self) -> &mut Bits {
         self
     }
 }
 
-impl<const BW: usize, const LEN: usize> const AsMut<Bits> for InlAwi<BW, LEN> {
+impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn as_mut(&mut self) -> &mut Bits {
         self
     }
 }
 
-impl const From<bool> for InlAwi<1, { Bits::unstable_raw_digits(1) }> {
+const impl From<bool> for InlAwi<1, { Bits::unstable_raw_digits(1) }> {
     /// Creates an `InlAwi` with one bit set to this `bool`
     fn from(x: bool) -> Self {
         Self::from_bool(x)
@@ -75,14 +59,14 @@ impl const From<bool> for InlAwi<1, { Bits::unstable_raw_digits(1) }> {
 macro_rules! inlawi_from {
     ($($w:expr, $u:ident $from_u:ident $i:ident $from_i:ident);*;) => {
         $(
-            impl const From<$u> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+            const impl From<$u> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 fn from(x: $u) -> Self {
                     Self::$from_u(x)
                 }
             }
 
-            impl const From<$i> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
+            const impl From<$i> for InlAwi<$w, {Bits::unstable_raw_digits($w)}> {
                 /// Creates an `InlAwi` with the same bitwidth and bits as the integer
                 fn from(x: $i) -> Self {
                     Self::$from_i(x)
@@ -100,14 +84,14 @@ inlawi_from!(
     128, u128 from_u128 i128 from_i128;
 );
 
-impl const From<usize> for UsizeInlAwi {
+const impl From<usize> for UsizeInlAwi {
     /// Creates an `InlAwi` with the same bitwidth and bits as the integer
     fn from(x: usize) -> Self {
         Self::from_usize(x)
     }
 }
 
-impl const From<isize> for UsizeInlAwi {
+const impl From<isize> for UsizeInlAwi {
     /// Creates an `InlAwi` with the same bitwidth and bits as the integer
     fn from(x: isize) -> Self {
         Self::from_isize(x)
@@ -115,7 +99,7 @@ impl const From<isize> for UsizeInlAwi {
 }
 
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
-impl const PartialEq for Bits {
+const impl PartialEq for Bits {
     fn eq(&self, rhs: &Self) -> bool {
         self.bw() == rhs.bw() && self.const_eq(rhs).unwrap()
     }
@@ -123,3 +107,58 @@ impl const PartialEq for Bits {
 
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl Eq for Bits {}
+
+/// Common trait for obtaining `&Bits`
+///
+/// This trait exists to avoid blanket impl problems, and to give custom storage
+/// types a way to independently define other common traits.
+pub const trait AsBits {
+    fn as_bits(&self) -> &Bits;
+}
+
+impl<'a, T: AsBits + ?Sized> AsBits for &'a T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+impl<'a, T: AsBits + ?Sized> AsBits for &'a mut T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+/// Common trait for obtaining `&mut Bits`
+pub const trait AsMutBits: AsBits {
+    fn as_mut_bits(&mut self) -> &mut Bits;
+}
+
+impl<'a, T: AsMutBits + ?Sized> AsMutBits for &'a mut T {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        <T as AsMutBits>::as_mut_bits(self)
+    }
+}
+
+const impl AsBits for Bits {
+    fn as_bits(&self) -> &Bits {
+        self
+    }
+}
+
+const impl AsMutBits for Bits {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self
+    }
+}
+
+const impl<const BW: usize, const LEN: usize> AsBits for InlAwi<BW, LEN> {
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+const impl<const BW: usize, const LEN: usize> AsMutBits for InlAwi<BW, LEN> {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}

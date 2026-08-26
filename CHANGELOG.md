@@ -1,10 +1,28 @@
 # Changelog
 
+## [0.19.0] - 2026-08-26
+### Crate
+- MSRV 1.88
+- `triple_arena` 0.15
+- `star_rng` 0.3
+- `rand_core` 0.10
+
+### Changes
+- Removed the `Index` and `IndexMut` implementations for the storage types
+- Generics that previously used `AsRef<Bits>` and `Borrow<Bits>`, etc have been rewritten to use `AsBits` and `AsMutBits`.
+- Removed some `const` impls, but when using `AsBits` and `AsMutBits` it is possible to use `awint` effectively on 1.98 nightly now.
+
+### Additions
+- Added `AsBits` and `AsMutBits` traits, which have none of the technical issues that the standard traits have
+
 ## [0.18.1] - 2025-03-15
 ### Crate
 - Moved the macro documentation to a `macro_doc` module in `awint` because rustdoc can't behave
 
 ## [0.18.0] - 2025-02-11
+### Crate
+- `triple_arena` 0.14
+
 ### Changes
 - Updated to `rand_core` 0.9 and changed the `rand_` function to return `()`
 - Updated to `triple_arena` 0.14

@@ -6,17 +6,17 @@ use crate::Bits;
 impl Bits {
     // this is tested by `awint_test/tests/rand.rs`
 
-    /// Randomly-assigns `self` using a [rand_core::RngCore] random number
+    /// Randomly-assigns `self` using a [rand_core::Rng] random number
     /// generator. This works by calling
-    /// [RngCore::fill_bytes](rand_core::RngCore::fill_bytes) and uses
+    /// [Rng::fill_bytes](rand_core::Rng::fill_bytes) and uses
     /// platform independent methods such that if a pseudorandom generator is
     /// used, it should always produce the same results when tried on the same
     /// sequence of different bitwidth `Bits`.
     ///
     /// ```
     /// // Example using the `rand_xoshiro` crate.
-    /// use awint::{inlawi, Bits, InlAwi};
-    /// use rand_xoshiro::{rand_core::SeedableRng, Xoshiro128StarStar};
+    /// use awint::{Bits, InlAwi, inlawi};
+    /// use rand_xoshiro::{Xoshiro128StarStar, rand_core::SeedableRng};
     ///
     /// let mut rng = Xoshiro128StarStar::seed_from_u64(0);
     /// let mut val = inlawi!(0u100);
@@ -25,7 +25,7 @@ impl Bits {
     /// val.rand_(&mut rng);
     /// assert_eq!(val, inlawi!(0x4c25a514060dea0565c95a8dau100));
     /// ```
-    pub fn rand_<R: rand_core::RngCore>(&mut self, rng: &mut R) {
+    pub fn rand_<R: rand_core::Rng>(&mut self, rng: &mut R) {
         // We really want to use `fill_bytes` without an intermediate buffer.
 
         // Here we make it portable with respect to length by emulating a byte sized

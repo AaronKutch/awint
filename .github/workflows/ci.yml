@@ -18,7 +18,7 @@ jobs:
     env:
       RUSTFLAGS: -D warnings
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Install Rust components
         run: |
           rustup set profile minimal
@@ -27,6 +27,7 @@ jobs:
         run: |
           cargo bench $ALL_FEATURES
           cargo test $ALL_FEATURES
+          cargo t $ALL_FEATURES,const_support
           cargo test --release $ALL_FEATURES
           cargo test $ALL_FEATURES,u8_digits
           cargo test $ALL_FEATURES,u16_digits
@@ -34,31 +35,15 @@ jobs:
           cargo test $ALL_FEATURES,u64_digits
           cargo test $ALL_FEATURES,u128_digits
 
-  # FIXME fix features when we can compile const_support again
-  const_test:
-    name: Test suite
-    runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: -D warnings
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust components
-        run: |
-          rustup set profile minimal
-          rustup install nightly-2023-04-14
-      - name: Run test suite
-        run: |
-          cargo +nightly-2023-04-14 t $ALL_FEATURES,const_support
-
   miri:
     name: Miri
     runs-on: ubuntu-latest
-    # note: we have turned on this Miri flag
+    # note: we have turned on these Miri flags
     env:
       RUSTFLAGS: -D warnings
       MIRIFLAGS: -Zmiri-tree-borrows -Zmiri-strict-provenance
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Install most recent Miri
         run: |
           rustup set profile minimal
@@ -73,8 +58,10 @@ jobs:
   no_alloc_build:
     name: Doc and Build for no-std and no-alloc
     runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Install nightly-riscv32i-unknown-none-elf
         run: |
           rustup set profile minimal
@@ -86,18 +73,34 @@ jobs:
           cargo doc $ALL_FEATURES
           cd no_alloc_test && cargo build --target riscv32i-unknown-none-elf
 
-  stable_build:
-    name: Build on stable
+  # makes sure the tests work on 32 bit and 64 bit big endian targets
+  cross-compile-big-endian:
+    name: Big Endian Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust components
+    - uses: actions/checkout@v7
+    - name: cross-compile-mips
+      run: |
+        rustup set profile minimal
+        rustup default nightly
+        rustup component add rust-src
+        cargo install cross
+        cross test --target powerpc64-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
+        cross test --target powerpc-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
+
+  msrv_build:
+    name: MSRV build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # reads the `rust-version` of awint_internals/Cargo.toml
+      - name: Install MSRV
         run: |
           rustup set profile minimal
-          rustup install 1.70.0
+          rustup default "$(sed -n 's/^rust-version = "\(.*\)"/\1/p' awint_internals/Cargo.toml)"
       # In the past I have had problems with features not being orthogonal due to configuration
       # mistakes, so we test several combinations here
-      - name: Run `cargo build`
+      - name: Check that the crate builds on its MSRV
         run: |
           cargo run --bin stable --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
           cargo build --no-default-features --features=std,rand_support,serde_support,zeroize_support,dag,debug
@@ -114,7 +117,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       # Acquire the most recent nightly with a rustfmt component
       - name: Install most recent Rustfmt
         run: |
@@ -130,7 +133,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       # Acquire the most recent nightly with a clippy component
       - name: Install most recent Clippy
         run: |
@@ -141,17 +144,3 @@ jobs:
         # note: run clippy on no_alloc_test manually
         run: |
           cargo clippy --all --all-targets $ALL_FEATURES -- -D clippy::all
-
-  # makes sure the tests work on 32 bit and 64 bit big endian targets
-  cross-compile-big-endian:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: cross-compile-mips
-      run: |
-        rustup set profile minimal
-        rustup default nightly
-        rustup component add rust-src
-        cargo install cross
-        cross test --target powerpc64-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate
-        cross test --target powerpc-unknown-linux-gnu -Z build-std=core,alloc,proc_macro,std -p testcrate

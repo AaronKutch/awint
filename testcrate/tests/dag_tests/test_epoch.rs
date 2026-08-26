@@ -1,12 +1,10 @@
-#![allow(renamed_and_removed_lints)]
-#![allow(clippy::thread_local_initializer_can_be_made_const)]
+#![allow(clippy::missing_const_for_thread_local)]
 
 //! for `awint_dag` mimicking only testing. There are a few cases that are
 //! really only tested well in `starlight`
 
 use core::fmt;
 use std::{
-    borrow::Borrow,
     cell::RefCell,
     fmt::Write,
     num::{NonZeroU64, NonZeroUsize},
@@ -15,15 +13,15 @@ use std::{
 };
 
 use awint::{
-    awi,
+    Awi, awi,
     awint_dag::{
-        dag,
+        EAwi, EvalResult, Lineage, Location, Op, PState, dag,
         epoch::{EpochCallback, EpochKey},
-        triple_arena::Arena,
+        triple_arena::{Arena, traits::*},
         triple_arena_render::{self, DebugNode, DebugNodeTrait},
-        EAwi, EvalResult, Lineage, Location, Op, PState,
     },
-    bw, Awi,
+    bw,
+    dag::AsBits,
 };
 
 /// Represents a single state that `mimick::Bits` is in at one point in time.
@@ -142,6 +140,7 @@ pub fn _test_callback() -> EpochCallback {
         })
     }
     EpochCallback {
+        name: "_test_callback",
         new_pstate,
         register_assertion_bit,
         get_nzbw,
@@ -198,7 +197,7 @@ impl Epoch {
             for (i, layer) in stack.iter().enumerate().rev() {
                 if layer.key == self.key {
                     res = layer.assertions.clone();
-                    break
+                    break;
                 }
                 if i == 0 {
                     // shouldn't be reachable even with leaks
@@ -222,7 +221,7 @@ impl Epoch {
         for assertion in &self.assertions() {
             let eval = eval_thread_local_state(*assertion);
             if eval != Ok(Awi::from_bool(true)) {
-                return Err(format!("{assertion} {eval:?}"))
+                return Err(format!("{assertion} {eval:?}"));
             }
         }
         Ok(())
@@ -262,7 +261,7 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
                 // reached a root
                 path.pop().unwrap();
                 if path.is_empty() {
-                    break
+                    break;
                 }
                 path.last_mut().unwrap().0 += 1;
                 path.last_mut().unwrap().2 &= states[p].op.is_literal();
@@ -329,12 +328,12 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
                         Err(e) => {
                             states[p].err = Some(e.clone());
                             res = Some(Err(e));
-                            return
+                            return;
                         }
                     }
                 }
                 if path.is_empty() {
-                    break
+                    break;
                 }
                 path.last_mut().unwrap().2 &= all_literals;
             } else {
@@ -353,7 +352,7 @@ fn eval_thread_local_state(p_state: PState) -> Result<Awi, String> {
         if let Op::Literal(ref lit) = states[p_state].op {
             res = Some(Ok(lit.clone()));
         } else {
-            res = Some(Err(format!("`could not eval to a literal {}", p_state)));
+            res = Some(Err(format!("`could not eval to a literal {p_state}")));
         }
     });
     res.unwrap()
@@ -390,7 +389,8 @@ impl LazyAwi {
         let p_lhs = self.state();
         get_thread_local_state_mut(p_lhs, |state| {
             if state.op.is_opaque() {
-                state.op = Op::Literal(awi::Awi::from(rhs));
+                let rhs: awi::Awi = From::from(&rhs);
+                state.op = Op::Literal(rhs);
                 Ok(())
             } else {
                 Err("this testing `LazyAwi` struct cannot be assigned to more than once".to_owned())
@@ -407,15 +407,10 @@ impl Deref for LazyAwi {
     }
 }
 
-impl Borrow<dag::Bits> for LazyAwi {
-    fn borrow(&self) -> &dag::Bits {
-        self
-    }
-}
-
-impl AsRef<dag::Bits> for LazyAwi {
-    fn as_ref(&self) -> &dag::Bits {
-        self
+impl AsBits for LazyAwi {
+    #[inline]
+    fn as_bits(&self) -> &dag::Bits {
+        self.internal_as_ref()
     }
 }
 
@@ -453,8 +448,8 @@ impl fmt::Debug for EvalAwi {
     }
 }
 
-impl<B: AsRef<dag::Bits>> From<B> for EvalAwi {
-    fn from(b: B) -> Self {
-        Self::from_bits(b.as_ref())
+impl<B: dag::AsBits> From<&B> for EvalAwi {
+    fn from(b: &B) -> Self {
+        Self::from_bits(b.as_bits())
     }
 }

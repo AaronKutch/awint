@@ -3,7 +3,7 @@ use std::{
     fs::{File, OpenOptions},
 };
 
-use awint::awint_macro_internals::{cc_macro, CodeGen, FnNames, AWINT_NAMES};
+use awint::awint_macro_internals::{AWINT_NAMES, CodeGen, FnNames, cc_macro};
 
 const TEST_FN_NAMES: FnNames = FnNames {
     get_bw: "bw",

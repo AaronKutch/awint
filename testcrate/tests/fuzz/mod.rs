@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
-use awint::{awint_internals::Digit, Bits};
-use rand_xoshiro::{rand_core::RngCore, Xoshiro128StarStar};
+use awint::{Bits, awint_internals::Digit};
+use rand_xoshiro::{Xoshiro128StarStar, rand_core::Rng};
 mod awi_struct;
 #[cfg(not(miri))]
 mod fp;
@@ -12,6 +12,8 @@ mod fp_string;
 mod identities;
 mod multi_bw;
 mod one_run;
+
+// TODO use the "star_rng_support" methods instead of `rand_xoshiro`
 
 #[track_caller]
 fn check_invariants(x: &Bits) {

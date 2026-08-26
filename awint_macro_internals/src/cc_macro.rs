@@ -4,8 +4,8 @@ use awint_ext::Awi;
 use proc_macro2::TokenStream;
 
 use crate::{
-    cc_macro_code_gen, error_and_help, stage1, stage2, stage3, stage4, stage5, token_stream_to_ast,
-    CCMacroError, CodeGen, Names,
+    CCMacroError, CodeGen, Names, cc_macro_code_gen, error_and_help, stage1, stage2, stage3,
+    stage4, stage5, token_stream_to_ast,
 };
 
 /// Input parsing and code generation function for corresponding concatenations
@@ -69,9 +69,10 @@ pub fn cc_macro<
             } else {
                 "".to_owned()
             };
-            return Err(error_and_help(&format!("input failed to tokenize: {e}{note}"),
-                "for further information see the library documentation of `awint_macros` \
-                https://docs.rs/awint_macros/"))
+            return Err(error_and_help(
+                &format!("input failed to tokenize: {e}{note}"),
+                "for further information see the `awint::macro_docs` documentation",
+            ));
         }
     };
 
@@ -88,7 +89,7 @@ pub fn cc_macro<
                         .to_owned(),
                     concat.txt,
                 )
-                .ast_error(&ast))
+                .ast_error(&ast));
             }
             trailing_semicolon = true;
         }
@@ -101,7 +102,7 @@ pub fn cc_macro<
                             .to_owned(),
                         comp.txt,
                     )
-                    .ast_error(&ast))
+                    .ast_error(&ast));
                 }
                 trailing_commas.push(concat_i);
             }
@@ -114,8 +115,10 @@ pub fn cc_macro<
         ast.cc.pop().unwrap();
     }
     if ast.cc.is_empty() {
-        return Err(error_and_help("empty input", "for further information see the \
-        library documentation of `awint_macros` https://docs.rs/awint_macros/"))
+        return Err(error_and_help(
+            "empty input",
+            "for further information see the `awint::macro_docs` documentation",
+        ));
     }
     // Components are written like `component N, component N - 1`, I ultimately made
     // this decision so that literals next to each other would concatenate

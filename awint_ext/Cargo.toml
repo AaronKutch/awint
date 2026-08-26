@@ -1,7 +1,7 @@
 [package]
 name = "awint_ext"
-version = "0.18.1"
-edition = "2021"
+version = "0.19.0"
+edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -11,17 +11,6 @@ description = "Externally allocating `awint` functionality"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
-[dependencies]
-awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
-const_fn = "0.4"
-serde = { version = "1.0", default-features = false, optional = true }
-zeroize = { version = "1", default-features = false, optional = true }
-
-# for examples
-[dev-dependencies]
-awint = { path = "../awint" }
-ron = "0.8"
-
 [features]
 default = []
 # Turns on nightly features required for many functions to be marked `const`
@@ -29,9 +18,20 @@ const_support = ["awint_core/const_support"]
 # Turns on `serde` support
 serde_support = ["serde"]
 zeroize_support = ["zeroize", "awint_core/zeroize_support"]
+star_rng_support = ["awint_core/star_rng_support"]
 # Only zero or one of these should be active
 u8_digits = ["awint_core/u8_digits"]
 u16_digits = ["awint_core/u16_digits"]
 u32_digits = ["awint_core/u32_digits"]
 u64_digits = ["awint_core/u64_digits"]
 u128_digits = ["awint_core/u128_digits"]
+
+[dependencies]
+awint_core = { workspace = true }
+const_fn = { workspace = true }
+serde = { workspace = true, optional = true }
+zeroize = { workspace = true, optional = true }
+
+[dev-dependencies]
+awint = { path = "../awint", default-features = false, features = ["alloc"] }
+ron = { workspace = true }

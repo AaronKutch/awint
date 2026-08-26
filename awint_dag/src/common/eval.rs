@@ -4,8 +4,8 @@
 
 use std::num::NonZeroUsize;
 
-use awint_ext::{awint_internals::USIZE_BITS, Awi, Bits};
 use Op::*;
+use awint_ext::{Awi, Bits, awint_internals::USIZE_BITS};
 
 use crate::{DummyDefault, Op};
 
@@ -129,7 +129,7 @@ fn ceq(x: NonZeroUsize, y: NonZeroUsize) -> bool {
 macro_rules! ceq {
     ($x:expr, $y:expr) => {
         if !ceq($x, $y) {
-            return EvalResult::Noop
+            return EvalResult::Noop;
         }
     };
 }
@@ -145,7 +145,7 @@ macro_rules! ceq_strict {
         #[cfg(debug_assertions)]
         {
             if !ceq($x, $y) {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
     };
@@ -156,11 +156,7 @@ macro_rules! ceq_strict {
 // mainly for typechecking
 #[inline]
 fn cbool(x: &Bits) -> Option<bool> {
-    if x.bw() == 1 {
-        Some(x.to_bool())
-    } else {
-        None
-    }
+    if x.bw() == 1 { Some(x.to_bool()) } else { None }
 }
 
 macro_rules! cbool {
@@ -170,7 +166,7 @@ macro_rules! cbool {
             if let Some(b) = cbool($expr) {
                 b
             } else {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
         #[cfg(not(debug_assertions))]
@@ -196,7 +192,7 @@ macro_rules! cusize {
             if let Some(b) = cusize(&$expr) {
                 b
             } else {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
         #[cfg(not(debug_assertions))]
@@ -211,7 +207,7 @@ macro_rules! cbool_w {
         #[cfg(debug_assertions)]
         {
             if $expr.get() != 1 {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
     }};
@@ -222,7 +218,7 @@ macro_rules! cusize_w {
         #[cfg(debug_assertions)]
         {
             if $expr.get() != USIZE_BITS {
-                return EvalResult::Error(BUG_MESSAGE)
+                return EvalResult::Error(BUG_MESSAGE);
             }
         }
     }};
@@ -495,12 +491,11 @@ impl Op<EAwi> {
                 // and bitwidth
                 let total_width = NonZeroUsize::new(total_width).unwrap();
                 let mut good = false;
-                if total_width.get() < USIZE_BITS {
-                    if let Some(lut_len) = (1usize << total_width.get()).checked_mul(w.get()) {
-                        if lut_len == lit.bw() {
-                            good = true;
-                        }
-                    }
+                if total_width.get() < USIZE_BITS
+                    && let Some(lut_len) = (1usize << total_width.get()).checked_mul(w.get())
+                    && lut_len == lit.bw()
+                {
+                    good = true;
                 }
                 if !good {
                     return Error("`StaticLut` with bad bitwidths");
@@ -555,7 +550,7 @@ impl Op<EAwi> {
                             r.lut_(&lit, &test_inx).unwrap();
                             if let Some(ref common_eval) = common_eval {
                                 if *common_eval != r {
-                                    return Unevaluatable
+                                    return Unevaluatable;
                                 }
                             } else {
                                 common_eval = Some(r.clone());
@@ -592,15 +587,14 @@ impl Op<EAwi> {
             }
             Lut([a, b]) => {
                 let mut res = false;
-                if b.bw() < USIZE_BITS {
-                    if let Some(lut_len) = (1usize << b.bw()).checked_mul(w.get()) {
-                        if lut_len == a.bw() {
-                            res = true;
-                        }
-                    }
+                if b.bw() < USIZE_BITS
+                    && let Some(lut_len) = (1usize << b.bw()).checked_mul(w.get())
+                    && lut_len == a.bw()
+                {
+                    res = true;
                 }
                 if !res {
-                    return Noop
+                    return Noop;
                 }
                 // TODO some optimizing possible
                 awi2!(a, b, {
@@ -617,7 +611,7 @@ impl Op<EAwi> {
                     || ((1usize << b.bw()) != w.get())
                     || ((w.get() << 1) != a.bw())
                 {
-                    return Noop
+                    return Noop;
                 }
                 awi2!(a, b, {
                     let mut r = Awi::zero(w);
@@ -924,15 +918,14 @@ impl Op<EAwi> {
             LutSet([a, b, c]) => {
                 ceq_strict!(w, a.nzbw());
                 let mut res = false;
-                if c.bw() < USIZE_BITS {
-                    if let Some(lut_len) = (1usize << c.bw()).checked_mul(b.bw()) {
-                        if lut_len == a.bw() {
-                            res = w == a.nzbw();
-                        }
-                    }
+                if c.bw() < USIZE_BITS
+                    && let Some(lut_len) = (1usize << c.bw()).checked_mul(b.bw())
+                    && lut_len == a.bw()
+                {
+                    res = w == a.nzbw();
                 }
                 if !res {
-                    return Noop
+                    return Noop;
                 }
                 awi3!(a, b, c, {
                     a.lut_set(&b, &c).unwrap();
@@ -1025,11 +1018,7 @@ impl Op<EAwi> {
                         )
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             FieldTo([a, b, c, d]) => {
                 ceq_strict!(w, a.nzbw());
@@ -1077,11 +1066,7 @@ impl Op<EAwi> {
                         )
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             Field([a, b, c, d, e]) => {
                 ceq_strict!(w, a.nzbw());
@@ -1155,11 +1140,7 @@ impl Op<EAwi> {
                         );
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             FieldBit([a, b, c, d]) => {
                 ceq_strict!(w, a.nzbw());
@@ -1206,11 +1187,7 @@ impl Op<EAwi> {
                         );
                     },
                 );
-                if o {
-                    PassUnevaluatable
-                } else {
-                    Unevaluatable
-                }
+                if o { PassUnevaluatable } else { Unevaluatable }
             }
             ArbMulAdd([a, b, c]) => {
                 ceq_strict!(w, a.nzbw());

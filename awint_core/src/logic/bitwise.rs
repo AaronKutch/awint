@@ -54,7 +54,7 @@ impl Bits {
     #[must_use]
     pub const fn copy_(&mut self, rhs: &Self) -> Option<()> {
         if self.bw() != rhs.bw() {
-            return None
+            return None;
         }
         unsafe {
             ptr::copy_nonoverlapping(rhs.as_ptr(), self.as_mut_ptr(), self.total_digits());
@@ -90,11 +90,11 @@ impl Bits {
     #[must_use]
     pub const fn range_or_(&mut self, range: Range<usize>) -> Option<()> {
         if range.start > self.bw() || range.end > self.bw() {
-            return None
+            return None;
         }
         // see `range_and_` for why we chose this
         if range.start >= range.end {
-            return Some(())
+            return Some(());
         }
         let start = digits_u(range.start);
         let end = digits_u(range.end);
@@ -132,7 +132,7 @@ impl Bits {
     #[must_use]
     pub const fn range_and_(&mut self, range: Range<usize>) -> Option<()> {
         if range.start > self.bw() || range.end > self.bw() {
-            return None
+            return None;
         }
         // Originally, I considered returning `None` when `range.start == self.bw()` to
         // make things more strict, but I quickly found a case where this made things
@@ -142,7 +142,7 @@ impl Bits {
         // of the natural `range.start >= range.end` check.
         if range.start >= range.end {
             self.zero_();
-            return Some(())
+            return Some(());
         }
         let start = digits_u(range.start);
         let end = digits_u(range.end);
@@ -186,11 +186,11 @@ impl Bits {
     #[must_use]
     pub const fn range_xor_(&mut self, range: Range<usize>) -> Option<()> {
         if range.start > self.bw() || range.end > self.bw() {
-            return None
+            return None;
         }
         // see `range_and_` for why we chose this
         if range.start >= range.end {
-            return Some(())
+            return Some(());
         }
         let start = digits_u(range.start);
         let end = digits_u(range.end);
@@ -228,7 +228,7 @@ impl Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn digit_or_(&mut self, rhs: Digit, shl: usize) {
         if shl >= self.bw() {
-            return
+            return;
         }
         // Safety: `digits < self.total_digits()` because of the above check. The
         // `digits + 1` index is checked.

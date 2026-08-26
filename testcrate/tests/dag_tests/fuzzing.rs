@@ -1,3 +1,5 @@
+#![allow(clippy::manual_is_multiple_of)]
+
 use std::{
     cmp::{max, min},
     num::NonZeroUsize,
@@ -5,13 +7,14 @@ use std::{
 
 use awint::{
     awi,
+    awint_dag::triple_arena::traits::*,
     awint_internals::USIZE_BITS,
-    awint_macro_internals::triple_arena::{ptr_struct, Arena},
+    awint_macro_internals::triple_arena::{Arena, ptr_struct},
     dag,
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 use super::test_epoch::{Epoch, EvalAwi, LazyAwi};
@@ -64,7 +67,7 @@ impl Mem {
     }
 
     pub fn clear(&mut self) {
-        self.a.clear();
+        self.a.clear().allow();
         self.v.clear();
         self.roots.clear();
         for _ in 0..self.v_len {
@@ -78,7 +81,7 @@ impl Mem {
         if try_query && (!self.v[w].is_empty()) {
             let p = self.v[w][(self.rng.next_u32() as usize) % self.v[w].len()];
             if self.get_awi(p).to_usize() < cap {
-                return p
+                return p;
             }
         }
         let nzbw = NonZeroUsize::new(w).unwrap();
@@ -89,7 +92,7 @@ impl Mem {
         lit.usize_(tmp);
         let p = self.a.insert(Pair {
             awi: lit.clone(),
-            dag: dag::Awi::from(lazy.as_ref()),
+            dag: dag::Awi::from(&lazy),
             eval: None,
         });
         self.roots.push((lazy, lit));
@@ -109,7 +112,7 @@ impl Mem {
             lit.rand_(&mut self.rng);
             let p = self.a.insert(Pair {
                 awi: lit.clone(),
-                dag: dag::Awi::from(lazy.as_ref()),
+                dag: dag::Awi::from(&lazy),
                 eval: None,
             });
             self.roots.push((lazy, lit));
@@ -284,15 +287,17 @@ fn num_dag_duo(rng: &mut Xoshiro128StarStar, m: &mut Mem) {
             let cout = m.next(1);
             let cin_a = m.get_awi(cin);
             let cin_b = m.get_dag(cin);
-            let out_a;
-            let out_b;
-            if (rng.next_u32() & 1) == 0 {
-                out_a = m.get_mut_awi(x).inc_(cin_a.to_bool());
-                out_b = m.get_mut_dag(x).inc_(cin_b.to_bool());
+            let (out_a, out_b) = if (rng.next_u32() & 1) == 0 {
+                (
+                    m.get_mut_awi(x).inc_(cin_a.to_bool()),
+                    m.get_mut_dag(x).inc_(cin_b.to_bool()),
+                )
             } else {
-                out_a = m.get_mut_awi(x).dec_(cin_a.to_bool());
-                out_b = m.get_mut_dag(x).dec_(cin_b.to_bool());
-            }
+                (
+                    m.get_mut_awi(x).dec_(cin_a.to_bool()),
+                    m.get_mut_dag(x).dec_(cin_b.to_bool()),
+                )
+            };
             m.get_mut_awi(cout).bool_(out_a);
             m.get_mut_dag(cout).bool_(out_b);
         }

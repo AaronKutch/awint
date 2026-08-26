@@ -1,6 +1,4 @@
-use core::borrow::BorrowMut;
-
-use awint_core::{Bits, InlAwi};
+use awint_core::{AsMutBits, Bits, InlAwi};
 
 use crate::FP;
 
@@ -98,7 +96,7 @@ impl F64 {
     }
 }
 
-impl<B: BorrowMut<Bits>> FP<B> {
+impl<B: AsMutBits> FP<B> {
     /// Floating-assigns `FP::from_f32(f)` to `this`. Note that this modifies
     /// `this.fp` according to [floating_](FP::floating_).
     pub fn f32_(this: &mut Self, f: f32) {
@@ -110,7 +108,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     pub fn checked_f32_(this: &mut Self, f: f32) -> Option<()> {
         let exponent = ((f.to_bits() >> 23) & ((1 << 8) - 1)) as u8;
         if exponent == u8::MAX {
-            return None
+            return None;
         }
         FP::f32_(this, f);
         Some(())
@@ -127,7 +125,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     pub fn checked_f64_(this: &mut Self, f: f64) -> Option<()> {
         let exponent = ((f.to_bits() >> 52) & ((1 << 11) - 1)) as u16;
         if exponent == ((1 << 11) - 1) {
-            return None
+            return None;
         }
         FP::f64_(this, f);
         Some(())
@@ -139,7 +137,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// significant numerical bit is 2^128 or greater), `None` is returned.
     pub fn try_to_f32(this: &mut Self) -> Option<f32> {
         if this.is_zero() {
-            return Some(0.0)
+            return Some(0.0);
         }
         let sign = this.is_negative();
         // note: reinterpret as unsigned
@@ -189,7 +187,7 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// significant numerical bit is 2^1024 or greater), `None` is returned.
     pub fn try_to_f64(this: &mut Self) -> Option<f64> {
         if this.is_zero() {
-            return Some(0.0)
+            return Some(0.0);
         }
         let sign = this.is_negative();
         // note: reinterpret as unsigned

@@ -58,14 +58,13 @@ use crate::Bits;
 ///
 /// assert_eq!(x, inlawi!(-246i100).as_ref());
 /// ```
-// FIXME
+///
 /// ```text
 /// // note: see README because this is broken on some nightlies
 ///
 /// // only needed if you are trying to use in `const` contexts
 /// #![feature(const_trait_impl)]
-/// #![feature(const_mut_refs)]
-/// #![feature(const_option)]
+/// #![feature(const_convert)]
 /// use awint::{cc, inlawi, inlawi_ty, Bits, InlAwi};
 ///
 /// const fn const_example(mut lhs: &mut Bits, rhs: &Bits) {
@@ -286,7 +285,7 @@ impl<'a, const BW: usize, const LEN: usize> InlAwi<BW, LEN> {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl<const BW: usize, const LEN: usize> PartialEq for InlAwi<BW, LEN> {
     fn eq(&self, rhs: &Self) -> bool {
-        self.as_ref() == rhs.as_ref()
+        self.const_as_ref() == rhs.const_as_ref()
     }
 }
 
@@ -296,7 +295,7 @@ impl<const BW: usize, const LEN: usize> Eq for InlAwi<BW, LEN> {}
 #[cfg(feature = "zeroize_support")]
 impl<const BW: usize, const LEN: usize> zeroize::Zeroize for InlAwi<BW, LEN> {
     fn zeroize(&mut self) {
-        self.as_mut().zeroize()
+        self.const_as_mut().zeroize()
     }
 }
 
@@ -306,7 +305,7 @@ macro_rules! impl_fmt {
             impl<const BW: usize, const LEN: usize> fmt::$ty for InlAwi<BW, LEN> {
                 /// Forwards to the corresponding impl for `Bits`
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::$ty::fmt(self.as_ref(), f)
+                    fmt::$ty::fmt(self.const_as_ref(), f)
                 }
             }
         )*
@@ -317,7 +316,7 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl<const BW: usize, const LEN: usize> Hash for InlAwi<BW, LEN> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.as_ref().hash(state);
+        self.const_as_ref().hash(state);
     }
 }
 

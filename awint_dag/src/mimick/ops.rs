@@ -9,14 +9,13 @@
 
 use std::{cmp::min, marker::PhantomData, num::NonZeroUsize, ops::Range};
 
+use Op::*;
 use awint_ext::{awi, awint_internals::USIZE_BITS, bw};
 use smallvec::smallvec;
-use Op::*;
 
 use crate::{
-    dag,
+    ConcatFieldsType, ConcatType, Lineage, Op, dag,
     mimick::{Bits, InlAwi, None, Option, Some},
-    ConcatFieldsType, ConcatType, Lineage, Op,
 };
 
 // TODO there's no telling how long Try will be unstable
@@ -374,11 +373,7 @@ impl Bits {
     #[doc(hidden)]
     pub fn efficient_ule(s: dag::usize, max: usize) -> Option<()> {
         if let awi::Some(s) = s.state().try_get_as_usize() {
-            if s <= max {
-                Some(())
-            } else {
-                None
-            }
+            if s <= max { Some(()) } else { None }
         } else if max == 0 {
             let s_awi = dag::Awi::from_usize(s);
             let success = s_awi.is_zero();
@@ -425,12 +420,12 @@ impl Bits {
     pub fn efficient_add_then_ule(a: dag::usize, b: dag::usize, max: usize) -> Option<()> {
         if let awi::Some(a) = a.state().try_get_as_usize() {
             if a > max {
-                return None
+                return None;
             }
             Bits::efficient_ule(b, max - a)
         } else if let awi::Some(b) = b.state().try_get_as_usize() {
             if b > max {
-                return None
+                return None;
             }
             Bits::efficient_ule(a, max - b)
         } else if max == 0 {
@@ -500,15 +495,14 @@ impl Bits {
         let lhs_w = self.state_nzbw();
         let inx_w = inx.state_nzbw();
         let lut_w = lut.state_nzbw();
-        if inx_w.get() < USIZE_BITS {
-            if let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get()) {
-                if lut_len == lut_w.get() {
-                    res = true;
-                }
-            }
+        if inx_w.get() < USIZE_BITS
+            && let awi::Some(lut_len) = (1usize << inx_w.get()).checked_mul(lhs_w.get())
+            && lut_len == lut_w.get()
+        {
+            res = true;
         }
         if !res {
-            return None
+            return None;
         }
         if let awi::Some(lut) = lut.state().try_get_as_awi() {
             // optimization for meta lowering
@@ -1007,7 +1001,7 @@ impl Bits {
                         run_fielding: false,
                         success: ok_on_zero.into(),
                         _phantom_data: PhantomData,
-                    }
+                    };
                 }
             } else if !ok_on_zero {
                 b &= !cw.is_zero();

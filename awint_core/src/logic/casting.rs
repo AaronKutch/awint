@@ -46,7 +46,7 @@ impl Bits {
                 if (self.extra() != 0)
                     && ((rhs.get_unchecked(self.total_digits() - 1) >> self.extra()) != 0)
                 {
-                    return true
+                    return true;
                 }
                 const_for!(i in {self.total_digits()..rhs.total_digits()} {
                     if rhs.get_unchecked(i) != 0 {
@@ -73,7 +73,7 @@ impl Bits {
                     // check if the new most significant bit is unset (which would mean overflow
                     // from negative to positive)
                     if !self.msb() {
-                        return true
+                        return true;
                     }
                     // check if there are unset bits that would be truncated
                     if self.total_digits() == rhs.total_digits() {
@@ -82,22 +82,22 @@ impl Bits {
                             //  rhs extra mask and lhs cutoff mask
                             let expected = (MAX >> (BITS - rhs.extra())) & (MAX << self.extra());
                             if (rhs.last() & expected) != expected {
-                                return true
+                                return true;
                             }
                         } else {
                             let expected = MAX << self.extra();
                             if (rhs.last() & expected) != expected {
-                                return true
+                                return true;
                             }
                         }
                         // avoid the other tests if this is the only digit
-                        return false
+                        return false;
                     }
                     // first digit
                     if self.extra() != 0 {
                         let expected = MAX << self.extra();
                         if (rhs.get_unchecked(self.total_digits() - 1) & expected) != expected {
-                            return true
+                            return true;
                         }
                     }
                     // middle digits
@@ -110,22 +110,22 @@ impl Bits {
                     if rhs.extra() != 0 {
                         let expected = MAX >> (BITS - rhs.extra());
                         if (rhs.last() & expected) != expected {
-                            return true
+                            return true;
                         }
                     } else if rhs.last() != MAX {
-                        return true
+                        return true;
                     }
                 } else {
                     // check if the new most significant bit is set (which would mean overflow from
                     // positive to negative)
                     if self.msb() {
-                        return true
+                        return true;
                     }
                     // check if there are set bits that would be truncated
                     if (self.extra() != 0)
                         && ((rhs.get_unchecked(self.total_digits() - 1) >> self.extra()) != 0)
                     {
-                        return true
+                        return true;
                     }
                     // Safety: `self.total_digits() <= rhs.total_digits()` because of the above
                     // check

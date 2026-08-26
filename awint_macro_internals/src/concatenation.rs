@@ -3,8 +3,8 @@ use std::num::NonZeroUsize;
 use awint_ext::Awi;
 
 use crate::{
-    i128_to_nonzerousize, i128_to_usize, Ast, CCMacroError, Component, ComponentType::*, PCWidth,
-    PText, Usbr,
+    Ast, CCMacroError, Component, ComponentType::*, PCWidth, PText, Usbr, i128_to_nonzerousize,
+    i128_to_usize,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl Concatenation {
                                  filler equivalent to its width instead"
                                     .to_owned(),
                             ),
-                        })
+                        });
                     }
                 }
                 Variable => {
@@ -92,7 +92,7 @@ impl Concatenation {
                                  no-ops"
                                     .to_owned(),
                                 concat_txt,
-                            ))
+                            ));
                         }
                         if !matches!(self.filler_alignment, FillerAlign::None) {
                             // filler already set
@@ -108,7 +108,7 @@ impl Concatenation {
                                      aligned, remove one or break apart the macro into more macros"
                                         .to_owned(),
                                 ),
-                            })
+                            });
                         }
                         if comp_i == 0 {
                             if concat_len == 1 {
@@ -139,7 +139,7 @@ impl Concatenation {
                          `awint` integer which would panic, else it is still a useless no-op"
                             .to_owned(),
                     ),
-                })
+                });
             }
         }
         Ok(())
@@ -155,30 +155,31 @@ impl Concatenation {
         // normalized to start at 0 and end at the end of the literal bitwidth
         let mut i = self.comps.len() - 1;
         while i > 0 {
-            if self.comps[i - 1].is_static_literal() && self.comps[i].is_static_literal() {
-                // this is infallible, the only reason for this awkward arrangement is to get
-                // around borrowing issues
-                if let (Literal(lit0), Literal(lit1)) = (
+            // the tuple destructuring is infallible, the only reason for this awkward
+            // arrangement is to get around borrowing issues
+            if self.comps[i - 1].is_static_literal()
+                && self.comps[i].is_static_literal()
+                && let (Literal(lit0), Literal(lit1)) = (
                     self.comps[i - 1].c_type.clone(),
                     self.comps[i].c_type.clone(),
-                ) {
-                    let w0 = self.comps[i - 1].range.static_width().unwrap();
-                    let w1 = self.comps[i].range.static_width().unwrap();
-                    let total_i128 = w0.checked_add(w1).unwrap();
-                    let total = i128_to_nonzerousize(total_i128).unwrap();
-                    let mut combined = Awi::zero(total);
-                    combined.zero_resize_(&lit0);
-                    combined
-                        .field_to(
-                            i128_to_usize(w0).unwrap(),
-                            &lit1,
-                            i128_to_usize(w1).unwrap(),
-                        )
-                        .unwrap();
-                    self.comps[i - 1].c_type = Literal(combined);
-                    self.comps[i - 1].range = Usbr::new_static(0, total_i128);
-                    self.comps.remove(i);
-                }
+                )
+            {
+                let w0 = self.comps[i - 1].range.static_width().unwrap();
+                let w1 = self.comps[i].range.static_width().unwrap();
+                let total_i128 = w0.checked_add(w1).unwrap();
+                let total = i128_to_nonzerousize(total_i128).unwrap();
+                let mut combined = Awi::zero(total);
+                combined.zero_resize_(&lit0);
+                combined
+                    .field_to(
+                        i128_to_usize(w0).unwrap(),
+                        &lit1,
+                        i128_to_usize(w1).unwrap(),
+                    )
+                    .unwrap();
+                self.comps[i - 1].c_type = Literal(combined);
+                self.comps[i - 1].range = Usbr::new_static(0, total_i128);
+                self.comps.remove(i);
             }
             i -= 1;
         }
@@ -230,7 +231,7 @@ pub fn stage4(
                              {concat_i} have unequal bitwidths {prev_bw} and {this_bw}"
                         ),
                         concat.txt,
-                    ))
+                    ));
                 }
             } else {
                 common_bw = Some(this_bw);
@@ -250,7 +251,7 @@ pub fn stage4(
                              function followed by a colon, such as \"zero: \" or \"umax: \""
                                 .to_owned(),
                         ),
-                    })
+                    });
                 }
             }
         }
@@ -269,7 +270,7 @@ pub fn stage4(
                     .to_owned(),
             ),
             ..Default::default()
-        })
+        });
     }
     if (!deterministic) && (ast.cc.len() == 1) {
         // this case shouldn't have a use
@@ -281,7 +282,7 @@ pub fn stage4(
                 "unbounded fillers have no effects if there is only one concatenation".to_owned(),
             ),
             ..Default::default()
-        })
+        });
     }
     if !deterministic {
         for concat in &ast.cc {
@@ -299,7 +300,7 @@ pub fn stage4(
                                  ..var ;\" that gives the macro needed information"
                                     .to_owned(),
                             ),
-                        })
+                        });
                     }
                 }
             }
@@ -328,7 +329,7 @@ pub fn stage4(
                                  ..var ;\" that gives the macro needed information"
                                     .to_owned(),
                             ),
-                        })
+                        });
                     }
                 }
             }

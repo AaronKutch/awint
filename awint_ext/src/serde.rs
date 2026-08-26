@@ -2,10 +2,9 @@ use core::fmt;
 
 use awint_core::bw;
 use serde::{
-    de,
+    Deserialize, Deserializer, Serialize, Serializer, de,
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, SerializeTuple},
-    Deserialize, Deserializer, Serialize, Serializer,
 };
 
 use crate::{Awi, ExtAwi};
@@ -21,7 +20,7 @@ impl Serialize for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
+    /// use awint::{Bits, ExtAwi, InlAwi, extawi, inlawi};
     /// use ron::to_string;
     ///
     /// assert_eq!(
@@ -59,7 +58,7 @@ impl Serialize for Awi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "Awi".
-    /// use awint::{awi, inlawi, Awi, Bits, InlAwi};
+    /// use awint::{Awi, Bits, InlAwi, awi, inlawi};
     /// use ron::to_string;
     ///
     /// assert_eq!(
@@ -146,13 +145,13 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             match key {
                 Field::Bw => {
                     if w.is_some() {
-                        return Err(de::Error::duplicate_field("bw"))
+                        return Err(de::Error::duplicate_field("bw"));
                     }
                     w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
-                        return Err(de::Error::duplicate_field("bits"))
+                        return Err(de::Error::duplicate_field("bits"));
                     }
                     bits = Some(map.next_value()?);
                 }
@@ -161,7 +160,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
         let w = w.ok_or_else(|| de::Error::missing_field("bw"))?;
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = ExtAwi::zero(w);
@@ -170,7 +169,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -186,7 +185,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = ExtAwi::zero(w);
@@ -195,7 +194,7 @@ impl<'de> Visitor<'de> for ExtAwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -208,7 +207,7 @@ impl<'de> Deserialize<'de> for ExtAwi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{extawi, inlawi, Bits, ExtAwi, InlAwi};
+    /// use awint::{Bits, ExtAwi, InlAwi, extawi, inlawi};
     /// use ron::from_str;
     ///
     /// let x: ExtAwi = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();
@@ -244,13 +243,13 @@ impl<'de> Visitor<'de> for AwiVisitor {
             match key {
                 Field::Bw => {
                     if w.is_some() {
-                        return Err(de::Error::duplicate_field("bw"))
+                        return Err(de::Error::duplicate_field("bw"));
                     }
                     w = Some(map.next_value()?);
                 }
                 Field::Bits => {
                     if bits.is_some() {
-                        return Err(de::Error::duplicate_field("bits"))
+                        return Err(de::Error::duplicate_field("bits"));
                     }
                     bits = Some(map.next_value()?);
                 }
@@ -259,7 +258,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
         let w = w.ok_or_else(|| de::Error::missing_field("bw"))?;
         let bits = bits.ok_or_else(|| de::Error::missing_field("bits"))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = Awi::zero(w);
@@ -268,7 +267,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -284,7 +283,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
             .next_element()?
             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
         if w == 0 {
-            return Err(de::Error::custom("`bw` field should be nonzero"))
+            return Err(de::Error::custom("`bw` field should be nonzero"));
         }
         let w = bw(w);
         let mut val = Awi::zero(w);
@@ -293,7 +292,7 @@ impl<'de> Visitor<'de> for AwiVisitor {
             val.const_as_mut()
                 .power_of_two_bytes_(None, bits.as_bytes(), 16, pad.const_as_mut());
         if let Err(e) = result {
-            return Err(de::Error::custom(e))
+            return Err(de::Error::custom(e));
         }
         Ok(val)
     }
@@ -306,7 +305,7 @@ impl<'de> Deserialize<'de> for Awi {
     /// ```
     /// // Example using the `ron` crate. Note that it
     /// // omits the struct name which would be "ExtAwi".
-    /// use awint::{awi, Awi, Bits, InlAwi};
+    /// use awint::{Awi, Bits, InlAwi, awi};
     /// use ron::from_str;
     ///
     /// let x: Awi = from_str("(bw:100,bits:\"fedcba9876543210\")").unwrap();

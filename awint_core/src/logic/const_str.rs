@@ -1,8 +1,8 @@
 use core::fmt;
 
+use SerdeError::*;
 use awint_internals::*;
 use const_fn::const_fn;
-use SerdeError::*;
 
 use crate::Bits;
 
@@ -10,7 +10,7 @@ use crate::Bits;
 /// checks
 const fn verify_for_bytes_(src: &[u8], radix: u8) -> Result<(), SerdeError> {
     if radix < 2 || radix > 36 {
-        return Err(InvalidRadix)
+        return Err(InvalidRadix);
     }
     const_for!(i in {0..src.len()} {
         let b = src[i];
@@ -53,14 +53,14 @@ impl Bits {
         pad: &mut Self,
     ) -> Result<(), SerdeError> {
         if self.bw() != pad.bw() {
-            return Err(NonEqualWidths)
+            return Err(NonEqualWidths);
         }
         if !radix.is_power_of_two() {
-            return Err(InvalidRadix)
+            return Err(InvalidRadix);
         }
         let log2 = radix.trailing_zeros() as usize;
         if let Err(e) = verify_for_bytes_(src, radix) {
-            return Err(e)
+            return Err(e);
         }
         // the accumulator
         pad.zero_();
@@ -108,13 +108,13 @@ impl Bits {
             if sign {
                 if pad.lz() == 0 && !pad.is_imin() {
                     // These cannot be represented as negative
-                    return Err(Overflow)
+                    return Err(Overflow);
                 }
                 // handles `imin` correctly
                 pad.neg_(true);
             } else if pad.lz() == 0 {
                 // These cannot be represented as positive
-                return Err(Overflow)
+                return Err(Overflow);
             }
         }
         self.copy_(pad).unwrap();
@@ -146,13 +146,13 @@ impl Bits {
         pad1: &mut Self,
     ) -> Result<(), SerdeError> {
         if (self.bw() != pad0.bw()) || (self.bw() != pad1.bw()) {
-            return Err(NonEqualWidths)
+            return Err(NonEqualWidths);
         }
         if radix.is_power_of_two() {
-            return self.power_of_two_bytes_(sign, src, radix, pad0)
+            return self.power_of_two_bytes_(sign, src, radix, pad0);
         }
         if let Err(e) = verify_for_bytes_(src, radix) {
-            return Err(e)
+            return Err(e);
         }
         // the accumulator
         pad0.zero_();
@@ -190,13 +190,13 @@ impl Bits {
             if sign {
                 if pad0.lz() == 0 && !pad0.is_imin() {
                     // These cannot be represented as negative
-                    return Err(Overflow)
+                    return Err(Overflow);
                 }
                 // handles `imin` correctly
                 pad0.neg_(true);
             } else if pad0.lz() == 0 {
                 // These cannot be represented as positive
-                return Err(Overflow)
+                return Err(Overflow);
             }
         }
         self.copy_(pad0).unwrap();
@@ -232,10 +232,10 @@ impl Bits {
         // check
         self.assert_cleared_unused_bits();
         if self.bw() != pad.bw() {
-            return Err(NonEqualWidths)
+            return Err(NonEqualWidths);
         }
         if radix < 2 || radix > 36 {
-            return Err(InvalidRadix)
+            return Err(InvalidRadix);
         }
         pad.copy_(self).unwrap();
         // happens to do the right thing to `imin`

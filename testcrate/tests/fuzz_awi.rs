@@ -5,7 +5,7 @@
 mod fuzz;
 use core::cmp;
 
-use awint::{bw, extawi, inlawi, Bits, ExtAwi, InlAwi};
+use awint::{Bits, ExtAwi, InlAwi, bw, extawi, inlawi};
 
 const N: u32 = if cfg!(miri) {
     32

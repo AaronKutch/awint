@@ -1,13 +1,12 @@
 use core::option::Option as StdOption;
 use std::{
-    borrow::{Borrow, BorrowMut},
     mem,
     ops::{Deref, DerefMut},
     process::{ExitCode, Termination},
 };
 
-use awint_ext::{awi, awint_internals::Location};
 use StdOption::{None as StdNone, Some as StdSome};
+use awint_ext::{awi, awint_internals::Location};
 
 use crate::{dag, epoch::register_assertion_bit_for_current_epoch, mimick::*};
 
@@ -277,7 +276,7 @@ impl<T> Option<T> {
     }
 }
 
-impl<T: Borrow<Bits> + BorrowMut<Bits>> Option<T> {
+impl<T: AsMutBits> Option<T> {
     #[track_caller]
     pub fn unwrap_or(self, default: T) -> T {
         match self {
@@ -285,8 +284,8 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>> Option<T> {
             Some(t) => t,
             Opaque(z) => {
                 if let StdSome(mut t) = z.t {
-                    if t.borrow_mut()
-                        .mux_(default.borrow(), z.is_some)
+                    if t.as_mut_bits()
+                        .mux_(default.as_bits(), z.is_some)
                         .is_none_at_runtime()
                     {
                         panic!("called `Option::unwrap_or()` with unequal bitwidth types")

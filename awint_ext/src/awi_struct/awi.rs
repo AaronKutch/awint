@@ -1,4 +1,4 @@
-use alloc::alloc::{alloc, alloc_zeroed, dealloc, realloc, Layout};
+use alloc::alloc::{Layout, alloc, alloc_zeroed, dealloc, realloc};
 use core::{
     borrow::{Borrow, BorrowMut},
     cmp::max,
@@ -7,12 +7,11 @@ use core::{
     marker::PhantomData,
     mem,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
-    ptr,
-    ptr::NonNull,
+    ops::{Deref, DerefMut},
+    ptr::{self, NonNull},
 };
 
-use awint_core::{Bits, InlAwi};
+use awint_core::{AsBits, AsMutBits, Bits, InlAwi};
 use const_fn::const_fn;
 
 use crate::awint_internals::*;
@@ -498,15 +497,15 @@ impl<'a> Awi {
         unsafe {
             self.internal_capacity_change(NonZeroUsize::new(new_cap).unwrap(), false);
         }
-        if let Some(old_digit) = old_digit {
-            if self._cap != 0 {
-                // we have changed to external
+        if let Some(old_digit) = old_digit
+            && self._cap != 0
+        {
+            // we have changed to external
 
-                // Safety: write the guaranteed first digit
-                unsafe {
-                    let ptr = self._inl_or_ext._ext as *mut Digit;
-                    ptr.write(old_digit);
-                }
+            // Safety: write the guaranteed first digit
+            unsafe {
+                let ptr = self._inl_or_ext._ext as *mut Digit;
+                ptr.write(old_digit);
             }
         }
     }
@@ -551,12 +550,12 @@ impl<'a> Awi {
         unsafe {
             self.internal_capacity_change(self._nzbw, false);
         }
-        if let Some(old_digit) = old_digit {
-            if self._cap == 0 {
-                // we have changed to internal
-                // Safety: we write to the internal digit
-                self._inl_or_ext._inl = old_digit;
-            }
+        if let Some(old_digit) = old_digit
+            && self._cap == 0
+        {
+            // we have changed to internal
+            // Safety: we write to the internal digit
+            self._inl_or_ext._inl = old_digit;
         }
         // we cannot change from internal to external
     }
@@ -853,7 +852,7 @@ impl Clone for Awi {
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl PartialEq for Awi {
     fn eq(&self, rhs: &Self) -> bool {
-        self.as_ref() == rhs.as_ref()
+        self.internal_as_ref() == rhs.internal_as_ref()
     }
 }
 
@@ -863,7 +862,7 @@ impl Eq for Awi {}
 #[cfg(feature = "zeroize_support")]
 impl zeroize::Zeroize for Awi {
     fn zeroize(&mut self) {
-        self.as_mut().zeroize()
+        self.internal_as_mut().zeroize()
     }
 }
 
@@ -873,7 +872,7 @@ macro_rules! impl_fmt {
             /// Forwards to the corresponding impl for `Bits`
             impl fmt::$ty for Awi {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::$ty::fmt(self.as_ref(), f)
+                    fmt::$ty::fmt(self.internal_as_ref(), f)
                 }
             }
         )*
@@ -884,7 +883,7 @@ impl_fmt!(Debug Display LowerHex UpperHex Octal Binary);
 
 impl Hash for Awi {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.as_ref().hash(state);
+        self.internal_as_ref().hash(state);
     }
 }
 
@@ -904,15 +903,6 @@ impl DerefMut for Awi {
     }
 }
 
-impl Index<RangeFull> for Awi {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for Awi {
     #[inline]
     fn borrow(&self) -> &Bits {
@@ -923,13 +913,6 @@ impl Borrow<Bits> for Awi {
 impl AsRef<Bits> for Awi {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl IndexMut<RangeFull> for Awi {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }
@@ -947,13 +930,10 @@ impl AsMut<Bits> for Awi {
         self
     }
 }
-
-// we unfortunately can't do something like `impl<B: Borrow<Bits>> From<B>`
-// because specialization is not stabilized
-
-/// Creates an `Awi` from copying a `Bits` reference
-impl From<&Bits> for Awi {
-    fn from(bits: &Bits) -> Awi {
+/// Creates an `Awi` from anything implementing `AsBits`
+impl<B: AsBits + ?Sized> From<&B> for Awi {
+    fn from(bits: &B) -> Awi {
+        let bits = bits.as_bits();
         let mut tmp = Awi::zero(bits.nzbw());
         tmp.const_as_mut().copy_(bits).unwrap();
         tmp
@@ -1049,3 +1029,17 @@ awi_from!(
     i128, i128_;
     isize, isize_;
 );
+
+impl AsBits for Awi {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+impl AsMutBits for Awi {
+    #[inline]
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}

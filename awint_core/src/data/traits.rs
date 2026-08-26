@@ -1,9 +1,9 @@
 use core::{
     borrow::{Borrow, BorrowMut},
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
 };
 
-use crate::{data::inlawi::UsizeInlAwi, Bits, InlAwi};
+use crate::{Bits, InlAwi, data::inlawi::UsizeInlAwi};
 
 impl<const BW: usize, const LEN: usize> Deref for InlAwi<BW, LEN> {
     type Target = Bits;
@@ -21,15 +21,6 @@ impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    #[inline]
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn borrow(&self) -> &Bits {
@@ -40,13 +31,6 @@ impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
 impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
     #[inline]
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    #[inline]
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }
@@ -123,3 +107,60 @@ impl PartialEq for Bits {
 
 /// If `self` and `other` have unmatching bit widths, `false` will be returned.
 impl Eq for Bits {}
+
+/// Common trait for obtaining `&Bits`
+///
+/// This trait exists to avoid blanket impl problems, and to give custom storage
+/// types a way to independently define other common traits
+pub trait AsBits {
+    fn as_bits(&self) -> &Bits;
+}
+
+impl<'a, T: AsBits + ?Sized> AsBits for &'a T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+impl<'a, T: AsBits + ?Sized> AsBits for &'a mut T {
+    fn as_bits(&self) -> &Bits {
+        <T as AsBits>::as_bits(self)
+    }
+}
+
+/// Common trait for obtaining `&mut Bits`
+pub trait AsMutBits: AsBits {
+    fn as_mut_bits(&mut self) -> &mut Bits;
+}
+
+impl<'a, T: AsMutBits + ?Sized> AsMutBits for &'a mut T {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        <T as AsMutBits>::as_mut_bits(self)
+    }
+}
+
+impl AsBits for Bits {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self
+    }
+}
+
+impl AsMutBits for Bits {
+    #[inline]
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsBits for InlAwi<BW, LEN> {
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsMutBits for InlAwi<BW, LEN> {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}

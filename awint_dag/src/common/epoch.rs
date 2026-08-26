@@ -3,8 +3,7 @@
 //! `starlight` crate.
 
 // TODO
-#![allow(renamed_and_removed_lints)]
-#![allow(clippy::thread_local_initializer_can_be_made_const)]
+#![allow(clippy::missing_const_for_thread_local)]
 
 use std::{
     cell::{Cell, RefCell},
@@ -15,12 +14,14 @@ use std::{
 
 use awint_ext::awint_internals::Location;
 
-use crate::{dag, Op, PState};
+use crate::{Op, PState, dag};
 
 /// A set of callback functions called by the mimicking types as they are
 /// created and operated on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct EpochCallback {
+    /// Used for tests
+    pub name: &'static str,
     /// Called when new state should be created with the given bitwidth,
     /// `Op<PState>`, and optional location. Should return a `PState` pointing
     /// to the new state.
@@ -57,6 +58,7 @@ pub fn _unregistered_callback() -> EpochCallback {
         panic0()
     }
     EpochCallback {
+        name: "_unregistered_callback",
         new_pstate: panic1,
         register_assertion_bit: panic2,
         get_nzbw: panic3,

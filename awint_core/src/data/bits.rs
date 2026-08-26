@@ -344,7 +344,7 @@ impl<'a> Bits {
     #[const_fn(cfg(feature = "const_support"))]
     pub const fn clear_unused_bits(&mut self) {
         if self.extra() == 0 {
-            return // There are no unused bits
+            return; // There are no unused bits
         }
         *self.last_mut() &= MAX >> (BITS - self.extra());
     }
@@ -677,7 +677,7 @@ impl fmt::LowerHex for Bits {
     /// Lowercase hexadecimal formatting.
     ///
     /// ```
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// assert_eq!(
     ///     format!("{:x}", inlawi!(0xfedcba9876543210u100)),
     ///     "0xfedcba98_76543210_u100"
@@ -692,7 +692,7 @@ impl fmt::UpperHex for Bits {
     /// Uppercase hexadecimal formatting.
     ///
     /// ```
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// assert_eq!(
     ///     format!("{:X}", inlawi!(0xFEDCBA9876543210u100)),
     ///     "0xFEDCBA98_76543210_u100"
@@ -707,7 +707,7 @@ impl fmt::Octal for Bits {
     /// Octal formatting.
     ///
     /// ```
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// assert_eq!(
     ///     format!("{:o}", inlawi!(0o776543210u100)),
     ///     "0o7_76543210_u100"
@@ -722,7 +722,7 @@ impl fmt::Binary for Bits {
     /// Binary formatting.
     ///
     /// ```
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// assert_eq!(format!("{:b}", inlawi!(11000101)), "0b11000101_u8");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -129,7 +129,7 @@ impl Bits {
     /// after the bitfield are left unchanged.
     ///
     /// ```
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// // As an example, two hexadecimal digits will be overwritten
     /// // starting with the 12th digit in `y` using a bitfield with
     /// // value 0x42u8 extracted from `x`.
@@ -156,10 +156,10 @@ impl Bits {
             || (to > (self.bw() - width))
             || (from > (rhs.bw() - width))
         {
-            return None
+            return None;
         }
         if width == 0 {
-            return Some(())
+            return Some(());
         }
         // since we are dealing with three different sets of digit and subdigit shifts,
         // the only sane way to do this is to make a digit aligned copy
@@ -231,7 +231,7 @@ impl Bits {
                                 *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp;
                             }
                         }
-                        break
+                        break;
                     }
                     let tmp = rhs.get_digit(from);
                     // shift up into new field placements
@@ -263,10 +263,10 @@ impl Bits {
         // we do the comparisons in this order to make sure that the subtractions do not
         // overflow
         if (width > self.bw()) || (width > rhs.bw()) || (to > (self.bw() - width)) {
-            return None
+            return None;
         }
         if width == 0 {
-            return Some(())
+            return Some(());
         }
         unsafe {
             if (bw_digits != 0) && (to_bits == 0) {
@@ -318,7 +318,7 @@ impl Bits {
                                 *self.get_unchecked_mut(i) = (self.get_unchecked(i) & mask) | tmp;
                             }
                         }
-                        break
+                        break;
                     }
                     let tmp = rhs.get_unchecked(i - to_digits);
                     // shift up into new field placements
@@ -349,10 +349,10 @@ impl Bits {
         // we do the comparisons in this order to make sure that the subtractions do not
         // overflow
         if (width > self.bw()) || (width > rhs.bw()) || (from > (rhs.bw() - width)) {
-            return None
+            return None;
         }
         if width == 0 {
-            return Some(())
+            return Some(());
         }
         unsafe {
             if (bw_digits != 0) && (from_bits == 0) {
@@ -392,7 +392,7 @@ impl Bits {
                             let mask = MAX << bw_bits;
                             *self.first_mut() = tmp | (self.first() & mask);
                         }
-                        break
+                        break;
                     }
                     *self.get_unchecked_mut(i) = rhs.get_digit(from);
                     i += 1;
@@ -408,7 +408,7 @@ impl Bits {
     #[must_use]
     pub const fn field_width(&mut self, rhs: &Self, width: usize) -> Option<()> {
         if (width > self.bw()) || (width > rhs.bw()) {
-            return None
+            return None;
         }
         let bw_digits = digits_u(width);
         let bw_bits = extra_u(width);
@@ -442,7 +442,7 @@ impl Bits {
     /// (self.bw() * (2^inx.bw()))`, `None` will be returned.
     ///
     /// ```
-    /// use awint::{inlawi, Bits, InlAwi};
+    /// use awint::{Bits, InlAwi, inlawi};
     /// let mut out = inlawi!(0u10);
     /// // lookup table consisting of 4 10-bit entries
     /// let lut = inlawi!(4u10, 3u10, 2u10, 1u10);
@@ -461,43 +461,41 @@ impl Bits {
         // `inx.bw()`
         inx.assert_cleared_unused_bits();
         // make sure the left shift does not overflow
-        if inx.bw() < BITS {
-            if let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw()) {
-                if lut_len == lut.bw() {
-                    let index = inx.to_usize().wrapping_mul(self.bw());
-                    let digits = digits_u(index);
-                    let bits = extra_u(index);
-                    let self_bits = extra_u(self.bw());
-                    // Safety: Because of the strict bitwidths of `self`, `lut`, and `inx`, the
-                    // value of `inx` cannot index beyond the width of `lut`.
-                    unsafe {
-                        if bits == 0 {
-                            const_for!(i in {0..self.total_digits()} {
-                                *self.get_unchecked_mut(i) = lut.get_unchecked(digits + i);
-                            });
-                        } else {
-                            const_for!(i in {0..(self.total_digits() - 1)} {
-                                *self.get_unchecked_mut(i) = (lut.get_unchecked(digits + i) >> bits)
-                                | (lut.get_unchecked(digits + i + 1) << (BITS - bits));
-                            });
-                            if (bits + self_bits) > BITS {
-                                // this is tricky, because the extra bits from `self` and `index`
-                                // can combine to push the end of
-                                // the bitfield over a digit boundary
-                                *self.last_mut() =
-                                    (lut.get_unchecked(digits + self.total_digits() - 1) >> bits)
-                                        | (lut.get_unchecked(digits + self.total_digits())
-                                            << (BITS - bits));
-                            } else {
-                                *self.last_mut() =
-                                    lut.get_unchecked(digits + self.total_digits() - 1) >> bits;
-                            }
-                        }
+        if inx.bw() < BITS
+            && let Some(lut_len) = (1usize << inx.bw()).checked_mul(self.bw())
+            && lut_len == lut.bw()
+        {
+            let index = inx.to_usize().wrapping_mul(self.bw());
+            let digits = digits_u(index);
+            let bits = extra_u(index);
+            let self_bits = extra_u(self.bw());
+            // Safety: Because of the strict bitwidths of `self`, `lut`, and `inx`, the
+            // value of `inx` cannot index beyond the width of `lut`.
+            unsafe {
+                if bits == 0 {
+                    const_for!(i in {0..self.total_digits()} {
+                        *self.get_unchecked_mut(i) = lut.get_unchecked(digits + i);
+                    });
+                } else {
+                    const_for!(i in {0..(self.total_digits() - 1)} {
+                        *self.get_unchecked_mut(i) = (lut.get_unchecked(digits + i) >> bits)
+                        | (lut.get_unchecked(digits + i + 1) << (BITS - bits));
+                    });
+                    if (bits + self_bits) > BITS {
+                        // this is tricky, because the extra bits from `self` and `index`
+                        // can combine to push the end of
+                        // the bitfield over a digit boundary
+                        *self.last_mut() = (lut.get_unchecked(digits + self.total_digits() - 1)
+                            >> bits)
+                            | (lut.get_unchecked(digits + self.total_digits()) << (BITS - bits));
+                    } else {
+                        *self.last_mut() =
+                            lut.get_unchecked(digits + self.total_digits() - 1) >> bits;
                     }
-                    self.clear_unused_bits();
-                    return Some(())
                 }
             }
+            self.clear_unused_bits();
+            return Some(());
         }
         None
     }
@@ -513,95 +511,93 @@ impl Bits {
         // `inx.bw()`
         inx.assert_cleared_unused_bits();
         // make sure the left shift does not overflow
-        if inx.bw() < BITS {
-            if let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw()) {
-                if lut_len == self.bw() {
-                    let index = inx.to_usize().wrapping_mul(entry.bw());
-                    let inx_digits = digits_u(index);
-                    let inx_bits = extra_u(index);
-                    let entry_digits = digits_u(entry.bw());
-                    let entry_bits = extra_u(entry.bw());
-                    // Safety: Because of the strict bitwidths of `self`, `lut`, and `inx`, the
-                    // value of `inx` cannot index beyond the width of `lut`. We also apply
-                    // extensive testing in `testcrate`.
-                    unsafe {
-                        if (entry_digits != 0) && (inx_bits == 0) {
-                            const_for!(i in {0..entry_digits} {
-                                *self.get_unchecked_mut(i + inx_digits) =
-                                    entry.get_unchecked(i);
-                            });
-                            // handle last digit
-                            if entry_bits != 0 {
-                                // `entry.get_unchecked(entry_digits)` is the same as
-                                // `entry.last()`, but it can produce faster assembly in this case.
-                                let to_mask = MAX << entry_bits;
-                                let from_mask = !to_mask;
-                                *self.get_unchecked_mut(entry_digits + inx_digits) =
-                                    (self.get_unchecked(entry_digits + inx_digits) & to_mask)
-                                        | (entry.get_unchecked(entry_digits) & from_mask);
-                            }
-                        } else {
-                            let mut i = 0;
-                            loop {
-                                if i >= entry_digits {
-                                    // handle the extra bits from the field
-                                    if entry_bits != 0 {
-                                        let tmp = entry.get_unchecked(entry_digits);
-                                        let mut total = inx_bits + entry_bits;
-                                        if inx_bits == 0 {
-                                            let mask = MAX << entry_bits;
-                                            *self.get_unchecked_mut(inx_digits) =
-                                                tmp | (self.get_unchecked(inx_digits) & mask);
-                                        } else if total >= BITS {
-                                            total -= BITS;
-                                            let tmp = (tmp << inx_bits, tmp >> (BITS - inx_bits));
-                                            let mask = MAX >> (BITS - inx_bits);
-                                            *self.get_unchecked_mut(i + inx_digits) =
-                                                (self.get_unchecked(i + inx_digits) & mask) | tmp.0;
-                                            if total != 0 {
-                                                // the extra bits cross a digit boundary
-                                                i += 1;
-                                                let mask = MAX << total;
-                                                *self.get_unchecked_mut(i + inx_digits) =
-                                                    (self.get_unchecked(i + inx_digits) & mask)
-                                                        | tmp.1;
-                                            }
-                                        } else {
-                                            // total < BITS
-                                            let tmp = tmp << inx_bits;
-                                            // Because the extra bits are fewer than BITS and they
-                                            // are
-                                            // positioned in the middle. The mask has to cover
-                                            // before and after
-                                            // the extra bits.
-                                            let mask = (MAX << total) | (MAX >> (BITS - inx_bits));
-                                            *self.get_unchecked_mut(i + inx_digits) =
-                                                (self.get_unchecked(i + inx_digits) & mask) | tmp;
-                                        }
-                                    }
-                                    break
-                                }
-                                let tmp = entry.get_unchecked(i);
-                                // shift up into new field placements
-                                let tmp = (tmp << inx_bits, tmp >> (BITS - inx_bits));
-                                // mask
-                                let mask1 = MAX << inx_bits;
-                                // because the partial field is one `Digit` long
-                                let mask0 = !mask1;
-                                *self.get_unchecked_mut(i + inx_digits) =
-                                    (self.get_unchecked(i + inx_digits) & mask0) | tmp.0;
-                                i += 1;
-                                // this incurs more stores to `self` than necessary,
-                                // but the alternative is even more complex
-                                *self.get_unchecked_mut(i + inx_digits) =
-                                    (self.get_unchecked(i + inx_digits) & mask1) | tmp.1;
-                            }
-                        }
+        if inx.bw() < BITS
+            && let Some(lut_len) = (1usize << inx.bw()).checked_mul(entry.bw())
+            && lut_len == self.bw()
+        {
+            let index = inx.to_usize().wrapping_mul(entry.bw());
+            let inx_digits = digits_u(index);
+            let inx_bits = extra_u(index);
+            let entry_digits = digits_u(entry.bw());
+            let entry_bits = extra_u(entry.bw());
+            // Safety: Because of the strict bitwidths of `self`, `lut`, and `inx`, the
+            // value of `inx` cannot index beyond the width of `lut`. We also apply
+            // extensive testing in `testcrate`.
+            unsafe {
+                if (entry_digits != 0) && (inx_bits == 0) {
+                    const_for!(i in {0..entry_digits} {
+                        *self.get_unchecked_mut(i + inx_digits) =
+                            entry.get_unchecked(i);
+                    });
+                    // handle last digit
+                    if entry_bits != 0 {
+                        // `entry.get_unchecked(entry_digits)` is the same as
+                        // `entry.last()`, but it can produce faster assembly in this case.
+                        let to_mask = MAX << entry_bits;
+                        let from_mask = !to_mask;
+                        *self.get_unchecked_mut(entry_digits + inx_digits) =
+                            (self.get_unchecked(entry_digits + inx_digits) & to_mask)
+                                | (entry.get_unchecked(entry_digits) & from_mask);
                     }
-                    self.clear_unused_bits();
-                    return Some(())
+                } else {
+                    let mut i = 0;
+                    loop {
+                        if i >= entry_digits {
+                            // handle the extra bits from the field
+                            if entry_bits != 0 {
+                                let tmp = entry.get_unchecked(entry_digits);
+                                let mut total = inx_bits + entry_bits;
+                                if inx_bits == 0 {
+                                    let mask = MAX << entry_bits;
+                                    *self.get_unchecked_mut(inx_digits) =
+                                        tmp | (self.get_unchecked(inx_digits) & mask);
+                                } else if total >= BITS {
+                                    total -= BITS;
+                                    let tmp = (tmp << inx_bits, tmp >> (BITS - inx_bits));
+                                    let mask = MAX >> (BITS - inx_bits);
+                                    *self.get_unchecked_mut(i + inx_digits) =
+                                        (self.get_unchecked(i + inx_digits) & mask) | tmp.0;
+                                    if total != 0 {
+                                        // the extra bits cross a digit boundary
+                                        i += 1;
+                                        let mask = MAX << total;
+                                        *self.get_unchecked_mut(i + inx_digits) =
+                                            (self.get_unchecked(i + inx_digits) & mask) | tmp.1;
+                                    }
+                                } else {
+                                    // total < BITS
+                                    let tmp = tmp << inx_bits;
+                                    // Because the extra bits are fewer than BITS and they
+                                    // are
+                                    // positioned in the middle. The mask has to cover
+                                    // before and after
+                                    // the extra bits.
+                                    let mask = (MAX << total) | (MAX >> (BITS - inx_bits));
+                                    *self.get_unchecked_mut(i + inx_digits) =
+                                        (self.get_unchecked(i + inx_digits) & mask) | tmp;
+                                }
+                            }
+                            break;
+                        }
+                        let tmp = entry.get_unchecked(i);
+                        // shift up into new field placements
+                        let tmp = (tmp << inx_bits, tmp >> (BITS - inx_bits));
+                        // mask
+                        let mask1 = MAX << inx_bits;
+                        // because the partial field is one `Digit` long
+                        let mask0 = !mask1;
+                        *self.get_unchecked_mut(i + inx_digits) =
+                            (self.get_unchecked(i + inx_digits) & mask0) | tmp.0;
+                        i += 1;
+                        // this incurs more stores to `self` than necessary,
+                        // but the alternative is even more complex
+                        *self.get_unchecked_mut(i + inx_digits) =
+                            (self.get_unchecked(i + inx_digits) & mask1) | tmp.1;
+                    }
                 }
             }
+            self.clear_unused_bits();
+            return Some(());
         }
         None
     }
@@ -641,7 +637,7 @@ impl Bits {
             let mut to = 0;
             loop {
                 if to > self.bw() {
-                    break
+                    break;
                 }
                 let min = if w < (self.bw() - to) {
                     w
@@ -657,7 +653,7 @@ impl Bits {
             let mut s = w;
             loop {
                 if s > (BITS / 2) {
-                    break
+                    break;
                 }
                 x |= x << s;
                 s <<= 1;
@@ -677,7 +673,7 @@ impl Bits {
                 let mut to = 0;
                 loop {
                     if to > self.bw() {
-                        break
+                        break;
                     }
                     self.digit_or_(x, to);
                     to += s;

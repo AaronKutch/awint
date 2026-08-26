@@ -1,5 +1,4 @@
 use core::{
-    borrow::BorrowMut,
     fmt,
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -7,7 +6,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use awint_core::{awint_internals::Digit, Bits};
+use awint_core::{AsBits, AsMutBits, Bits, awint_internals::Digit};
 
 use crate::Awi;
 
@@ -29,10 +28,10 @@ impl FPType {
     #[must_use]
     pub fn unique_min_fraction_digits(&self, radix: u8) -> Option<usize> {
         if radix < 2 {
-            return None
+            return None;
         }
         if self.fp <= 0 {
-            return Some(0)
+            return Some(0);
         }
         let mut test = Awi::uone(NonZeroUsize::new(self.fp.unsigned_abs()).unwrap());
         let mut digits = 0;
@@ -41,15 +40,15 @@ impl FPType {
             if test.digit_cin_mul_(0, radix as Digit) != 0 {
                 // as soon as overflow happens, that means
                 // `(((radix^digits) * 1 ULP) >> this.fp()) > 0`
-                break
+                break;
             }
         }
         Some(digits)
     }
 }
 
-/// Fixed-Point generic struct for `B` that implement `Borrow<Bits>` and
-/// `BorrowMut<Bits>`. Adds on signedness and fixed-point information.
+/// Fixed-Point generic struct for `B` that implement `AsBits` and
+/// `AsMutBits`. Adds on signedness and fixed-point information.
 /// Implements many traits if `B` also implements them.
 ///
 /// In order to make many operations infallible, `self.fp().unsigned_abs()` and
@@ -60,7 +59,7 @@ impl FPType {
 /// lifetime of the `FP` struct unless the invariants are upheld. Otherwise,
 /// panics and arithmetic errors can occur. Preferably, `into_b` and `FP::new`
 /// should be used to create a fresh struct.
-pub struct FP<B: BorrowMut<Bits>> {
+pub struct FP<B> {
     signed: bool,
     fp: isize,
     bits: B,
@@ -69,14 +68,14 @@ pub struct FP<B: BorrowMut<Bits>> {
 // TODO we will probably store the signed and reversimal bits in the 2 lsb bits
 // of `fp`
 
-impl<B: BorrowMut<Bits>> FP<B> {
+impl<B: AsBits> FP<B> {
     /// Creates a fixed-point generic `FP<B>` from a specified signedness
     /// `signed`, wrapped value `B`, and fixed point `fp`. This returns `None`
     /// if `bits.bw()` or `fp.unsigned_abs()` are greater than
     /// `usize::MAX >> 2`.
     #[inline]
     pub fn new(signed: bool, bits: B, fp: isize) -> Option<Self> {
-        if (bits.borrow().bw() > (usize::MAX >> 2)) || (fp.unsigned_abs() > (usize::MAX >> 2)) {
+        if (bits.as_bits().bw() > (usize::MAX >> 2)) || (fp.unsigned_abs() > (usize::MAX >> 2)) {
             None
         } else {
             Some(Self { signed, fp, bits })
@@ -127,13 +126,13 @@ impl<B: BorrowMut<Bits>> FP<B> {
     /// Returns the bitwidth of `self` as a `NonZeroUsize`
     #[inline]
     pub fn nzbw(&self) -> NonZeroUsize {
-        self.b().borrow().nzbw()
+        self.b().as_bits().nzbw()
     }
 
     /// Returns the bitwidth of `self` as a `usize`
     #[inline]
     pub fn bw(&self) -> usize {
-        self.b().borrow().bw()
+        self.b().as_bits().bw()
     }
 
     /// Returns the bitwidth of `self` as an `isize`
@@ -173,23 +172,23 @@ impl<B: BorrowMut<Bits>> FP<B> {
     }
 }
 
-impl<B: BorrowMut<Bits>> Deref for FP<B> {
+impl<B: AsBits> Deref for FP<B> {
     type Target = Bits;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.b().borrow()
+        self.b().as_bits()
     }
 }
 
-impl<B: BorrowMut<Bits>> DerefMut for FP<B> {
+impl<B: AsMutBits> DerefMut for FP<B> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Bits {
-        self.b_mut().borrow_mut()
+        self.b_mut().as_mut_bits()
     }
 }
 
-impl<B: Clone + BorrowMut<Bits>> Clone for FP<B> {
+impl<B: Clone> Clone for FP<B> {
     fn clone(&self) -> Self {
         Self {
             signed: self.signed,
@@ -199,9 +198,9 @@ impl<B: Clone + BorrowMut<Bits>> Clone for FP<B> {
     }
 }
 
-impl<B: Copy + BorrowMut<Bits>> Copy for FP<B> {}
+impl<B: Copy> Copy for FP<B> {}
 
-impl<B: PartialEq + BorrowMut<Bits>> PartialEq for FP<B> {
+impl<B: PartialEq> PartialEq for FP<B> {
     /// The signedness, fixed point, and `PartialEq` implementation on
     /// [FP::into_b] must all be `true` in order for this to return
     /// `true`
@@ -210,7 +209,7 @@ impl<B: PartialEq + BorrowMut<Bits>> PartialEq for FP<B> {
     }
 }
 
-impl<B: PartialEq + Eq + BorrowMut<Bits>> Eq for FP<B> {}
+impl<B: PartialEq + Eq> Eq for FP<B> {}
 
 macro_rules! impl_fmt {
     ($($ty:ident, $radix_str:expr, $radix:expr, $upper:expr);*;) => {
@@ -218,7 +217,7 @@ macro_rules! impl_fmt {
             /// Note: `max_ufp` for the internal [FP::to_str_general] call
             /// is set to 4096, if it results in an overflow then the
             /// formatting is a no-op rather than causing `format!` to panic.
-            impl<B: fmt::$ty + BorrowMut<Bits>> fmt::$ty for FP<B> {
+            impl<B: fmt::$ty + AsBits> fmt::$ty for FP<B> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     if let Ok((integer, fraction)) =
                         FP::to_str_general(self, $radix, $upper, 1, 1, 4096) {
@@ -262,7 +261,7 @@ impl_fmt!(
     Binary, "0b", 2, false;
 );
 
-impl<B: Hash + BorrowMut<Bits>> Hash for FP<B> {
+impl<B: Hash> Hash for FP<B> {
     /// Uses the hash of `self.signed()`, `self.fp()`, and the `Hash`
     /// implementation on `self.b()` (not `self.as_ref()`)
     fn hash<H: Hasher>(&self, state: &mut H) {

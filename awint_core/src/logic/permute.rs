@@ -20,7 +20,7 @@ const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: us
         type BufType = [Digit; 32];
         loop {
             if (right == 0) || (left == 0) {
-                return
+                return;
             }
             if left + right < 24 {
                 // Algorithm 1
@@ -36,7 +36,7 @@ const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: us
                         i -= left;
                         if i == 0 {
                             x.write(tmp);
-                            break
+                            break;
                         }
                         if i < gcd {
                             gcd = i;
@@ -63,7 +63,7 @@ const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: us
                         }
                     }
                 });
-                return
+                return;
             // I have tested this with Miri to make sure it doesn't complain
             } else if left <= 32 || right <= 32 {
                 // Algorithm 2
@@ -79,7 +79,7 @@ const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: us
                     ptr::copy(mid.sub(left), dim, left);
                     ptr::copy_nonoverlapping(buf, mid.sub(left), right);
                 }
-                return
+                return;
             } else if left >= right {
                 // Algorithm 3
                 loop {
@@ -87,7 +87,7 @@ const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: us
                     mid = mid.sub(right);
                     left -= right;
                     if left < right {
-                        break
+                        break;
                     }
                 }
             } else {
@@ -97,7 +97,7 @@ const unsafe fn digit_rotate(mut left: usize, mut mid: *mut Digit, mut right: us
                     mid = mid.add(left);
                     right -= left;
                     if right < left {
-                        break
+                        break;
                     }
                 }
             }
@@ -125,7 +125,7 @@ impl Bits {
         assert!(s.get() < self.bw());
         let s = digits(s);
         if s == 0 {
-            return
+            return;
         }
         unsafe {
             // below performs this:
@@ -183,7 +183,7 @@ impl Bits {
             if clear_unused_bits {
                 self.clear_unused_bits();
             }
-            return
+            return;
         }
         unsafe {
             // below performs this:
@@ -229,7 +229,7 @@ impl Bits {
             if clear_unused_bits {
                 self.clear_unused_bits();
             }
-            return
+            return;
         }
         unsafe {
             // TODO benchmark this strategy vs dual unroll
@@ -373,7 +373,7 @@ impl Bits {
                 if x.total_digits() == 1 {
                     *x.last_mut() = ((x.last() >> (x.bw() - s.get())) | (x.last() << s.get()))
                         & (MAX >> (BITS - x.bw()));
-                    return Some(())
+                    return Some(());
                 }
                 // TODO implement faster `subdigit_rotate_right` branch for certain cases
 
@@ -433,9 +433,9 @@ impl Bits {
     pub const fn rotr_(&mut self, s: usize) -> Option<()> {
         let w = self.bw();
         if s == 0 {
-            return Some(())
+            return Some(());
         } else if s >= w {
-            return None
+            return None;
         }
         self.rotl_(w - s)
     }
@@ -448,7 +448,7 @@ impl Bits {
         let len = self.total_digits();
         if len == 1 {
             *self.last_mut() = self.last().reverse_bits() >> self.unused();
-            return
+            return;
         }
         let halfway = len >> 1;
         let odd = (len & 1) != 0;
@@ -472,7 +472,7 @@ impl Bits {
                 let tmp1 = self.last().reverse_bits();
                 *self.first_mut() = tmp1 >> self.unused() | tmp0 << self.extra();
                 *self.last_mut() = tmp0 >> self.unused();
-                return
+                return;
             }
             unsafe {
                 let unused = self.unused();
@@ -502,7 +502,7 @@ impl Bits {
                         if odd {
                             *self.get_unchecked_mut(i2) = (tmp3 >> unused) | (tmp0 << extra);
                         }
-                        break
+                        break;
                     }
                     tmp1 = self.get_unchecked(i0).reverse_bits();
                     tmp2 = self.get_unchecked(i2 - 1).reverse_bits();
@@ -514,7 +514,7 @@ impl Bits {
                         if odd {
                             *self.get_unchecked_mut(i0) = (tmp2 >> unused) | (tmp1 << extra);
                         }
-                        break
+                        break;
                     }
                     tmp0 = self.get_unchecked(i0).reverse_bits();
                     tmp3 = self.get_unchecked(i2 - 1).reverse_bits();
@@ -555,7 +555,7 @@ impl Bits {
             || ((1usize << s.bw()) != self.bw())
             || ((self.bw() << 1) != rhs.bw())
         {
-            return None
+            return None;
         }
         let s = s.to_usize();
         let digits = digits_u(s);

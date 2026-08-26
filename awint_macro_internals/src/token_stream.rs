@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, mem};
 
 use proc_macro2::{TokenStream, TokenTree};
+use triple_arena::traits::*;
 
 use crate::{Ast, Component, Concatenation, Text};
 
@@ -51,18 +52,18 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     let trees = g.stream().into_iter().collect();
                     stack[last].0.pop_front().unwrap();
                     stack.push((trees, d));
-                    continue
+                    continue;
                 }
                 TokenTree::Ident(i) => {
                     s.extend(i.to_string().chars());
                     let mut another_ident = false;
-                    if stack[last].0.len() > 1 {
-                        if let TokenTree::Ident(_) = stack[last].0[1] {
-                            // Special case to prevent things like "as usize" from getting squashed
-                            // together as "asusize".
-                            s.push(' ');
-                            another_ident = true;
-                        }
+                    if stack[last].0.len() > 1
+                        && let TokenTree::Ident(_) = stack[last].0[1]
+                    {
+                        // Special case to prevent things like "as usize" from getting squashed
+                        // together as "asusize".
+                        s.push(' ');
+                        another_ident = true;
                     }
                     if !another_ident {
                         ast_stack[ast_last].0.push(Text::Chars(mem::take(&mut s)));
@@ -127,7 +128,7 @@ pub fn token_stream_to_ast(input: TokenStream) -> Ast {
                     .push(Text::Group(crate::Delimiter::Concatenation, concat));
                 let root = ast.txt.insert(ast_stack.pop().unwrap().0);
                 ast.txt_root = root;
-                break
+                break;
             }
             let (group, delimiter) = ast_stack.pop().unwrap();
             let txt = ast.txt.insert(group);

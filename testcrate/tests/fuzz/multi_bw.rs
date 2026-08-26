@@ -1,10 +1,10 @@
 use core::cmp;
 use std::cmp::min;
 
-use awint::{bw, cc, Bits, ExtAwi, InlAwi};
+use awint::{Bits, ExtAwi, InlAwi, bw, cc};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::{eq, fuzz_step, ne};
@@ -116,7 +116,7 @@ fn multi_bw_inner(
     let mut to = 0;
     loop {
         if to > bw1 {
-            break
+            break;
         }
         x1bw1.field_to(to, x0bw0, min(bw0, bw1 - to)).unwrap();
         to += bw0;

@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fmt::Write, iter};
 
-use crate::{chars_to_string, Ast, Delimiter, PText, Text};
+use crate::{Ast, Delimiter, PText, Text, chars_to_string};
 
 /// Wrap `s` in ANSI delimiters for terminal colors.
 /// {90..=97} => {grey, red, green, yellow, blue, purple, cyan, white}
@@ -66,7 +66,7 @@ impl CCMacroError {
                             s += d.lhs_str();
                         }
                         stack.push((*p, 0));
-                        continue
+                        continue;
                     }
                     Text::Chars(chars) => {
                         extend(&mut color_line, &color_lvl, chars.len());
@@ -78,16 +78,16 @@ impl CCMacroError {
                 }
             } else {
                 if last == 0 {
-                    break
+                    break;
                 }
                 stack.pop();
                 let last = stack.len() - 1;
                 let mut unset_color = false;
-                if let Some(prev_last) = color_lvl {
-                    if last == prev_last {
-                        use_color_line = true;
-                        unset_color = true;
-                    }
+                if let Some(prev_last) = color_lvl
+                    && last == prev_last
+                {
+                    use_color_line = true;
+                    unset_color = true;
                 }
                 match ast.txt[stack[last].0][stack[last].1] {
                     Text::Group(d, _) => match d {

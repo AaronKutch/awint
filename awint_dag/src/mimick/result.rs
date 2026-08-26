@@ -1,13 +1,12 @@
 use core::result::Result as StdResult;
 use std::{
-    borrow::{Borrow, BorrowMut},
     fmt::Debug,
     ops::{Deref, DerefMut},
     process::{ExitCode, Termination},
 };
 
-use awint_ext::{awi, awint_internals::Location};
 use StdResult::{Err as StdErr, Ok as StdOk};
+use awint_ext::{awi, awint_internals::Location};
 
 use crate::{dag, epoch::register_assertion_bit_for_current_epoch, mimick::*};
 
@@ -315,7 +314,7 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T: Borrow<Bits> + BorrowMut<Bits>, E> Result<T, E> {
+impl<T: AsMutBits, E> Result<T, E> {
     #[track_caller]
     pub fn unwrap_or(self, default: T) -> T {
         match self {
@@ -323,8 +322,8 @@ impl<T: Borrow<Bits> + BorrowMut<Bits>, E> Result<T, E> {
             Err(_) => default,
             Opaque(z) => match z.res {
                 StdOk(mut t) => {
-                    if t.borrow_mut()
-                        .mux_(default.borrow(), z.is_ok)
+                    if t.as_mut_bits()
+                        .mux_(default.as_bits(), z.is_ok)
                         .is_none_at_runtime()
                     {
                         panic!("called `Result::unwrap_or()` with unequal bitwidth types")

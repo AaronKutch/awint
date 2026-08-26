@@ -1,9 +1,9 @@
 use std::{cmp::min, num::NonZeroUsize};
 
-use awint::{bw, cc, Awi, Bits, ExtAwi, FP};
+use awint::{Awi, Bits, ExtAwi, FP, bw, cc};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::fuzz_step;
@@ -45,17 +45,17 @@ pub fn num_eq(
     if lhs.is_zero() || rhs.is_zero() {
         if exact {
             if !lhs.is_zero() {
-                return Err("`rhs` was zero, but `lhs` was not")
+                return Err("`rhs` was zero, but `lhs` was not");
             }
             if !rhs.is_zero() {
-                return Err("`lhs` was zero, but `rhs` was not")
+                return Err("`lhs` was zero, but `rhs` was not");
             }
         }
         // underflow to zero
-        return Ok(())
+        return Ok(());
     }
     if equal_sign && (lhs.sign() != rhs.sign()) {
-        return Err("unequal signs")
+        return Err("unequal signs");
     }
     lhs_tmp.copy_(lhs).unwrap();
     lhs_tmp.set_fp(lhs.fp());
@@ -70,7 +70,7 @@ pub fn num_eq(
     let lmid = lhs_tmp.bw() - lhs_tmp.lz() - lhs_tmp.tz();
     let rmid = rhs_tmp.bw() - rhs_tmp.lz() - rhs_tmp.tz();
     if exact && (lmid != rmid) {
-        return Err("not exactly equal")
+        return Err("not exactly equal");
     }
     // shifting the significant middle bits to the same place, aligning msnbs
     let min_mid = min(lmid, rmid);
@@ -80,7 +80,7 @@ pub fn num_eq(
     rhs_tmp.lshr_(shr).unwrap();
     lhs_tmp.xor_(rhs_tmp).unwrap();
     if !lhs_tmp.is_zero() {
-        return Err("not equal in middle bits")
+        return Err("not equal in middle bits");
     }
     Ok(())
 }

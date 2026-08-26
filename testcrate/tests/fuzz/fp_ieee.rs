@@ -8,8 +8,8 @@ use awint::{
     *,
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::fp::num_eq;

@@ -44,23 +44,21 @@
 //!   should use things such as `starlight::Epoch`s for each one, so that thread
 //!   local data is cleaned up
 
-#![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::manual_repeat_n)]
 #![allow(clippy::manual_ok_err)]
-#![allow(clippy::needless_range_loop)]
-#![allow(clippy::comparison_chain)]
+#![allow(clippy::needless_lifetimes)]
 #![cfg_attr(feature = "try_support", feature(try_trait_v2))]
 #![cfg_attr(feature = "try_support", feature(try_trait_v2_residual))]
 #![cfg_attr(feature = "try_support", feature(never_type))]
 
 mod common;
 pub mod mimick;
-pub use awint_ext::awint_internals::{location, Location};
+pub use awint_ext::awint_internals::{Location, location};
 pub use awint_macro_internals::triple_arena;
 #[cfg(feature = "debug")]
 pub use awint_macro_internals::triple_arena_render;
 pub use common::{
-    epoch, ConcatFieldsType, ConcatType, DummyDefault, EAwi, EvalResult, Lineage, Op, PState,
+    ConcatFieldsType, ConcatType, DummyDefault, EAwi, EvalResult, Lineage, Op, PState, epoch,
 };
 // export needed by the macros
 #[doc(hidden)]
@@ -78,7 +76,7 @@ pub mod dag {
     // accidentally use the `dag` versions when the `awi` versions are intended
     pub use crate::{
         mimick::{
-            self, Awi, Bits, ExtAwi, InlAwi, Option,
+            self, AsBits, AsMutBits, Awi, Bits, ExtAwi, InlAwi, Option,
             Option::{None, Some},
             Result,
             Result::{Err, Ok},

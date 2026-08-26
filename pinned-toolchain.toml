@@ -1,0 +1,7 @@
+# This is just a pinned stable for flake.nix, we do not want a
+# `rust-toolchain.toml` because this is only a library and it would override
+# all cargo invocations that intend to default to something else
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy", "rust-src", "rust-analyzer", "rust-docs"]
+targets = ["riscv32i-unknown-none-elf"]

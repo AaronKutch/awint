@@ -1,9 +1,9 @@
 use std::num::NonZeroUsize;
 
-use awint::{bw, Awi, Bits, ExtAwi};
+use awint::{AsBits, Awi, Bits, ExtAwi, bw};
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 const N: (u64, u64) = if cfg!(miri) {
@@ -30,7 +30,7 @@ fn awi_struct() {
             assert_eq!(Awi::nzbw(&x0), Bits::nzbw(&x0));
             assert_eq!(Awi::bw(&x0), Bits::bw(&x0));
             assert!(x0.capacity() >= x0.nzbw());
-            assert_eq!(x0.as_ref(), x1.as_ref());
+            assert_eq!(x0.as_bits(), x1.as_bits());
         }
         match rng.next_u32() % 21 {
             0 => {
@@ -133,7 +133,7 @@ fn awi_struct() {
                 x0 = x0.clone();
             }
             19 => {
-                assert_eq!(x0.as_ref(), x1.as_ref());
+                assert_eq!(x0.as_bits(), x1.as_bits());
             }
             20 => {
                 let new_bitwidth = NonZeroUsize::new(x1.sig()).unwrap_or(bw(1));

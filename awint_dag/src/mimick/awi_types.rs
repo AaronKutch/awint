@@ -3,17 +3,20 @@ use std::{
     fmt,
     marker::PhantomData,
     num::NonZeroUsize,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
+    ops::{Deref, DerefMut},
     rc::Rc,
 };
 
 use awint_ext::{
     awi,
-    awint_internals::{bw, forward_debug_fmt, RawStackBits, USIZE_BITS},
+    awint_internals::{RawStackBits, USIZE_BITS, bw, forward_debug_fmt},
 };
 use smallvec::smallvec;
 
-use crate::{dag, mimick::Bits, Lineage, Op, PState};
+use crate::{
+    Lineage, Op, PState, dag,
+    mimick::{AsBits, AsMutBits, Bits},
+};
 
 /// Mimicking [awint_ext::InlAwi]
 ///
@@ -151,14 +154,6 @@ impl<const BW: usize, const LEN: usize> DerefMut for InlAwi<BW, LEN> {
     }
 }
 
-impl<const BW: usize, const LEN: usize> Index<RangeFull> for InlAwi<BW, LEN> {
-    type Output = Bits;
-
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
     fn borrow(&self) -> &Bits {
         self
@@ -167,12 +162,6 @@ impl<const BW: usize, const LEN: usize> Borrow<Bits> for InlAwi<BW, LEN> {
 
 impl<const BW: usize, const LEN: usize> AsRef<Bits> for InlAwi<BW, LEN> {
     fn as_ref(&self) -> &Bits {
-        self
-    }
-}
-
-impl<const BW: usize, const LEN: usize> IndexMut<RangeFull> for InlAwi<BW, LEN> {
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
         self
     }
 }
@@ -186,6 +175,18 @@ impl<const BW: usize, const LEN: usize> BorrowMut<Bits> for InlAwi<BW, LEN> {
 impl<const BW: usize, const LEN: usize> AsMut<Bits> for InlAwi<BW, LEN> {
     fn as_mut(&mut self) -> &mut Bits {
         self
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsBits for InlAwi<BW, LEN> {
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+impl<const BW: usize, const LEN: usize> AsMutBits for InlAwi<BW, LEN> {
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
     }
 }
 
@@ -496,14 +497,6 @@ impl DerefMut for ExtAwi {
     }
 }
 
-impl Index<RangeFull> for ExtAwi {
-    type Output = Bits;
-
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for ExtAwi {
     fn borrow(&self) -> &Bits {
         self
@@ -513,12 +506,6 @@ impl Borrow<Bits> for ExtAwi {
 impl AsRef<Bits> for ExtAwi {
     fn as_ref(&self) -> &Bits {
         self
-    }
-}
-
-impl IndexMut<RangeFull> for ExtAwi {
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
     }
 }
 
@@ -534,6 +521,20 @@ impl AsMut<Bits> for ExtAwi {
     }
 }
 
+impl AsBits for ExtAwi {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+impl AsMutBits for ExtAwi {
+    #[inline]
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}
+
 impl fmt::Debug for ExtAwi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ExtAwi({:?})", self.state())
@@ -542,15 +543,17 @@ impl fmt::Debug for ExtAwi {
 
 forward_debug_fmt!(ExtAwi);
 
-impl From<&Bits> for ExtAwi {
-    fn from(bits: &Bits) -> ExtAwi {
+impl<B: AsBits + ?Sized> From<&B> for ExtAwi {
+    fn from(bits: &B) -> ExtAwi {
+        let bits = bits.as_bits();
         Self::from_state(bits.state())
     }
 }
 
 impl From<&awi::Bits> for ExtAwi {
     fn from(bits: &awi::Bits) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits)))
+        let bits: awi::Awi = From::from(&bits);
+        Self::new(bits.nzbw(), Op::Literal(bits))
     }
 }
 
@@ -558,13 +561,14 @@ impl From<&awi::Bits> for ExtAwi {
 
 impl From<&awi::ExtAwi> for ExtAwi {
     fn from(bits: &awi::ExtAwi) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits)))
     }
 }
 
 impl From<awi::ExtAwi> for ExtAwi {
     fn from(bits: awi::ExtAwi) -> ExtAwi {
-        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
+        let bits: awi::Awi = From::from(&bits);
+        Self::new(bits.nzbw(), Op::Literal(bits))
     }
 }
 
@@ -574,21 +578,15 @@ impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for ExtAwi {
     }
 }
 
-impl<const BW: usize, const LEN: usize> From<&InlAwi<BW, LEN>> for ExtAwi {
-    fn from(awi: &InlAwi<BW, LEN>) -> ExtAwi {
-        Self::from_state(awi.state())
-    }
-}
-
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: awi::InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi)))
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for ExtAwi {
     fn from(awi: &awi::InlAwi<BW, LEN>) -> ExtAwi {
-        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi)))
     }
 }
 
@@ -863,14 +861,6 @@ impl DerefMut for Awi {
     }
 }
 
-impl Index<RangeFull> for Awi {
-    type Output = Bits;
-
-    fn index(&self, _i: RangeFull) -> &Bits {
-        self
-    }
-}
-
 impl Borrow<Bits> for Awi {
     fn borrow(&self) -> &Bits {
         self
@@ -880,12 +870,6 @@ impl Borrow<Bits> for Awi {
 impl AsRef<Bits> for Awi {
     fn as_ref(&self) -> &Bits {
         self
-    }
-}
-
-impl IndexMut<RangeFull> for Awi {
-    fn index_mut(&mut self, _i: RangeFull) -> &mut Bits {
-        self.const_as_mut()
     }
 }
 
@@ -901,6 +885,20 @@ impl AsMut<Bits> for Awi {
     }
 }
 
+impl AsBits for Awi {
+    #[inline]
+    fn as_bits(&self) -> &Bits {
+        self.internal_as_ref()
+    }
+}
+
+impl AsMutBits for Awi {
+    #[inline]
+    fn as_mut_bits(&mut self) -> &mut Bits {
+        self.internal_as_mut()
+    }
+}
+
 impl fmt::Debug for Awi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Awi({:?})", self.state())
@@ -909,15 +907,17 @@ impl fmt::Debug for Awi {
 
 forward_debug_fmt!(Awi);
 
-impl From<&Bits> for Awi {
-    fn from(bits: &Bits) -> Awi {
+impl<B: AsBits + ?Sized> From<&B> for Awi {
+    fn from(bits: &B) -> Awi {
+        let bits = bits.as_bits();
         Self::from_state(bits.state())
     }
 }
 
 impl From<&awi::Bits> for Awi {
     fn from(bits: &awi::Bits) -> Awi {
-        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits)))
+        let bits: awi::Awi = From::from(&bits);
+        Self::new(bits.nzbw(), Op::Literal(bits))
     }
 }
 
@@ -925,13 +925,13 @@ impl From<&awi::Bits> for Awi {
 
 impl From<&awi::Awi> for Awi {
     fn from(bits: &awi::Awi) -> Awi {
-        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits)))
     }
 }
 
 impl From<awi::Awi> for Awi {
     fn from(bits: awi::Awi) -> Awi {
-        Self::new(bits.nzbw(), Op::Literal(awi::Awi::from(bits.as_ref())))
+        Self::new(bits.nzbw(), Op::Literal(bits))
     }
 }
 
@@ -941,21 +941,15 @@ impl<const BW: usize, const LEN: usize> From<InlAwi<BW, LEN>> for Awi {
     }
 }
 
-impl<const BW: usize, const LEN: usize> From<&InlAwi<BW, LEN>> for Awi {
-    fn from(awi: &InlAwi<BW, LEN>) -> Awi {
-        Self::from_state(awi.state())
-    }
-}
-
 impl<const BW: usize, const LEN: usize> From<awi::InlAwi<BW, LEN>> for Awi {
     fn from(awi: awi::InlAwi<BW, LEN>) -> Awi {
-        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(&awi)))
     }
 }
 
 impl<const BW: usize, const LEN: usize> From<&awi::InlAwi<BW, LEN>> for Awi {
     fn from(awi: &awi::InlAwi<BW, LEN>) -> Awi {
-        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi.as_ref())))
+        Self::new(awi.nzbw(), Op::Literal(awi::Awi::from(awi)))
     }
 }
 

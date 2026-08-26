@@ -1,6 +1,6 @@
 #![allow(clippy::let_unit_value)]
 
-use awint::{awint_dag::mimick, dag};
+use awint::dag;
 
 use crate::dag_tests::test_epoch::Epoch;
 
@@ -8,8 +8,8 @@ use crate::dag_tests::test_epoch::Epoch;
 // currently assumes all operations succeed)
 #[test]
 fn dag_macros() {
+    use awint::awint_dag::mimick::{assert, assert_eq};
     use dag::*;
-    use mimick::{assert, assert_eq};
     let epoch0 = Epoch::new();
     // both trailing comma and semicolon
     let _ = inlawi!(0u1,;);
@@ -23,8 +23,8 @@ fn dag_macros() {
     let mut c = extawi!(0u4);
     cc!(a;b;c).unwrap();
     assert_eq!(a, inlawi!(0xau4));
-    assert_eq!(a.as_ref(), b);
-    assert_eq!(a.as_ref(), c.as_ref());
+    assert_eq!(a.as_bits(), b);
+    assert_eq!(a.as_bits(), c.as_bits());
     // dynamic ranges
     let x = 8;
     let val = ExtAwi::zero(bw(12));

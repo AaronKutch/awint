@@ -2,12 +2,12 @@ use core::cmp;
 use std::cmp::Ordering;
 
 use awint::{
-    awint_internals::{Digit, BITS, USIZE_BITS},
     Bits, ExtAwi,
+    awint_internals::{BITS, Digit, USIZE_BITS},
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 use crate::fuzz::{eq, fuzz_step, ne};
@@ -509,7 +509,7 @@ fn identities_inner(
 #[allow(dead_code)]
 fn fuzz_lengths(w: usize) -> Vec<usize> {
     if w < 4 {
-        return (0..w).collect()
+        return (0..w).collect();
     }
     let mut v = vec![0, 1];
     let mut x = 8;

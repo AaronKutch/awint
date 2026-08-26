@@ -1,7 +1,7 @@
 [package]
 name = "awint_dag"
-version = "0.18.1"
-edition = "2021"
+version = "0.19.0"
+edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -11,16 +11,6 @@ description = "DAG `awint` functionality"
 keywords = ["int", "integer", "big", "math", "no_std"]
 categories = ["data-structures", "mathematics", "algorithms", "no-std"]
 
-[dependencies]
-awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false }
-awint_macro_internals = { version = "0.18.1", path = "../awint_macro_internals", default-features = false }
-awint_macros = { version = "0.18.1", path = "../awint_macros", default-features = false }
-# our minimum version is above the 1.51 required for some of these features
-smallvec = { version = "1.13", default-features = false, features = ["const_generics", "const_new", "union"] }
-
-[dev-dependencies]
-awint = { path = "../awint" }
-
 [features]
 default = ["try_support"]
 try_support = []
@@ -29,3 +19,12 @@ debug = ["awint_macro_internals/debug"]
 gen_counter_for_pstate = []
 # makes `PState` use a u32 sized index and counter
 u32_for_pstate = []
+
+[dependencies]
+awint_ext = { workspace = true }
+awint_macro_internals = { workspace = true }
+awint_macros = { workspace = true }
+smallvec = { workspace = true }
+
+[dev-dependencies]
+awint = { path = "../awint", default-features = false, features = ["alloc"] }

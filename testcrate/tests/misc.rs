@@ -1,10 +1,10 @@
 use awint::{
     awi::*,
-    awint_internals::{Digit, BITS, USIZE_BITS},
+    awint_internals::{BITS, Digit, USIZE_BITS},
 };
 use rand_xoshiro::{
-    rand_core::{RngCore, SeedableRng},
     Xoshiro128StarStar,
+    rand_core::{Rng, SeedableRng},
 };
 
 /// [Bits::lut_] needs its own test because of its special requirements
@@ -27,8 +27,8 @@ fn lut_and_field() {
             awi_lut.rand_(&mut rng);
             let mut awi_inx = ExtAwi::zero(bw(pow));
             let out = awi_out.const_as_mut();
-            let lut = awi_lut.as_ref();
-            let inx = awi_inx.as_mut();
+            let lut = awi_lut.as_bits();
+            let inx = awi_inx.as_mut_bits();
             for i in 0..mul {
                 inx.usize_(i);
                 out.lut_(lut, inx).unwrap();
@@ -142,7 +142,7 @@ fn awint_internals_test() {
     let rhs = inlawi!(zero: ..,rhs;..256).unwrap();
     let mut add = inlawi!(zero: ..,add;..256).unwrap();
     add.mul_add_(&lhs, &rhs).unwrap();
-    assert_eq!(&extawi!(tmp1, tmp0)[..], &add[..]);
+    assert_eq!(extawi!(tmp1, tmp0).as_bits(), add.as_bits());
 
     let mut buf = [0u8; 68];
     for x in &mut buf {

@@ -39,17 +39,16 @@ system depending on these feature flags:
 Note: By default, "std" and "try_support" is turned on, use `default-features = false` and select
 specific features to be more specific.
 
-NOTE: As of Rust 1.70, if you try to use "const_support" with the macros you may get strange
-"erroneous constant used" and "deref_mut" errors unless you add all of
+NOTE: As of Rust 1.98-nightly, if you try to use "const_support" with the macros you may get errors unless
+you add
 ```
 #![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
-#![feature(const_option)]
+#![feature(const_convert)]
 ```
-to _all_ of the crate roots where you use the macros in `const` contexts.
+to _all_ of the crate roots where you use the macros in `const` contexts. "const_support" can
+require specific versions of nightly Rust (see https://github.com/AaronKutch/awint/issues/19).
 
-NOTE: As of some versions of Rust starting around 1.70, "const_support" is unfortunately broken on
-nightly (see https://github.com/AaronKutch/awint/issues/19).
+NOTE: This crate is based on using the Miri flags `-Zmiri-tree-borrows -Zmiri-strict-provenance`.
 
 ## Planned Features
 
@@ -73,3 +72,18 @@ prioritized. Please open an issue or PR if you would like these implemented fast
 - Certain formatting and serialization trait impls need more work.
 - Make "const_support" compile on stable. Almost every unstable feature used by these crates is some
   kind of `const` feature, and will hopefully be stabilized soon.
+
+#### License
+
+<sup>
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
+2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
+</sup>
+
+<br>
+
+<sub>
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this crate by you, as defined in the Apache-2.0 license, shall
+be dual licensed as above, without any additional terms or conditions.
+</sub>
