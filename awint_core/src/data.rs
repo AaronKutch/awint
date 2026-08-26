@@ -2,6 +2,8 @@ mod bits;
 mod inlawi;
 #[cfg(feature = "serde_support")]
 mod serde;
+#[cfg(feature = "star_rng_support")]
+mod star_rng;
 
 pub use bits::Bits;
 pub use inlawi::InlAwi;

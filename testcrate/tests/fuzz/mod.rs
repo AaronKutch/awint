@@ -13,6 +13,8 @@ mod identities;
 mod multi_bw;
 mod one_run;
 
+// TODO use the "star_rng_support" methods instead of `rand_xoshiro`
+
 #[track_caller]
 fn check_invariants(x: &Bits) {
     if x.extra() != 0 && (x.last() & (Digit::MAX << x.extra())) != 0 {

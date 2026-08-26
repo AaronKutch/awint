@@ -28,10 +28,12 @@ rand_xoshiro = "0.8"
 ron = "0.12"
 serde = { version = "1", default-features = false }
 smallvec = { version = "1.13", default-features = false, features = ["const_generics", "const_new", "union"] }
+star_rng = { version = "0.3" }
 triple_arena = "0.15"
 triple_arena_render = { version = "0.15" }
 zeroize = { version = "1", default-features = false }
 
 [patch.crates-io]
-#triple_arena = { path = "../triple_arena/triple_arena" }
-#triple_arena_render = { path = "../triple_arena/triple_arena_render" }
+triple_arena = { path = "../triple_arena/triple_arena" }
+triple_arena_render = { path = "../triple_arena/triple_arena_render" }
+star_rng = { path = "../star_rng" }

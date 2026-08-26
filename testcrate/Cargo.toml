@@ -11,7 +11,7 @@ u32_for_pstate = ["awint/u32_for_pstate"]
 
 [dependencies]
 # the "debug" feature enabled here is a test for the flag and the generation counters it enables
-awint = { workspace = true, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std"] }
+awint = { workspace = true, features = ["rand_support", "serde_support", "zeroize_support", "star_rng_support", "dag", "debug", "std"] }
 
 [build-dependencies]
 awint = { workspace = true, features = ["std", "rand_support"] }
@@ -19,7 +19,9 @@ rand_xoshiro = { workspace = true }
 
 [dev-dependencies]
 # enable all other features here so that building on stable works
-awint = { workspace = true, features = ["rand_support", "serde_support", "zeroize_support", "dag", "debug", "std", "try_support"] }
+awint = { workspace = true, features = ["rand_support", "serde_support", "zeroize_support", "star_rng_support", "dag", "debug", "std", "try_support"] }
+rand_core = { workspace = true }
 rand_xoshiro = { workspace = true }
 ron = { workspace = true }
+star_rng = { workspace = true }
 zeroize = { workspace = true }

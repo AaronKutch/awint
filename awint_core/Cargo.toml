@@ -20,6 +20,7 @@ rand_support = ["rand_core"]
 # Turns on `serde` support
 serde_support = ["serde"]
 zeroize_support = ["zeroize"]
+star_rng_support = ["star_rng"]
 # Only zero or one of these should be active
 u8_digits = ["awint_internals/u8_digits"]
 u16_digits = ["awint_internals/u16_digits"]
@@ -32,6 +33,7 @@ awint_internals = { workspace = true }
 const_fn = { workspace = true }
 rand_core = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+star_rng = { workspace = true, optional = true }
 zeroize = { workspace = true, optional = true }
 
 [dev-dependencies]

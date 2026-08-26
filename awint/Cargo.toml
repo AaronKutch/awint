@@ -30,6 +30,8 @@ rand_support = ["awint_core/rand_support"]
 serde_support = ["awint_core/serde_support", "awint_ext?/serde_support"]
 # Turns on `zeroize` support
 zeroize_support = ["awint_ext/zeroize_support"]
+# Turns on `star_rng` support
+star_rng_support = ["awint_core/star_rng_support"]
 # Turns on `awint_dag` support. Note: this activates `std`.
 dag = ["awint_dag", "std"]
 debug = ["awint_dag/debug", "awint_macro_internals/debug"]
