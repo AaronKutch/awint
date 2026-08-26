@@ -84,8 +84,6 @@ pub const fn widen_mul_add(x: Digit, y: Digit, z: Digit) -> (Digit, Digit) {
 
 type U256 = (u128, u128);
 
-// FIXME compile that list of deps to update like `fracints`
-
 /// Computes the quotient and remainder of `duo` divided by `div` and returns
 /// them as a tuple.
 pub const fn u256_div_rem(duo: U256, div: U256) -> (U256, U256) {

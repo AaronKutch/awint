@@ -1,6 +1,6 @@
 [package]
 name = "awint_macro_internals"
-version = "0.18.1"
+version = "0.19.0"
 edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -14,13 +14,11 @@ description = "Internal macro utilities for the `awint` system of crates"
 debug = ["triple_arena_render"]
 
 [dependencies]
-awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false }
-proc-macro2 = "1.0"
-triple_arena = { path = "../../triple_arena/triple_arena" }
-#triple_arena = "0.14"
-triple_arena_render = { path = "../../triple_arena/triple_arena_render", optional = true }
-#triple_arena_render = { version = "0.14", optional = true }
+awint_ext = { workspace = true }
+proc-macro2 = { workspace = true }
+triple_arena = { workspace = true }
+triple_arena_render = { workspace = true, optional = true }
 
 # for examples
 [dev-dependencies]
-awint = { path = "../awint" }
+awint = { workspace = true, features = ["alloc"] }

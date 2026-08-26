@@ -2,7 +2,7 @@
 name = "awint"
 # note: when bumping versions, update `rust-version` in `awint_internals/Cargo.toml` and in
 # `ci.yml`, and add date to changelog
-version = "0.18.1" # no 1.0 at least until `const_support` is all stabilized
+version = "0.19.0" # no 1.0 at least until `const_support` is all stabilized
 edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -45,8 +45,8 @@ gen_counter_for_pstate = ["awint_dag?/gen_counter_for_pstate"]
 u32_for_pstate = ["awint_dag?/u32_for_pstate"]
 
 [dependencies]
-awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
-awint_dag = { version = "0.18.1", path = "../awint_dag", default-features = false, optional = true }
-awint_ext = { version = "0.18.1", path = "../awint_ext", default-features = false, optional = true }
-awint_macro_internals = { version = "0.18.1", path = "../awint_macro_internals", default-features = false, optional = true }
-awint_macros = { version = "0.18.1", path = "../awint_macros" }
+awint_core = { workspace = true }
+awint_dag = { workspace = true, optional = true }
+awint_ext = { workspace = true, optional = true }
+awint_macro_internals = { workspace = true, optional = true }
+awint_macros = { workspace = true }

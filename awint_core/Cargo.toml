@@ -1,6 +1,6 @@
 [package]
 name = "awint_core"
-version = "0.18.1"
+version = "0.19.0"
 edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -28,14 +28,13 @@ u64_digits = ["awint_internals/u64_digits"]
 u128_digits = ["awint_internals/u128_digits"]
 
 [dependencies]
-awint_internals = { version = "0.18.1", path = "../awint_internals", default-features = false }
-const_fn = "0.4"
-rand_core = { version = "0.10", default-features = false, optional = true }
-serde = { version = "1.0", default-features = false, optional = true }
-zeroize = { version = "1", default-features = false, optional = true }
+awint_internals = { workspace = true }
+const_fn = { workspace = true }
+rand_core = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+zeroize = { workspace = true, optional = true }
 
-# for examples
 [dev-dependencies]
-awint = { path = "../awint" }
-rand_xoshiro = "0.8"
-ron = "0.12"
+awint = { workspace = true, features = ["alloc"] }
+rand_xoshiro = { workspace = true }
+ron = { workspace = true }

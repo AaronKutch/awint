@@ -1,6 +1,6 @@
 [package]
 name = "awint_ext"
-version = "0.18.1"
+version = "0.19.0"
 edition = "2024"
 authors = ["Aaron Kutch <aaronkutch@att.net>"]
 license = "MIT OR Apache-2.0"
@@ -26,12 +26,11 @@ u64_digits = ["awint_core/u64_digits"]
 u128_digits = ["awint_core/u128_digits"]
 
 [dependencies]
-awint_core = { version = "0.18.1", path = "../awint_core", default-features = false }
-const_fn = "0.4"
-serde = { version = "1.0", default-features = false, optional = true }
-zeroize = { version = "1", default-features = false, optional = true }
+awint_core = { workspace = true }
+const_fn = { workspace = true }
+serde = { workspace = true, optional = true }
+zeroize = { workspace = true, optional = true }
 
-# for examples
 [dev-dependencies]
-awint = { path = "../awint" }
-ron = "0.12"
+awint = { workspace = true, features = ["alloc"] }
+ron = { workspace = true }

@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.19.0] - TODO
+## [0.19.0] - 2026-08-26
 ### Crate
 - MSRV 1.88
 - `triple_arena` 0.15

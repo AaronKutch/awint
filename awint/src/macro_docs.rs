@@ -354,10 +354,10 @@
 //! }
 //! ```
 //!
-//! ```test
+//! ```text
 //! // (only on nightly currently)
 //! #![feature(const_trait_impl)]
-//! #![feature(const_deref)]
+//! #![feature(const_convert)]
 //!
 //! use awint::awi::*;
 //! // `bits!` is mainly used to create single large `&'static Bits` constants,
