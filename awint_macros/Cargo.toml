@@ -18,4 +18,4 @@ proc-macro = true
 awint_macro_internals = { workspace = true }
 
 [dev-dependencies]
-awint = { workspace = true, features = ["alloc"] }
+awint = { path = "../awint", default-features = false, features = ["alloc"] }

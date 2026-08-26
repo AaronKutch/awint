@@ -21,4 +21,4 @@ triple_arena_render = { workspace = true, optional = true }
 
 # for examples
 [dev-dependencies]
-awint = { workspace = true, features = ["alloc"] }
+awint = { path = "../awint", default-features = false, features = ["alloc"] }

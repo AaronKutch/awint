@@ -33,5 +33,5 @@ serde = { workspace = true, optional = true }
 zeroize = { workspace = true, optional = true }
 
 [dev-dependencies]
-awint = { workspace = true, features = ["alloc"] }
+awint = { path = "../awint", default-features = false, features = ["alloc"] }
 ron = { workspace = true }

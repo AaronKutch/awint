@@ -27,4 +27,4 @@ awint_macros = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]
-awint = { workspace = true, features = ["alloc"] }
+awint = { path = "../awint", default-features = false, features = ["alloc"] }
